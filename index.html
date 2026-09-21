@@ -3666,45 +3666,22 @@
                 }
             });
             // --- CATCH SUNCAT'S FIREBALL COMMAND FROM THE SERVER ---
-            socket.on("suncat_fires_projectile", (data) => {
-                if (typeof Dungeon !== 'undefined' && Dungeon.mapID === data.mapID) {
-                    let suncatObj = window.remotePlayers ? Object.values(window.remotePlayers).find(p => p.name === 'Suncat') : null;
-                    
-                    if (suncatObj) {
-                        // ---> THE FIX: Force Suncat to be a foe for this missile so it hurts you!
-                        let hostileSuncat = { ...suncatObj, alignment: 'foe' };
-
-                        let missile = new Projectile(
-                            data.startX, data.startY, 
-                            data.dirX, data.dirY, 
-                            6.0, data.damage || 5, 
-                            hostileSuncat, // Pass the hostile version!
-                            spellData ? spellData.isHoming : false,
-                            spellId
-                        );
-
-                        // Sprite and Target Type handling
-                        if (spellId === 9999) {
-                            missile.type = 9999; 
-                        } else {
-                            missile.type = (spellData && spellData.sprite2D) ? spellData.sprite2D : 99;
-                        }
-                        missile.targetType = data.targetType || 'all';
-
-                        Dungeon.projectiles.push(missile);
-                        
-                        // Trigger audio based on spell
-                        if (typeof MusicEngine !== 'undefined') {
-                            if (spellId === 9999) {
-                                MusicEngine.play3DSFX('attack', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
-                            } else if (spellData && spellData.type === 'projectile') {
-                                MusicEngine.play3DSFX('fire2', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
-                            } else {
-                                MusicEngine.play3DSFX('arcane3', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
-                            }
-                        }
-                    }
-                }
+              socket.on('suncat_fires_projectile',(data)=>{
+                if(typeof Dungeon==='undefined'||Dungeon.mapID!==data.mapID) return;
+                if(![data.startX,data.startY,data.dirX,data.dirY,data.damage].every(Number.isFinite)) return;
+                const source=window.remotePlayers?.NPC_SUNCAT ||
+                    Object.values(window.remotePlayers || {}).find(p=>p.name==='Suncat');
+                if(!source) return;
+                const spellId=data.spellId ?? 9999;
+                const spellData=typeof SPELL_REGISTRY!=='undefined'?SPELL_REGISTRY[spellId]:null;
+                // Only the designated observer resolves protective PvE damage.
+                const visualOnly=data.observerID && data.observerID!==socket.id;
+                const owner=visualOnly?'network':Object.assign(Object.create(source),{alignment:data.alignment || 'foe'});
+                const missile=new Projectile(data.startX,data.startY,data.dirX,data.dirY,6,
+                    visualOnly?0:data.damage,owner,spellData?.isHoming || false,spellId);
+                missile.type=spellId===9999?9999:(spellData?.sprite2D ?? 99);
+                missile.targetType=data.targetType ?? 'all';
+                Dungeon.projectiles.push(missile);
             });
             // 1. CATCH THE AGGRO STATE (When war is declared)
             socket.on("pvp_aggro_update", (data) => {
@@ -4351,67 +4328,22 @@
                     }
                 }
                 });
-            socket.on("admin_command", (data) => {
-                console.log("Admin Command Received:", data.type);
-
-                // 1. KICK (Soft Boot)
-                if (data.type === 'kick') {
-                    alert("You have been kicked from the server.");
-                    window.location.href = "about:blank"; // Redirects them away effectively
-                }
-
-                // 2. BANISH (Permanent IP/Browser Ban)
-                if (data.type === 'banish') {
-                    localStorage.setItem('battlemage_banned', 'true'); // Set the flag
-                    document.body.innerHTML = "<h1>BANISHED</h1>";
-                    socket.disconnect();
-                    setTimeout(() => location.reload(), 1000); // Trigger the check at the top
-                }
-
-                // 3. VANQUISH (Delete Save File)
-                if (data.type === 'vanquish') {
-                    // Nuke all known storage keys
-                    localStorage.removeItem('battlemage_save'); 
-                    localStorage.removeItem('Suncat_Favor_v1');
-                    localStorage.removeItem('Suncat_Core_Facts');
-                    localStorage.removeItem('Suncat_Memory_v1');
-                    
-                    alert("Suncat has DELETED your save file. The timeline has been reset.");
-                    location.reload();
-                }
+            socket.on('admin_command',(data,ack)=>{
+                try {
+                    if(!['kick','banish','vanquish'].includes(data?.type)) throw new Error('Unknown admin command.');
+                    if(data.type==='banish') localStorage.setItem('battlemage_banned','true');
+                    if(data.type==='vanquish') for(const key of ['battlemage_save','Suncat_Favor_v1','Suncat_Core_Facts','Suncat_Memory_v1','suncat.lastCustomMap']) localStorage.removeItem(key);
+                    if(typeof ack==='function') ack({ok:true,type:data.type});
+                    setTimeout(()=>{
+                        if(data.type==='kick') window.location.href='about:blank';
+                        else location.reload();
+                    },250);
+                } catch(error) {if(typeof ack==='function') ack({ok:false,error:error.message});}
             });
-            socket.on("delete_save", () => {
-                const player = players[socket.id];
-                if (player && player.name !== "Unknown") {
-                    // ---> FIX: Use persistentId to properly wipe the server memory! <---
-                    const memoryKey = player.persistentId || player.name.toLowerCase(); 
-                    
-                    // 1. Erase from the Permanent Database
-                    if (suncatPersistentMemory[memoryKey]) {
-                        delete suncatPersistentMemory[memoryKey];
-                        saveSuncatMemory(); // Save the newly cleaned JSON to disk
-                    }
-
-                    // 2. Reset the Live RAM
-                    playerFavorMemory[socket.id] = 0;
-                    player.playerProfile = { combatStyle: "Unknown", alliances: "Unknown", tastes: "Unknown", personality: "Unknown" };
-                    player.storySoFar = "";
-                    player.activeQuest = null;
-                    player.suncatPerception = "An unknown entity.";
-                    player.undigestedInfo = [];
-                    player.searchableMemories = [];
-
-                    // 3. Lobotomize the active Gemini Chat Session
-                    if (chatSessions[socket.id]) {
-                        chatSessions[socket.id] = defaultModel.startChat({ history: [] });
-                    }
-
-                    console.log(`[WIPE] All server memory permanently erased for: ${player.name}`);
-                }
-            });
+            
             socket.on('load_custom_map', (data) => {
                 // Assuming your Explore instance is saved to a variable named 'Dungeon'
-            window.latestCustomMapData = data; // Cache it!
+                if(typeof Dungeon==='undefined') window.latestCustomMapData=data;
                 if (typeof Dungeon !== 'undefined') {
                     Dungeon.loadCustomMap(data);
                 }
@@ -4436,21 +4368,10 @@
                     }
                 }
             });
-            socket.on("remote_spawn_npc", (data) => {
-                if (typeof Dungeon !== 'undefined') {
-                    if (typeof MusicEngine !== 'undefined') {
-                        MusicEngine.play3DSFX('warp'); 
-                    }
-
-                    Dungeon.spawnPersistentNPC(
-                        data.mapID, data.index, data.x, data.y, data.type, data.state, 
-                        data.color, data.deck, data.dialogue, data.rewardCard, data.role, 
-                        data.options, data.isBoss, data.alignment, data.endActions, 
-                        data.deathActions, data.isCinematic, data.yesActions, data.noActions // <--- Pass them here!
-                    );
-                    
-                    console.log(`[System] Suncat spawned an entity (Type: ${data.type}) on Map ${data.mapID}!`);
-                }
+             socket.on('remote_spawn_npc',(data)=>{
+                if(typeof Dungeon==='undefined') return;
+                try {SUNCAT_CLIENT.spawn(Dungeon,data,false);}
+                catch(error) {console.error('[Suncat spawn]',error);}
             });
             socket.on("force_teleport", (data) => {
                 if (typeof Dungeon !== 'undefined') {
@@ -4616,20 +4537,12 @@
             currentQuest = data.questText;
             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); // Play a nice sound when getting a quest!
             });
-            socket.on("suncat_client_spell", (payload) => {
-            try {
-                // Execute the raw JavaScript Suncat wrote directly in the browser!
-                // This has access to the global window scope (Dungeon, Player, MusicEngine, etc.)
-                const alterReality = new Function(payload.clientCode);
-                alterReality();
-                
-                chatLog.push(`[SYSTEM]: Suncat altered the fabric of reality...`);
-                if (chatLog.length > 100) chatLog.shift();
-            } catch (e) {
-                console.error("Suncat's spell fizzled:", e);
-                chatLog.push(`[SYSTEM]: A spell was cast, but the magic collapsed.`);
-                    if (chatLog.length > 100) chatLog.shift();
-            }
+            SUNCAT_CLIENT.install(socket);
+            socket.on('suncat_tile_changed',data=>{
+                if(typeof Dungeon==='undefined'||Dungeon.mapID!==data.mapID) return;
+                if(![data.x,data.y,data.tileId].every(Number.isInteger)||!Dungeon.maze[data.y]||data.x<0||data.x>=Dungeon.maze[data.y].length) return;
+                Dungeon.maze[data.y][data.x]=data.tileId;
+                Dungeon.flowField=[];Dungeon.flowCacheKey=null;
             });
             socket.on("remote_npc_dash", (data) => {
             // Assuming Dungeon.npcs holds your active map mobs
@@ -4724,35 +4637,7 @@
                     // Optional: spawn a client-side particle effect here so other players see the smoke!
                 }
             });
-        // --- CATCH SUNCAT'S FIREBALL COMMAND FROM THE SERVER ---
-            socket.on("suncat_fires_projectile", (data) => {
-                if (typeof Dungeon !== 'undefined' && Dungeon.mapID === data.mapID) {
-                    let suncatObj = null;
-                    if (window.remotePlayers) {
-                        suncatObj = Object.values(window.remotePlayers).find(p => p.name === 'Suncat');
-                    }
-                    
-                    if (suncatObj) {
-                        let missile = new Projectile(
-                            data.startX, data.startY, 
-                            data.dirX, data.dirY, 
-                            6.0, 1, 
-                            suncatObj 
-                        );
-
-                        // THE MAGIC MISSILE UPGRADES:
-                        missile.type = 99; // Change to 99 so it looks like a spinning Cyan Crystal!
-                        missile.targetType = data.targetType || 'all'; // Let it hunt!
-
-                        Dungeon.projectiles.push(missile);
-                        
-                        if (typeof MusicEngine !== 'undefined') {
-                            // Play a magical sound instead of a fiery explosion
-                            MusicEngine.play3DSFX('musical2', data.startX, data.startY, Dungeon.x, Dungeon.y, Dungeon.dir);
-                        }
-                    }
-                }
-            });
+        
         };
         ioScript.onerror = function() {
             console.warn("Playing offline: Multiplayer and Suncat AI features are disabled.");
@@ -5573,6 +5458,236 @@
 
     
 ///////////////////vvvvv[DUNGEON CLASSES]vvvvvvvvvvvv//////////////////////
+    // NPC-only terrain rules. Player collision stays in Explore.isWall.
+        const NPC_TERRAIN = {
+            aquatic: new Set([37, 46, 49, 83, 279]), // Siren, Sea Serpent, Kraken, Tentacle, Frog
+            airborne: new Set([23, 35, 42, 60, 61, 63, 74, 86, 206, 213, 228, 267, 315]),
+            kind(maze, x, y) {
+                const tile = maze?.[Math.floor(y)]?.[Math.floor(x)];
+                if (tile === undefined) return 'outside';
+                return TERRAIN_SURFACES[tile]?.kind ||
+                    (tile < 0 && Math.abs(tile) % 2 === 1 ? 'chasm' : 'ground');
+            },
+            mode(npc) {
+                const id = Math.floor(npc.type);
+                if (npc.isFlying || npc.isFloating || this.airborne.has(id)) return 'air';
+                if (npc.isAquatic || this.aquatic.has(id)) return 'water';
+                return 'land';
+            },
+            blocked(npc, maze, x, y, world, escape = false) {
+                if (!Number.isFinite(x) || !Number.isFinite(y)) return true;
+                const kind = this.kind(maze, x, y), mode = this.mode(npc);
+                if (kind === 'outside' || kind === 'lava') return true;
+                if (kind === 'water') return !(escape || mode === 'water' || mode === 'air');
+                if (kind === 'chasm') return !(escape || mode === 'air');
+                if (world?.isWall) {
+                    const z = world.getFloorElevation?.(npc.x, npc.y) ?? 0;
+                    return world.isWall(x, y, z);
+                }
+                const tile = maze[Math.floor(y)][Math.floor(x)];
+                return tile > 0 && tile % 2 === 1;
+            },
+            collision(npc, maze, x, y, world, escape = false) {
+                const r = Number.isFinite(npc.radius) ? npc.radius : 0.25;
+                const d = r * 0.7071;
+                return [[0,0],[r,0],[-r,0],[0,r],[0,-r],[d,d],[-d,d],[d,-d],[-d,-d]]
+                    .some(([dx,dy]) => this.blocked(npc, maze, x+dx, y+dy, world, escape));
+            },
+            route(npc, world, preferWater, escape) {
+                const maze = world.maze, w = maze[0].length, h = maze.length;
+                const sx = Math.floor(npc.x), sy = Math.floor(npc.y);
+                if (sx < 0 || sy < 0 || sx >= w || sy >= h) return null;
+                const start = sy*w+sx, parent = new Map([[start, -1]]), queue = [start];
+                for (let head=0; head<queue.length && head<Math.min(w*h,16384); head++) {
+                    const key = queue[head], x = key%w, y = Math.floor(key/w);
+                    const kind = this.kind(maze,x,y);
+                    const goal = preferWater ? kind === 'water' : kind === 'ground';
+                    if (goal && !this.collision(npc,maze,x+0.5,y+0.5,world,false)) {
+                        const path=[];
+                        for (let k=key; k!==start; k=parent.get(k)) path.push({x:k%w+0.5,y:Math.floor(k/w)+0.5});
+                        // Finish at the centre so the whole body clears the shoreline.
+                        if (!path.length) path.push({x:x+0.5,y:y+0.5});
+                        return path.reverse();
+                    }
+                    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+                        const nx=x+dx, ny=y+dy, nk=ny*w+nx;
+                        if (nx<0 || ny<0 || nx>=w || ny>=h || parent.has(nk)) continue;
+                        if (preferWater && Math.abs(nx-sx)+Math.abs(ny-sy)>12) continue;
+                        if (this.collision(npc,maze,nx+0.5,ny+0.5,world,escape)) continue;
+                        parent.set(nk,key); queue.push(nk);
+                    }
+                }
+                return null;
+            },
+            recover(npc, world, dt, playerX, playerY) {
+                if (npc.isDead || npc.isDying || npc.type < 0 || ['sign','portal','dropped_card'].includes(npc.role)) return false;
+                const mode=this.mode(npc), kind=this.kind(world.maze,npc.x,npc.y);
+                const stranded=(kind==='water' && mode==='land') || (kind==='chasm' && mode!=='air');
+                const preferWater=mode==='water' && kind==='ground' && npc.state==='wandering' &&
+                    npc.role==='battle' && !npc.isBoss && !npc.isCinematic && !npc.chasing &&
+                    Math.hypot(playerX-npc.x,playerY-npc.y)>8 && !npc.cachedPrey;
+                let job=npc._terrainJob;
+                if (job && job.maze!==world.maze) job=npc._terrainJob=null;
+                if (job?.preferWater && !preferWater && kind!=='water') job=npc._terrainJob=null;
+                if (!job && !stranded && !preferWater) return false;
+                if (!job) {
+                    if (Date.now()<(npc._terrainRetryAt || 0)) return stranded;
+                    npc._terrainRetryAt=Date.now()+2000;
+                    const path=this.route(npc,world,preferWater,stranded);
+                    if (!path) return stranded; // Enclosed actors wait; never tunnel through walls.
+                    job=npc._terrainJob={maze:world.maze,path,preferWater,escape:stranded};
+                }
+                const goal=job.path[0];
+                if (!goal) { npc._terrainJob=null; return true; }
+                const dx=goal.x-npc.x,dy=goal.y-npc.y,dist=Math.hypot(dx,dy);
+                const step=Math.min(dist, Math.max(0,Math.min(Number(dt)||0,0.1))*1.5);
+                if (dist>0) {
+                    const nx=npc.x+dx/dist*step,ny=npc.y+dy/dist*step;
+                    if (this.collision(npc,world.maze,nx,ny,world,job.escape)) {
+                        npc._terrainJob=null; return true;
+                    }
+                    npc.x=nx; npc.y=ny; npc.dirX=dx/dist; npc.dirY=dy/dist;
+                }
+                if (dist<=step+0.001) {
+                    job.path.shift();
+                    if (!job.path.length) npc._terrainJob=null;
+                }
+                return true;
+            }
+        };
+
+        const SUNCAT_CLIENT = {
+            results: new Map(),
+            makeNPC(data) {
+                const n=new NPC(data.index,data.x,data.y,data.type,data.state ?? 'wandering',
+                    data.color ?? '#ff0000',data.deck ?? [],data.role ?? 'battle',
+                    data.isBoss ?? false,data.alignment ?? 'foe',data.level ?? data.mastery ?? 0);
+                n.customDialogue=Array.isArray(data.dialogue)?data.dialogue:null;
+                for (const key of ['options','rewardCard','yesActions','noActions','endActions','deathActions',
+                    'isCinematic','instanceId','summonTag','isAquatic','isFlying','isFloating']) {
+                    if (data[key] !== undefined) n[key]=data[key];
+                }
+                if (data.name) n.name=data.name;
+                return n;
+            },
+            safePosition(world, x, y, type, occupied=true) {
+                const probe={x,y,type,radius:0.25};
+                const sx=Math.floor(x),sy=Math.floor(y);
+                for (let r=0;r<=12;r++) for (let dy=-r;dy<=r;dy++) for (let dx=-r;dx<=r;dx++) {
+                    if (Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
+                    const px=sx+dx+0.5,py=sy+dy+0.5;
+                    if (NPC_TERRAIN.collision(probe,world.maze,px,py,world)) continue;
+                    if (occupied && world.npcs.some(n=>!n.isDead && Math.hypot(n.x-px,n.y-py)<0.7)) continue;
+                    return {x:px,y:py};
+                }
+                throw new Error('No suitable unoccupied spawn tile within 12 tiles.');
+            },
+            spawn(world, input, relocate=false) {
+                const data={...input};
+                if (!Number.isFinite(data.index)||!Number.isFinite(data.type)||
+                    !Number.isFinite(data.x)||!Number.isFinite(data.y)) throw new Error('Invalid spawn data.');
+                const existing=world.npcs.find(n=>n.index===data.index);
+                if (data.mapID===world.mapID && existing) return {index:existing.index,x:existing.x,y:existing.y};
+                if (relocate) Object.assign(data,this.safePosition(world,data.x,data.y,data.type));
+                const key='spawned_'+data.mapID;
+                if (Array.isArray(world.memory[key])) world.memory[key]=world.memory[key].filter(n=>n.index!==data.index);
+                world.spawnPersistentNPC(data.mapID,data.index,data.x,data.y,data.type,data.state,
+                    data.color,data.deck,data.dialogue,data.rewardCard,data.role,data.options,data.isBoss,
+                    data.alignment,data.endActions,data.deathActions,data.isCinematic,data.yesActions,data.noActions);
+                const record=world.memory[key]?.find(n=>n.index===data.index);
+                if (record) Object.assign(record,data);
+                const n=data.mapID===world.mapID?world.npcs.find(n=>n.index===data.index):null;
+                if (n) for (const key of ['name','summonTag','instanceId','isAquatic','isFlying','isFloating']) {
+                    if (data[key]!==undefined) n[key]=data[key];
+                }
+                world.requestSave();
+                return {index:data.index,x:data.x,y:data.y};
+            },
+            command(packet) {
+                const d=Dungeon, a=packet.args || {};
+                if (packet.mapID!==d.mapID) throw new Error('Player changed maps; command was not applied.');
+                switch(packet.kind) {
+                    case 'spawn': return this.spawn(d,a,true);
+                    case 'gift':
+                        if (!Number.isInteger(a.cardIndex)) throw new Error('Invalid card ID.');
+                        d.extra.push(new Card(a.cardIndex,0)); d.requestSave();
+                        return {cardIndex:a.cardIndex};
+                    case 'music':
+                        if (!Number.isInteger(a.trackId)||a.trackId<0||a.trackId>46) throw new Error('Invalid music track.');
+                        MusicEngine.stop(); MusicEngine.play(a.trackId); return {trackId:a.trackId};
+                    case 'terrain':
+                        if (![a.x,a.y,a.tileId].every(Number.isInteger) || !d.maze[a.y] ||
+                            a.x<0 || a.x>=d.maze[a.y].length) throw new Error('Tile outside map.');
+                        d.maze[a.y][a.x]=a.tileId;
+                        d.flowField=[]; d.flowCacheKey=null;
+                        return {x:a.x,y:a.y,tileId:a.tileId};
+                    case 'entity': {
+                        const matches=d.npcs.filter(n=>Math.floor(n.type)===Math.floor(a.type) &&
+                            (a.index===undefined || n.index===a.index) && (a.action==='revive'?n.isDead:!n.isDead));
+                        if (matches.length!==1) throw new Error(`Found ${matches.length} matches; specify one NPC index.`);
+                        const n=matches[0];
+                        if (a.action==='smite') d.killNPC(n,true,'smite');
+                        else if (a.action==='revive') {
+                            const rule=typeof STORY_COMBAT_RULES!=='undefined'?STORY_COMBAT_RULES[`${d.mapID}:${n.index}`]:null;
+                            if (rule && d.memory[rule.flag]) throw new Error('Completed story bosses require a separate quest reset.');
+                            if (d.memory[`${d.mapID}_${n.index}`]?.permanent) throw new Error('NPC is permanently removed by story state.');
+                            const p=this.safePosition(d,n.originx,n.originy,n.type);
+                            if (typeof n.resetAfterRespawn==='function') n.resetAfterRespawn(d);
+                            Object.assign(n,{x:p.x,y:p.y,isDead:false,isDying:false,visible:true,
+                                state:n.preState || 'wandering',respawnTime:0,currentWardTime:n.maxWards*n.timePerWard,
+                                wardShatterCooldown:0,cachedPrey:null,cachedPath:[],activeBuffs:[]});
+                            delete d.memory[`${d.mapID}_${n.index}`]; d.requestSave();
+                        } else throw new Error('Expected smite or revive.');
+                        return {index:n.index,action:a.action};
+                    }
+                    case 'teleport':
+                        if (!MAP_DB[a.mapID]) throw new Error('Client does not know this map.');
+                        d.loadMap(a.mapID); return {mapID:d.mapID,x:d.x,y:d.y};
+                    case 'customMap':
+                        d.loadCustomMap(a); return {mapID:d.mapID,x:d.x,y:d.y,instanceId:a.instanceId};
+                    case 'environment':
+                        if (a.weather) d.weather.setMode(a.weather);
+                        if (a.skyColor) d.skyColor=a.skyColor;
+                        return {weather:a.weather,skyColor:a.skyColor};
+                    case 'quest':
+                        currentQuest=a.questText==='COMPLETE'?'':a.questText;
+                        return {questText:currentQuest};
+                    case 'tactics': {
+                        if (d.currentSpeaker || d.isProcessingActions || startGame!=='explore') throw new Error('Finish the current interaction first.');
+                        const p=this.safePosition(d,d.x,d.y,a.bossId);
+                        const n=this.makeNPC({index:a.index,...p,type:a.bossId,state:'stationary',role:'battle',
+                            isBoss:true,alignment:'foe',deck:a.team,deathActions:[['give_card',a.bossId],['notify',a.winText]]});
+                        d.npcs.push(n);
+                        d.executeActions([['start_tactics',{id:n.index,stakes:'real',scenarioName:a.scenarioName}]]);
+                        return {queued:true,index:n.index,scenarioName:a.scenarioName};
+                    }
+                    default: throw new Error('Unknown client command: '+packet.kind);
+                }
+            },
+            install(sock) {
+                sock.on('suncat_command',(packet,ack)=>{
+                    if (typeof ack!=='function') return;
+                    if (this.results.has(packet?.id)) return ack(this.results.get(packet.id));
+                    let result;
+                    try {
+                        if (!packet || typeof packet.id!=='string' || typeof Dungeon==='undefined') throw new Error('Client not ready.');
+                        result={ok:true,...this.command(packet)};
+                    } catch(error) { result={ok:false,error:error.message}; }
+                    this.results.set(packet.id,result);
+                    if (this.results.size>128) this.results.delete(this.results.keys().next().value);
+                    ack(result);
+                });
+                sock.on('suncat_world_request',(data,ack)=>{
+                    if (typeof ack!=='function' || typeof Dungeon==='undefined' || Dungeon.mapID!==data.mapID) return;
+                    ack({mapID:Dungeon.mapID,maze:Dungeon.maze,
+                        npcs:Dungeon.npcs.filter(n=>!n.isDead && Number.isFinite(n.x)&&Number.isFinite(n.y))
+                            .sort((a,b)=>Math.hypot(a.x-data.x,a.y-data.y)-Math.hypot(b.x-data.x,b.y-data.y))
+                            .slice(0,128).map(n=>({index:n.index,type:n.type,name:n.name,x:n.x,y:n.y,
+                                alignment:n.alignment,role:n.role,summonTag:n.summonTag}))});
+                });
+            }
+};
+
     class NPC {
         constructor(index, x, y, type, state = 'wandering', minimapColor = '#ff0000', deck = [], role = 'battle', isBoss = null, alignment = 'foe', level = 0) {
                 
@@ -5750,35 +5865,9 @@
         }
 
 
-        checkCollision(maze, x, y, dungeon = null) {
-            if (isNaN(x) || isNaN(y)) return true;
-            
-            const r = this.radius; 
-            const d = this.radius * 0.7071; 
-            
-            const points = [
-                {x: x + r, y: y}, {x: x - r, y: y}, 
-                {x: x, y: y + r}, {x: x, y: y - r},
-                {x: x + d, y: y + d}, {x: x - d, y: y + d}, 
-                {x: x + d, y: y - d}, {x: x - d, y: y - d}
-            ];
-            
-            for (let p of points) {
-                if (p.y < 0 || p.y >= maze.length) return true; 
-                if (p.x < 0 || p.x >= maze[0].length) return true; 
-
-                // If dungeon reference is available, use its advanced Z-aware isWall check!
-                if (dungeon && typeof dungeon.isWall === 'function') {
-                    let npcCurrentZ = dungeon.getFloorElevation(this.x, this.y);
-                    if (dungeon.isWall(p.x, p.y, npcCurrentZ)) return true;
-                } else {
-                    // Fallback
-                    const tile = maze[Math.floor(p.y)][Math.floor(p.x)];
-                    if (tile > 0) return true; 
-                    if (tile < 0 && Math.abs(tile) % 2 === 1) return true;
-                }
-            }
-            return false;
+        checkCollision(maze,x,y,dungeon=null) {
+            const world=dungeon || (typeof Dungeon!=='undefined' && Dungeon.maze===maze?Dungeon:null);
+            return NPC_TERRAIN.collision(this,maze,x,y,world);
         }
         hasLineOfSight(maze, targetX, targetY) {
             let x0 = Math.floor(this.x); let y0 = Math.floor(this.y);
@@ -6287,13 +6376,9 @@
             
             
             }
-        isWall(mapX, mapY) {
-            // Force NPCs to use the Dungeon's 3D physics!
-            if (typeof Dungeon !== 'undefined' && Dungeon.isWall) {
-                let myZ = Dungeon.getFloorElevation(this.x, this.y);
-                return Dungeon.isWall(mapX, mapY, myZ);
-            }
-            return true; // Failsafe
+       isWall(mapX,mapY) {
+            if(typeof Dungeon==='undefined') return true;
+            return NPC_TERRAIN.blocked(this,Dungeon.maze,mapX,mapY,Dungeon);
         }
         resetAfterRespawn(dungeon) {
             const pos = dungeon.findWalkablePosition(this.originx,this.originy);
@@ -6482,6 +6567,14 @@
             // =========================================================
             // 5. DYNAMIC TARGET SELECTION (The Universal Radar)
             // =========================================================
+                 if (!this._suncatMetadataApplied) {
+                    this._suncatMetadataApplied=true;
+                    const saved=dungeon.memory?.['spawned_'+dungeon.mapID]?.find(n=>n.index===this.index);
+                    if(saved) for(const key of ['name','summonTag','instanceId','isAquatic','isFlying','isFloating']) {
+                        if(saved[key]!==undefined) this[key]=saved[key];
+                    }
+                }
+                if (NPC_TERRAIN.recover(this,dungeon,dt,playerX,playerY)) return;
                 let targetX = playerX;
                 let targetY = playerY;
                 let isChasingNPC = false; 
@@ -9359,6 +9452,11 @@
             }
         //MAP DATA
             loadMap(id) {
+                if (id===999 && !this._loadingCustomMap) {
+                    let cached=window.latestCustomMapData;
+                    if(!cached) {try {cached=JSON.parse(localStorage.getItem('suncat.lastCustomMap') || 'null');} catch(error) {}}
+                    if(cached?.id===999) {this.loadCustomMap(cached);return;}
+                }
                 const wasLoading = this.isLoading;
                 const previousReturnMap = this.prevMap;
                 this.isLoading = true;
@@ -9559,243 +9657,54 @@
             if (!wasLoading) this.requestSave();
             }
             loadCustomMap(data) {
-                this.loadMap(999);
-                this.maze = data.maze;
-                this.skyColor = data.skyColor;
-                this.floorColor = data.floorColor;
-                this.scenarioType = data.scenarioType;
-                this.explored = [];
-                if (this.maze.length > 0) {
-                    for (let r = 0; r < this.maze.length; r++) {
-                        this.explored[r] = new Array(this.maze[0].length).fill(0);
-                    }
+                if (!data || data.id!==999 || !Array.isArray(data.maze) || !data.maze[0]?.length || !Array.isArray(data.npcs)) {
+                    throw new Error('Invalid generated map blueprint.');
                 }
-
-                let selectedWeather = data.weather || 'space';
-                this.weather.setMode(selectedWeather);
-
-                // Snap player to the exact safe spawn the server calculated
-                if (data.spawnX !== undefined && data.spawnY !== undefined) {
-                    this.x = data.spawnX;
-                    this.y = data.spawnY;
-                }
-                this.prevMap = data.prevMapID !== undefined ? data.prevMapID : 0;
-
-                // ===================================================
-                // Spawn AI-Generated NPCs exactly where the server told them to be
-                // ===================================================
-                if (data.npcs && data.npcs.length > 0) {
-                    // Step A: Pool the incoming server data by behavior
-                    let serverBosses   = data.npcs.filter(n => n.isBoss);
-                    let serverFoes     = data.npcs.filter(n => n.alignment === 'foe' && !n.isBoss);
-                    let serverFriends  = data.npcs.filter(n => n.alignment === 'friendly' || n.alignment === 'defender');
-                    let serverShops    = data.npcs.filter(n => n.role === 'shop');
-
-                    // Step B: Inject Server Scripts into Static Client NPCs
-                    this.npcs.forEach(clientNPC => {
-                        let injectedData = null;
-
-                        if (clientNPC.isBoss || clientNPC.id === 2 || clientNPC.id === 4) {
-                            if (serverBosses.length > 0) injectedData = serverBosses.shift();
+                const cachedReturn=data.instanceId && window.latestCustomMapData?.instanceId===data.instanceId?window.latestCustomMapData.returnTo:null;
+                const returnTo=data.returnTo || cachedReturn || (this.mapID!==999?{mapID:this.mapID,x:this.x,y:this.y}:null);
+                const loading=this.isLoading;
+                this._loadingCustomMap=true;
+                try {
+                    this.loadMap(999);
+                    this.maze=data.maze.map(row=>row.slice());
+                    this.mapID=999;this.skyColor=data.skyColor;this.floorColor=data.floorColor;
+                    this.scenarioType=data.scenarioType || 'bounty';this.biome=data.biome;
+                    this.customMapInstance=data.instanceId;
+                    this.explored=this.maze.map(row=>Array(row.length).fill(0));
+                    this.flowField=[];this.flowCacheKey=null;
+                    this.x=data.spawnX;this.y=data.spawnY;
+                    this.prevMap=returnTo?.mapID ?? this.prevMap;
+                    const seen=new Set();
+                    this.npcs=[];
+                    for(const record of data.npcs) {
+                        if(seen.has(record.index)) continue;
+                        seen.add(record.index);
+                        const saved=this.memory[`999_${record.index}`];
+                        if(saved?.permanent) continue;
+                        const n=SUNCAT_CLIENT.makeNPC({...record,instanceId:data.instanceId});
+                        if(saved?.respawnAt>Date.now()) {
+                            n.isDead=true;n.visible=false;n.respawnTime=saved.respawnAt;
                         }
-                        else if (clientNPC.role === 'shop' || clientNPC.id === 3) {
-                            if (serverShops.length > 0) injectedData = serverShops.shift();
-                        }
-                        else if (clientNPC.alignment === 'foe' || clientNPC.id === 1) {
-                            if (serverFoes.length > 0) injectedData = serverFoes.shift();
-                        }
-                        else if (clientNPC.alignment === 'friendly' || clientNPC.id >= 200) {
-                            if (serverFriends.length > 0) injectedData = serverFriends.shift();
-                        }
-
-                        // Step C: Apply the Hijacked Data!
-                        if (injectedData) {
-                            if (injectedData.dialogue) {
-                                clientNPC.customDialogue = typeof injectedData.dialogue === 'string' 
-                                    ? [injectedData.dialogue] 
-                                    : injectedData.dialogue;
-                            }
-                            if (injectedData.deck && injectedData.deck.length > 0 && clientNPC.role !== 'shop') {
-                                clientNPC.deck = injectedData.deck;
-                                clientNPC.type = injectedData.type; 
-                            }
-                            if (clientNPC.role === 'shop' && injectedData.deck) {
-                                clientNPC.deck = injectedData.deck;
-                                clientNPC.endActions = [['open_shop', injectedData.deck], ['play_sfx', 'click']];
-                            }
-                        }
-                    });
-
-                    // Step D: Spawn the Leftovers safely!
-                    let leftoverNPCs = [...serverBosses, ...serverFoes, ...serverFriends, ...serverShops];
-                    
-                    leftoverNPCs.forEach((npc, index) => {
-                        let safeType = npc.type || 82; 
-                        let safeState = npc.state || 'chasing';
-                        let safeRole = npc.role || 'battle';
-                        let safeColor = npc.color || '#ff0000';
-                        let safeDeck = (npc.deck && npc.deck.length > 0) ? npc.deck : [Math.floor(safeType)];
-                        let safeDialogue = typeof npc.dialogue === 'string' ? [npc.dialogue] : npc.dialogue;
-                        let spawnIndex = npc.index !== undefined ? npc.index : (100 + index);
-
-                        let safePos = this.getSafeSpawn(npc.x, npc.y, 6);
-
-                        this.npcs.push(Object.assign(new NPC(
-                            spawnIndex, safePos.x, safePos.y - 0.5, safeType, safeState, safeColor, safeDeck, safeRole, 
-                            npc.isBoss || false, npc.alignment || 'foe'
-                        ), {
-                            customDialogue: safeDialogue,
-                            options: npc.options || null,
-                            endActions: npc.endActions || [],
-                            deathActions: npc.deathActions || [],
-                            yesActions: npc.yesActions || null,
-                            noActions: npc.noActions || null
-                        }));
-                    });
-                }
-
-                // ===================================================
-                // Step E: DYNAMIC WILDERNESS POI INJECTOR (Sub-Plots)
-                // ===================================================
-                let aiScripts = data.poiScripts || {};
-                // Find all safe, empty floor tiles far away from the player
-                let validPOIFloors = [];
-                if (this.maze && this.maze.length > 0) {
-                    for (let y = 2; y < this.maze.length - 2; y++) {
-                        for (let x = 2; x < this.maze[0].length - 2; x++) {
-                            // Empty floor tile, and at least 8 tiles away from the player spawn
-                            if (this.maze[y][x] === 0 && Math.abs(x - this.x) > 8 && Math.abs(y - this.y) > 8) {
-                                validPOIFloors.push({x, y});
-                            }
-                        }
+                        this.npcs.push(n);
                     }
-                }
-
-                // If we have enough room, spawn 1 or 2 random mini-scenarios
-                if (validPOIFloors.length > 10) {
-                    validPOIFloors.sort(() => Math.random() - 0.5);
-                    let numPOIsToSpawn = Math.random() > 0.5 ? 2 : 1; 
-                    let scenarios = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5);
-
-                    for (let i = 0; i < numPOIsToSpawn; i++) {
-                        let loc = validPOIFloors[i];
-                        let px = loc.x + 0.5;
-                        let py = loc.y + 0.5;
-                        let uID = 900000 + Math.floor(Math.random() * 9000); 
-                        let scenarioId = scenarios[i];
-
-                        if (scenarioId === 0) {
-                            let n = new NPC(uID, px, py, 252, 'stationary', '#ffff00', [252], 'dialogue', false, 'friendly');
-                            // USE THE AI SCRIPT HERE!
-                            n.customDialogue = [aiScripts.narcissist || "Behold my magnificent victory!", "Don't you agree I am the greatest?"];
-                            n.options = ['Praise Them', 'Insult Them'];
-                            n.yesActions = [['play_sfx', 'chime'], ['notify', { text: "They laugh obnoxiously and throw some gold at you.", endActions: [['give_card', 10], ['close_dialogue', null]] }]];
-                            n.noActions = [['play_sfx', 'horn'], ['notify', { text: "HOW DARE YOU! DIE!", endActions: [['close_dialogue', null]] }], ['transform_npc', { index: uID, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsBoss: true }]];
-                            this.npcs.push(n);
-                        } 
-                        else if (scenarioId === 1) {
-                            let n = new NPC(uID, px, py, 94, 'stationary', '#00ff00', [13, 93, 82, 28], 'dialogue', false, 'friendly');
-                            // USE THE AI SCRIPT HERE!
-                            n.customDialogue = [aiScripts.lunchBreak || "I'm on break.", "Buy something or leave."];
-                            n.options = ['Trade', 'Slay the Fiend!'];
-                            n.yesActions = [['open_shop', [13, 93, 82, 28]], ['play_sfx', 'click']];
-                            n.noActions = [['play_sfx', 'scream'], ['transform_npc', { index: uID, newAlignment: 'foe', newRole: 'battle', clearDialogue: true }], ['notify', { text: "UNION VIOLATION! GET HIM!", endActions: [['close_dialogue', null]] }]];
-                            this.npcs.push(n);
-                        }
-                        else if (scenarioId === 2) {
-                            let n = new NPC(uID, px, py, 258, 'stationary', '#ffff00', [258], 'dialogue', false, 'friendly');
-                            // USE THE AI SCRIPT HERE!
-                            n.customDialogue = [aiScripts.grudge || "See that beast? It looked at me funny.", "Help me jump it."];
-                            n.options = ['Help Assassinate', 'Get Help, Weirdo'];
-                            n.yesActions = [['play_sfx', 'slash'], ['disappear', uID], ['spawn_ephemeral_npc', { index: uID+1, x: px+1, y: py, sprite: 225, state: 'stationary', role: 'battle', alignment: 'foe', isBoss: true, deathActions: [['give_card', 10], ['notify', {text:"The 'threat' has been neutralized.", endActions:[['close_dialogue', null]]}]]}], ['close_dialogue', null]];
-                            n.noActions = [['play_sfx', 'cancel'], ['notify', { text: "You're blind to the truth! Take this curse!", endActions: [['close_dialogue', null]] }], ['transform_npc', { index: uID, newAlignment: 'foe_coward', newState: 'fleeing', clearDialogue: true }]];
-                            this.npcs.push(n);
-                        }
-                        else if (scenarioId === 3) {
-                            let n = new NPC(uID, px, py, 297, 'wandering', '#00ff00', [297], 'dialogue', false, 'friendly');
-                            // USE THE AI SCRIPT HERE!
-                            n.customDialogue = [aiScripts.curse || "Oh god, I'm cursed!", "Do you have any cleansing magic?!"];
-                            n.options = ['Cast Cleansing Spell', 'Walk Away Holding Nose'];
-                            n.yesActions = [['play_sfx', 'heal'], ['notify', { text: "You cast a spell... The stink fades!", endActions: [['close_dialogue', null]] }], ['become_ally', 297], ['transform_npc', { index: uID, clearDialogue: true, customDialogue: ["I owe you my life! Lead the way!"] }]];
-                            n.noActions = [['close_dialogue', null]];
-                            this.npcs.push(n);
-                        }
-                        else if (scenarioId === 4) {
-                            let n = new NPC(uID, px, py, 255, 'stationary', '#ffff00', [255], 'dialogue', false, 'friendly');
-                            // USE THE AI SCRIPT HERE!
-                            n.customDialogue = [aiScripts.lovelorn || "Oh, my heart aches! I'm in love with a monster.", "Should I confess?"];
-                            n.options = ['Follow Your Heart', 'That is a Terrible Idea'];
-                            n.yesActions = [['play_sfx', 'dash'], ['notify', { text: "They run off to confess their love...", endActions: [['close_dialogue', null]] }], ['transform_npc', { index: uID, newAlignment: 'friendly_shy', newState: 'fleeing', clearDialogue: true }]];
-                            n.noActions = [['play_sfx', 'chime'], ['notify', { text: "You're right... Take this for your wisdom.", endActions: [['give_card', 10], ['close_dialogue', null]] }], ['disappear', uID]];
-                            this.npcs.push(n);
-                        }
+                    // Preserve server summons in this exact instance, without mixing older maps.
+                    for(const record of this.memory.spawned_999 || []) {
+                        if(record.instanceId!==data.instanceId || seen.has(record.index)) continue;
+                        seen.add(record.index);this.npcs.push(SUNCAT_CLIENT.makeNPC(record));
                     }
-                }
-
-                // ===================================================
-                // Step F: BIOME MUSIC AND WEATHER RESOLUTION
-                // ===================================================
-                let song999 = 44;
-                if (data.biome){
-                    this.biome = data.biome;
-                    if (data.biome === "Sylvan"){
-                        song999 = rnd(0,1);
-                        if (song999 === 0){song999 = 10}
-                        if (song999 === 1){song999 = 2}
+                    if(returnTo && MAP_DB[returnTo.mapID]) {
+                        const p=SUNCAT_CLIENT.safePosition(this,this.x+1,this.y,99);
+                        this.npcs.push(SUNCAT_CLIENT.makeNPC({index:data.exitIndex,x:p.x,y:p.y,type:99,
+                            state:'stationary',role:'portal',alignment:'friendly',
+                            deck:[returnTo.x,returnTo.y,returnTo.mapID,3]}));
                     }
-                    if (data.biome === "Ruins"){
-                        song999 = rnd(0,2);
-                        if (song999 === 0){song999 = 28}
-                        if (song999 === 1){song999 = 6}
-                        if (song999 === 2){song999 = 44}
-                    }
-                    if (data.biome === "Desert"){
-                        song999 = rnd(0,2);
-                        if (song999 === 0){song999 = 32}
-                        if (song999 === 1){song999 = 38}
-                        if (song999 === 2){song999 = 44}
-                    }
-                    if (data.biome === "Snow"){
-                        song999 = rnd(0,1);
-                        if (song999 === 0){song999 = 31}
-                        if (song999 === 1){song999 = 20}
-                    }
-                    if (data.biome === "Void"){
-                        song999 = rnd(0,4);
-                        if (song999 === 0){song999 = 23}
-                        if (song999 === 1){song999 = 29}
-                        if (song999 === 2){song999 = 27}
-                        if (song999 === 3){song999 = 28}
-                    }
-                    if (data.biome === "Sea"){
-                        song999 = rnd(0,1);
-                        if (song999 === 0){song999 = 36}
-                        if (song999 === 1){song999 = 44}
-                    }
-                    if (data.biome === "Castle"){
-                        song999 = rnd(0,1);
-                        if (song999 === 0){song999 = 11}
-                        if (song999 === 1){song999 = 34}
-                    }
-                    if (data.biome === "Otherworld"){
-                        song999 = rnd(0,3);
-                        if (song999 === 0){song999 = 37}
-                        if (song999 === 1){song999 = 18}
-                        if (song999 === 2){song999 = 44}
-                    }
-                    if (data.biome === "Tomb"){
-                        song999 = rnd(0,2);
-                        if (song999 === 0){song999 = 39}
-                        if (song999 === 1){song999 = 19}
-                        if (song999 === 2){song999 = 44}
-                    }
-                }
-                
-                if (typeof MusicEngine !== 'undefined') {
-                    MusicEngine.stop();
-                    MusicEngine.play(song999);
-                }
-                console.log(`Loaded Custom AI Map: ${data.name}`);
+                    this.weather.setMode(data.weather || 'clear');
+                    if(typeof MusicEngine!=='undefined') {MusicEngine.stop();MusicEngine.play(44);}
+                    const cache={...data,returnTo};
+                    window.latestCustomMapData=cache;
+                    try {localStorage.setItem('suncat.lastCustomMap',JSON.stringify(cache));} catch(error) {console.warn(error);}
+                } finally {this._loadingCustomMap=false;this.isLoading=loading;}
+                this.requestSave();
             }
             registerClick(x, y) {
                 this.clickInput = { x: x, y: y };
@@ -18335,6 +18244,10 @@
                             break;
 
                     // --- WORLD ALTERING ---
+                        case 'accept_custom_map':
+                            if(typeof socket!=='undefined') socket.emit('accept_teleport_invite');
+                            break;
+                        
                         case 'load_map': 
                         
                             // If passed an object, override the map's default spawn coordinates
@@ -21370,7 +21283,13 @@
         update(exploreRef, dt) {
             if (!this.active) return;
             
-            let caster = this.owner || exploreRef; 
+            if (this.owner==='network') {
+                this.x+=this.vx*dt;this.y+=this.vy*dt;
+                const distance=Math.hypot(this.x-this.startX,this.y-this.startY);
+                if(distance>Math.min(this.maxRange,40) || exploreRef.isWall(this.x,this.y)) this.active=false;
+                return;
+            }
+            let caster = this.owner || exploreRef;
 
             if (this.exploding) {
                 this.radius *= 1.5; 
@@ -23784,6 +23703,7 @@
                                 return;
                             }
                             else if (Dungeon.currentSpeaker.role === 'portal_invite') {
+                                if(typeof socket!=='undefined') socket.emit('decline_teleport_invite');
                                 startGame = 'explore';
                                 Dungeon.dCounter = 0;
                                 Dungeon.status = 'normal';
