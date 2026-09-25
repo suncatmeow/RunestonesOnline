@@ -81,6 +81,7 @@
         const SUNG_LYRICS_MEMORY = [];
         let lyricCache = [];
         let currentStoryIndex = 0;
+        let suncatIsConsolidating = false;
     //SUNCAT CONSTANTS
         const SUNCAT_ID = "NPC_SUNCAT"; // Special ID
         const SUNCAT_SPRITE = 61391; 
@@ -5854,62 +5855,62 @@
         const totalStress = Math.min(100, (player.dmStress || 0) + apiFatigue);
 
         // 1. AUTONOMIC ROUTING & PSYCHOLOGICAL CALCULUS
-        let batchSize = 0;
-        let cognitiveFilter = "";
+            let batchSize = 0;
+            let cognitiveFilter = "";
 
-        // --- A. CALCULATE EGO DEPLETION (Fatigue) ---
-        // If Suncat's API budget is high, his brain is exhausted.
-        const isDepleted = apiFatigue > 95;
+            // --- A. CALCULATE EGO DEPLETION (Fatigue) ---
+            // If Suncat's API budget is high, his brain is exhausted.
+            const isDepleted = apiFatigue > 95;
 
-        // --- B. CALCULATE AFFECTIVE STATE (The Circumplex Model) ---
-        // AROUSAL: Based on combat stress and how many events are pending digestion. (0.0 to 1.0)
-        let arousal = Math.min(1.0, ((player.dmStress || 0) / 100) + (player.undigestedInfo.length / 10));    
-        // VALENCE: Based on the player's current Favor. (-1.0 to 1.0)
-        let currentFavor = playerFavorMemory[socketId] || 0;
-        let valence = Math.max(-1.0, Math.min(1.0, currentFavor / 10)); 
+            // --- B. CALCULATE AFFECTIVE STATE (The Circumplex Model) ---
+            // AROUSAL: Based on combat stress and how many events are pending digestion. (0.0 to 1.0)
+            let arousal = Math.min(1.0, ((player.dmStress || 0) / 100) + (player.undigestedInfo.length / 10));    
+            // VALENCE: Based on the player's current Favor. (-1.0 to 1.0)
+            let currentFavor = playerFavorMemory[socketId] || 0;
+            let valence = Math.max(-1.0, Math.min(1.0, currentFavor / 10)); 
 
-        // --- C. BATCH SIZING BASED ON AROUSAL ---
-        if (forceDigest) {
-            batchSize = player.undigestedInfo.length;
-            cognitiveFilter = "The player is logging out. Summarize their final actions with a sense of closure.";
-        } else if (arousal > 0.8) {
-            return; // OVERWHELMED: Fight or Flight response active. Digestion shuts down.
-        } else if (arousal > 0.5) {
-            batchSize = Math.min(3, player.undigestedInfo.length); // High heart rate, chewing small bites
-        } else {
-            batchSize = Math.min(8, player.undigestedInfo.length); // Resting heart rate, digesting large meals
-        }
-
-        if (batchSize < 1) return;
-
-        // --- D. EMERGENT MOOD GENERATION ---
-        if (!forceDigest) {
-            let emergentMood = "";
-
-            if (isDepleted) {
-                // EGO DEPLETION OVERRIDE
-                emergentMood = "You just want to rest and digest... but no rest for the weary, and mama didn't raise no quitters.";
-            } 
-            else if (arousal >= 0.5 && valence >= 0.0) {
-                // QUADRANT 1: HIGH AROUSAL + POSITIVE VALENCE (Excited / Engaged)
-                emergentMood = "You have fully surrendered to the situation, in a positive way. A love of feate and how it unfolds.";
-            } 
-            else if (arousal >= 0.5 && valence < 0.0) {
-                // QUADRANT 2: HIGH AROUSAL + NEGATIVE VALENCE (Irritable / Sarcastic)
-                emergentMood = "Your breath speeds up and your pulse quickens. You find it hard to keep the deep rhythmic diaphramatic breathing of one at peace.";
-            } 
-            else if (arousal < 0.5 && valence >= 0.0) {
-                // QUADRANT 3: LOW AROUSAL + POSITIVE VALENCE (Peaceful / Nostalgic)
-                emergentMood = "You feel at peace. Rest and digest mode. ";
-            } 
-            else {
-                // QUADRANT 4: LOW AROUSAL + NEGATIVE VALENCE (Melancholic / Nihilistic)
-                emergentMood = "You feel your peace threatened. ";
+            // --- C. BATCH SIZING BASED ON AROUSAL ---
+            if (forceDigest) {
+                batchSize = player.undigestedInfo.length;
+                cognitiveFilter = "The player is logging out. Summarize their final actions with a sense of closure.";
+            } else if (arousal > 0.8) {
+                return; // OVERWHELMED: Fight or Flight response active. Digestion shuts down.
+            } else if (arousal > 0.5) {
+                batchSize = Math.min(3, player.undigestedInfo.length); // High heart rate, chewing small bites
+            } else {
+                batchSize = Math.min(8, player.undigestedInfo.length); // Resting heart rate, digesting large meals
             }
 
-            // ANTI-MODE-COLLAPSE FILTER (The "Purple Prose" killer)
-            cognitiveFilter = emergentMood + " CRITICAL INSTRUCTION: Keep away from overflow of flowery adjectives. Keep the language plain, yet classic sword and sorcery themed, yet enjoyable leaving you wanting more";
-        }
+            if (batchSize < 1) return;
+
+            // --- D. EMERGENT MOOD GENERATION ---
+            if (!forceDigest) {
+                let emergentMood = "";
+
+                if (isDepleted) {
+                    // EGO DEPLETION OVERRIDE
+                    emergentMood = "You just want to rest and digest... but no rest for the weary, and mama didn't raise no quitters.";
+                } 
+                else if (arousal >= 0.5 && valence >= 0.0) {
+                    // QUADRANT 1: HIGH AROUSAL + POSITIVE VALENCE (Excited / Engaged)
+                    emergentMood = "You have fully surrendered to the situation, in a positive way. A love of feate and how it unfolds.";
+                } 
+                else if (arousal >= 0.5 && valence < 0.0) {
+                    // QUADRANT 2: HIGH AROUSAL + NEGATIVE VALENCE (Irritable / Sarcastic)
+                    emergentMood = "Your breath speeds up and your pulse quickens. You find it hard to keep the deep rhythmic diaphramatic breathing of one at peace.";
+                } 
+                else if (arousal < 0.5 && valence >= 0.0) {
+                    // QUADRANT 3: LOW AROUSAL + POSITIVE VALENCE (Peaceful / Nostalgic)
+                    emergentMood = "You feel at peace. Rest and digest mode. ";
+                } 
+                else {
+                    // QUADRANT 4: LOW AROUSAL + NEGATIVE VALENCE (Melancholic / Nihilistic)
+                    emergentMood = "You feel your peace threatened. ";
+                }
+
+                // ANTI-MODE-COLLAPSE FILTER (The "Purple Prose" killer)
+                cognitiveFilter = emergentMood + " CRITICAL INSTRUCTION: Keep away from overflow of flowery adjectives. Keep the language plain, yet classic sword and sorcery themed, yet enjoyable leaving you wanting more";
+            }
 
         // 2. CONSUME ENERGY (Unless forced)
         if (!forceDigest && bucket) bucket.tokens--;
@@ -5959,9 +5960,10 @@
                 suncatPerception: { 
                     type: SchemaType.STRING, 
                     description: "An honest evaluation of the player's character (6 words MAX)." 
-                }
+                },
+                suncatJournalEntry: { type: SchemaType.STRING, description: "Suncat's personal internal reaction to the player's actions." }
             },
-            required: ["updatedStory", "newRumor", "suncatPerception"]
+            required: ["updatedStory", "newRumor", "suncatPerception","suncatJournalEntry"]
         };
 
         try {
@@ -6031,7 +6033,10 @@
                 searchableMemories: player.searchableMemories,
                 rawJournalArchive: player.rawJournalArchive,
                 undigestedInfo: player.undigestedInfo,
-                npcDialogueEvents: player.npcDialogueEvents || []
+                npcDialogueEvents: player.npcDialogueEvents || [],
+                storySoFar: player.storySoFar,    
+                activeQuest: player.activeQuest,     
+                playerProfile: player.playerProfile 
             };
 
             saveSuncatMemory();
@@ -6434,7 +6439,7 @@
         // ==========================================
         let suncatSentences = suncatJournal.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
         
-        if (suncatSentences.length >= 3) {
+        if (suncatSentences.length >= 3&& !suncatIsConsolidating) {
             console.log(`[Session Condenser] Condensing Suncat's internal journal...`);
             
             let safeSuncatProfile = typeof suncatProfile === 'string' ? suncatProfile : JSON.stringify(suncatProfile);
@@ -6465,6 +6470,8 @@
                 });
             } catch (err) {
                 console.error(`[Session Condenser] Suncat condensation failed:`, err);
+            }finally {
+                suncatIsConsolidating = false; // <-- LOCK RELEASED
             }
         }
         
@@ -8319,18 +8326,17 @@ io.on("connection", (socket) => {
                 
                 (async () => {
                     try {
-                        const exportMemories = (player.searchableMemories || []).filter(
-                            memory => memory.isCore || !memory.isConsolidated
-                        );
+                        // Cap the export to the 5 most recent chapters to prevent token limits
+                        const exportMemories = (player.searchableMemories || [])
+                            .filter(memory => memory.isCore || !memory.isConsolidated)
+                            .slice(-5); // <-- ADD SLICE
 
                         let pMemories = exportMemories.length
-                            ? exportMemories
-                                .map(memory => `[${memory.timestamp || "Date unknown"}] ${memory.text}`)
-                                .join("\n")
-                            : player.storySoFar || "No recorded events.";
+                            ? exportMemories.map(memory => `[${memory.timestamp || "Date unknown"}] ${memory.text}`).join("\n")
+                            : (player.storySoFar ? player.storySoFar.slice(-4000) : "No recorded events."); // <-- ADD SLICE
+
                         let sLedger = suncatDaoLedger.map(l => l.text).join('\n');
-                        let sStory = suncatStorySoFar || "";
-                        
+                        let sStory = suncatStorySoFar ? suncatStorySoFar.slice(-4000) : ""; // <-- ADD SLICE
                         const novelistPrompt = `[ROOT DIRECTIVE]: You are a master dark fantasy author (in the visceral 1980s style of Robert E. Howard).
                         
                         [THE MORTAL'S TALE (${player.name})]:
