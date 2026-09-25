@@ -4929,12 +4929,10 @@
             const baseID=suncatResolveCard(args.npcType),card=CARD_MANIFEST_DB[baseID];
             const purpose=String(args.purpose || 'companion').slice(0,80);
             const tag=`${target.mapID}:${baseID}:${purpose}`;
-            if(autonomous) {
-                const existing=SUNCAT_RUNTIME.companions.find(n=>n.tag===tag);
-                if(existing) return {ok:true,result:'Reusing the existing summon; no duplicate created.',...existing};
-                if(SUNCAT_RUNTIME.companions.length>=SUNCAT_RUNTIME.maxCompanions) throw new Error(`Autonomous companion budget (${SUNCAT_RUNTIME.maxCompanions}) is full. Reuse an existing companion.`);
-                if(Date.now()-SUNCAT_RUNTIME.lastSummon<SUNCAT_RUNTIME.summonCooldownMs) throw new Error('Autonomous summons have a five-minute cooldown.');
-                if(card.type!=='monster') throw new Error('Autonomous companions must be monsters.');
+            if(!motion.path.length) {
+                rt.motion=null;
+                // THE FIX: Rename this so the AI doesn't try to call it as a function!
+                rt.record('system_navigation', {mapID:s.mapID}, {ok:true, result:'Walk completed.'});
             }
             const observer=targetID===SUNCAT_ID ? Object.keys(players).find(id=>id!==SUNCAT_ID && players[id].mapID===target.mapID) : targetID;
             if(!observer) throw new Error('No game client is present to materialize this summon.');
@@ -6521,7 +6519,8 @@
             If your long-term interest is blocked, choose a different achievable action in an observed place or learn from the manual.
             Do not repeat failed or pending actions. A timeout has an unknown outcome.
             Travel requires known map geometry. A walking response means travel started, not completed.
-            Never claim GOAL COMPLETE based only on your own prose. Describe progress only from tool results or current observations.`);
+            Never claim GOAL COMPLETE based only on your own prose. Describe progress only from tool results or current observations.
+            CRITICAL: You may ONLY use functions explicitly defined in your tools list. DO NOT hallucinate tools like 'arrival' or 'system_navigation'.`);
             if(response.response.usageMetadata) updateBudget(response.response.usageMetadata,SUNCAT_ID);
             if(response.response.functionCalls()?.length) await executeAITools(response.response,session,null);
         } catch(error) { console.error('[Suncat autonomous turn]',error.message); }
