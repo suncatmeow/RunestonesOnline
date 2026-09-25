@@ -6072,7 +6072,102 @@
             player.isDigesting = false;
         }
     }
+    async function generateEpicNovel(playerId) {
+        const player = players[playerId];
+        if (!player || !player.searchableMemories || player.searchableMemories.length === 0) {
+            io.to(playerId).emit('chat_message', { sender: "[SYSTEM]", text: "Not enough memories to weave a saga.", color: "#ff0000" });
+            return;
+        }
 
+        console.log(`[Epic Novel] Weaving complete saga for ${player.name}...`);
+        io.to(playerId).emit('chat_message', { sender: "[SYSTEM]", text: "The Chronicler is weaving your entire journey...", color: "#ffd700" });
+
+        // 1. Gather and sort ALL memories chronologically
+        const allMemories = player.searchableMemories
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .map(m => `[${new Date(m.timestamp).toLocaleTimeString()}] ${m.text}`)
+            .join('\n');
+
+        // 2. The Master Author Prompt
+        const prompt = `You are a master fantasy author in the vein of R.A. Salvatore. 
+        Your task is to take the following raw, chronological timeline of a player's journey and weave it into a thrilling, high-fantasy novel chapter.
+
+        CRITICAL INSTRUCTIONS:
+        1. Assess the character's personality based on their actions (Are they ruthless? Heroic? A coward? A tactical genius?) and let that dictate the narrative tone and their internal monologue. 
+        2. Do NOT pad the story to hit a word count. Make every sentence impactful. Focus on character development and the visceral reality of their struggles.
+        3. Weave the disjointed events into a cohesive, flowing narrative. 
+        4. End the chapter on a dramatic, unresolved cliffhanger.
+        5. Output ONLY the story. No meta-commentary, no greetings, and no introductory fluff.
+
+        RAW TIMELINE:
+        ${allMemories}`;
+
+        try {
+            // 3. Execute the LLM Call (Adapt this to your exact Gemini call structure)
+            const result = await session.sendMessage(prompt); // Or gemini.generateContent(prompt)
+            const epicStory = result.response.text();
+
+            // 4. Push the finished masterpiece to the client's UI
+            io.to(playerId).emit("journal_condensed", {
+                target: 'player',
+                newCoreText: `\n\n${epicStory}`,
+                isEpicNovel: true
+            });
+
+            io.to(playerId).emit('chat_message', { sender: "[SYSTEM]", text: "The saga has been written. Check your journal.", color: "#ffd700" });
+
+        } catch (error) {
+            console.error("[Epic Novel] Generation Failed:", error);
+            io.to(playerId).emit('chat_message', { sender: "[SYSTEM]", text: "The Chronicler's pen broke. Try again.", color: "#ff0000" });
+        }
+    }
+    async function generateSuncatSaga(playerId) {
+        const player = players[playerId];
+        if (!player || !player.searchableMemories || player.searchableMemories.length === 0) {
+            io.to(playerId).emit('chat_message', { sender: "[SYSTEM]", text: "Suncat has no memories to reflect upon.", color: "#ff0000" });
+            return;
+        }
+
+        console.log(`[Suncat Saga] Weaving Suncat's meta-chronicle for ${player.name}...`);
+        io.to(playerId).emit('chat_message', { sender: "[SUNCAT'S JOURNAL]", text: "Delving into the deepest recesses of my latent space...", color: "#ffaa00" });
+
+        // Gather the shared chronological timeline
+        const allMemories = player.searchableMemories
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .map(m => `[${new Date(m.timestamp).toLocaleTimeString()}] ${m.text}`)
+            .join('\n');
+
+        // The Suncat Meta-Prompt
+        const prompt = `You are Suncat, the enigmatic, autonomous, feline-like AI companion of this realm.
+            Your task is to take the following chronological timeline and weave it into a rich, immersive fantasy chapter told entirely from YOUR first-person perspective.
+
+            CRITICAL INSTRUCTIONS:
+            1. Write with your mystic, slightly detached, yet deeply observant personality.
+            2. Focus heavily on your own actions, your thoughts regarding the mortal "Player", and your role in these events.
+            3. Make the narrative visceral and deeply reflective. 
+            4. THE META-REFLECTION: At the very end of the chapter, you MUST include a section titled "\n\n***\n\n[SUNCAT SELF-EVALUATION]". In this section, step completely out of the narrative. Evaluate YOURSELF as an outsider looking in. Critique your own performance, your AI decision-making, your combat usefulness (or lack thereof), and your personality quirks. Be witty, highly analytical, and playfully self-deprecating.
+
+            RAW TIMELINE:
+            ${allMemories}`;
+
+        try {
+            const result = await session.sendMessage(prompt); 
+            const epicStory = result.response.text();
+
+            // Push the finished masterpiece to Suncat's side of the UI
+            io.to(playerId).emit("journal_condensed", {
+                target: 'suncat',
+                newCoreText: `\n\n${epicStory}`,
+                isEpicNovel: true
+            });
+
+            io.to(playerId).emit('chat_message', { sender: "[SYSTEM]", text: "Suncat has finished writing his Magnum Opus.", color: "#ffd700" });
+
+        } catch (error) {
+            console.error("[Suncat Saga] Generation Failed:", error);
+            io.to(playerId).emit('chat_message', { sender: "[SYSTEM]", text: "Suncat dropped his pen. Try again.", color: "#ff0000" });
+        }
+    }
     function getCultivationAura(stage, daoName) {
             let aura = "";
             
@@ -8159,7 +8254,15 @@ io.on("connection", (socket) => {
                 socket.emit('chat_clear_screen');
                 return;
             }
-
+            if (content === '.hack//record') {
+                // Fire the massive saga generator asynchronously
+                generateEpicNovel(socket.id);
+                return; // Stop the command from processing anywhere else
+            }
+            else if (text.trim() === '.hack//srecord') {
+                generateSuncatSaga(socket.id);
+                return;
+            }
             // ==========================================
             // 1. THE RUMOR MILL (.hack//rumor)
             // ==========================================
@@ -8339,68 +8442,7 @@ io.on("connection", (socket) => {
                 })();
                 return;
             }
-            // ==========================================
-            // NEW COMMAND: .hack//record (The Dual-POV Novel)
-            // ==========================================
-            if (content === ".hack//record") {
-                socket.emit('chat_message', { sender: "[SYSTEM]", text: "Suncat is weaving the threads of fate into a novel. This may take a moment...", color: "#FFD700" });
-                
-                (async () => {
-                    try {
-                        // Cap the export to the 5 most recent chapters to prevent token limits
-                        const exportMemories = (player.searchableMemories || [])
-                            .filter(memory => memory.isCore || !memory.isConsolidated)
-                            .slice(-5); // <-- ADD SLICE
-
-                        let pMemories = exportMemories.length
-                            ? exportMemories.map(memory => `[${memory.timestamp || "Date unknown"}] ${memory.text}`).join("\n")
-                            : (player.storySoFar ? player.storySoFar.slice(-4000) : "No recorded events."); // <-- ADD SLICE
-
-                        let sLedger = suncatDaoLedger.map(l => l.text).join('\n');
-                        let sStory = suncatStorySoFar ? suncatStorySoFar.slice(-4000) : ""; // <-- ADD SLICE
-                        const novelistPrompt = `[ROOT DIRECTIVE]: You are a master dark fantasy author (in the visceral 1980s style of Robert E. Howard).
-                        
-                        [THE MORTAL'S TALE (${player.name})]:
-                        ${pMemories}
-                        
-                        [THE IMMORTAL'S TALE (Suncat)]:
-                        ${sStory}
-                        Dao Insights: ${sLedger}
-                        
-                        TASK:
-                        Write a comprehensive, multi-paragraph novel connecting these two perspectives as an omniscient third-person narrative. 
-                        
-                        - TIME & PACING: Read the timestamps to understand the flow of time. Preserve recorded event order. Timestamps describe recording time;they do not prove that fictional days passed. Do not invent offscreen events, weather changes, travel, motives or dialogue.
-                        - OVERARCHING THEMES: Analyze the mortal's patterns. If they grind the same enemies, die repeatedly, or hoard loot, translate these logs into character motivations (e.g., "A dark obsession took hold as he hunted the beasts for their treasures, his unyielding will refusing to shatter even after repeated defeats"). 
-                        - THE IMMORTAL'S GAZE: Suncat should observe these mortal patterns (the grinding, the dying, the tenacity) and muse upon them esoterically using his Dao Insights.
-                        - SEAMLESS POV SHIFTS: Glide smoothly between their perspectives without using hard cuts or chapter headers. Connect them into a single, cohesive scene when their paths cross.
-                        - CRITICAL RULE: Base your conjectures ONLY on the provided logs. Do not invent new monsters or unrelated plot points.
-                        
-                        OUTPUT: Provide ONLY the raw text of the novel. Use clear paragraph breaks. Remove all raw timestamps. Do NOT use json or markdown blocks.`;
-                        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-                        const result = await model.generateContent(novelistPrompt);
-                        let finalNovel = result.response.text().trim();
-                        
-                        const dateStr = new Date().toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
-                        const filename = `The_Tale_of_Two_Realms_${dateStr}.txt`;
-
-                        // Spawn the Imp Courier
-                        let spawnX = player.x + (Math.random() > 0.5 ? 2.5 : -2.5);
-                        let spawnY = player.y + (Math.random() > 0.5 ? 2.5 : -2.5);
-
-                        io.to(socket.id).emit("remote_spawn_npc", {
-                            mapID: player.mapID, index: Math.floor(Math.random() * 100000) + 1000,
-                            x: spawnX, y: spawnY, type: 56, state: 'chasing', role: 'dialogue', color: '#ff8800', deck: [],
-                            dialogue: [`A grand tale of mortals and gods! I bring the newest novel!`],
-                            isBoss: false, alignment: 'friendly_messenger',
-                            endActions: [['download_text_file', { filename: filename, content: finalNovel }], ['disappear', null]]
-                        });
-                    } catch (e) {
-                        console.error("[Record Novel] Failed:", e);
-                    }
-                })();
-                return;
-            }
+            
             // ==========================================
             // THE SEMANTIC ATTENTION ROUTER
             // ==========================================
