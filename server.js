@@ -6439,16 +6439,27 @@
         // ==========================================
         let suncatSentences = suncatJournal.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
         
-        if (suncatSentences.length >= 3&& !suncatIsConsolidating) {
+        if (suncatSentences.length >= 3 && !suncatIsConsolidating) {
+            suncatIsConsolidating = true; // <-- THE FIX: Lock engaged!
             console.log(`[Session Condenser] Condensing Suncat's internal journal...`);
             
             let safeSuncatProfile = typeof suncatProfile === 'string' ? suncatProfile : JSON.stringify(suncatProfile);
 
-            const suncatPrompt = buildJournalChapterPrompt(
-                "Suncat",
-                suncatContinuitySummary || suncatStorySoFar.slice(-1800),
-                suncatJournal
-            );
+            // ---> THE FIX: Suncat's Dedicated First-Person Prompt <---
+            const suncatPrompt = `[ROOT DIRECTIVE]: You are Suncat, ${suncatDaoName || "a wandering spirit"}.
+            You are rewriting your recent scattered thoughts, meditations, and observations into a cohesive new paragraph for your ongoing personal saga.
+
+            [YOUR CONTINUITY SO FAR]:
+            ${suncatContinuitySummary || suncatStorySoFar.slice(-1800) || "I have awoken."}
+
+            [NEW RAW THOUGHTS & OBSERVATIONS]:
+            ${suncatJournal}
+
+            TASK:
+            Write the next paragraph (3-5 sentences) of your personal first-person saga.
+            Focus on your internal philosophy, how you perceive the world, and your own spiritual journey based on the raw thoughts provided. 
+            DO NOT write a story about "the player". If you observed mortals, reflect on what their actions mean to YOU and YOUR path.
+            DO NOT use markdown, json, or headers. Output only the prose.`;
 
             try {
                 const condenserModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
@@ -6457,7 +6468,6 @@
 
                 let consolidatedSuncatText = result.response.text().trim().replace(/^```(json|text)?|```$/g, "").trim();
 
-                // FIX: Append the new chapter to Suncat's persistent overarching story instead of overwriting!
                 suncatStorySoFar = (suncatStorySoFar ? suncatStorySoFar + "\n\n" : "") + consolidatedSuncatText;
                 
                 // Clear the raw fragments so Suncat starts fresh!
@@ -6470,8 +6480,8 @@
                 });
             } catch (err) {
                 console.error(`[Session Condenser] Suncat condensation failed:`, err);
-            }finally {
-                suncatIsConsolidating = false; // <-- LOCK RELEASED
+            } finally {
+                suncatIsConsolidating = false; // <-- Lock released!
             }
         }
         
