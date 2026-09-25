@@ -5571,8 +5571,10 @@
         }
         saveSuncatMemory();
         io.emit("journal_updated", {
-            suncatThoughts: newEntry,
+            entryId: `suncat-${Date.now()}`,
+            entryType: 'suncat',
             suncatThoughts: `[RECORD]\n\n${newEntry}`, 
+            playerChronicle: null
         });
 
         console.log(`[Suncat Journal Updated]: ${newEntry}`);
@@ -5782,8 +5784,8 @@
             if (!player || !player.searchableMemories) return;
             if (player.isConsolidating) return; 
 
-            const MAX_MEMORIES = 60; // The threshold to trigger sleep cycle
-            const MEMORIES_TO_MERGE = 20; // How many granular memories to squish into 1
+            const MAX_MEMORIES = 13; // The threshold to trigger sleep cycle
+            const MEMORIES_TO_MERGE = 9; // How many granular memories to squish into 1
 
             const pendingCount = player.searchableMemories.filter(
                 m => !m.isCore && !m.isConsolidated
@@ -6054,6 +6056,8 @@
             
             // Send the new chronicle entry to the client
             io.to(socketId).emit("journal_updated", {
+                entryId: `record-${Date.now()}`,
+                entryType: 'record',
                 suncatThoughts: null,
                 playerChronicle: `[RECORD]\n\n${digestedData.updatedStory}`,
                 perception: digestedData.suncatPerception 
@@ -7518,17 +7522,25 @@ io.on("connection", (socket) => {
                     if (!players[socket.id].undigestedInfo) players[socket.id].undigestedInfo = [];
                     players[socket.id].undigestedInfo.push(`[PSYCHOLOGICAL NOTE]: The mortal chose to name themselves '${name}'. Consider what kind of person chooses a name like that.`);
                 }  
-                for (const chapter of players[socket.id].searchableMemories || []) {
-                    if (!chapter.chapterNumber || !chapter.id || !chapter.text) continue;
-                
-                    socket.emit("journal_updated", {
-                        entryId: chapter.id,
-                        entryType: chapter.journalKind || "chapter",
-                        timestamp: chapter.timestamp,
-                        title: chapter.title,
-                        playerChronicle: chapter.text,
-                        suncatThoughts: null
-                    });
+                for (const mem of players[socket.id].searchableMemories || []) {
+                    if (mem.isCore && mem.text) {
+                        socket.emit("journal_updated", {
+                            entryId: mem.id,
+                            entryType: mem.journalKind || "chapter",
+                            timestamp: mem.timestamp,
+                            title: mem.title,
+                            playerChronicle: mem.text,
+                            suncatThoughts: null
+                        });
+                    } else if (!mem.isCore && !mem.isConsolidated && mem.text) {
+                        socket.emit("journal_updated", {
+                            entryId: `record-${Date.now()}-${Math.random()}`,
+                            entryType: "record",
+                            timestamp: mem.timestamp,
+                            playerChronicle: `[RECORD]\n\n${mem.text}`,
+                            suncatThoughts: null
+                        });
+                    }
                 }
                 condenseSessionOnLogin(socket.id);
                 if (!players[socket.id].dmNarrativeLog) {
@@ -8998,7 +9010,8 @@ io.on("connection", (socket) => {
                         
                        // A. MAINTENANCE THRESHOLDS (Need-Based)
                         // Only consolidate if the memory buffer is actually getting bloated.
-                        if (p.searchableMemories && p.searchableMemories.length > 50) {
+                        const pendingForChapter = p.searchableMemories ? p.searchableMemories.filter(m => !m.isCore && !m.isConsolidated).length : 0;
+                        if (pendingForChapter >= 12) {
                             consolidateMemories(id);
                         }
                         // Only run a latent audit if we have enough raw data to actually compare.
@@ -9027,33 +9040,21 @@ io.on("connection", (socket) => {
             if(autonomousTick>=2) {autonomousTick=0;void executeAutonomousOODA();}
 
             io.emit("updatePlayers", getPublicPlayers());
+            
         //SUNCAT SFX EMITTER
             if (Math.random() < 0.001) { 
-                // Pick a sound that fits his "Glitched Ghost" persona
-                const sfxPalette = [
-                    'musical',   // Harp sound
-                    'musical2',  // Fairy singing
-                    'musical4',  // Ethereal choir
-                    'talk',      // Mumble
-                    'step',       // Random gravel noise
-                    'fairy',       // Random gravel noise
-                    'musical3'
-                ];
-                
+                const sfxPalette = ['musical', 'musical2', 'musical4', 'talk', 'step', 'fairy', 'musical3'];
                 const randomSFX = sfxPalette[Math.floor(Math.random() * sfxPalette.length)];
-
-                // Broadcast to ALL players
-                io.emit('remote_sfx', {
-                    sfxID: randomSFX,  // We send the string name
-                    x: suncat.x,
-                    y: suncat.y,
-                    sourcePlayerID: SUNCAT_ID
-                });
+                io.emit('remote_sfx', { sfxID: randomSFX, x: suncat.x, y: suncat.y, sourcePlayerID: SUNCAT_ID });
             }
-        //SUNCAT RANDOM EVENTS
-            const directorRoll = Math.random();
             
-    }, 30000); // END OF THE 10 SECOND INTERVAL
+        //SUNCAT RANDOM EVENTS (THE FIX!)
+            const directorRoll = Math.random();
+            if (directorRoll < 0.20) {
+                writeSuncatJournal();
+            }
+            
+    }, 30000); // END OF THE 30 SECOND INTERVAL
     
 // DEAD NPC GARBAGE COLLECTOR
 setInterval(() => {
