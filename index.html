@@ -3520,14 +3520,26 @@
 
                     // Update Position & State
                     if (window.remotePlayers[id]) {
-                        window.remotePlayers[id].x = data.x;
-                        window.remotePlayers[id].y = data.y;
+                        // Check if the remote player is on OUR current map
+                        let localMap = (typeof Dungeon !== 'undefined') ? Dungeon.mapID : 0;
+                        
+                        if (data.mapID === localMap && !window.remotePlayers[id].isDead) {
+                            window.remotePlayers[id].x = data.x;
+                            window.remotePlayers[id].y = data.y;
+                            window.remotePlayers[id].visible = true;
+                        } else {
+                            // They are in the Underworld (or another map). Hide their hitbox!
+                            window.remotePlayers[id].x = -999;
+                            window.remotePlayers[id].y = -999;
+                            window.remotePlayers[id].visible = false;
+                        }
+
                         window.remotePlayers[id].dir = data.dir;
                         window.remotePlayers[id].status = data.status;
                         if (data.type !== undefined) window.remotePlayers[id].type = data.type;
                         if (data.mapID !== undefined) window.remotePlayers[id].mapID = data.mapID;
                         if (data.name) window.remotePlayers[id].name = data.name;
-                        if (data.summons) window.remotePlayers[id].summons = data.summons; // <--- 2. Update summons!
+                        if (data.summons) window.remotePlayers[id].summons = data.summons; 
                     }
                 }
 
@@ -4231,6 +4243,7 @@
                         }
                     }
                     deadPlayer.x = -999;
+                    deadPlayer.y = -999;
                 }
             });
             socket.on("npc_died", (data) => {
@@ -5686,7 +5699,7 @@
                                 alignment:n.alignment,role:n.role,summonTag:n.summonTag}))});
                 });
             }
-};
+    };
 
     class NPC {
         constructor(index, x, y, type, state = 'wandering', minimapColor = '#ff0000', deck = [], role = 'battle', isBoss = null, alignment = 'foe', level = 0) {
@@ -37265,28 +37278,63 @@
 
                         // --- JOURNAL LIST PREVIEW CLICKS ---
                         if ((journalTab === 'record' || journalTab === 'suncat') && window.journalFullscreenIndex === -1) {
-                            // Check if they clicked one of the 3 visible preview boxes
-                            if (gridPos.x >= 1 && gridPos.x <= 8.2) {
-                                if (gridPos.y >= 2.4 && gridPos.y <= 4.0) { // Box 0
-                                    window.journalFullscreenIndex = journalScroll + 0;
-                                    window.journalScrollY = 0;
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                            
+                            let targetArray = journalTab === 'record' ? playerChronicle : suncatChronicle;
+
+                            // 1. Check if they clicked the new Filter Buttons
+                            if (journalTab === 'record' && gridPos.y >= 2.0 && gridPos.y <= 2.6) {
+                                if (gridPos.x >= 1.0 && gridPos.x <= 3.2) { window.journalRecordFilter = 'ALL'; journalScroll = 0; MusicEngine?.play3DSFX('click'); return; }
+                                if (gridPos.x >= 3.5 && gridPos.x <= 6.3) { window.journalRecordFilter = 'CHAPTERS'; journalScroll = 0; MusicEngine?.play3DSFX('click'); return; }
+                                if (gridPos.x >= 6.6 && gridPos.x <= 9.2) { window.journalRecordFilter = 'RECORDS'; journalScroll = 0; MusicEngine?.play3DSFX('click'); return; }
+                            }
+
+                            // 2. Check if they clicked one of the 3 visible preview boxes
+                            if (gridPos.x >= 1 && gridPos.x <= 8.2 && window.currentVisibleJournalEntries) {
+                                let yOffsetBase = journalTab === 'record' ? 2.8 : 2.5;
+
+                                if (gridPos.y >= yOffsetBase - 0.1 && gridPos.y <= yOffsetBase + 1.5) { // Box 0
+                                    let entry = window.currentVisibleJournalEntries[0];
+                                    if (entry) {
+                                        window.journalFullscreenIndex = targetArray.indexOf(entry); // Get its master index!
+                                        entry.isRead = true; // Mark it as read!
+                                        window.journalScrollY = 0;
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                    }
                                     return;
                                 }
-                                if (gridPos.y >= 4.2 && gridPos.y <= 5.8) { // Box 1
-                                    window.journalFullscreenIndex = journalScroll + 1;
-                                    window.journalScrollY = 0;
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                if (gridPos.y >= yOffsetBase + 1.7 && gridPos.y <= yOffsetBase + 3.3) { // Box 1
+                                    let entry = window.currentVisibleJournalEntries[1];
+                                    if (entry) {
+                                        window.journalFullscreenIndex = targetArray.indexOf(entry);
+                                        entry.isRead = true;
+                                        window.journalScrollY = 0;
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                    }
                                     return;
                                 }
-                                if (gridPos.y >= 6.0 && gridPos.y <= 7.6) { // Box 2
-                                    window.journalFullscreenIndex = journalScroll + 2;
-                                    window.journalScrollY = 0;
-                                    if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                if (gridPos.y >= yOffsetBase + 3.5 && gridPos.y <= yOffsetBase + 5.1) { // Box 2
+                                    let entry = window.currentVisibleJournalEntries[2];
+                                    if (entry) {
+                                        window.journalFullscreenIndex = targetArray.indexOf(entry);
+                                        entry.isRead = true;
+                                        window.journalScrollY = 0;
+                                        if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                    }
                                     return;
                                 }
                             }
                         }
+
+                        // --- THE FIX: DYNAMIC SCROLL CALCULATION ---
+                        let maxItems = 0;
+                        if (journalTab === 'record') { 
+                            // Update MaxItems based on the active filter so the arrows don't scroll into empty space!
+                            if (window.journalRecordFilter === 'CHAPTERS') maxItems = playerChronicle.filter(e => e.entryType === 'chapter' || e.entryType === 'retrospective' || e.entryType === 'condensed').length;
+                            else if (window.journalRecordFilter === 'RECORDS') maxItems = playerChronicle.filter(e => e.entryType === 'record' || !e.entryType).length;
+                            else maxItems = playerChronicle.length; 
+                        }
+                        else if (journalTab === 'suncat') { maxItems = suncatChronicle.length; }
+                        else if (journalTab === ' story ') { maxItems = playerStoryBeats.length; }
                         // --- FULLSCREEN QUEST NAVIGATION ---
                         if (journalTab === ' quest ' && window.questFullscreenIndex >= 0) {
                             // Clicked BACK (x: 4 to 6, y: 8.2 to 9.0)
@@ -37337,7 +37385,6 @@
                         }
 
                        // --- THE FIX: DYNAMIC QUEST COUNTING ---
-                        let maxItems = 0;
                         if (journalTab === 'record') { maxItems = playerChronicle.length; }
                         else if (journalTab === 'suncat') { maxItems = suncatChronicle.length; }
                         else if (journalTab === ' story ') { maxItems = playerStoryBeats.length; }
@@ -84631,19 +84678,44 @@
                     let title = journalTab === 'record' ? "- Magical Record -" : "- SUNCAT'S JOURNAL -";
                     let color = journalTab === 'record' ? 'white' : '#ff00ff';
                     
+                    // --- THE NEW FIX: DYNAMIC FILTERING ---
+                    if (typeof window.journalRecordFilter === 'undefined') window.journalRecordFilter = 'ALL';
+                    let filteredArray = targetArray;
+
+                    if (journalTab === 'record') {
+                        if (window.journalRecordFilter === 'CHAPTERS') {
+                            filteredArray = targetArray.filter(e => e.entryType === 'chapter' || e.entryType === 'retrospective' || e.entryType === 'condensed');
+                        } else if (window.journalRecordFilter === 'RECORDS') {
+                            filteredArray = targetArray.filter(e => e.entryType === 'record' || !e.entryType);
+                        }
+                    }
+
                     drawText(1, 1.5, 8, 0.8, title, '#d4af37', 1, 'center');
+
+                    // --- DRAW THE FILTER BUTTONS ---
+                    if (journalTab === 'record') {
+                        let filterY = 2.0;
+                        drawShape('rec', 1.0, filterY, 1, 0, 0, 2.2, 0.5, 0,0,0,0, window.journalRecordFilter === 'ALL' ? '#d4af37' : '#333333', 1);
+                        drawText(1.0, filterY + 0.15, 2.2, 0.35, "ALL", window.journalRecordFilter === 'ALL' ? 'black' : 'gray', 1, 'center');
+
+                        drawShape('rec', 3.5, filterY, 1, 0, 0, 2.8, 0.5, 0,0,0,0, window.journalRecordFilter === 'CHAPTERS' ? '#d4af37' : '#333333', 1);
+                        drawText(3.5, filterY + 0.15, 2.8, 0.35, "CHAPTERS", window.journalRecordFilter === 'CHAPTERS' ? 'black' : 'gray', 1, 'center');
+
+                        drawShape('rec', 6.6, filterY, 1, 0, 0, 2.6, 0.5, 0,0,0,0, window.journalRecordFilter === 'RECORDS' ? '#d4af37' : '#333333', 1);
+                        drawText(6.6, filterY + 0.15, 2.6, 0.35, "RECORDS", window.journalRecordFilter === 'RECORDS' ? 'black' : 'gray', 1, 'center');
+                    }
 
                     // Initialize states if they don't exist
                     if (typeof window.journalFullscreenIndex === 'undefined') window.journalFullscreenIndex = -1;
                     if (typeof window.journalScrollY === 'undefined') window.journalScrollY = 0;
 
-                    if (targetArray.length === 0) {
+                    if (filteredArray.length === 0) {
                         drawText(1, 4, 8, 0.5, "The pages are blank...", 'gray', 1, 'center');
                     } 
                     // VIEW A: FULLSCREEN SCROLLING OVERLAY (Merged Tarot + Quest mechanics)
                     else if (window.journalFullscreenIndex >= 0 && window.journalFullscreenIndex < targetArray.length) {
-                        let reversed = [...targetArray].reverse(); // Get the correct order
-                        let entry = reversed[window.journalFullscreenIndex];
+                        // NOTE: Fullscreen ignores the filter and relies on the master targetArray index!
+                        let entry = targetArray[window.journalFullscreenIndex];
                         
                         let boxX = 1.0; let boxY = 2.2; let boxW = 8.0; let boxH = 5.5; 
                         
@@ -84670,11 +84742,12 @@
                         ctx.clip(); 
 
                         // Draw the massive text that can now scroll safely!
+                        let displayText = entry.playerChronicle ? entry.playerChronicle : entry.text;
                         drawJournalBody(
                             boxX + 0.2,
                             boxY + 0.7 - window.journalScrollY,
                             boxW - 0.6,
-                            entry.text,
+                            displayText,
                             color
                         );
                         ctx.restore(); // Stop clipping
@@ -84690,24 +84763,38 @@
                     // VIEW B: SCROLLING LIST PREVIEWS
                     else {
                         let maxDisplay = 3; 
-                        let yOffset = 2.5;
+                        // Shift entries down to make room for the new filter buttons!
+                        let yOffset = journalTab === 'record' ? 2.8 : 2.5;
 
                         // Reverse array so newest is at the top
-                        let reversed = [...targetArray].reverse();
+                        let reversed = [...filteredArray].reverse();
                         let visibleEntries = reversed.slice(journalScroll, journalScroll + maxDisplay);
+                        
+                        // Save these specifically so the click handler knows exactly what is on the screen!
+                        window.currentVisibleJournalEntries = visibleEntries;
 
                         for (let entry of visibleEntries) {
+                            let isUnread = !entry.isRead;
+                            let bgColor = isUnread ? '#332244' : '#222233';
+                            let glowColor = isUnread ? '#8866ff' : '#444488';
+                            let titleC = isUnread ? '#ffffff' : color;
+                            
                             // Draw an interactive box background
-                            drawShape('rec', 1, yOffset - 0.1, 1, 0, 0, 7.2, 1.6, 0,0,0,0, '#222233', 1);
-                            drawShape('rec', 1, yOffset - 0.1, 1, 0, 0, 7.2, 1.6, 0,0,0,0, '#444488', 0);
+                            drawShape('rec', 1, yOffset - 0.1, 1, 0, 0, 7.2, 1.6, 0,0,0,0, bgColor, 1);
+                            drawShape('rec', 1, yOffset - 0.1, 1, 0, 0, 7.2, 1.6, 0,0,0,0, glowColor, 0);
 
                             // Timestamp
                             drawText(1.2, yOffset + 0.1, 7.0, 0.3, "[" + entry.timestamp + "]", '#888888', 1);
                             
+                            if (isUnread) {
+                                drawText(6.0, yOffset + 0.1, 2.0, 0.3, "[NEW]", '#00ff00', 1, 'right');
+                            }
+                            
                             // Truncate text into a preview so it doesn't shrink!
-                            let cleanDesc = entry.text.replace(/\n/g, " ");
+                            let sourceText = entry.playerChronicle ? entry.playerChronicle : entry.text;
+                            let cleanDesc = sourceText ? sourceText.replace(/\n/g, " ") : "";
                             let previewText = cleanDesc.length > 50 ? cleanDesc.substring(0, 50) + "..." : cleanDesc;
-                            drawText(1.2, yOffset + 0.6, 6.8, 0.4, previewText, color, 1);
+                            drawText(1.2, yOffset + 0.6, 6.8, 0.4, previewText, titleC, 1);
                             
                             // Visual cue to click
                             drawText(6.5, yOffset + 1.0, 1.5, 0.3, "[READ]", '#d4af37', 1, 'right');
@@ -84716,13 +84803,16 @@
                         }
 
                         // DRAW MASTER LIST SCROLL ARROWS
+                        let arrowTopY = journalTab === 'record' ? 2.8 : 2.5;
+                        let arrowBotY = journalTab === 'record' ? 7.6 : 7.0;
+
                         if (journalScroll > 0) {
-                            drawShape('rec', 8.5, 2.5, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
-                            drawText(8.5, 2.7, 1, 0.6, "^", '#d4af37', 1, 'center'); 
+                            drawShape('rec', 8.5, arrowTopY, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
+                            drawText(8.5, arrowTopY + 0.2, 1, 0.6, "^", '#d4af37', 1, 'center'); 
                         }
-                        if (journalScroll + maxDisplay < targetArray.length) {
-                            drawShape('rec', 8.5, 7.0, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
-                            drawText(8.5, 7.2, 1, 0.6, "v", '#d4af37', 1, 'center');
+                        if (journalScroll + maxDisplay < filteredArray.length) {
+                            drawShape('rec', 8.5, arrowBotY, 1, 0, 0, 1, 1, 0,0,0,0, '#444444', 1);
+                            drawText(8.5, arrowBotY + 0.2, 1, 0.6, "v", '#d4af37', 1, 'center');
                         }
                     }
                 }
