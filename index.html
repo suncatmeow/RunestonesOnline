@@ -4504,26 +4504,30 @@
                 }
             });
 
-            // ---> ADD THE NEW LISTENER HERE <---
+            // Append generated chapters without deleting their source records.
             socket.on("journal_condensed", (data) => {
-                const timeString = new Date().toLocaleTimeString();
-                const dateString = new Date().toLocaleDateString();
-                const fullDate = `${dateString} - ${timeString}`;
-
-                
-                if (data.target === 'player') {
-                    // Keep ONLY the core memories (chapters), delete the mundane granular logs
-                    //playerChronicle = playerChronicle.filter(entry => entry.isCore);
-                    // Append the new condensed chapter
-                    playerChronicle.push({ timestamp: fullDate, text: data.newCoreText, isCore: true });
-                    localStorage.setItem('runestones_chronicle', JSON.stringify(playerChronicle));
-                } 
-                else if (data.target === 'suncat') {
-                    // Keep ONLY the core memories for Suncat
-                    //suncatChronicle = suncatChronicle.filter(entry => entry.isCore);
-                    // Append the new condensed chapter
-                    suncatChronicle.push({ timestamp: fullDate, text: data.newCoreText, isCore: true });
-                    localStorage.setItem('suncat_chronicle', JSON.stringify(suncatChronicle));
+                if (!data || !['player', 'suncat'].includes(data.target) ||
+                    typeof data.newCoreText !== 'string' || !data.newCoreText.trim()) return;
+                const entries = data.target === 'player' ? playerChronicle : suncatChronicle;
+                const storageKey = data.target === 'player' ? 'runestones_chronicle' : 'suncat_chronicle';
+                if (data.entryId && entries.some(entry => entry && entry.id === data.entryId)) return;
+                const isEpicNovel = data.isEpicNovel === true;
+                const number = entries.filter(entry => entry && entry.isEpicNovel).length + 1;
+                const title = isEpicNovel ? `[EPIC CHAPTER ${number}]` : '';
+                entries.push({
+                    id: data.entryId || `chapter-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                    timestamp: data.timestamp || new Date().toISOString(),
+                    text: title ? `${title}\n\n${data.newCoreText.trim()}` : data.newCoreText,
+                    title,
+                    entryType: isEpicNovel ? 'epic' : 'chapter',
+                    isEpicNovel,
+                    isCore: true
+                });
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify(entries));
+                } catch (error) {
+                    console.error('Journal chapter remains in memory; local saving failed.', error);
+                    showJournalNotice('The chapter is in your journal, but browser storage is full or unavailable. Copy it before closing the game.');
                 }
             });
             // -----------------------------------
@@ -4700,6 +4704,37 @@
 
 
         ];
+    //LOCAL JOURNAL UPLOAD
+        function showJournalNotice(text) {
+            chatLog.push({ sender: '[SYSTEM]', text, color: '#ffd700' });
+            if (chatLog.length > 100) chatLog.shift();
+        }
+        function requestJournalSaga(type) {
+            if (!['player', 'suncat'].includes(type)) return false;
+            if (typeof socket === 'undefined' || !socket || !socket.connected) {
+                showJournalNotice('Connect to the server before asking the Chronicler to write a chapter.');
+                return false;
+            }
+            // These live arrays are loaded from the saved journal at startup and
+            // also retain entries whose localStorage writes have not succeeded.
+            const entries = type === 'player' ? playerChronicle : suncatChronicle;
+            const timeline = (Array.isArray(entries) ? entries : [])
+                .filter(entry => entry && typeof entry.text === 'string' && entry.text.trim())
+                .map(entry => `[${entry.timestamp || 'Undated'}] ${entry.text}`)
+                .join('\n');
+            if (!timeline.trim()) {
+                showJournalNotice('Your local journal is empty.');
+                return false;
+            }
+            // Match the server limit before sending; never silently omit history.
+            if (new TextEncoder().encode(timeline).byteLength > 512 * 1024) {
+                showJournalNotice('This journal exceeds the 512 KiB chapter-upload limit. No entries were sent or removed.');
+                return false;
+            }
+            socket.emit('suncat_force_epic_novel', { timeline, type });
+            showJournalNotice('Your saved journal has been sent to the Chronicler.');
+            return true;
+        }
     //JOURNAL VARIABLES
         let playerChronicle = JSON.parse(localStorage.getItem('runestones_chronicle')) || [];
         let suncatChronicle = JSON.parse(localStorage.getItem('suncat_chronicle')) || [];
@@ -18605,7 +18640,8 @@
                             let tactEnemyId = typeof payload === 'object' ? payload.id : payload;
                             let customConfig = typeof payload === 'object' ? payload : { stakes: 'real' };
 
-                            let tactEnemy = this.npcs.find(n => n.index === tactEnemyId) || this.currentSpeaker;
+                            let tactEnemy = tactEnemyId == null ? this.currentSpeaker :
+                                this.npcs.find(n => n.index === tactEnemyId && !n.isDead);
 
                             if (tactEnemy) {
                                 this.returnX = this.x;
@@ -18646,9 +18682,12 @@
                                 tactEnemy.dialogueFactory = null;
 
                                 this.startEidolonMinigame(pTeam, eTeam, customConfig);
-                                isBlocking = true; // <--- ADD THIS LINE!
+                                isBlocking = true; // Pause the script until the battle ends.
                             } else {
-                                isBlocking = false;
+                                this.actionQueue.unshift(['notify', {
+                                    text: 'The battle could not start because its opponent is missing. Please reopen the quest or dialogue and try again.',
+                                    endActions: [['close_dialogue', null]]
+                                }]);
                             }
                             break;
                         case 'start_tutorial':
@@ -18890,8 +18929,13 @@
                             // 2. Initialize default states for the menu
                             let currentQ = this.memory['guild_quest'] || { state: 0 };
                             
-                            // 3. Auto-route to the Active Desk if they are on a mission
-                            if (currentQ.state === 1 || currentQ.state === 2) {
+                            // Restore an accepted exam after a reload without regenerating its opponent.
+                            if (currentQ.type === 'exam' && currentQ.pendingDeployment) {
+                                window.activeGuildTab = 'bounties';
+                                window.guildSubState = 'quest_accepted';
+                                window.selectedQuestInfo = { title: currentQ.title || currentQ.tName };
+                                window.acceptedQuestTargetMap = currentQ.targetMap;
+                            } else if (currentQ.state === 1 || currentQ.state === 2) {
                                 window.activeGuildTab = 'active_quest';
                             } else {
                                 window.activeGuildTab = 'bounties'; 
@@ -19627,6 +19671,35 @@
                 }
 
 
+            deployAcceptedGuildQuest() {
+                const quest = this.memory['guild_quest'];
+                if (!quest) return false;
+                if (quest.type === 'exam') {
+                    if (!quest.pendingDeployment) return false;
+                    const actions = this.cloneEventActions(quest.spawnActions || []);
+                    if (!actions.some(action => action[0] === 'start_tactics')) {
+                        showJournalNotice('This exam has no battle configured. It has not been deployed.');
+                        return false;
+                    }
+                    // Recover from a cleared dialogue queue or a reload. The exam
+                    // launches before any unrelated suspended guild conversation.
+                    this.actionQueue.unshift(...actions);
+                    quest.pendingDeployment = false;
+                }
+                this.currentSpeaker = null;
+                this.dCounter = 0;
+                this.status = 'normal';
+                if (typeof btnYes !== 'undefined') btnYes.visible = false;
+                if (typeof btnNo !== 'undefined') btnNo.visible = false;
+                window.guildSubState = 'rank_select';
+                window.selectedQuestInfo = null;
+                preGame = 'explore';
+                startGame = 'explore';
+                this.isProcessingActions = false;
+                this.requestSave();
+                this.processNextAction();
+                return true;
+            }
             getBountyList(rankToView) {
                 let rep = this.memory['guild_rep'] || 0;
                 let playerRank = this.memory['guild_rank'] || 'F';
@@ -33943,9 +34016,10 @@
             ) runeBonus = 1;
         }
 
-        // Preserve the existing rune rule: one extra die and one point.
+        // A held stone adds only +1 to its stat modifier. Ordinary buff
+        // rollover is still resolved by the shared dice calculation.
         return resolveBuffDice(
-            base[0] + runeBonus,
+            base[0],
             base[1],
             (base[2] || 0) + runeBonus
         );
@@ -34945,7 +35019,7 @@
               if (newowner == 1){//if foe takes ownership of stone from table
                 this.tx =this.fAX;
                 this.ty = this.fAY;
-                Player[1].runeStat[2] = 1;
+                Player[1].runeStat[3] = 1;
               }
               break;
           }//end this.stat switch
@@ -35533,8 +35607,12 @@
                         if (msg !== "") {
                             const isCommand = msg.toLowerCase().startsWith('.hack//');
                             if (isCommand) {
+                                // Manual chapters use the full local journal, bypassing chat's text limit.
+                                if (msg.toLowerCase() === '.hack//record' || msg.toLowerCase() === '.hack//srecord') {
+                                    requestJournalSaga(msg.toLowerCase() === '.hack//record' ? 'player' : 'suncat');
+                                }
                                 // === COMMAND CHECK: TELEPORT ===
-                                if (msg.toLowerCase().startsWith('.hack//teleport')) {
+                                else if (msg.toLowerCase().startsWith('.hack//teleport')) {
                                     let parts = msg.split(" ");
                                     let targetID;
 
@@ -38508,6 +38586,16 @@
                         return;
                     }
 
+                    // An accepted quest is a modal: header tabs cannot bypass Deploy.
+                    if (window.guildSubState === 'quest_accepted') {
+                        // Matches the rendered button at x=3..7, y=8..9.
+                        if (gridPos.x >= 3 && gridPos.x <= 7 && gridPos.y >= 8 && gridPos.y <= 9) {
+                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('teleport');
+                            Dungeon.deployAcceptedGuildQuest();
+                        }
+                        return;
+                    }
+
                     // --- 2. CHECK TAB CLICKS (Top row: y=0 to 1) ---
                         if (gridPos.y >= 0 && gridPos.y <= 1) {
                             const tabs = ['bounties', 'classes', 'hire', 'shop'];
@@ -38559,23 +38647,6 @@
                             return;
                         }
                         return; // Block all other clicks while rewards are on screen
-                    }
-
-                    // --- QUEST ACCEPTED SCREEN INTERACTION ---
-                    if (window.guildSubState === 'quest_accepted') {
-                        // "DEPLOY" Button (x: 3 to 7, y: 8.5 to 9.5)
-                        if (gridPos.x >= 3 && gridPos.x <= 7 && gridPos.y >= 8 && gridPos.y <= 9) {
-                            if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('teleport'); // Or 'warp'
-                            window.guildSubState = 'rank_select';
-                            window.selectedQuestInfo = null;
-                            
-                            // Let the engine transition naturally and spawn the monsters!
-                            startGame = 'explore';
-                            Dungeon.isProcessingActions = false;
-                            Dungeon.processNextAction();
-                            return;
-                        }
-                        return; // Block all other clicks while accepted screen is up
                     }
 
                     // --- ACTIVE QUEST INTERACTION ---
@@ -38711,17 +38782,21 @@
                                 // --- ACCEPT QUEST BUTTON ---
                                 if (gridPos.x >= 3 && gridPos.x <= 7 && gridPos.y >= 7 && gridPos.y <= 8) {
                                     let activeQ = Dungeon.memory['guild_quest'] || { state: 0 };
-                                    if (activeQ.state !== 0) return; 
+                                    if (activeQ.state !== 0 || activeQ.pendingDeployment) return;
 
                                     if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal');
                                     
                                     let newQuestBlueprint = window.selectedQuestInfo.generateBlueprint();
-                                    Dungeon.memory['guild_quest'] = newQuestBlueprint;
-                                    
-                                    // Queue the spawns for when they leave the UI
-                                    if (newQuestBlueprint.spawnActions) {
+                                    // Exam state 0 is intentional: promotion is resolved by its
+                                    // win actions, not the normal bounty turn-in/reward desk.
+                                    if (newQuestBlueprint.type === 'exam') {
+                                        newQuestBlueprint.pendingDeployment = true;
+                                        newQuestBlueprint.title = window.selectedQuestInfo.title;
+                                    } else if (newQuestBlueprint.spawnActions) {
                                         Dungeon.actionQueue.push(...newQuestBlueprint.spawnActions);
                                     }
+                                    Dungeon.memory['guild_quest'] = newQuestBlueprint;
+                                    Dungeon.requestSave();
                                     
                                     window.acceptedQuestTargetMap = newQuestBlueprint.targetMap;
                                     window.guildSubState = 'quest_accepted'; // SWITCH TO ACCEPTED UI
