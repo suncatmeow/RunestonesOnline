@@ -314,7 +314,7 @@ const MusicEngine = {
           this.createNoise(t, 'lowpass', 100, 2, 3, 800, distGain, panner);
           this.createTone(t, 100, 'sawtooth', 1.5, 3, -50, distGain, panner);
           break;
-        case 11: case 'warp':
+        case 11: case 'warp': case 'warp2':
           const oscW = this.ctx.createOscillator();
           const gainW = this.ctx.createGain();
           oscW.type = 'sine';
@@ -28590,15 +28590,24 @@ const BMPlayerMotion = (() => {
 const BMTouch = (() => {
     const fingers = new Map();
     let mover = null, looker = null, attackAt = 0;
-    let lastMap = null, moveSpeed = 1;
+    let lastMap = null, moveSpeed = 1, lastScene = null;
     const live = () => startGame === 'explore' && !Dungeon.isLoading && !Dungeon.isDying && !Dungeon.isViewingAtlas && !Dungeon.isViewingWorld && !isChatActive && !document.hidden;
     const enabled = () => live() && window.gameViewMode === '3d' && window.settingsControlsMode === 'touch';
     const cameraAngle = () => (Dungeon.currentAngle ?? Dungeon.dir * Math.PI / 2) + (Dungeon.lookPan || 0);
+    const freeCamera = () => window.gameViewMode === '3d' && window.settingsControlsMode === 'touch';
+    function settleCamera() {
+        if(!freeCamera() || !Number.isFinite(Dungeon.currentAngle))return;
+        const angle=cameraAngle(),base=Math.round(angle/(Math.PI/2));
+        Dungeon.dir=((base%4)+4)%4;
+        Dungeon.currentAngle=base*Math.PI/2;
+        Dungeon.lookPan=Math.atan2(Math.sin(angle-Dungeon.currentAngle),Math.cos(angle-Dungeon.currentAngle));
+        Dungeon._cinePan=undefined;Dungeon._cinePitch=undefined;
+    }
     let sensitivity=1.6,settingsPanel=null,jumpPlacement=null;
     try{const saved=Number(localStorage.getItem('bm-touch-camera-sensitivity'));if(saved>=.5&&saved<=3)sensitivity=saved;}catch(_){}
     function setSensitivity(value){sensitivity=Math.max(.5,Math.min(3,Number(value)||1.6));try{localStorage.setItem('bm-touch-camera-sensitivity',String(sensitivity));}catch(_){}return sensitivity;}
     function settingsUI(){
-        const visible=startGame==='journal'&&journalTab==='settings'&&!window.confirmDeletePrompt;
+        const visible=startGame==='journal'&&journalTab==='settings'&&!BMShell.active()&&!window.confirmDeletePrompt;
         if(!visible){if(settingsPanel){settingsPanel.hidden=true;settingsPanel.style.display='none';}return;}
         if(!settingsPanel){
             settingsPanel=document.createElement('label');settingsPanel.id='bm-touch-camera';
@@ -28617,7 +28626,7 @@ const BMTouch = (() => {
     function cancel() {
         const held=[...fingers];fingers.clear();
         for (const [id,f] of held) { releaseButton(f);try { canvas.releasePointerCapture(id); } catch (_) {} }
-        mover = looker = null; moveSpeed = 1;
+        mover = looker = null; // Finish any committed tile without accelerating on release.
         window.activeTouchZone = null;
     }
     function ownsButton(button){for(const f of fingers.values())if(f.button===button)return true;return false;}
@@ -28682,7 +28691,7 @@ const BMTouch = (() => {
     function attack(now=performance.now()) {
         if (!live() || now<attackAt) return;
         BMFishing.cancel();
-        attackAt=now+350;
+        attackAt=now+25; // The shared cast gate owns the AGI cooldown for every input method.
         Dungeon.castSpell(9999);
     }
     function jump(now=performance.now()) {
@@ -28738,7 +28747,7 @@ const BMTouch = (() => {
         const f=fingers.get(e.pointerId);if(!f)return false;
         const tap=f.role==='look'&&e.type==='pointerup'&&!f.dragged&&performance.now()-f.at<=260&&Math.hypot(e.clientX-f.ox,e.clientY-f.oy)<=10&&enabled()&&!overUI(e);
         fingers.delete(e.pointerId);releaseButton(f);
-        if (mover===e.pointerId) { mover=null;moveSpeed=1; }
+        if (mover===e.pointerId) { mover=null;Dungeon.continuousSteps=0; } // Keep the final tile at its chosen speed.
         if (looker===e.pointerId) looker=null;
         try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
         if(tap)attack();
@@ -28747,18 +28756,24 @@ const BMTouch = (() => {
     function vector() {
         const f=fingers.get(mover);if (!f || !enabled()) return null;
         const dx=f.x-f.ox,dy=f.y-f.oy,len=Math.hypot(dx,dy);
-        if (len<10) return null;
-        const angle=cameraAngle()+Math.atan2(dx,-dy), octant=Math.round(angle/(Math.PI/4));
-        return {x:Math.round(Math.sin(octant*Math.PI/4)),y:-Math.round(Math.cos(octant*Math.PI/4)),speed:Math.max(.35,Math.min(1,(len-10)/38))};
+        const dead=14,radius=62;
+        if (len<dead) { f.octant=null;return null; }
+        const angle=cameraAngle()+Math.atan2(dx,-dy),candidate=Math.round(angle/(Math.PI/4));
+        // Hysteresis holds a direction through small thumb/camera tremors.
+        if(f.octant==null || Math.abs(Math.atan2(Math.sin(angle-f.octant*Math.PI/4),Math.cos(angle-f.octant*Math.PI/4)))>Math.PI/8+.10)f.octant=candidate;
+        const strength=Math.min(1,(len-dead)/(radius-dead));
+        return {x:Math.round(Math.sin(f.octant*Math.PI/4)),y:-Math.round(Math.cos(f.octant*Math.PI/4)),speed:.60+.40*strength};
     }
     function step() {
         const v=vector();if (!v || Dungeon.isSlidingToTile || bound()) return;
         BMFishing.cancel();moveSpeed=v.speed;
-        const base=Dungeon.updateMomentum();
+        const base=Math.max(.10,Math.min(.30,.22/(1+.035*(BMPlayerMotion.agility()-4))));
+        Dungeon.currentCooldown=base;Dungeon.targetCooldown=base;
         Dungeon.inputCooldown=base*Math.hypot(v.x,v.y)/moveSpeed;
         executeDungeonMove(v.x,v.y,true);
     }
     function tick(now=performance.now()) {
+        if(lastScene!==startGame){settleCamera();lastScene=startGame;}
         if (!live() || lastMap!==Dungeon.mapID) {
             cancel();
             if(lastMap!==Dungeon.mapID)BMFishing.reset();
@@ -28771,6 +28786,14 @@ const BMTouch = (() => {
     }
     function draw() {
         ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+        const thumb=fingers.get(mover);
+        if(thumb&&enabled()){
+            const dx=thumb.x-thumb.ox,dy=thumb.y-thumb.oy,len=Math.hypot(dx,dy),r=62,k=Math.min(1,r/Math.max(1,len));
+            ctx.strokeStyle='rgba(220,205,156,.40)';ctx.fillStyle='rgba(15,15,10,.22)';ctx.lineWidth=1.5;
+            ctx.beginPath();ctx.arc(thumb.ox,thumb.oy,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+            ctx.beginPath();ctx.arc(thumb.ox,thumb.oy,14,0,Math.PI*2);ctx.stroke();
+            ctx.fillStyle='rgba(218,197,140,.45)';ctx.beginPath();ctx.arc(thumb.ox+dx*k,thumb.oy+dy*k,15,0,Math.PI*2);ctx.fill();
+        }
         for (const b of buttons()) {
             ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
             ctx.fillStyle='rgba(13,15,8,.76)';ctx.fill();
@@ -28779,8 +28802,8 @@ const BMTouch = (() => {
         }
         ctx.restore();BMFishing.draw();
     }
-    return {settingsUI,setSensitivity,get sensitivity(){return sensitivity;},enabled,live,down,move,up,cancel,step,tick,draw,buttons,cameraAngle,vector,ownsButton,
-        get moving(){return !!vector();},get travelSpeed(){return mover!==null?moveSpeed:1;},
+    return {freeCamera,settleCamera,settingsUI,setSensitivity,get sensitivity(){return sensitivity;},enabled,live,down,move,up,cancel,step,tick,draw,buttons,cameraAngle,vector,ownsButton,
+        get moving(){return !!vector();},get travelSpeed(){return freeCamera()?moveSpeed:1;},
         get jumpHeight(){return BMPlayerMotion.height;}};
 })();
 
@@ -28872,7 +28895,7 @@ const BMFishing=(()=>{
             reveal={index:fishIndex,map:Dungeon.mapID,at:now,until:now+2600};
             const record=Dungeon.memory.fishingRecord||{catches:0,bestCm:0};
             record.catches++;record.bestCm=Math.max(record.bestCm,cm);record.lastSpecies=species;
-            Dungeon.memory.fishingRecord=record;Dungeon.requestSave();cancel();
+            Dungeon.memory.fishingRecord=record;BMInventory.add({key:'fish:'+fishIndex,name:species,kind:'fish',fishIndex,category:'misc'},1);Dungeon.requestSave();cancel();
             say(`${species} · ${cm} cm!  Total: ${record.catches} · Best: ${record.bestCm} cm`,now);
             return;
         }
@@ -31894,6 +31917,8 @@ window.BMPerformance=BMPerformance;
                 558: { type: 'cone', name: 'Intimidate', cooldown: 90000, castStat: 0, defStat: 2, debuffStat: 0, bind: true, duration: 450, visual: 'chains', auraColor: 'rgba(100, 100, 0, 0.8)', range: 4.0, angle: 0.5, sfx: 'debuff' },
                 
                 // --- CONSUMABLE ITEMS (Static Buffs & Wards) ---
+                6: { type:'item_buff', name:'The Lovers', cooldown:450000, multiStat:[{stat:0,amount:1},{stat:1,amount:1}], duration:1800, visual:'arc', auraColor:'rgba(220,160,200,.6)', sfx:'heal' },
+                19: { type:'item_buff', name:'Solar Rite', cooldown:450000, amount:0, duration:0, visual:'arc', auraColor:'rgba(255,220,130,.6)', sfx:'heal' },
                 22: { type: 'item_buff', name: 'Wand',    cooldown: 450000,    buffStat: 2, amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 0, 0, 0.6)', sfx: 'heal' },
                 25: { type: 'item_buff', name: 'Elixer', cooldown: 450000,  buffStat: 'all', amount: 1, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
                 27: { type: 'item_buff', name: 'Amulet',  cooldown: 450000,    buffStat: 2, amount: 3, duration: 1800, visual: 'arc', auraColor: 'rgba(255, 255, 255, 0.6)', sfx: 'heal' },
@@ -35315,8 +35340,9 @@ window.BMPerformance=BMPerformance;
                 let newDir = Math.round(desiredAngle / (Math.PI / 2)) % 4;
                 if (newDir < 0) newDir += 4; 
                 
-                dungeon.dir = newDir; 
-                dungeon.currentAngle = dungeon.dir * (Math.PI / 2);
+                if(BMTouch.freeCamera())BMTouch.settleCamera();
+                else { dungeon.dir = newDir;dungeon.currentAngle = dungeon.dir * (Math.PI / 2); }
+                // Touch dialogue turns smoothly from the actual view, never from a stale cardinal direction.
                 
                 // (Note: The exact pixel-perfect cinematicPan and cinematicPitch 
                 // are now dynamically tracked in the render loop!)
@@ -37182,9 +37208,9 @@ window.BMPerformance=BMPerformance;
             }
             if (newEffect.name === 'Haste') newEffect.speedBoost = magnitude * 0.1; 
 
-            // Prevent infinite stacking by just overwriting the old buff object
+            // Positive buffs stack; reapplying a debuff or ward refreshes its own effect.
             let existingIndex = this.activeBuffs.findIndex(b => b.name === newEffect.name);
-            if (existingIndex !== -1) {
+            if (existingIndex !== -1 && !['buff','item_buff'].includes(newEffect.type)) {
                 this.activeBuffs.splice(existingIndex, 1);
             }
 
@@ -37633,6 +37659,7 @@ window.BMPerformance=BMPerformance;
                 this.timePerWard = 3.0; 
                 this.currentWardTime = this.maxWards * this.timePerWard; 
                 this.wardShatterCooldown = 0; 
+                this.wardShatterDuration = 0;
 
             // 3. CAMERA, VIEWPORT & RENDERING
                 this.camDist = 2.5;             // How many tiles to pull the camera back
@@ -39517,7 +39544,7 @@ window.BMPerformance=BMPerformance;
                     let timeLost = (atkRoll - defRoll) * damageScalar;
                     
                     if (this.currentWardTime > 0) {
-                        this.currentWardTime -= timeLost;
+                        this.currentWardTime = Math.max(0, this.currentWardTime - timeLost);
                     } else if (legacyWard) {
                         legacyWard.hits--;
                     markAuraTick(legacyWard,this);
@@ -39541,7 +39568,7 @@ window.BMPerformance=BMPerformance;
                         let conDice = this.getEffectiveDice(1); // CON
                         let conScore = (conDice.numDice * conDice.diceSides) + conDice.flatMod;
                         // Base 9 seconds. Every point of CON above 4 reduces the penalty by 0.2 seconds.
-                        this.wardShatterCooldown = Math.max(2.0, 9.0 - ((conScore - 4) * 0.2)); 
+                        this.beginWardRecovery(Math.max(2.0, 9.0 - ((conScore - 4) * 0.2)));
                     } 
                     else if (legacyWard && legacyWard.hits <= 0) {
                         let wIdx = this.activeBuffs.findIndex(b => b === legacyWard);
@@ -39675,7 +39702,7 @@ window.BMPerformance=BMPerformance;
                                 );
 
                                 if (this.currentWardTime === 0) {
-                                    this.wardShatterCooldown = 9.0;
+                                    this.beginWardRecovery(9.0);
                                 }
                             } else {
                                 this.killPlayer('fall', 'a fatal fall');
@@ -39821,7 +39848,7 @@ window.BMPerformance=BMPerformance;
                                                             );
 
                                                             if (this.currentWardTime === 0) {
-                                                                this.wardShatterCooldown = 9.0;
+                                                                this.beginWardRecovery(9.0);
                                                             }
                                                         } else {
                                                             this.killPlayer(
@@ -39869,7 +39896,7 @@ window.BMPerformance=BMPerformance;
                         }
                 // --- 1. NEW WARD REGENERATION ---
                 if (this.wardShatterCooldown > 0) {
-                    this.wardShatterCooldown -= dt; // Count down the penalty
+                    this.wardShatterCooldown = Math.max(0, this.wardShatterCooldown - dt);
                 } else if (this.currentWardTime < this.maxWards * this.timePerWard) {
                     // Tick-by-tick regen based on CON roll
                     let conRoll = Math.max(0, this.rollStat(1));
@@ -40259,7 +40286,7 @@ window.BMPerformance=BMPerformance;
                     let targetPOVDist = this.camDist; 
                     let isForestMap = [2, 14, 22].includes(this.mapID) || this.biome === 'Sylvan';
                     
-                    let collisionAngle = BMTouch.enabled() ? BMTouch.cameraAngle() : isForestMap ? this.dir * (Math.PI / 2) : (this.dir * (Math.PI / 2)) + (this.lookPan || 0);
+                    let collisionAngle = BMTouch.cameraAngle();
                     let camDirX = Math.sin(collisionAngle);
                     let camDirY = -Math.cos(collisionAngle);
 
@@ -40373,7 +40400,7 @@ window.BMPerformance=BMPerformance;
                     let isFoe = blockingNPC && typeof blockingNPC.alignment === 'string' && blockingNPC.alignment.startsWith('foe');
                     let isAlly = blockingNPC && typeof blockingNPC.alignment === 'string' && blockingNPC.alignment === 'ally'; 
 
-                    if (startGame === 'dialogue' && this.currentSpeaker) {
+                    if (startGame === 'dialogue' && this.currentSpeaker && this.currentSpeaker.role !== 'notification' && this.currentSpeaker.role !== 'dropped_card') {
                         this.focusTarget = this.currentSpeaker;
                     } else if (startGame === 'battle' && this.currentEnemy && this.cameraMode === 'first_person') {
                         this.focusTarget = this.currentEnemy;
@@ -40444,7 +40471,7 @@ window.BMPerformance=BMPerformance;
                         // Glide the shadow variables smoothly to the target
                         // THE FIX: Use a slower, gentler pan speed (3) for allies, and an aggressive snap (8) for enemies
                         let trackSpeed = isAlly ? 3 : 8;
-                        this._cinePan += ((this.cinematicPan || 0) - this._cinePan) * trackSpeed * dt;
+                        this._cinePan += Math.atan2(Math.sin((this.cinematicPan || 0)-this._cinePan),Math.cos((this.cinematicPan || 0)-this._cinePan)) * (1-Math.exp(-trackSpeed*dt));
                         this._cinePitch += ((this.cinematicPitch || 0) - this._cinePitch) * trackSpeed * dt;
 
                         // Force the actual camera to obey the shadow variables
@@ -40457,7 +40484,7 @@ window.BMPerformance=BMPerformance;
                         this._cinePitch = undefined;
                         
                         // Only apply snap/decay if not locked on, not free-looking, and not using joystick
-                        if (!BMTouch.enabled() && typeof isFreeLooking !== 'undefined' && !isFreeLooking && !isJoystickActive && Object.keys(activePointers || {}).length < 2) {
+                        if (!BMTouch.freeCamera() && typeof isFreeLooking !== 'undefined' && !isFreeLooking && !isJoystickActive && Object.keys(activePointers || {}).length < 2) {
                             let turns = Math.round((this.lookPan || 0) / (Math.PI / 2));
                             if (turns !== 0) {
                                 this.dir = (this.dir + turns) % 4; 
@@ -40528,7 +40555,7 @@ window.BMPerformance=BMPerformance;
                         let angleDiff = targetAngle - this.currentAngle;
                         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
                         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                        this.currentAngle += angleDiff * lerpFactor;
+                        if(!BMTouch.freeCamera())this.currentAngle += angleDiff * lerpFactor;
 
                         const finalAngle = this.currentAngle + this.lookPan;
                         const dirX = Math.sin(finalAngle);
@@ -40536,7 +40563,8 @@ window.BMPerformance=BMPerformance;
                         const planeX = -dirY * 0.66 * (viewW/viewH);
                         const planeY = dirX * 0.66 * (viewW/viewH);
 
-                        let actualCamDist = this.currentCamDist;
+                        let actualCamDist = BMView.safeCameraDistance(this,finalAngle,this.currentCamDist);
+                        if(actualCamDist<this.currentCamDist)this.currentCamDist=actualCamDist;
                         this.pitch = this.currentPitch;
                         this.camZ = this.currentCamZ;
                         this.zScale = this.currentZScale;
@@ -40613,8 +40641,8 @@ window.BMPerformance=BMPerformance;
                                 let floorStepY = rowDistance * (planeY * 2 / viewW) * stepX;
                                 
                                 // Real world coordinates of the leftmost pixel in this row
-                                let floorX = this.x + rowDistance * (dirX - planeX);
-                                let floorY = this.y + rowDistance * (dirY - planeY);
+                                let floorX = camX + rowDistance * (dirX - planeX);
+                                let floorY = camY + rowDistance * (dirY - planeY);
                                 
                                 // Size scales down as it gets further away (perspective)
                                 let size = rowDistance < 2 ? 3 : (rowDistance < 5 ? 2 : 1);
@@ -40627,7 +40655,7 @@ window.BMPerformance=BMPerformance;
                                     // Extremely fast bitwise pseudo-random number generator (0 to 63)
                                     let noise = (cellX * 374761393 + cellY * 668265263) & 63;
                                     
-                                    if (noise < 4) { // Roughly 6% density of grass/rocks
+                                    if (noise < 4 && !TERRAIN_SURFACES[this.maze[Math.floor(floorY)]?.[Math.floor(floorX)]]) { // No grass on liquid
                                         // Draw a tiny vertical dash
                                         ctx.rect(viewX + x, viewY + y - size, size, size);
                                     }
@@ -41113,13 +41141,9 @@ window.BMPerformance=BMPerformance;
                             ctx.fillRect(0, 0, canvas.width, canvas.height);
                         }
                     // 5. UI
-                        this.drawMinimap(ctx, tX, tY, tL, tH);
                         // ==========================================
                         // --- WARD UI (Below Minimap) ---
                         // ==========================================
-                        let fullWards = Math.floor(this.currentWardTime / this.timePerWard);
-                        let partialWardPercent = (this.currentWardTime % this.timePerWard) / this.timePerWard;
-
                         // --- 1. GATHER ACTIVE AURAS & COLORS ---
                         let activeAuras = [];
                         let wardColors = ['#00ffff']; // Base Natural Cyan
@@ -41146,49 +41170,7 @@ window.BMPerformance=BMPerformance;
                         let currentColorIndex = Math.floor(Date.now() / colorCycleSpeed) % wardColors.length;
                         this.currentWardColor = wardColors[currentColorIndex]; 
 
-                        // Edge case to prevent rendering weirdness when fully healed
-                        if (this.currentWardTime >= this.maxWards * this.timePerWard) {
-                            fullWards = this.maxWards;
-                            partialWardPercent = 0;
-                        }
 
-                        for (let i = 0; i < this.maxWards; i++) {
-                            let shieldX = 7.605 + (i * 0.725);
-                            let shieldY = 2.65;
-                            let shieldScale = 0.1;
-
-                            if (i < fullWards) {
-                                // 1. ACTIVE WARD: Fully opaque
-                                ctx.globalAlpha = 1.0;
-                                drawPortrait(107, shieldX, shieldY, shieldScale);
-                            } else if (i === fullWards && this.currentWardTime > 0) {
-                                // 2. RECHARGING WARD: Faded with dynamic loading bar
-                                ctx.globalAlpha = 0.3;
-                                drawPortrait(107, shieldX, shieldY, shieldScale);
-                                
-                                ctx.globalAlpha = 1.0;
-                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
-                                
-                                // ---> THE FIX: Replaced 'cyan' with this.currentWardColor <---
-                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * partialWardPercent, 1.5, 0,0,0,0, this.currentWardColor, 1);
-                            } else {
-                                // 3. BROKEN WARD
-                                ctx.globalAlpha = 0.3;
-                                drawPortrait(107, shieldX, shieldY, shieldScale);
-                                
-                                if (i === 0 && this.wardShatterCooldown > 0) {
-                                    ctx.globalAlpha = 1.0;
-                                    let shatterPercent = 1.0 - (this.wardShatterCooldown / 9.0);
-                                    drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
-                                    drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * shatterPercent, 1.5, 0,0,0,0, '#ff3300', 1);
-                                }
-                            }
-                        }
-                        ctx.globalAlpha = 1.0; // Reset
-
-                        btnDeck.show(7.875, 2.275, .5, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
-                        btnJournal.show(8.575, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
-                        btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
                         // ==========================================
                         // --- 3. THE FLASHER & PERSISTENT AURAS ---
                         // ==========================================
@@ -41260,6 +41242,13 @@ window.BMPerformance=BMPerformance;
                         }
 
                         ctx.restore(); // MUST restore so the canvas wobble doesn't break the UI layout next frame!
+                        // Keep the minimap and ward controls readable above combat flashes.
+                        this.drawMinimap(ctx, tX, tY, tL, tH);
+                        this.drawWardHUD(ctx, tX, tY, tL, tH);
+                        btnDeck.show(7.875, 2.275, .5, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
+                        btnJournal.show(8.575, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
+                        btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
+
                         // // --- DYNAMIC SPELL SLOTS LAYOUT ---
                         let maxSlots = 6;
 
@@ -41884,48 +41873,6 @@ window.BMPerformance=BMPerformance;
                 drawText(0.25, 0, 10, 0.5, `${Math.floor(this.x)},${Math.floor(this.y)}`, 'yellow', 1, 'center');
 
                 if (startGame !== 'mapmaker') {
-                    this.drawAtlasMinimap(ctx, viewX, viewY, viewW, viewH);
-
-                    let fullWards = Math.floor(this.currentWardTime / this.timePerWard);
-                    let partialWardPercent = (this.currentWardTime % this.timePerWard) / this.timePerWard;
-
-                    if (this.currentWardTime >= this.maxWards * this.timePerWard) {
-                        fullWards = this.maxWards;
-                        partialWardPercent = 0;
-                    }
-
-                    for (let i = 0; i < this.maxWards; i++) {
-                        let shieldX = 7.605 + (i * 0.725);
-                        let shieldY = 2.65;
-                        let shieldScale = 0.1;
-
-                        if (i < fullWards) {
-                            ctx.globalAlpha = 1.0;
-                            drawPortrait(107, shieldX, shieldY, shieldScale);
-                        } else if (i === fullWards && this.currentWardTime > 0) {
-                            ctx.globalAlpha = 0.3;
-                            drawPortrait(107, shieldX, shieldY, shieldScale);
-                            ctx.globalAlpha = 1.0;
-                            drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
-                            drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * partialWardPercent, 1.5, 0,0,0,0, 'cyan', 1);
-                        } else {
-                            ctx.globalAlpha = 0.3;
-                            drawPortrait(107, shieldX, shieldY, shieldScale);
-                            if (i === 0 && this.wardShatterCooldown > 0) {
-                                ctx.globalAlpha = 1.0;
-                                let shatterPercent = 1.0 - (this.wardShatterCooldown / 9.0);
-                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10, 1.5, 0,0,0,0, '#222222', 1);
-                                drawShape('rec', shieldX+.25, shieldY + 0.65, shieldScale*.5, 0, 0, 10 * shatterPercent, 1.5, 0,0,0,0, '#ff3300', 1);
-                            }
-                        }
-                    }
-                    ctx.globalAlpha = 1.0;
-
-                    btnDeck.show(7.875, 2.275, .5, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
-                    btnJournal.show(8.575, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
-                    btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
-                    btnATK.show(0, 9, 1, 1, 1, 'ATK', 'jrpg_btn', 1, 0);
-
                     if (this.playerFlashTimer > 0) {
                         this.playerFlashTimer--;
                         ctx.save();
@@ -41935,6 +41882,16 @@ window.BMPerformance=BMPerformance;
                         ctx.fillRect(viewX, viewY, viewW, viewH);
                         ctx.restore();
                     }
+                    this.drawAtlasMinimap(ctx, viewX, viewY, viewW, viewH);
+
+                    this.drawWardHUD(ctx, viewX, viewY, viewW, viewH);
+
+                    btnDeck.show(7.875, 2.275, .5, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
+                    btnJournal.show(8.575, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
+                    btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
+                    btnATK.show(0, 9, 1, 1, 1, 'ATK', 'jrpg_btn', 1, 0);
+
+
                 }
 
                 // ==========================================
@@ -42260,7 +42217,6 @@ window.BMPerformance=BMPerformance;
                                 exitDepth = sideDistY; sideDistY += deltaDistY; mapY += stepY; side = 1;  
                             }
 
-                            if (exitDepth > MAX_RENDER_DEPTH) break;
                             if (mapY < 0 || mapY >= this.maze.length || mapX < 0 || mapX >= this.maze[0].length) break; 
 
                             let nextTileID = this.maze[mapY][mapX];
@@ -42373,7 +42329,7 @@ window.BMPerformance=BMPerformance;
                     this.colorStringCache = {}; 
                 }
                 
-                let lastKnownFillStyle = "";
+                let lastKnownFillStyle = "";this.lastR=this.lastG=this.lastB=-1;
 
                 const setRGB = (rVal, gVal, bVal) => {
                     // Round to nearest 8 to drastically reduce the number of unique colors (15-bit color lookalike)
@@ -42502,18 +42458,19 @@ window.BMPerformance=BMPerformance;
                                 fogFactor = Math.min(fogFactor, 0.85); 
                             }
                             const surfaceKind = TERRAIN_SURFACES[hit.wallID]?.kind;
-                            let chasmDepth = surfaceKind === 'chasm' ? 2.0 : 0.4; // Abyss vs Water
+                            const surfaceZ=this.getTileElevation(hit.wallID)-(surfaceKind==='chasm'?2:0);
+                            const chasmDepth=surfaceKind==='chasm'?2:0;
                                                         
                             // 1. CALCULATE FRONT EDGE
                             // Clamped perfectly to the floor level. NO MORE 15 PIXEL HACK.
                             // This entirely removes the green spikes and ensures the water naturally tucks beneath the floor.
-                            let frontFloorY = Math.floor(lineHeight / 2 + horizon + zShift);
+                            let frontFloorY = Math.ceil(horizon+lineHeight*(this.camZ-surfaceZ));
                             
                             // 2. CALCULATE BACK EDGE (The far shore)
                             let exitLineHeight = wallScale / hit.exitDist;
                             let exitZShift = exitLineHeight * zOffset;
-                            let backFloorY = Math.floor(exitLineHeight / 2 + horizon + exitZShift);
-                            let backWaterY = Math.floor(backFloorY + (exitLineHeight * chasmDepth));
+                            let backFloorY = Math.floor(horizon+exitLineHeight*(this.camZ-this.getTileElevation(hit.wallID)));
+                            let backWaterY = Math.floor(horizon+exitLineHeight*(this.camZ-surfaceZ));
 
                             // 3. MAP BORDER DETECTION (The Infinite Horizon)
                             let isBorder = (hit.exitMapY < 0 || hit.exitMapY >= this.maze.length || hit.exitMapX < 0 || hit.exitMapX >= this.maze[0].length);
@@ -42535,10 +42492,10 @@ window.BMPerformance=BMPerformance;
                                         surfaceKind === 'lava'
                                             ? [210, 65, 8]
                                             : [10, 35, 75];
-                                    let timeOsc = Date.now() / 400;
-                                    let wave = Math.sin((stripX * 0.05) + (hit.mapY * 0.5) + timeOsc) * 15;
-                                    let wave2 = Math.cos((stripX * 0.02) - timeOsc) * 10;
-                                    wR += wave; wG += (wave + wave2); wB += (wave + wave2 * 2);
+                                    // A column-wide sine produced vertical waterfall bands on flat water.
+                                    // Keep a stable water body, then shade short horizontal ripples below.
+                                    const timeOsc=Date.now()/1000;
+                                    if(surfaceKind==='water'&&isBorder)fogFactor=Math.min(fogFactor,.88);
                                     
                                     wR = Math.max(0, Math.min(255, (wR * (1 - fogFactor)) + (fR * fogFactor)));
                                     wG = Math.max(0, Math.min(255, (wG * (1 - fogFactor)) + (fG * fogFactor)));
@@ -42546,6 +42503,15 @@ window.BMPerformance=BMPerformance;
                                     
                                     setRGB(wR, wG, wB);
                                     ctx.fillRect(screenX, viewY + surfaceTop, drawWidth, surfaceBot - surfaceTop);
+                                    if(surfaceKind==='water'){
+                                        const rowStep=Math.max(8,Math.floor(viewH/30));
+                                        setStyle('rgba(145,193,222,'+(0.045*(1-fogFactor*.6))+')');
+                                        for(let row=Math.ceil((surfaceTop+2)/rowStep)*rowStep;row<surfaceBot;row+=rowStep){
+                                            const depth=wallScale*(this.camZ-surfaceZ)/Math.max(1,row-horizon);
+                                            const wx=camX+rayDirX*depth,wy=camY+rayDirY*depth;
+                                            if(Math.sin(wx*1.7+wy*.8-timeOsc*.7)>.15)ctx.fillRect(screenX,viewY+row,drawWidth,1);
+                                        }
+                                    }
                                 }
                             }
 
@@ -42970,6 +42936,61 @@ window.BMPerformance=BMPerformance;
                             ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
                         }
                 }
+            }
+            beginWardRecovery(seconds) {
+                this.wardShatterDuration = Math.max(0, Number(seconds) || 0);
+                this.wardShatterCooldown = this.wardShatterDuration;
+            }
+            wardDisplayState() {
+                const count = Math.max(1, Math.floor(Number(this.maxWards) || 3));
+                const perWard = Math.max(.001, Number(this.timePerWard) || 3);
+                const capacity = count * perWard;
+                const remaining = Math.max(0, Math.min(capacity, Number(this.currentWardTime) || 0));
+                const cooldown = Math.max(0, Number(this.wardShatterCooldown) || 0);
+                const duration = Math.max(cooldown, Number(this.wardShatterDuration) || 9);
+                return {count, capacity, remaining, cooldown,
+                    fills: Array.from({length: count}, (_, i) => Math.max(0, Math.min(1, remaining / perWard - i))),
+                    recovery: Math.max(0, Math.min(1, 1 - cooldown / duration))};
+            }
+            drawWardHUD(ctx, viewX, viewY, viewW, viewH) {
+                const state = this.wardDisplayState();
+                const scale = Math.max(.9, Math.min(1.35, viewW / 520));
+                const width = 114 * scale, height = 67 * scale;
+                const x = viewX + viewW - 10 - width, y = viewY + viewH * .295;
+                const color = state.cooldown > 0 ? '#d89a7b' : '#8ed2cd';
+                ctx.save();
+                ctx.globalAlpha = 1;
+                ctx.translate(x, y);ctx.scale(scale, scale);
+                ctx.fillStyle = 'rgba(9,12,17,.88)';ctx.strokeStyle = '#75664a';ctx.lineWidth = 1;
+                ctx.beginPath();ctx.roundRect(.5, .5, 113, 66, 6);ctx.fill();ctx.stroke();
+                ctx.font = '9px system-ui, sans-serif';ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#cfbf9a';ctx.textAlign = 'left';ctx.fillText('WARDS', 8, 11);
+                ctx.textAlign = 'right';ctx.fillText(`${Math.floor(state.remaining / (state.capacity / state.count))}/${state.count}`, 106, 11);
+                // Stable front-facing shields: fill from the bottom as each ward regenerates.
+                // Large ward counts use evenly filled groups without overflowing the panel.
+                const slots = Math.min(6, state.count), gap = 98 / slots;
+                for (let i = 0; i < slots; i++) {
+                    const cx = 8 + gap * (i + .5), top = 21, sw = Math.min(19, gap - 5), sh = 22;
+                    const fill = Math.max(0, Math.min(1, state.remaining / (state.capacity / slots) - i));
+                    const shield = () => {
+                        ctx.beginPath();ctx.moveTo(cx, top);ctx.lineTo(cx + sw / 2, top + 3);
+                        ctx.lineTo(cx + sw * .4, top + sh * .66);ctx.quadraticCurveTo(cx + sw * .3, top + sh * .83, cx, top + sh);
+                        ctx.quadraticCurveTo(cx - sw * .3, top + sh * .83, cx - sw * .4, top + sh * .66);
+                        ctx.lineTo(cx - sw / 2, top + 3);ctx.closePath();
+                    };
+                    shield();ctx.fillStyle = '#222c34';ctx.fill();
+                    ctx.save();ctx.clip();ctx.fillStyle = color;
+                    ctx.fillRect(cx - sw / 2, top + sh * (1 - fill), sw, sh * fill);ctx.restore();
+                    shield();ctx.strokeStyle = fill > 0 ? '#badbd3' : '#6c7378';ctx.stroke();
+                    ctx.strokeStyle = fill > .5 ? '#446c70' : '#48535c';ctx.beginPath();
+                    ctx.moveTo(cx, top + 5);ctx.lineTo(cx, top + 16);ctx.moveTo(cx - 4, top + 9);ctx.lineTo(cx + 4, top + 9);ctx.stroke();
+                }
+                ctx.font = '10px system-ui, sans-serif';ctx.textAlign = 'center';ctx.fillStyle = color;
+                ctx.fillText(state.cooldown > 0 ? `Recover ${state.cooldown.toFixed(1)}s` : `${state.remaining.toFixed(1)} / ${state.capacity.toFixed(1)}s`, 57, 53);
+                ctx.fillStyle = '#273039';ctx.fillRect(8, 61, 98, 2);
+                ctx.fillStyle = color;ctx.fillRect(8, 61, 98 * (state.cooldown > 0 ? state.recovery : state.remaining / state.capacity), 2);
+                ctx.restore();
+                return {x, y, width, height};
             }
             drawMinimap(ctx, viewX, viewY, viewW, viewH) {
                 if (!this.maze || this.maze.length === 0 || !this.maze[0]) return;
@@ -44202,7 +44223,17 @@ window.BMPerformance=BMPerformance;
                 // 3. Fallback (if type is missing or invalid) -> Return Brown
                 return { r: 139, g: 69, b: 19 };
                 }
+            basicAttackInterval() {
+                const d=this.getEffectiveDice(3);
+                const agi=Math.max(1,(Number(d.numDice)||0)*(Number(d.diceSides)||0)+(Number(d.flatMod)||0));
+                return Math.max(110,Math.min(500,350/(1+.045*(agi-4))));
+            }
             castSpell(spellId) {
+                if(Number(spellId)===9999){
+                    const now=performance.now();
+                    if(now<(this._nextBasicAttackAt||0))return false;
+                    this._nextBasicAttackAt=now+this.basicAttackInterval();
+                }
                 let spellData = SPELL_REGISTRY[spellId];
                 if (!spellData) return;
 
@@ -44459,7 +44490,7 @@ window.BMPerformance=BMPerformance;
                             });
                         }
 
-                        this.playerAttackTimer = 15;
+                        this.playerAttackTimer = spellId===9999?Math.min(15,this.basicAttackInterval()*.03):15;
                         
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX(spellData.sfx || 'arcane')
                         
@@ -44906,14 +44937,12 @@ window.BMPerformance=BMPerformance;
                         }
 
                         // 2. Give +1 temporary buff to all 4 stats (STR, CON, INT, AGI)
-                        for (let s = 0; s < 4; s++) {
-                            this.applySpell(22, 1); // Applies a minor attribute boost payload
-                        }
+// The shared application below adds one +1-all-stats Elixir buff.
 
                         // 3. Restore 33% of max ward time (Equivalent to 1 full ward segment)
                         if (this.maxWards !== undefined && this.timePerWard !== undefined) {
                             let maxTotalTime = this.maxWards * this.timePerWard;
-                            let singleWardValue = maxTotalTime / 3;
+                            let singleWardValue = this.timePerWard;
                             this.currentWardTime = Math.min(maxTotalTime, (this.currentWardTime || 0) + singleWardValue);
                         }
                     }
@@ -44932,12 +44961,12 @@ window.BMPerformance=BMPerformance;
                         this.wardShatterCooldown = 0;
                     }
 
-                    // Standard item application for everything else
-                    this.applySpell(spellId, magnitude); 
-                    
+                    // Solar Rite dispels without leaving a zero-duration buff in the pool.
+                    if(spellId!==19)this.applySpell(spellId, magnitude);
                     this.npcs.forEach(npc => {
                         if (!npc.isDead && npc.alignment === 'ally') {
-                            npc.applySpell(spellId, magnitude); 
+                            if(spellId===19){npc.activeBuffs=[];npc.wardShatterCooldown=0;if(npc.maxWards!==undefined&&npc.timePerWard!==undefined)npc.currentWardTime=npc.maxWards*npc.timePerWard;}
+                            else npc.applySpell(spellId, magnitude);
                         }
                     });
                     
@@ -45040,9 +45069,9 @@ window.BMPerformance=BMPerformance;
                 }
                 if (newEffect.name === 'Haste') newEffect.speedBoost = magnitude * 0.1; 
 
-                // Prevent infinite stacking by overwriting the old buff
+                // Positive buffs stack; reapplying a debuff or ward refreshes its own effect.
                 let existingIndex = this.activeBuffs.findIndex(b => b.name === newEffect.name);
-                if (existingIndex !== -1) {
+                if (existingIndex !== -1 && !['buff','item_buff'].includes(newEffect.type)) {
                     this.activeBuffs.splice(existingIndex, 1);
                 }
 
@@ -46990,6 +47019,15 @@ window.BMPerformance=BMPerformance;
 
                 switch(actionType) {
                     // --- INVENTORY & STATS ---
+                        case 'give_item':
+                        case 'give_skillbook': {
+                            if(!payload||typeof payload!=='object')break;
+                            if(payload.once&&this.memory[payload.once])break;
+                            const book=actionType==='give_skillbook',id=Number(payload.spellId??payload.card);
+                            const item=book?{key:'skillbook:'+id,kind:'skillbook',spellId:id,name:payload.name||((CARD_MANIFEST_DB[id]?.name||SPELL_REGISTRY[id]?.name||'Skill')+' skillbook')}:payload;
+                            if(BMInventory.add(item,payload.count??1)&&payload.once){this.memory[payload.once]=true;this.requestSave();}
+                            break;
+                        }
                         case 'give_card': {
                             const onceKey = payload && typeof payload === 'object' ? payload.once : null;
                             if (onceKey && this.memory[onceKey]) break;
@@ -48236,6 +48274,7 @@ window.BMPerformance=BMPerformance;
 
                 for (let i = 0; i < this.extra.length; i++) {
                     let card = this.extra[i];
+                    if(this.memory?.disabledSkills?.[card.index]){unusableExtra.push(card);continue;}
                     if (!card.uid) card.uid = 'uid_' + Math.random().toString(36).substr(2, 9);
                     
                     let isSpell = card.type === 2 && activeSpellIDs.includes(card.index);
@@ -48328,8 +48367,9 @@ window.BMPerformance=BMPerformance;
                     for (let i = 0; i < uiButtons.length; i++) {
                         let btn = uiButtons[i];
                         if (i < maxSlots) {
-                            btn.assignedCard = this.hand[i];
-                            btn.visible = this.hand[i] !== null; 
+                            btn.isSkill=false;
+                            btn.assignedCard = this.hand[i]&&!this.memory?.disabledSkills?.[this.hand[i].index]?this.hand[i]:null;
+                            btn.visible = btn.assignedCard !== null; 
                             btn.text = btn.assignedCard ? btn.assignedCard.name : '';
                         } else {
                             btn.assignedCard = null;
@@ -48347,7 +48387,7 @@ window.BMPerformance=BMPerformance;
                     window.uiSpellButtons.push(new btn(0, 0, 1, 1, 1, '', 'jrpg_btn', 1, 'spell_slot'));
                 }
 
-                let learnedIds = Object.keys(this.spellsLearned || {}).map(Number);
+                let learnedIds = Object.keys(this.spellsLearned || {}).filter(id=>this.spellsLearned[id] && !this.memory?.disabledSkills?.[id]).map(Number);
                 let availableSkills = [];
                 let now = Date.now();
 
@@ -64898,6 +64938,7 @@ window.BMPerformance=BMPerformance;
             });
     //MOUSE & TOUCH - HANDLEINPUT
         function handleInput(e) {
+            if(BMShell.active())return;
 
             //vvvVARIABLESvvv//////
                 const now = Date.now();
@@ -66409,7 +66450,7 @@ window.BMPerformance=BMPerformance;
 
                     // 1. CHECK TAB CLICKS (Top row: y=0 to 1)
                     if (gridPos.y >= 0 && gridPos.y <= 1) {
-                        const tabs = ['player', 'deck' , 'grimoire'];
+                        const tabs = ['player','deck','items','spells','grimoire'];
                         const tabWidth = 10 / tabs.length;
                         
                         for (let i = 0; i < tabs.length; i++) {
@@ -80837,7 +80878,7 @@ for (const index of directionalPortraits) {
                         let sbSailMain, sbJib, sbSailBack, sbFlag, sbPortL, sbPortR;
                     //ASSASSIN COLORS ---
                         let cAssnCloth = {r: 0.10, g: 0.10, b: 0.12, a: 1.0}; // Pitch black/dark grey robes
-                        let cAssnTrim  = {r: 0.50, g: 0.05, b: 0.10, a: 1.0}; // Deep blood-red sash and trim
+                        let cAssnTrim  = {r: 0.16, g: 0.15, b: 0.20, a: 1.0}; // Deep blood-red sash and trim
                         let cAssnSkin  = {r: 0.85, g: 0.75, b: 0.65, a: 1.0}; // Pale skin around the eyes
                         let cAssnSteel = {r: 0.75, g: 0.80, b: 0.85, a: 1.0}; // Gleaming silver daggers
                     //HUNTER COLORS ---
@@ -83491,15 +83532,15 @@ case 103: case 104: case 105: {
 const strike=isAttack?Math.pow((1+Math.cos(t))/2,3):0;
 
                                 // The assassin stays in a permanent low crouch
-                                let crouch = isWalk ? 0.12 : (isAttack ? 0.08 + strike*0.12 : 0.035);
-                                let pitch = isWalk ? 0.22 : (isAttack ? 0.07 + strike*0.30 : 0.035); // Leans heavily forward
-                                let thrust = -strike * 0.8; // Extremely fast forward dart
+                                let crouch = isWalk ? 0.035+Math.abs(step1)*.015 : (isAttack ? .04+strike*.07 : 0);
+                                let pitch = isWalk ? .09 : (isAttack ? strike*.22 : 0); // Leans heavily forward
+                                let thrust = -strike * 0.48; // Extremely fast forward dart
 
                                 // 1. Sleek Torso
                                 let aBody = captureSpriteBone(mesh, "aBody", { x: 0, y: 0.1 + crouch, z: thrust, rx: pitch, ry: isWalk ? step1 * 0.1 : 0, rz: 0 });
                                 
                                 // Head counter-rotates the extreme body pitch so the eyes stay locked forward
-                                let aHead = captureSpriteBone(mesh, "aHead", computeBone(aBody, 0, -0.35, -0.05, -pitch + 0.1, -step1 * 0.1, 0));
+                                let aHead = captureSpriteBone(mesh, "aHead", computeBone(aBody, 0, -0.35, -.018, -pitch, -step1 * 0.1, 0));
 
                                 // Flowing scarf/tails whipping behind them in the wind (Fixed multiplier)
                                 let tailWhip = isWalk ? Math.sin(t - 0.5) * 0.18 : (isAttack ? lunge : Math.sin(t) * 0.05);
@@ -83539,35 +83580,36 @@ const strike=isAttack?Math.pow((1+Math.cos(t))/2,3):0;
                                 // === DRAWING PASS ===
 
                                 // Tight, dark tunic
-                                addAuraBodyShape(mesh, 'arc', aBody, 0.15, 0.25, 0.12, cAssnCloth);
+                                addAuraBodyShape(mesh, 'arc', aBody, .155,.225,.12,cAssnCloth);
+                                // Fitted jacket and short split coat over black leggings.
+                                add3dShapeRigged(mesh,'robe',computeBone(aBody,0,.22,.025,0,0,0),.205,.14,.145,cAssnCloth,'clothing');
+                                const buckle={r:.53,g:.52,b:.60,a:1};
+                                add3dShapeRigged(mesh,'rec',computeBone(aBody,0,.15,-.14,0,0,0),.04,.025,.016,buckle,'clothing');
+                                for(const side of [-1,1]){
+                                    add3dShapeRigged(mesh,'rec',computeBone(aBody,side*.066,-.05,-.122,0,0,side*.25),.012,.12,.009,cAssnTrim,'clothing');
+                                }
                                 
                                 // Crimson Sash/Belt
                                 add3dShapeRigged(mesh, 'arc', computeBone(aBody, 0, 0.15, 0, 0,0,0), 0.16, 0.04, 0.13, cAssnTrim);
 
-                                // Head, Hood, and Mask
-                                addFormSpan(mesh, computeBone(aBody, 0, -0.19, 0, 0,0,0),
-                                    computeBone(aHead, 0, 0.075, 0, 0,0,0), 0.05, cAssnCloth);
-                                add3dFace(mesh, 'arc', aHead, 0.1, 0.12, 0.1, cAssnSkin); // Pale skin showing through
-                                
-                                // Lower face mask
-                                let mask = computeBone(aHead, 0, 0.05, -0.11, 0, 0, 0);
-                                add3dShapeRigged(mesh, 'rec', mask, 0.11, 0.08, 0.02, cAssnCloth);
-                                
-                                // Sharp, pointed hood (Pyramid pointing UP and slightly BACK)
-                                let hoodTop = computeBone(aHead, 0, -0.05, 0.05, -Math.PI/2 + 0.2, 0, 0);
-                                add3dShapeRigged(mesh, 'tri', hoodTop, 0.13, 0.13, 0.25, cAssnCloth);
-
-                                // Intense narrow eyes
-                                let eyeL = computeBone(aHead, -0.04, -0.02, -0.1, 0, 0, -0.1);
-                                let eyeR = computeBone(aHead,  0.04, -0.02, -0.1, 0, 0,  0.1);
-                                add3dShapeRigged(mesh, 'rec', eyeL, 0.03, 0.01, 0.02, {r: 0, g: 0, b: 0, a: 1}); // Dark eye socket
-                                add3dShapeRigged(mesh, 'rec', eyeR, 0.03, 0.01, 0.02, {r: 0, g: 0, b: 0, a: 1});
-                                add3dShapeRigged(mesh, 'rec', computeBone(eyeL, 0,0,-0.01, 0,0,0), 0.01, 0.01, 0.01, {r: 1, g: 1, b: 1, a: 1}); // Glint
-                                add3dShapeRigged(mesh, 'rec', computeBone(eyeR, 0,0,-0.01, 0,0,0), 0.01, 0.01, 0.01, {r: 1, g: 1, b: 1, a: 1});
-
+                                // Open face, raven bob and soft bangs; all clothing stays black.
+                                const hair={r:.055,g:.05,b:.075,a:1},pale={r:.92,g:.82,b:.83,a:1},eye={r:.49,g:.40,b:.64,a:1};
+                                addFormSpan(mesh,computeBone(aBody,0,-.19,0,0,0,0),computeBone(aHead,0,.09,0,0,0,0),.044,pale);
+                                add3dFace(mesh,'arc',aHead,.115,.13,.105,pale);
+                                add3dShapeRigged(mesh,'arc',computeBone(aHead,0,-.035,.045,0,0,0),.137,.135,.105,hair,'clothing');
+                                for(const side of [-1,1]){
+                                    add3dShapeRigged(mesh,'arc',computeBone(aHead,side*.114,.012,.01,0,0,side*.08),.028,.16,.09,hair,'clothing');
+                                    add3dShapeRigged(mesh,'tri',computeBone(aHead,side*.059,-.076,-.084,-Math.PI/2,0,side*.20),.063,.027,.13,hair,'clothing');
+                                    const e=computeBone(aHead,side*.045,-.002,-.108,0,0,0);
+                                    add3dShapeRigged(mesh,'rec',e,.027,.025,.009,{r:.02,g:.015,b:.028,a:1});
+                                    add3dShapeRigged(mesh,'rec',computeBone(e,0,.003,-.012,0,0,0),.015,.017,.004,eye);
+                                    add3dShapeRigged(mesh,'rec',computeBone(e,-.004,-.009,-.017,0,0,0),.005,.006,.003,{r:1,g:.96,b:.95,a:1});
+                                }
+                                add3dShapeRigged(mesh,'rec',computeBone(aHead,0,.071,-.1,0,0,0),.023,.008,.007,{r:.24,g:.12,b:.19,a:1});
+                                add3dShapeRigged(mesh,'arc',computeBone(aHead,0,.122,0,0,0,0),.057,.023,.059,cAssnCloth,'clothing');
                                 // Flowing Scarf Tails
-                                add3dShapeRigged(mesh, 'tri', aScarf1, 0.04, 0.02, 0.35, cAssnTrim);
-                                add3dShapeRigged(mesh, 'tri', aScarf2, 0.04, 0.02, 0.3, cAssnTrim);
+                                add3dShapeRigged(mesh, 'tri', aScarf1, 0.035, 0.02, 0.25, cAssnCloth);
+                                add3dShapeRigged(mesh, 'tri', aScarf2, 0.035, 0.02, 0.22, cAssnCloth);
 
                                 // Slim, agile limbs
                                 addFormSpan(mesh, aArmL, aForeL, 0.04, cAssnCloth);
@@ -83614,10 +83656,10 @@ const strike=isAttack?Math.pow((1+Math.cos(t))/2,3):0;
                                 let step2 = isWalk ? Math.sin(t + Math.PI) : 0;
                                 let cast = isAttack ? Math.cos(t) : 0;
 
-                                let bob = isWalk ? Math.abs(step1) * 0.04 : Math.sin(t * 2) * 0.03;
+                                let bob = isWalk ? Math.abs(step1)*.022 : Math.sin(t*2)*.008;
 
                                 // 1. Slender, upright torso
-                                let mBody = captureSpriteBone(mesh, "mBody", { x: 0, y: 0.1 + bob, z: cast > 0 ? -cast * 0.4 : 0, rx: cast > 0 ? 0.2 : 0, ry: isWalk ? step1 * 0.1 : 0, rz: 0 });
+                                let mBody = captureSpriteBone(mesh, "mBody", { x: 0, y: 0.1 + bob, z: cast > 0 ? -cast * .16 : 0, rx: cast > 0 ? 0.2 : 0, ry: isWalk ? step1 * 0.1 : 0, rz: 0 });
                                 
                                 // Head looks forward, dips slightly during the cast
                                 let mHead = captureSpriteBone(mesh, "mHead", computeBone(mBody, 0, -0.35, 0, cast > 0 ? -0.2 : 0, 0, 0));
@@ -83654,7 +83696,7 @@ const strike=isAttack?Math.pow((1+Math.cos(t))/2,3):0;
                                 // === DRAWING PASS ===
 
                                 // Flowing Skirt (Triangle pointing UP to flare outwards)
-                                add3dShapeRigged(mesh, 'tri', mSkirtTop, 0.3, 0.25, 0.4, cMagRobe);
+                                // A continuous flared robe replaces the triangular skirt.
 
                                 // Slender Torso
                                 addAuraBodyShape(mesh, 'arc', mBody, 0.15, 0.25, 0.12, cMagRobe);
@@ -83668,16 +83710,10 @@ const strike=isAttack?Math.pow((1+Math.cos(t))/2,3):0;
                                 add3dFace(mesh, 'arc', mHead, 0.1, 0.12, 0.1, cMagSkin); // Pale face
                                 
                                 // Wrap the hood around the head (slightly larger arc, shifted back)
-                                if (variant !== 'robed_mage') {
-    add3dShapeRigged(mesh, 'arc', computeBone(mHead, 0, -0.02, 0.02, 0, 0, 0), 0.12, 0.14, 0.12, cMagRobe);
-} else {
-    // Back, side panels, and brow leave the face opening physically empty.
-    add3dShapeRigged(mesh,'rec',computeBone(mHead,0,-.02,.085,0,0,0),.13,.15,.035,cMagRobe,'clothing');
-    for(const sign of [-1,1]) {
-        add3dShapeRigged(mesh,'rec',computeBone(mHead,sign*.115,-.02,.005,0,0,0),.025,.15,.105,cMagRobe,'clothing');
-    }
-    add3dShapeRigged(mesh,'rec',computeBone(mHead,0,-.14,.005,0,0,0),.14,.025,.105,cMagRobe,'clothing');
-}
+                                // Hood sits behind the face instead of enclosing the eyes.
+                                add3dShapeRigged(mesh,'arc',computeBone(mHead,0,-.025,.07,0,0,0),.135,.145,.095,cMagRobe,'clothing');
+                                for(const sign of [-1,1])add3dShapeRigged(mesh,'arc',computeBone(mHead,sign*.113,-.015,.018,0,0,0),.026,.15,.08,cMagRobe,'clothing');
+                                add3dShapeRigged(mesh,'rec',computeBone(mHead,0,-.137,-.012,0,0,0),.13,.025,.075,cMagTrim,'clothing');
                                 add3dShapeRigged(mesh, 'tri', mHoodPoint, 0.12, 0.12, 0.25, cMagRobe); // Pointed back of hood
 
                                 // Eyes peering from the shadow
@@ -83706,20 +83742,23 @@ const strike=isAttack?Math.pow((1+Math.cos(t))/2,3):0;
                                 add3dShapeRigged(mesh, 'tri', bootL, 0.05, 0.03, 0.15, {r:0.05,g:0.05,b:0.05,a:1});
                                 add3dShapeRigged(mesh, 'tri', bootR, 0.05, 0.03, 0.15, {r:0.05,g:0.05,b:0.05,a:1});
 
-if (variant === 'robed_mage') {
+{
     // The original body, face, hood, hands and wand remain the underlying rig.
-    const robe=computeBone(mBody,0,.37,.03,0,0,Math.sin(t)*.025);
-    add3dShapeRigged(mesh,'robe',robe,.34,.42,.27,cMagRobe,'clothing');
-    add3dShapeRigged(mesh,'robe',computeBone(robe,0,.375,0,0,0,0),.35,.045,.28,cMagTrim,'clothing');
+    const robe=computeBone(mBody,0,.35,.03,0,0,Math.sin(t)*.025);
+    add3dShapeRigged(mesh,'robe',robe,.29,.38,.23,cMagRobe,'clothing');
+    add3dShapeRigged(mesh,'robe',computeBone(robe,0,.335,0,0,0,0),.30,.032,.24,cMagTrim,'clothing');
     add3dShapeRigged(mesh,'robe',computeBone(mForeL,0,.08,0,0,0,0),.105,.14,.10,cMagRobe,'clothing');
     add3dShapeRigged(mesh,'robe',computeBone(mForeR,0,.08,0,0,0,0),.105,.14,.10,cMagRobe,'clothing');
     // Flat embroidered stole, attached to the chest so it turns with the caster.
     for(const sign of [-1,1]) {
         const stole=computeBone(mBody,sign*.07,.07,-.132,0,0,0);
-        add3dShapeRigged(mesh,'rec',stole,.026,.20,.009,cMagTrim,'clothing');
+        add3dShapeRigged(mesh,'rec',stole,.021,.21,.009,{r:.66,g:.49,b:.28,a:1},'clothing');
     }
 }
 
+                                // Mantle clasp and repeated stitched stars, attached to the same chest rig.
+                                add3dShapeRigged(mesh,'arc',computeBone(mBody,0,-.10,-.14,0,0,0),.035,.042,.014,{r:.76,g:.58,b:.32,a:1},'clothing');
+                                for(const sign of [-1,1])for(const y of [0,.11,.22])add3dShapeRigged(mesh,'rec',computeBone(mBody,sign*.07,y,-.146,0,0,Math.PI/4),.014,.014,.006,{r:.79,g:.66,b:.39,a:1},'clothing');
                                 // The Brown Wand
                                 add3dShapeRigged(mesh, 'arc', computeBone(mWand, 0, 0.15, 0, 0,0,0), 0.015, 0.2, 0.015, cMagWand);
 
@@ -91436,7 +91475,7 @@ const BattleMusic = (() => {
     }
     readingChanged=readingClock;
     // A flicked coin stays gone until the next portrait arrives.
-    coinFlight=null;coinGone=false;
+    // Portrait changes do not respawn the tossed coin.
   }
   function coinPose(){
     if(coinGone)return null;
@@ -91453,14 +91492,14 @@ const BattleMusic = (() => {
     const surface=jukebox.querySelector('[data-jvisual]'),r=surface.getBoundingClientRect();
     const x=(event.clientX-r.left)/r.width*10,y=(event.clientY-r.top)/r.height*10;
     if(Math.hypot(x-coinHit.x,y-coinHit.y)>coinHit.radius)return;
-    coinFlight={at:readingClock,x:coinHit.x,y:coinHit.y};event.preventDefault();
+    coinFlight={at:readingClock,x:coinHit.x,y:coinHit.y};MusicEngine.play3DSFX('warp2');event.preventDefault();
   }
   function drawReading(){
     if(!jukebox||readScene().mode!=='jukebox'||document.hidden){visualFrame=0;return;}
     const time=performance.now();if(visualFrame&&time-visualFrame<50)return;
     const dt=visualFrame?Math.min(.1,(time-visualFrame)/1000):.05;visualFrame=time;
     if(!hold)readingClock+=dt*1000;
-    if(!readingCard||readingClock-readingChanged>=14000)changeReading();
+    if(!readingCard||readingClock-readingChanged>=(readingKind==='2d'?3000:14000))changeReading();
     const surface=jukebox.querySelector('[data-jvisual]'),saved={ctx,tX,tY,tL,tH};
     let action='';
     try{
@@ -91470,7 +91509,7 @@ const BattleMusic = (() => {
         const elapsed=readingClock-readingChanged,m=displayModel,state=Math.min(m.meshes.length-1,Math.floor(elapsed/4000)),frame=Math.floor(elapsed/180)%4;
         action=['Idle','Walk','Attack','Flight'][state]||'Idle';
         render3dMesh(m.meshes[state][frame],m.x,m.y,m.scale,0,elapsed/12000*Math.PI*2,0);
-      }else drawPortrait(readingCard.portrait,2,4,.6,0,0,hold?0:-1,CARD_PORTRAIT_PIXELS);
+      }else drawPortrait(readingCard.portrait,2,4,.6,0,0,0,CARD_PORTRAIT_PIXELS);
       const coin=coinPose();coinHit=null;
       if(coin){
         readingCoin??=new Dice('d2');
@@ -91524,7 +91563,7 @@ const BattleMusic = (() => {
     if(value===-1)next();updateJukebox();return true;
   }
   function updateJukebox(){
-    if(!jukebox)return;const visible=readScene().mode==='jukebox';jukebox.hidden=!visible;if(!visible){visualFrame=0;displayModel=null;readingCard=null;return;}
+    if(!jukebox)return;const visible=readScene().mode==='jukebox';if(visible&&jukebox.hidden){coinGone=false;coinFlight=null;coinHit=null;}jukebox.hidden=!visible;if(!visible){visualFrame=0;displayModel=null;readingCard=null;return;}
     const classic=jukeboxMode==='classic',p=current?.scene.kind==='jukebox'?current.player.project:null;
     const playing=!!current?.player?.playing&&!hold;
     updateLyrics(current?.scene.kind==='jukebox'?current.player:null);
@@ -91556,7 +91595,7 @@ const BattleMusic = (() => {
   function installJukebox(){
     const style=document.createElement('style');style.textContent=`#bm-serenade-jukebox{position:fixed;inset:0;z-index:1002;overflow:auto;box-sizing:border-box;padding:max(16px,env(safe-area-inset-top)) 18px 28px;background:#000;color:#ece7dc;font:15px/1.5 system-ui,sans-serif;touch-action:pan-y}#bm-serenade-jukebox [hidden],#bm-serenade-jukebox[hidden]{display:none!important}#bm-serenade-jukebox .inner{max-width:860px;margin:auto}#bm-serenade-jukebox header{display:flex;align-items:center;justify-content:space-between;gap:12px}#bm-serenade-jukebox h1{font:27px Georgia,serif;letter-spacing:.03em;margin:0;color:#dbc894}#bm-serenade-jukebox h2{font:23px Georgia,serif;margin:0 0 8px}#bm-serenade-jukebox .stage{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:24px;margin:16px 0}#bm-serenade-jukebox figure{margin:0;text-align:center}#bm-serenade-jukebox canvas{display:block;width:100%;max-width:360px;aspect-ratio:1;margin:auto;background:#000}#bm-serenade-jukebox figcaption{min-height:3em;color:#cfbd91;font:16px Georgia,serif}#bm-serenade-jukebox .lyrics{border-left:2px solid #857752;padding:4px 14px;margin:14px 0;min-height:3.5em}#bm-serenade-jukebox .lyrics p{margin:5px 0;white-space:pre-line}#bm-serenade-jukebox [data-jlyric-line]{font:19px/1.55 Georgia,serif;color:#eedcaa}#bm-serenade-jukebox .card{border-top:1px solid #363124;padding-top:18px;margin:18px 0}#bm-serenade-jukebox button,#bm-serenade-jukebox select{font:inherit;color:inherit;border:1px solid #4f4939;border-radius:8px;background:#0d0d0d;padding:10px 12px;min-height:44px}#bm-serenade-jukebox button{cursor:pointer}#bm-serenade-jukebox button:disabled{opacity:.45}#bm-serenade-jukebox button[aria-pressed=true]{background:#232016;border-color:#c5b277;color:#f3e5b8}#bm-serenade-jukebox .row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}#bm-serenade-jukebox .modes button{flex:1}#bm-serenade-jukebox select{width:100%;margin-top:6px}#bm-serenade-jukebox progress{width:100%;accent-color:#c5b277;height:5px}#bm-serenade-jukebox .muted{color:#a5a196;font-size:13px}#bm-serenade-jukebox input[type=range]{width:100%;accent-color:#c5b277}#bm-serenade-jukebox button:focus-visible,#bm-serenade-jukebox select:focus-visible{outline:2px solid #f4da89;outline-offset:3px}@media(max-width:600px){#bm-serenade-jukebox .stage{grid-template-columns:1fr;gap:6px;margin-top:0}#bm-serenade-jukebox canvas{width:240px;max-width:78vw}#bm-serenade-jukebox h1{font-size:23px}#bm-serenade-jukebox .modes{margin:12px 0}}`;document.head.append(style);
     jukebox=document.createElement('section');jukebox.id='bm-serenade-jukebox';jukebox.hidden=true;jukebox.setAttribute('aria-label','Runestones jukebox');
-    jukebox.innerHTML='<div class="inner"><header><h1>Runestones Jukebox</h1><button data-jback>← Back</button></header><nav class="row modes" aria-label="Music source"><button data-jclassic-mode aria-pressed="true">Original songbook</button><button data-jserenade-mode aria-pressed="false">Enter Serenade</button></nav><div class="stage"><figure><canvas data-jvisual width="384" height="384" aria-label="Portrait display. Tap the coin to flick it toward the horizon."></canvas><figcaption data-jreading></figcaption><button data-jdisplay aria-label="Choose 2D, 3D, or all portraits">Portraits: All</button></figure><div><label data-jclassic-box>Original songs<select data-jclassic></select></label><label data-jtheme-box hidden>Choose a journey<select data-jtheme></select></label><div data-jvoice-box hidden><label>Serenade voice<select data-jvoice></select></label><button data-jtryvoice style="margin-top:10px">Try voice</button><p class="muted">Used for future Serenade songs. Original / Light is the default; traditional journeys use their own vocal phrasing. Lyrics retain English pronunciation. Taliesin and Twilight keep their original voices.</p><p data-jvoice-status class="muted" role="status"></p></div><div class="card"><h2 data-jtitle></h2><p data-jdetail class="muted"></p><div data-jlyrics class="lyrics" hidden><p data-jlyric-line></p><p data-jlyric-next class="muted"></p></div><p data-jstatus role="status"></p><progress></progress><div data-jtime class="muted"></div><div class="row"><button data-jprev>Previous</button><button data-jplay>Play</button><button data-jnext>Next song</button></div><div data-jtraining hidden><div class="row"><button data-jlike aria-pressed="false">♡ Like</button><button data-jdislike aria-pressed="false">Dislike & skip</button></div><p data-jmessage role="status" class="muted"></p></div></div><label>Music volume<input data-jvolume type="range" min="0" max="1" step=".01"></label></div></div><p class="muted">A coin, a portrait, a song. Let their meeting suggest your reading. Choose 2D, 3D, or All portraits. The 3D display rotates through its animations. Tap the coin to send it toward the horizon; another arrives with the next portrait.</p><details data-jtaste class="card" hidden><summary>Your musical taste</summary><p data-jvotes></p><p data-jtraits class="muted"></p><p class="muted">Ratings gently shape instrumentation, activity and phrasing. Stores the latest 128 votes.</p><div class="row"><button data-jexport>Export taste</button><button data-jimport>Import taste</button><button data-jreset>Reset taste</button></div><input data-jfile type="file" accept=".json,application/json" hidden></details></div>';
+    jukebox.innerHTML='<div class="inner"><header><h1>Runestones Jukebox</h1><button data-jback>← Back</button></header><nav class="row modes" aria-label="Music source"><button data-jclassic-mode aria-pressed="true">Original songbook</button><button data-jserenade-mode aria-pressed="false">Serenade</button></nav><div class="stage"><figure><canvas data-jvisual width="384" height="384" aria-label="Portrait display. Tap the coin to flick it toward the horizon."></canvas><figcaption data-jreading></figcaption><button data-jdisplay aria-label="Choose 2D, 3D, or all portraits">Portraits: All</button></figure><div><label data-jclassic-box>Original songs<select data-jclassic></select></label><label data-jtheme-box hidden>Choose a journey<select data-jtheme></select></label><div data-jvoice-box hidden><label>Serenade voice<select data-jvoice></select></label><button data-jtryvoice style="margin-top:10px">Try voice</button><p class="muted">Used for future Serenade songs. Original / Light is the default; traditional journeys use their own vocal phrasing. Lyrics retain English pronunciation. Taliesin and Twilight keep their original voices.</p><p data-jvoice-status class="muted" role="status"></p></div><div class="card"><h2 data-jtitle></h2><p data-jdetail class="muted"></p><div data-jlyrics class="lyrics" hidden><p data-jlyric-line></p><p data-jlyric-next class="muted"></p></div><p data-jstatus role="status"></p><progress></progress><div data-jtime class="muted"></div><div class="row"><button data-jprev>Previous</button><button data-jplay>Play</button><button data-jnext>Next song</button></div><div data-jtraining hidden><div class="row"><button data-jlike aria-pressed="false">♡ Like</button><button data-jdislike aria-pressed="false">Dislike & skip</button></div><p data-jmessage role="status" class="muted"></p></div></div><label>Music volume<input data-jvolume type="range" min="0" max="1" step=".01"></label></div></div><p class="muted">Choose 2D, 3D, or All portraits. Tap the coin to send it toward the horizon.</p><details data-jtaste class="card" hidden><summary>Your musical taste</summary><p data-jvotes></p><p data-jtraits class="muted"></p><p class="muted">Ratings gently shape instrumentation, activity and phrasing. Stores the latest 128 votes.</p><div class="row"><button data-jexport>Export taste</button><button data-jimport>Import taste</button><button data-jreset>Reset taste</button></div><input data-jfile type="file" accept=".json,application/json" hidden></details></div>';
     for(const [value,label]of [['shuffle','Shuffle · original songs'],...C.SourceLibrary.engine.songCatalog.map(e=>[e.id,String(e.id).padStart(2,'0')+' · '+e.name])]){const o=document.createElement('option');o.value=value;o.textContent=label;jukebox.querySelector('[data-jclassic]').append(o);}
     for(const [value,label]of Object.entries(jukeboxThemes)){const o=document.createElement('option');o.value=value;o.textContent=label;jukebox.querySelector('[data-jtheme]').append(o);}
     const voiceSelect=jukebox.querySelector('[data-jvoice]');
@@ -91620,7 +91659,7 @@ const BattleMusic = (() => {
     for(const type of ['pointerdown','keydown'])document.addEventListener(type,()=>{if(engine?.unlocked&&engine.ctx.state==='suspended'&&window.settingsAudio!==false&&!document.hidden)engine.init();},{passive:true});
     window.addEventListener('pagehide',()=>{stopPlayers();worker?.terminate();worker=null;workerActive=false;for(const job of [...waiting.values(),...jobs]){clearTimeout(job.timeout);job.reject(Error('Page closed.'));}waiting.clear();jobs.length=0;});
   }
-  return {profiles,settings,attach,tick,play,stop,togglePause,cue,followScene,next,setLevel,setPersona,installUI,drawReading,
+  return {profiles,settings,attach,tick,play,stop,togglePause,cue,followScene,next,setLevel,setPersona,installUI,drawReading,openSettings(){if(panel){updatePanel();panel.showModal();}},
     normalizeProfile,persona,optionsFor,resolve,voiceBudget,hash,region,threats,proximity,ambientKind,rateCurrent,
     spriteDisplay:Object.freeze({name:displaySpriteName,families:displayFamilies,model:makeDisplayModel}),
     get status(){return lastStatus;},get scene(){return desired;},get current(){return current;},
@@ -91806,7 +91845,7 @@ globalThis.BattleMusic=BattleMusic;
           this.createNoise(t, 'lowpass', 100, 2, 3, 800, distGain, panner);
           this.createTone(t, 100, 'sawtooth', 1.5, 3, -50, distGain, panner);
           break;
-        case 11: case 'warp':
+        case 11: case 'warp': case 'warp2':
           const oscW = this.ctx.createOscillator();
           const gainW = this.ctx.createGain();
           oscW.type = 'sine';
@@ -94361,95 +94400,577 @@ BattleMusic.installUI();
             let testID = 219;
 // Reconstructed development history. Keep revisions, reversals and reserved work
 // explicit; these are development passes, not invented release/commit dates.
+// September 2026: shared inventory, camera clearance and native scrollable screens.
+const BMView=Object.freeze({
+    safeCameraDistance(d,angle,wanted){
+        if(!(wanted>0)||!d.maze?.length)return 0;
+        const sx=Math.sin(angle),sy=-Math.cos(angle),radius=.18;
+        const blocked=(x,y)=>{
+            const tile=d.maze[Math.floor(y)]?.[Math.floor(x)];
+            if(tile===undefined)return true;
+            if(TERRAIN_SURFACES[tile])return false;
+            if(tile<0)return Math.abs(tile)%2===1;
+            return tile>0 && (d.getSurfaceHeight(x,y)>d.getFloorElevation(d.x,d.y)+.15 || d.toweringWalls?.includes(tile));
+        };
+        let safe=0;
+        for(let dist=.05;dist<=wanted+.049;dist+=.05){
+            const use=Math.min(dist,wanted),x=d.x-sx*use,y=d.y-sy*use;
+            if([[-radius,-radius],[radius,-radius],[-radius,radius],[radius,radius]].some(([ox,oy])=>blocked(x+ox,y+oy)))break;
+            safe=use;
+        }
+        return safe;
+    }
+});
+
+const BMInventory=(()=>{
+    const equipment=new Set([6,17,21,22,27,30,31,36,45,50,64,66,72,1005,1006,1007]);
+    const treasures=new Set([7,11,19,20,25,39,43,44,55,68]);
+    const entries=()=>{Dungeon.memory??={};return Dungeon.memory.itemStacks??={};};
+    function add(item,count=1){
+        const n=Math.floor(Number(count)),key=String(item?.key||'');
+        if(!Number.isFinite(n)||n<1||!key||['__proto__','constructor','prototype'].includes(key))return false;
+        const book=item.kind==='skillbook',id=Number(item.spellId);
+        if(book&&(!Number.isFinite(id)||(!SPELL_REGISTRY[id]&&!CARD_MANIFEST_DB[id])))return false;
+        const stacks=entries(),old=Object.hasOwn(stacks,key)?stacks[key]:null;
+        stacks[key]={key,name:String(item.name||key),kind:book?'skillbook':item.kind==='fish'?'fish':'material',
+            category:book?'treasure':'misc',count:Math.min(999999,(Number(old?.count)||0)+n),
+            ...(book?{spellId:id}:{}),...(item.kind==='fish'?{fishIndex:Math.max(0,Math.min(2,Number(item.fishIndex)||0))}:{})};
+        Dungeon.requestSave();return true;
+    }
+    function readBook(key){
+        const item=entries()[key];if(!item||item.kind!=='skillbook'||item.count<1)return false;
+        Dungeon.spellsLearned??={};if(Dungeon.spellsLearned[item.spellId])return false;
+        Dungeon.spellsLearned[item.spellId]=true;
+        if(--item.count===0)delete entries()[key];
+        refreshSkills();Dungeon.requestSave();return true;
+    }
+    function category(id){
+        if(equipment.has(id))return 'equip';
+        if(treasures.has(id))return 'treasure';
+        if(CARD_MANIFEST_DB[id]?.type==='item'||String(SPELL_REGISTRY[id]?.type).startsWith('item_'))return 'use';
+        return 'spell';
+    }
+    function learned(){return Object.keys(Dungeon.spellsLearned||{}).filter(id=>Dungeon.spellsLearned[id]).map(Number).filter(Number.isFinite);}
+    function refreshSkills(){
+        if(Dungeon.playerClass==='Battle-Mage')Dungeon.shuffleSpells();else Dungeon.updateSkills();
+    }
+    function toggle(id){
+        Dungeon.memory??={};Dungeon.memory.disabledSkills??={};
+        if(Dungeon.memory.disabledSkills[id])delete Dungeon.memory.disabledSkills[id];else Dungeon.memory.disabledSkills[id]=true;
+        refreshSkills();Dungeon.requestSave();return !Dungeon.memory.disabledSkills[id];
+    }
+    function use(id){
+        if(!Dungeon.spellsLearned?.[id]||!SPELL_REGISTRY[id]||Dungeon.isDead||Dungeon.isDying)return false;
+        Dungeon.skillCooldowns??={};if((Dungeon.skillCooldowns[id]||0)>Date.now())return false;
+        // Execute in the same world context as a hotbar skill; preserve any dialogue opened by it.
+        startGame='explore';preGame='explore';BMTouch.cancel();
+        const result=Dungeon.castSpell(id);
+        if(result===false)return false;
+        Dungeon.skillCooldowns[id]=Math.max(Dungeon.skillCooldowns[id]||0,Date.now()+(SPELL_REGISTRY[id].cooldown||5000));
+        refreshSkills();Dungeon.requestSave();return true;
+    }
+    return {entries,add,readBook,category,learned,toggle,use,refreshSkills};
+})();
+
+const BMMenuModels=(()=>{
+    const cache=new Map(),gold={r:.8,g:.66,b:.36},silver={r:.70,g:.77,b:.85},black={r:.10,g:.10,b:.14},wood={r:.4,g:.24,b:.12},glass={r:.42,g:.65,b:.75,a:.38};
+    function mesh(kind){
+        if(cache.has(kind))return cache.get(kind);
+        const m={vertices:[],faces:[]};
+        const part=(type,x,y,z,sx,sy,sz,color,rx=0)=>add3dShapeRigged(m,type,{x,y,z,rx,ry:0,rz:0},sx,sy,sz,color);
+        if(kind==='Sword'){
+            part('rec',0,-.3,0,.08,.65,.028,silver);part('tri',0,-.94,0,.08,.028,.22,silver,Math.PI/2);
+            part('rec',0,.33,0,.38,.055,.065,gold);part('rec',0,.61,0,.08,.25,.07,black);part('arc',0,.9,0,.11,.09,.09,gold);
+            part('rec',0,-.30,-.032,.018,.60,.008,gold);
+        }else if(kind==='Shield'){
+            part('arc',0,-.14,0,.72,.76,.13,gold);part('arc',0,-.14,-.07,.62,.66,.11,black);
+            part('rec',0,-.1,-.18,.065,.56,.025,silver);part('rec',0,-.19,-.18,.46,.05,.025,silver);
+            part('arc',0,-.13,-.22,.15,.15,.055,gold);
+        }else if(kind==='Wand'){
+            part('arc',0,.2,0,.065,.78,.065,wood);part('arc',0,-.61,0,.2,.11,.2,gold);
+            part('tri',0,-.79,0,.18,.18,.33,{r:.48,g:.3,b:.9},Math.PI/2);
+            part('arc',0,.87,0,.09,.09,.09,gold);
+        }else{
+            for(const y of [-.83,.83])part('rec',0,y,0,.52,.08,.34,gold);
+            for(const x of [-.43,.43])for(const z of [-.26,.26])part('arc',x,0,z,.035,.80,.035,black);
+            part('tri',0,-.40,0,.39,.27,.76,glass,-Math.PI/2);
+            part('tri',0,.40,0,.39,.27,.76,glass,Math.PI/2);
+            part('tri',0,.56,0,.27,.20,.40,gold,Math.PI/2);part('arc',0,.03,0,.025,.35,.025,gold);
+        }
+        prepareSpriteNormals(m);cache.set(kind,m);return m;
+    }
+    return {mesh};
+})();
+
+const BMShell=(()=>{
+    let root,inner,nav,body,heading,footer,mode='',key='',itemTab='equip',selected=null,filter='ALL',limit=100;
+    let menuPage='home',lastFrame=0,lastRefresh=0,listScroll=0,previousState=null,dataStamp='';
+    const art=[],cards=new Map(),scenes=new Set([1,2,3,'options','options2']);
+    const el=(tag,parent,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;parent?.append(e);return e;};
+    function button(parent,text,fn,cls){const b=el('button',parent,text,cls);b.type='button';b.onclick=fn;return b;}
+    function active(){return scenes.has(startGame)||startGame==='journal'||startGame==='deck_menu'&&['items','spells'].includes(activeDeckTab);}
+    function sound(){MusicEngine.play3DSFX('click');}
+    function invalidate(){key='';}
+    function exit(){selected=null;startGame=preGame==='explore'?'explore':3;BMTouch.cancel();invalidate();}
+    function blockEvents(node){
+        for(const t of ['pointerdown','pointermove','pointerup','pointercancel','mousedown','mousemove','mouseup','touchstart','touchmove','touchend','touchcancel','click','dblclick','wheel','keydown','keyup','keypress'])node.addEventListener(t,e=>e.stopPropagation());
+    }
+    function create(){
+        const css=el('style',document.head);css.textContent=`
+        html.bm-shell-open,body.bm-shell-open{touch-action:pan-y}
+        #bm-shell{position:fixed;inset:0;z-index:1004;background:#050504;color:#e5e0d4;font:15px/1.6 system-ui,sans-serif;touch-action:pan-y}
+        #bm-shell *{box-sizing:border-box}#bm-shell[hidden],#bm-shell [hidden]{display:none!important}
+        #bm-shell .inner{height:100%;max-width:1040px;margin:auto;display:flex;flex-direction:column;padding:22px max(18px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));gap:12px}
+        #bm-shell header{display:flex;align-items:center;justify-content:space-between;gap:12px}#bm-shell h1{font:30px/1.2 Georgia,serif;color:#dfcd9c;margin:0}
+        #bm-shell h2{font:23px/1.3 Georgia,serif;color:#dfcd9c;margin:4px 0 12px}#bm-shell h3{font:19px/1.3 Georgia,serif;color:#e2cf9e;margin:4px 0 8px}
+        #bm-shell .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#ab9771;margin:0 0 4px}
+        #bm-shell p{margin:0 0 14px}#bm-shell .muted{color:#aaa293;font-size:13px}#bm-shell .status{color:#b5d4bb;font-size:13px}
+        #bm-shell nav,#bm-shell .row{display:flex;flex-wrap:wrap;gap:8px}#bm-shell nav{border-bottom:1px solid #393123;padding-bottom:12px}
+        #bm-shell button,#bm-shell select{font:inherit;color:#e6dcc3;border:1px solid #504735;background:#11100c;border-radius:8px;padding:9px 13px;min-height:44px;cursor:pointer;touch-action:manipulation}
+        #bm-shell button[aria-pressed=true],#bm-shell .primary{border-color:#c6ad73;background:#282116;color:#ffe4a7}
+        #bm-shell button:disabled{opacity:.55;cursor:default}#bm-shell button:focus-visible,#bm-shell main:focus-visible{outline:2px solid #dbbc77;outline-offset:3px}
+        #bm-shell main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#8c7950 #13110c;padding:2px 3px 16px}
+        #bm-shell .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+        #bm-shell .card{border:1px solid #3c3326;border-radius:12px;padding:16px;background:#0e0d0a;margin-bottom:12px;overflow-wrap:anywhere}
+        #bm-shell .entry{display:block;width:100%;text-align:left;padding:16px;margin:0 0 12px;border-left:3px solid #7c6a46}#bm-shell .entry.unread{border-left-color:#c7a5df}
+        #bm-shell .entry small{display:block;color:#aca38f;margin-bottom:6px}#bm-shell .entry strong{display:block;color:#dfcd9c;font:19px/1.4 Georgia,serif;margin-bottom:7px}
+        #bm-shell .prose{white-space:pre-wrap;line-height:1.8;max-width:76ch;font-size:16px;overflow-wrap:anywhere}
+        #bm-shell footer{border-top:1px solid #393123;padding-top:10px;display:flex;justify-content:space-between;align-items:center;gap:12px}#bm-shell footer p{margin:0}
+        #bm-shell .models{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;max-width:740px;margin:0 auto 20px}
+        #bm-shell figure{margin:0;text-align:center;color:#bca876;font:13px Georgia,serif}#bm-shell .models canvas{width:100%;max-height:170px;aspect-ratio:1;object-fit:contain}
+        #bm-shell .dice{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));max-width:760px;margin:0 auto 18px}#bm-shell .dice canvas{width:100%;aspect-ratio:1}
+        #bm-shell .thumb{width:88px;height:88px;float:left;margin:0 12px 10px 0}#bm-shell .card:after{content:'';display:block;clear:both}
+        #bm-shell label.setting{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}#bm-shell input[type=range]{width:min(240px,55%);accent-color:#d3b674}
+        #bm-shell a{color:#dfc282}#bm-shell .danger{border-color:#80483e;color:#ffb9a6}
+        @media(max-width:600px){#bm-shell .inner{padding-top:14px;gap:10px}#bm-shell h1{font-size:26px}#bm-shell .models{gap:2px;margin-bottom:12px}#bm-shell .grid{grid-template-columns:1fr}#bm-shell nav{gap:5px}#bm-shell nav button{padding:8px 9px;font-size:13px}#bm-shell .dice{grid-template-columns:repeat(3,minmax(0,1fr));max-width:300px}#bm-shell .dice canvas{max-width:85px}#bm-shell .card{padding:13px}}
+        @media(max-height:450px){#bm-shell .inner{padding-top:10px}#bm-shell h1{font-size:23px}#bm-shell .models{max-width:440px}#bm-shell .dice{max-width:440px}#bm-shell .eyebrow{display:none}}
+        `;
+        root=el('section',document.body);root.id='bm-shell';root.hidden=true;root.setAttribute('aria-label','Runestones menus');blockEvents(root);
+        inner=el('div',root,null,'inner');const header=el('header',inner),titles=el('div',header);
+        el('p',titles,'Battle Mage · Suncat Studio','eyebrow');heading=el('h1',titles);
+        nav=el('nav',inner);nav.setAttribute('aria-label','Sections');body=el('main',inner);body.tabIndex=0;
+        footer=el('footer',inner);
+    }
+    function clear(){nav.replaceChildren();body.replaceChildren();footer.replaceChildren();art.length=0;lastFrame=0;}
+    function tabs(items,current,onChange){for(const [id,name]of items){const b=button(nav,name,()=>{sound();selected=null;limit=100;listScroll=0;onChange(id);invalidate();});b.setAttribute('aria-pressed',String(id===current));}}
+    function foot(label='Close',fn=exit){el('p',footer,'Swipe or scroll to read.','muted');button(footer,label,()=>{sound();fn();});}
+    function surface(parent,kind,data){const c=el('canvas',parent);c.width=c.height=192;c.setAttribute('aria-hidden','true');art.push({c,kind,data});return c;}
+    function studio(){
+        heading.textContent='A Suncat Studio Production';
+        const dice=el('div',body,null,'dice');for(const type of ['d4','d6','d8','d10','d12','d20']){const f=el('figure',dice);surface(f,'dice',new Dice(type));el('figcaption',f,type.toUpperCase());}
+        const card=el('article',body,null,'card');el('h2',card,'Runestones · Battle Mage');
+        el('p',card,'An independent fantasy adventure, card game and musical world by Suncat.');
+        el('p',card,'Development demo · features and saved-game formats may change. Keep a backup of this build and your save data.','muted');
+        el('h3',card,'About this world');
+        el('p',card,'Fantasy, divination and magical systems are presented for play and storytelling. Generated character dialogue can be inaccurate or unpredictable.');
+        el('h3',card,'Your data');
+        el('p',card,'This build uses browser storage for saves and preferences. When connected to the game server, multiplayer actions, chat and narration requests can be sent to that server. Avoid sharing sensitive personal information in chat. Clearing browser data can remove local progress.');
+        el('h3',card,'Credits and contact');
+        el('p',card,'Created by Suncat with AI-assisted development. Music combines procedural composition and synthesis with the game’s original songbook.');
+        el('p',card,'© 2026 Suncat · Original authored material. Third-party names and materials remain subject to their respective rights.');
+        const p=el('p',card);el('span',p,'Questions, feedback or rights concerns: ');const a=el('a',p,'suncatmedia@gmail.com');a.href='mailto:suncatmedia@gmail.com';
+        el('p',card,'Instagram: @suncat.meow','muted');
+        foot('Start menu',()=>{startGame=3;menuPage='home';});
+    }
+    function startWorld(){
+        Player[1].isCPU=0;window.settingsNarration=true;window.settingsChat=true;
+        if(typeof socket!=='undefined')socket.emit('toggle_narration',true);
+        preGame='explore';startGame=Dungeon.loadGame()?'explore':'charSelect';MusicEngine.followScene();
+    }
+    function cardGame(cpu){
+        Player=[new Field(0),new Field(1,cpu?1:0)];Player[0].opponent=Player[1];Player[1].opponent=Player[0];Player[1].isCPU=cpu?1:0;
+        if(!cpu){window.settingsNarration=false;window.settingsChat=false;if(typeof socket!=='undefined')socket.emit('toggle_narration',false);}
+        preGame=3;startGame=4;MusicEngine.followScene();
+    }
+    function tactics(){
+        const ids=Object.keys(CARD_MANIFEST_DB).map(Number).filter(id=>id<100&&CARD_MANIFEST_DB[id].type==='monster'),pick=()=>ids[Math.floor(Math.random()*ids.length)],sprite=pick();
+        const team=[{source:'player',index:sprite,sprite,dungeonContext:Array.from({length:78},(_,i)=>new Card(i,0))},...Array.from({length:Math.floor(Math.random()*6)},pick)];
+        Dungeon.startEidolonMinigame(team,Array.from({length:1+Math.floor(Math.random()*6)},pick),{stakes:'mock_menu',forcePlayerSprite:sprite});
+    }
+    function menu(){
+        heading.textContent='Runestones';
+        tabs([['home','Start menu'],['options','Settings'],['studio','Studio'],['welcome','Welcome / Devlog']],menuPage,id=>{if(id==='studio')startGame=1;else if(id==='welcome')startGame=0;else menuPage=id;});
+        if(menuPage==='options'){settings();foot('Start menu',()=>{menuPage='home';invalidate();});return;}
+        const models=el('div',body,null,'models');for(const name of ['Sword','Shield','Wand','Hourglass']){const f=el('figure',models);surface(f,'mesh',BMMenuModels.mesh(name));el('figcaption',f,name);}
+        el('h2',body,'Choose your adventure');
+        const grid=el('div',body,null,'grid');
+        const choices=[['Tutorial','Enter the world or continue your saved adventure.',startWorld],['vs CPU','Play a card battle against the computer.',()=>cardGame(true)],['vs Local','Share this device for a two-player card battle.',()=>cardGame(false)],['Tactics','A standalone practice encounter.',tactics],['Tarot','Explore a reading with the cards.',()=>{preGame=3;startGame='tarot';}],['Jukebox','Original songs and Serenade journeys.',()=>{preGame=3;startGame='jukebox';}],['Card Gallery','Browse the card collection.',()=>{viewingFullDeck=true;activePlaylist=getFullLibrary().map(c=>c.index);playlistIndex=0;preGame=3;startGame='grimoire';}]];
+        for(const [title,desc,fn]of choices){const b=button(grid,'',()=>{MusicEngine.init();sound();fn();invalidate();},'entry');el('strong',b,title);el('span',b,desc);}
+        el('p',footer,'Digital demo · Suncat Studio','muted');
+    }
+    function toggleSetting(parent,label,get,set){
+        const row=el('div',parent,null,'card row');el('span',row,label);
+        const b=button(row,get()?'On':'Off',()=>{set(!get());b.textContent=get()?'On':'Off';b.setAttribute('aria-pressed',String(get()));});b.setAttribute('aria-pressed',String(get()));
+    }
+    function settings(){
+        el('h2',body,'Settings');
+        toggleSetting(body,'Audio',()=>window.settingsAudio!==false,v=>{window.settingsAudio=v;if(v){MusicEngine.init();MusicEngine.followScene();}else MusicEngine.stop();});
+        toggleSetting(body,'AI narration',()=>!!window.settingsNarration,v=>{window.settingsNarration=v;if(typeof socket!=='undefined')socket.emit('toggle_narration',v);});
+        toggleSetting(body,'Chat',()=>!!window.settingsChat,v=>{window.settingsChat=v;});
+        const controls=el('label',body,null,'setting');el('span',controls,'Movement controls');const select=el('select',controls);
+        for(const [value,label]of [['touch','Touch'],['dpad','D-pad']]){const o=el('option',select,label);o.value=value;}select.value=window.settingsControlsMode;
+        select.onchange=()=>{BMTouch.settleCamera();BMTouch.cancel();window.settingsControlsMode=select.value;};
+        const sens=el('label',body,null,'setting'),label=el('span',sens,'Touch camera · '+BMTouch.sensitivity.toFixed(1)+'×'),slider=el('input',sens);
+        slider.type='range';slider.min=.5;slider.max=3;slider.step=.1;slider.value=BMTouch.sensitivity;slider.oninput=()=>{BMTouch.setSensitivity(slider.value);label.textContent='Touch camera · '+BMTouch.sensitivity.toFixed(1)+'×';};
+        for(const [kind,title]of [['music','Music volume'],['sfx','Sound effects']]){
+            const row=el('label',body,null,'setting');el('span',row,title);const input=el('input',row);input.type='range';input.min=0;input.max=1;input.step=.01;input.value=BattleMusic.settings[kind];input.oninput=()=>BattleMusic.setLevel(kind,input.value);
+        }
+        const graphics=el('label',body,null,'setting');el('span',graphics,'Graphics');const quality=el('select',graphics);
+        for(const [value,label]of [['auto','Automatic'],['0','Detailed'],['1','Balanced'],['2','Light']]){const option=el('option',quality,label);option.value=value;}quality.value=BMPerformance.mode;quality.onchange=()=>BMPerformance.setMode(quality.value);
+        button(body,'Advanced music settings',()=>BattleMusic.openSettings());
+        const volume=el('label',body,null,'setting');el('span',volume,'Master volume');const v=el('input',volume);v.type='range';v.min=0;v.max=1;v.step=.01;v.value=MusicEngine.outputVolume;v.oninput=()=>MusicEngine.setVolume(v.value);
+        el('p',body,'Left thumb: move and strafe. Right thumb: drag to look, tap to attack. A short final step finishes when you lift your thumb.','muted');
+        const row=el('div',body,null,'row');button(row,'Save game',()=>{Dungeon.requestSave();note.textContent='Save requested.';});button(row,'Start menu',()=>{Dungeon.requestSave();menuPage='home';startGame=3;invalidate();});
+        const note=el('p',body,'','status');note.setAttribute('role','status');
+        const danger=el('details',body,null,'card');el('summary',danger,'Delete saved session');el('p',danger,'Deletes your saved session and local journals. This cannot be undone.');
+        button(danger,'Delete saved session…',()=>{
+            const confirm=el('div',danger,null,'card');el('p',confirm,'Delete your save and journals?');
+            button(confirm,'Cancel',()=>confirm.remove());button(confirm,'Yes, delete',()=>{if(typeof socket!=='undefined')socket.emit('delete_save');for(const k of ['battlemage_save','runestones_chronicle','suncat_chronicle'])localStorage.removeItem(k);setTimeout(()=>location.reload(),200);},'danger');
+        },'danger');
+    }
+    function portrait(parent,id){const c=surface(parent,'portrait',id);c.className='thumb';}
+    function inventory(){
+        heading.textContent='Your collection';
+        tabs([['player','Player'],['deck','Deck'],['items','Items'],['spells','Spells'],['grimoire','Grimoire']],activeDeckTab,id=>{activeDeckTab=id;});
+        if(activeDeckTab==='items'){
+            const row=el('div',body,null,'row');for(const [id,label]of [['equip','Equip'],['use','Use'],['treasure','Treasure'],['misc','Misc']]){const b=button(row,label,()=>{itemTab=id;invalidate();});b.setAttribute('aria-pressed',String(itemTab===id));}
+            el('p',body,({equip:'Equip skills apply buffs or wards. Use again after cooldown to re-equip or stack their effects.',use:'Reusable item skills use the same cooldowns as your hotbar.',treasure:'Special trinkets, life-saving items and collected skillbooks.',misc:'Fish and materials stack here. Cooking, trading and crafting are planned.'})[itemTab],'muted');
+        }else el('p',body,'Tap a spell or summon to include or hide it in hotbar shuffles. Hidden skills remain learned; active summons are not dismissed.','muted');
+        let count=0;
+        for(const id of BMInventory.learned()){
+            const category=BMInventory.category(id);
+            if(activeDeckTab==='spells'?category!=='spell':category!==itemTab)continue;
+            count++;const data=CARD_MANIFEST_DB[id]||SPELL_REGISTRY[id],card=el('article',body,null,'card');portrait(card,id);
+            el('h3',card,data?.name||'Skill '+id);
+            const summoning=data?.type==='monster'||SPELL_REGISTRY[id]?.type==='summon';
+            el('p',card,(summoning?'Learned summon':'Learned skill')+(category==='equip'?' · Reusable buff':''),'muted');
+            const effect=SPELL_REGISTRY[id],statNames=['STR','CON','INT','AGI'];
+            if(category==='equip'&&effect){
+                const modifiers=effect.multiStat||((effect.buffStat!==undefined)?[{stat:effect.buffStat,amount:effect.amount}]:[]);
+                const detail=modifiers.map(m=>(m.stat==='all'?'All stats':statNames[m.stat])+' '+(m.amount>=0?'+':'')+m.amount).join(' · ');
+                if(detail)el('p',card,detail,'status');else if(effect.hits)el('p',card,effect.hits+' ward charges','status');
+            }
+            const row=el('div',card,null,'row');
+            const hidden=!!Dungeon.memory?.disabledSkills?.[id],b=button(row,hidden?'Hidden from hotbar':'In hotbar',()=>{BMInventory.toggle(id);invalidate();});b.setAttribute('aria-pressed',String(!hidden));
+            if(activeDeckTab==='items'&&SPELL_REGISTRY[id]){const use=button(row,category==='equip'?'Equip':'Use',()=>{BMInventory.use(id);invalidate();},'primary');use.dataset.useSkill=id;use.dataset.readyLabel=category==='equip'?'Equip':'Use';}
+        }
+        if(activeDeckTab==='items'){
+            for(const item of Object.values(BMInventory.entries())){
+                if(item.category!==itemTab||!(item.count>0))continue;
+                count++;const card=el('article',body,null,'card');
+                if(item.kind==='fish'){const c=surface(card,'fish',item.fishIndex);c.className='thumb';}
+                else if(item.kind==='skillbook')portrait(card,item.spellId);
+                el('h3',card,item.name+' × '+item.count);
+                if(item.kind==='skillbook'){
+                    const learned=!!Dungeon.spellsLearned?.[item.spellId];el('p',card,learned?'Already learned. The book stays in your treasures.':'Read one copy to permanently learn this skill.','muted');
+                    const b=button(card,learned?'Learned':'Read skillbook',()=>{BMInventory.readBook(item.key);invalidate();});b.disabled=learned;
+                }else el('p',card,item.kind==='fish'?'Saved catch · ingredient for a future update.':'Saved material · crafting is planned.','muted');
+            }
+            if(itemTab==='misc'&&Dungeon.memory.fishingRecord?.catches)el('p',body,`Fishing record: ${Dungeon.memory.fishingRecord.catches} total catches · Best ${Dungeon.memory.fishingRecord.bestCm||0} cm. Earlier catches were recorded only as totals; new catches fill the stacks above.`,'muted');
+        }
+        if(!count)el('p',body,activeDeckTab==='spells'?'No spells or summons learned yet.':'Nothing here yet. Learn item skills or collect items during your adventure.','card');
+        foot('Back to game');
+    }
+    function journalEntries(){
+        if(journalTab===' quest ')return BMQuestEntries();
+        if(journalTab===' story ')return storyViewMode==='main'?playerStoryBeats:playerGuildBeats;
+        let list=journalTab==='suncat'?suncatChronicle:playerChronicle;
+        if(journalTab==='record'&&filter!=='ALL')list=list.filter(e=>filter==='CHAPTERS'?['chapter','condensed','retrospective'].includes(e.entryType):!e.entryType||e.entryType==='record');
+        return [...list].reverse();
+    }
+    const entryText=e=>String(e.playerChronicle||e.text||'');
+    const entryTitle=e=>e.title||((e.entryType||'record').replace(/^./,x=>x.toUpperCase()))+(e.timestamp?' · '+e.timestamp:'');
+    function journal(){
+        heading.textContent='Journal & quests';
+        tabs([['record','Journal'],['suncat','Suncat'],[' quest ','Quests'],[' story ','Story'],['settings','Settings']],journalTab,id=>{journalTab=id;});
+        if(journalTab==='settings'){settings();foot();return;}
+        if(selected){
+            button(body,'← All entries',()=>{selected=null;invalidate();});
+            const card=el('article',body,null,'card');el('h2',card,entryTitle(selected));
+            if(selected.completed||selected.failed)el('p',card,selected.failed?'Failed':'Completed','status');
+            el('div',card,entryText(selected),'prose');if(selected.system_events?.length)el('p',card,selected.system_events.join(' · '),'status');
+        }else{
+            if(journalTab==='record'){
+                const row=el('div',body,null,'row');for(const [value,label]of [['ALL','All'],['CHAPTERS','Chapters'],['RECORDS','Records']]){const b=button(row,label,()=>{filter=value;limit=100;listScroll=0;invalidate();});b.setAttribute('aria-pressed',String(filter===value));}
+            }
+            if(journalTab===' story '){const row=el('div',body,null,'row');for(const [value,label]of [['main',"The Fool’s Journey"],['guild','Guild history']]){const b=button(row,label,()=>{storyViewMode=value;invalidate();});b.setAttribute('aria-pressed',String(storyViewMode===value));}}
+            const entries=journalEntries();el('p',body,entries.length+' entries · Tap any block to read.','muted');
+            for(const entry of entries.slice(0,limit)){
+                const b=button(body,'',()=>{listScroll=body.scrollTop;selected=entry;entry.isRead=true;try{if(journalTab==='record')localStorage.setItem('runestones_chronicle',JSON.stringify(playerChronicle));if(journalTab==='suncat')localStorage.setItem('suncat_chronicle',JSON.stringify(suncatChronicle));}catch(_){}invalidate();},'entry'+(entry.isRead===false?' unread':''));
+                el('small',b,entry.failed?'Failed':entry.completed?'Completed':entry.entryType||'Entry');el('strong',b,entryTitle(entry));el('span',b,entryText(entry).replace(/\s+/g,' ').slice(0,150)+(entryText(entry).length>150?'…':''));
+            }
+            if(entries.length>limit)button(body,'Load more entries',()=>{listScroll=body.scrollTop;limit+=100;invalidate();});
+            if(!entries.length)el('p',body,'The pages are blank…','card');
+        }
+        foot();
+    }
+    function drawArt(now){
+        if(document.hidden||now-lastFrame<70)return;
+        const dt=lastFrame?Math.min(.1,(now-lastFrame)/1000):.07;lastFrame=now;
+        const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,angle=reduced?.5:now/4000;
+        const saved={ctx,tX,tY,tL,tH};
+        try{
+            for(const a of art){
+                // Only draw visible thumbnails; journals do not allocate image atlases.
+                const bounds=a.c.getBoundingClientRect();if(bounds.bottom<0||bounds.top>innerHeight)continue;
+                if(a.done&&['portrait','fish'].includes(a.kind))continue;
+                ctx=a.c.getContext('2d');tX=tY=0;tL=tH=a.c.width;ctx.clearRect(0,0,tL,tH);
+                if(a.kind==='mesh')render3dMesh(a.data,5,5,12,.12,angle,0);
+                if(a.kind==='dice')a.data.animate(5,5,6,.7,reduced?.00001:dt);
+                if(a.kind==='fish')render3dMesh(BMFishSprites.mesh(a.data),5,5,11,.10,.45,0);
+                if(a.kind==='portrait'){
+                    let card=cards.get(a.data);if(!card){card=new Card(a.data,0);cards.set(a.data,card);if(cards.size>64)cards.delete(cards.keys().next().value);}
+                    drawPortrait(card.portrait,1,1,.8,0,0,0,CARD_PORTRAIT_PIXELS);
+                }
+                a.done=true;
+            }
+        }finally{ctx=saved.ctx;tX=saved.tX;tY=saved.tY;tL=saved.tL;tH=saved.tH;}
+    }
+    function sync(){
+        const on=active();if(!on&&!root)return;
+        if(!root)create();root.hidden=!on;
+        document.documentElement.classList.toggle('bm-shell-open',on);document.body.classList.toggle('bm-shell-open',on);
+        if(!on){if(mode){mode='';key='';art.length=0;body.replaceChildren();}previousState=startGame;return;}
+        BMTouch.cancel();
+        if(previousState!==startGame){selected=null;limit=100;listScroll=0;if(scenes.has(startGame)&&startGame!==1)menuPage='home';previousState=startGame;key='';}
+        mode=startGame===1?'studio':scenes.has(startGame)?'menu':startGame==='journal'?'journal':'inventory';
+        const next=[mode,mode==='menu'?menuPage:'',mode==='inventory'?activeDeckTab+itemTab:'',mode==='journal'?journalTab+filter+storyViewMode:'',selected?'detail':'list'].join('|');
+        if(next!==key){const detail=!!selected;clear();key=next;if(mode==='studio')studio();else if(mode==='menu')menu();else if(mode==='journal')journal();else inventory();body.scrollTop=detail?0:listScroll;}
+        const now=performance.now();
+        if(now-lastRefresh>400){lastRefresh=now;
+            if(mode==='journal'&&journalTab!=='settings'&&!selected){
+                const stamp=[journalTab,playerChronicle.length,suncatChronicle.length,playerStoryBeats.length,playerGuildBeats.length,journalTab===' quest '?JSON.stringify(BMQuestEntries()):''].join('|');
+                if(dataStamp&&dataStamp!==stamp){listScroll=body.scrollTop;invalidate();}dataStamp=stamp;
+            }
+            for(const b of root.querySelectorAll('[data-use-skill]')){
+            const ms=(Dungeon.skillCooldowns?.[b.dataset.useSkill]||0)-Date.now();b.disabled=ms>0;
+            b.textContent=ms>0?Math.ceil(ms/1000)+'s cooldown':b.dataset.readyLabel;
+        }}
+        drawArt(now);
+    }
+    return {sync,active,invalidate};
+})();
+
+function BMQuestEntries(){
+                    let allQuests = [];
+                    
+                    // --- NEW: THE ATLAS HELPER ---
+                    const getMapName = id =>
+                        MAP_DB[id]?.name || `Uncharted Sector (${id})`;
+
+                    let currentMapId = typeof Dungeon !== 'undefined' ? Dungeon.mapID : 0;
+                    let mem = typeof Dungeon !== 'undefined' ? Dungeon.memory : {};
+                    
+                    // A. MAIN QUEST PROGRESS TRACKER
+                    if (currentMapId !== 999) {
+                        let mqDesc = "";
+                        let isObjCompleted = false;
+                   
+                    if (currentMapId === 1) {
+                        mqDesc = 'Rescue the Magician in the Outer Dungeon.';
+                        isObjCompleted = !!mem.mq_map1;
+                    } else if (currentMapId === 2) {
+                        mqDesc = 'Help the Fool and expose the imposters at court.';
+                        isObjCompleted = !!mem.fake_emperor_dead;
+                    } else if (currentMapId === 5) {
+                        mqDesc = "Seek the Hermit's guidance in the Savage Forest.";
+                        isObjCompleted = !!mem.mq_map2;
+                    } else if (currentMapId === 30) {
+                        mqDesc = 'Defeat the Imp ambush and rescue the Apprentice.';
+                        isObjCompleted = !!mem.mq_map3;
+                    } else if (currentMapId === 4 || currentMapId === 31) {
+                        mqDesc = 'Defeat the Djinn and free the Witch Queen.';
+                        isObjCompleted = !!mem.djinn_dead;
+                    } else if ([6,7,8,9].includes(currentMapId)) {
+                        mqDesc = "Borrow the Ice Queen's ship and defeat the Kraken.";
+                        isObjCompleted = !!mem.kraken_dead;
+                    } else if ([10,11,12,13].includes(currentMapId)) {
+                        mqDesc = 'Aid the Fairy Queen and defeat the Dragon.';
+                        isObjCompleted = !!mem.dragon_dead;
+                    } else if (currentMapId === 14) {
+                        mqDesc = "Resolve the conflict with the Giant and his daughter, then return to the Elf Queen.";
+                        isObjCompleted = !!mem.mq_map14 || Dungeon.gd >= 6;
+                    } else if (currentMapId === 15) {
+                        mqDesc = 'Cross the Dark Bridge and reach the tower.';
+                    } else if (currentMapId >= 16 && currentMapId <= 20) {
+                        mqDesc = `Ascend the Dark Tower, floor ${currentMapId - 15} of 5.`;
+                    } else if (currentMapId === 21) {
+                        mqDesc = 'Confront the mastermind atop the tower.';
+                        isObjCompleted = !!(mem.mq_map21 || mem.fool_defeated);
+                    }
+
+                        if (mqDesc) allQuests.push({
+                            title: `- THE FOOL'S JOURNEY: ${getMapName(currentMapId)} -`,
+                            text: `Objective: ${mqDesc}`,
+                            completed: isObjCompleted,
+                            failed: false
+                        });
+                    }
+                    
+                    // A2. SCENARIO / DIRECTIVES
+                    if (typeof currentQuest !== 'undefined' && currentQuest !== "") {
+                        let isDone = currentQuest.includes("vanquished") || currentQuest.includes("defeated") || currentQuest.includes("Teleporting");
+                        allQuests.push({ title: "Scenario Directive", text: currentQuest, completed: isDone, isFailed: false });
+                    }
+
+                    // B. --- PERMANENT GUILD LEDGER ---
+                    let gRep = mem['guild_rep'] || 0;
+                    let gRank = mem['guild_rank'] || 'F';
+                    let gQuest = mem['guild_quest'] || { state: 0 };
+                    
+                    let gDetails = `Current Rank: ${gRank} | Reputation: ${gRep}. \n\n`;
+                    let isGuildDone = false;
+
+                    if (gQuest.state === 0) {
+                        gDetails += "Status: Available for work. Speak to a Guild Clerk to accept a new task.";
+                    } else if (gQuest.state === 1) {
+                        let qRank = gQuest.qRank || 'F';
+                        let tMapName = gQuest.targetMap !== undefined ? getMapName(gQuest.targetMap) : 'an Unknown Region';
+                        let coords = (gQuest.targetX !== undefined && gQuest.targetY !== undefined) ? ` at [X: ${gQuest.targetX}, Y: ${gQuest.targetY}]` : '';
+                        let objText = "Follow your guild directives.";
+                        
+                        // --- DYNAMIC QUEST DESCRIPTIONS ---
+                        switch (gQuest.type) {
+                            case 'bounty':
+                            case 'squad_bounty':
+                                objText = `Hunt down the target in ${tMapName}${coords} and eliminate them.`;
+                                break;
+                            case 'fetch':
+                                objText = `Locate the lost shipment in ${tMapName}${coords} and secure it.`;
+                                break;
+                            case 'escort':
+                                objText = `Find the VIP in ${tMapName}${coords} and safely escort them to their supplier on the same map. Keep them alive!`;
+                                break;
+                            case 'infestation':
+                                objText = `Clear out the monster infestation in ${tMapName}${coords}. (${gQuest.count || 0}/${gQuest.max || 4} defeated)`;
+                                break;
+                            case 'reinforcement':
+                                objText = `Rescue the pinned squad in ${tMapName}${coords} by joining their tactical battle.`;
+                                break;
+                            case 'mysterious_client':
+                                objText = `Meet the anonymous client in ${tMapName}${coords}. Proceed with extreme caution.`;
+                                break;
+                            case 'idol':
+                                objText = `Intercept the Cult supply line in ${tMapName}${coords} and secure the evil idol.`;
+                                break;
+                            case 'ritual':
+                                objText = `Sabotage the summoning ritual in ${tMapName}${coords}. Destroy the pillars! (${gQuest.count || 0}/${gQuest.max || 3} destroyed)`;
+                                break;
+                            case 'extraction':
+                                objText = `Locate the captured VIP in ${tMapName}${coords} and escort them to the extraction portal.`;
+                                break;
+                            case 'apex':
+                                objText = `Eradicate the regenerating bioweapon in ${tMapName}${coords}. Destroy all clones!`;
+                                break;
+                            case 'invasion':
+                                objText = `Warp to ${tMapName} immediately! Defend the town and execute the Commander.`;
+                                break;
+                            case 'exam_trap':
+                                objText = `Rendezvous with the Clerk in ${tMapName} for your private promotion exam.`;
+                                break;
+                            case 'inquisitor':
+                                objText = `Hunt the invisible stalker in the depths of ${tMapName}${coords}.`;
+                                break;
+                            case 'expedition':
+                                objText = `Monitor the trainees and secure the artifact in ${tMapName}${coords}.`;
+                                break;
+                            case 'stronghold':
+                                objText = `Raid the Cult stronghold in ${tMapName}${coords} and execute the Commander.`;
+                                break;
+                            case 'finale':
+                                objText = `Warp to ${tMapName} and reinforce the S-Rank teams against the Mastermind!`;
+                                break;
+                            case 'apex_hunt':
+                                objText = `Track down and execute the God-Tier threat in ${tMapName}${coords}.`;
+                                break;
+                            case 'dilemma':
+                                objText = `Exterminate the beast for the client in ${tMapName}${coords}.`;
+                                break;
+                        }
+
+                        gDetails += `Objective: ${objText} \nStatus: [ACTIVE] ${qRank}-Rank ${gQuest.tName || 'Task'}.`;
+                        
+                    } else if (gQuest.state === 2) {
+                        let qRank = gQuest.qRank || 'F';
+                        gDetails += `Objective: Proof secured! \nStatus: [READY] ${qRank}-Rank ${gQuest.tName || 'Task'}. Return to any Guild Clerk to collect your payment.`;
+                        isGuildDone = true; 
+                    }
+
+                    allQuests.push({
+                        title: "- ADVENTURER'S GUILD LEDGER -",
+                        text: gDetails,
+                        completed: isGuildDone,
+                        failed: false
+                    });
+
+                    // C. READ OTHER MISC QUESTS FROM MEMORY
+                    for (let key in mem) {
+                        if (key.startsWith('q_')) {
+                            let q = mem[key];
+                            if (typeof q !== 'object' || q.state === undefined) continue;
+
+                            let isDone = (q.state === 3);
+                            let isFailed = (q.state === 4);
+                            
+                            let details = "";
+                            if (!isDone && !isFailed) {
+                                let tName = (q.type || 'STORY').toUpperCase();
+                                let description = q.desc || 'Follow the current scenario.';
+                                details += `[${tName}] ${description} \n`;
+                                
+                                let tMapName = q.targetMap !== undefined ? getMapName(q.targetMap) : 'an Unknown Region';
+                                details += `Target Location: ${tMapName}. `;
+                                if (q.max > 1) details += `Progress: [${q.count}/${q.max}]. `;
+
+                                if (typeof Dungeon !== 'undefined' && Dungeon.activeWave && Dungeon.mapID === q.targetMap) {
+                                    let w = Dungeon.activeWave;
+                                    let aliveWaveFoes = Dungeon.npcs.filter(n => n.alignment === 'foe_wave' && !n.isDead).length;
+                                    details += `\n>> COMBAT EVENT ACTIVE: `;
+                                    if (w.state === 'spawning') details += `Next wave in ${Math.ceil(w.timer)}s! `;
+                                    else details += `Wave ${w.current + 1} of ${w.waves.length} | Foes remaining: ${aliveWaveFoes}! `;
+                                } else if (q.state === 2) {
+                                    details += `\n>> OBJECTIVE COMPLETE: Return to the quest giver.`;
+                                }
+                            } else if (isDone) {
+                                details = q.completeDesc || "Mission accomplished.";
+                            } else if (isFailed) {
+                                details = q.failedDesc || "Mission failed.";
+                            }
+
+                            allQuests.push({
+                                title: q.title || "Unknown Quest",
+                                text: details,
+                                completed: isDone,
+                                failed: isFailed
+                            });
+                        }
+                    }
+
+
+return allQuests;
+}
+
 const BM_DEVLOG = [
-  ['First sprite review', 'Review · superseded by Pass 2', [
-    'Traced small, blurry sprites to model-space fitting and the extra enlargement factors in buttons, cards, tactics and top-down drawing.',
-    'The first surgical guide proposed a partial normalization and animal-motion work. Pass 2 replaced that baseline with one shared calculation path.'
-  ]],
-  ['Sprite Pass 2 · the 128-pixel foundation', 'Integrated', [
-    'Fitted projected geometry into 128 × 128 world frames; kept four animation frames and eight directions. Shared shape calculations, normals and deterministic poses reduced repeated work.',
-    'Added face landmarks, joints and inactive part bounds. Refined selected humanoid motions and added a separate robed mage; preserved the imp, dancer, fairies, fox and rat choreography.'
-  ]],
-  ['Aura refinement', 'Integrated', [
-    'Replaced continuous rising buff confetti with body-attached curse, poison, burn, bind, shield, haste, support and electric auras, using layered shapes and motion.',
-    'Application, successful damage/healing ticks and ward hits pulse and tint the actor. Blood, debris, impacts and bursts still use particles; aura visibility follows actor and wall visibility.'
-  ]],
-  ['Proportions and form pass', 'Selective acceptance · dancer revision rolled back', [
-    'Reviewed shoulders, necks, torsos and garment seams. The queen refinement was kept.',
-    'The dancer revision was rejected: her preferred geometry and movement were restored. Imp/fire-imp movement stayed protected. The original 2D Empress artwork was left alone.'
-  ]],
-  ['Sprite Pass 4 · counterparts and attachments', 'Integrated', [
-    'Refined skeletons, the standing knight/gnome and mounted knight; corrected lance direction and added horse idle motion. Corrected sword placement, robe direction and pointed hats.',
-    'Added sixteen additional 3D counterpart families with lazy loading. Added hand, forearm, neck, pelvis and seat attachment metadata.',
-    'Dullahan camera aim was revised to the empty head slot above his torso; his carried head remains in his hand.'
-  ]],
-  ['Sprite and effects workshops', 'Separate authoring tools', [
-    'Built DOM editors to preview sprite templates, actions and views, and export code.',
-    'Built the particle/aura workshop with configurable blood, explosion, buff/debuff and electric effects, including oscillator-like motion. These are separate tools, not extra editors loaded during gameplay.'
-  ]],
-  ['Portrait framing and combined integration', 'Integrated · replaces the older paste-in guides', [
-    'Corrected small or off-center fox, slime, rat and player portraits across cards, buttons and tactics. Added matching crop placement, world projection and fractional wall-strip handling.',
-    'Combined the accepted sprite and aura work into the game. Earlier guide replacements should not be pasted over this integrated version.'
-  ]],
-  ['First Serenade integration', 'Earlier experiment · later revised', [
-    'Introduced scenario-aware music for maps, combat, menus, dialogue, guilds and shops, with NPC persona and regional music choices.',
-    'Feedback exposed slow battle changes, loud combat effects, missing familiar tunes and crackling on low-end phones. A classic-engine fallback was explored before the unified approach below.'
-  ]],
-  ['Startup and aura-tick repair', 'Integrated', [
-    'Fixed aura state being read before initialization when restoring summoned allies during startup.',
-    'Added a visible loading-error report so a script failure can be diagnosed without clearing the saved game.'
-  ]],
-  ['Classic + Serenade music director', 'Integrated', [
-    'Brought the classic repertoire into the shared music director and playback ownership, preserving familiar compositions alongside generated variations.',
-    'A fresh map visit favors its familiar tune. Later selections increasingly allow Serenade; the preference resets on the next map visit.',
-    'Refined battle entry, reinforcements, biome and dialogue cues. Added bounded generation/caches and mix headroom; footsteps, combat sounds and environmental ambience remain available.'
-  ]],
-  ['Jukebox, tarot and voices', 'Integrated', [
-    'Restored classic song selection alongside Serenade, taste training and voice choices. Taliesin and Twilight retain their original default voices; optional workshop voices can be auditioned.',
-    'Added named 2D / 3D / All portraits, rotating action displays, a coin that flicks toward the horizon, and lyric text. Removed the repeated title from the visualizer.',
-    'Generated vocals are sparse in the game world. Voice and generation fallbacks keep the lighter path available; variations are seeded, not a promise of mathematically unique songs forever.'
-  ]],
-  ['Mobile portraits and performance', 'Integrated', [
-    'Raised card portrait detail to 256 pixels while retaining 128-pixel world billboard frames. Kept caches lazy and bounded.',
-    'Added automatic graphics adjustment from observed frame timing rather than a stressful startup benchmark. Music and sound controls live in settings rather than dialogue.'
-  ]],
-  ['Flexible HUD and touch controls', 'Integrated · followed by layout corrections', [
-    'Used spare screen space for the movement pad, chat and hotbar. Portrait pad placement moves toward the center of the lower buffer and back toward its legacy location near a square view.',
-    'Added left-thumb movement, right-thumb camera look, strafing, tap attacks, larger touch attack/jump controls and adjustable camera sensitivity.',
-    'Independent touch ownership supports moving, attacking and jumping together. D-pad mode keeps world-tap attacks. Restored the minimap facing arrow.'
-  ]],
-  ['Water, dialogue and jumping', 'Integrated', [
-    'Corrected water terrain: tile 92 is passable, tile 93 remains locked; reviewed attacks and floor flashes at water boundaries.',
-    'Dialogue holds the player still and aims at a stable head position, so a drunk character can sway without dragging the camera.',
-    'Movement speed and jump height respond to AGI. Tile elevations participate in jump clearance, landing and falls. Defeated summoned monsters expend their summon card.'
-  ]],
-  ['Menu and tactics music follow-up', 'Integrated', [
-    'Start-menu navigation no longer restarts the theme. The familiar opening is held before generated menu music; settings and tarot have their own Serenade contexts.',
-    'Picking up or previewing a tactics card does not start a battle song; actual combat and results still change the music context.'
-  ]],
-  ['Taliesin lyrics and Suncat wiring', 'Client + companion server update', [
-    'Reconnected server lyrics to the active Taliesin song, with local verses as fallback, bounded requests and no stale callbacks changing a later song.',
-    'Corrected the summon path, clarified card IDs versus sprite IDs versus map NPC instances, and added bounded peaceful NPC interactions with client acknowledgements.',
-    'Limited repeated tool attempts and kept technical tool failures out of in-world journal narration. The matching server update is needed for server-side features.'
-  ]],
-  ['Hotbar, fishing and player-specific messages', 'Client + companion server update', [
-    'Corrected the accidental diagonal hotbar: it stays horizontal unless a complete vertical column fits in the landscape side buffer. Added keyboard 1–9 / 0 and numpad shortcuts for the first ten displayed actions.',
-    'Fishing catches now show a short-lived 3D silver minnow, striped river perch or moon carp with distinct shapes and colors, then disappear normally.',
-    'Routed player DM narration, private AI replies, tarot and personal journal responses to the intended recipient. Combat messages/sounds are map-scoped; public chat and intended shared Suncat/world events remain shared.'
-  ]],
-  ['Portrait visibility follow-up', 'Integrated', [
-    'Reduced and softened skill-number badges so more of each portrait remains visible.',
-    'Gave the first welcome screen 256-pixel 2D portraits, keeping later world rendering lightweight.'
-  ]],
-  ['Welcome showcase and development log', 'This update · 28 September 2026', [
-    'Added the jukebox-style 2D / 3D / All choice to the first screen, with sprite names, rotating 3D poses and a mixed default.',
-    'Made the welcome message and this log swipe-scrollable. Continue is explicit, so reading, changing portraits or scrolling does not skip the intro.',
-    'Reconstructed these passes from the conversation, guides and integrated files. This is a development record, not a complete commit history.'
-  ]],
-  ['Foundations reserved for later', 'Tracking only · not active gameplay systems', [
-    'Hand/forearm/neck/seat anchors and mini hitboxes do not yet equip items, attach mounts or resolve damage by body part.',
-    'Aura power and suppression fields do not yet enable mana sensing or aura hiding. Swimming and ships are future ways to cross locked water.'
-  ]]
+ ['Controls and exploration · September 28', 'Current update', [
+  'Preserved touch camera direction across dialogue and booster screens; added shortest-turn focus tracking and steadier thumb movement.',
+  'Basic attack speed now follows effective AGI across touch, keyboard and on-screen buttons. Camera collision and water rendering received a further pass.',
+  'Ward shields now share a compact display in 2D and 3D, with partial refill and an accurate recovery countdown.']],
+ ['Deck, items and journals', 'Current update', [
+  'Added Items and Spells tabs, reusable equipment skills and saved hotbar inclusion switches. Fish stack by species; treasures can hold skillbooks.',
+  'Journals, story entries and quests use swipeable lists with tap-to-open reading. Cooking, crafting and visible equipment attachments remain future work.']],
+ ['Welcome, studio and menu', 'Current update', [
+  'Unified the start choices and options in the black-and-gold presentation. Kept animated dice and added rotating sword, shield, wand and hourglass models.',
+  '2D portraits advance after three seconds; 3D displays retain their action cycle. Tossed jukebox coins stay gone.']],
+ ['Sprites and auras', 'Accepted passes combined', [
+  'Shared 128-pixel world frames and sharper 256-pixel portraits; corrected fitting, proportions, face tracking, knight lance and horse idle motion.',
+  'Refined the black-clad rogue and robed mage. Preserved the preferred dancer, imp, fairy and animal choreography; the rejected dancer revision remains rolled back.',
+  'Body-attached status auras, impact pulses and attachment landmarks are integrated. Body-part combat and aura suppression are reserved for later.']],
+ ['Music and mobile performance', 'Integrated', [
+  'Classic repertoire and Serenade share one scene director, with independent music/SFX gains, bounded caches and lighter mobile fallbacks.',
+  'Jukebox includes voice choices, lyrics and taste feedback. Region-specific instruments and vocal phrasing support generated journeys.']],
+ ['World and story continuity', 'Client + companion server work', [
+  'Integrated quest, summon, movement, ward, journal and private narration fixes. Server-owned narration and journal features still require the matching server.',
+  'Earlier paste-in guides are historical; this file combines accepted client changes. This log is a condensed development record.']]
 ];
 
 const BMIntro = (() => {
@@ -94464,7 +94985,7 @@ const BMIntro = (() => {
     scroll[page]=reader.scrollTop||0;page=value;
     if(page==='log'&&!logBuilt){
       el('h2',log,'Development log');
-      el('p',log,'The passes, refinements and reversals behind this version. Earlier guide stages are recorded as history; the accepted changes are already combined here.','muted');
+      el('p',log,'Recent changes and a condensed record of the accepted development passes.','muted');
       for(const [title,status,lines] of BM_DEVLOG){
         const article=el('article',log);el('h3',article,title);el('p',article,status,'status');
         const list=el('ul',article);for(const text of lines)el('li',list,text);
@@ -94536,7 +95057,7 @@ const BMIntro = (() => {
     welcome=el('div',reader);log=el('div',reader);
     el('h2',welcome,'A world in the making');
     el('p',welcome,'This game is still in development (I recently started expanding the maps), but I invite you to check it out.');
-    el('p',welcome,'You can find the Online Game World by clicking Tutorial in the main menu.');
+    el('p',welcome,'Choose Tutorial in the main menu to enter the world. The tutorial begins in the adventure.');
     el('p',welcome,'Feel free to reach out via Instagram DM (@suncat.meow) or email (suncatmedia@gmail.com) with any questions, comments, or concerns.');
     el('p',welcome,'— Suncat');
     el('p',welcome,'Open Devlog for the sprite, aura, music, controls and world updates, including the earlier passes and changes we revisited.','muted');
@@ -94582,7 +95103,7 @@ const BMIntro = (() => {
     if(lastFrame&&!paused&&!reduced)clock+=Math.min(100,time-lastFrame);
     lastFrame=time;
     if(card&&!dirty&&(paused||reduced))return;
-    if(!card||(!paused&&!reduced&&clock-changed>=14000))change();
+    if(!card||(!paused&&!reduced&&clock-changed>=(kind==='2d'?3000:14000)))change();
     const saved={ctx,tX,tY,tL,tH};let action='';
     try{
       ctx=surface.getContext('2d');tX=tY=0;tL=tH=surface.width;
@@ -94591,7 +95112,7 @@ const BMIntro = (() => {
         const elapsed=clock-changed,m=model,state=Math.min(m.meshes.length-1,Math.floor(elapsed/4000)),frame=Math.floor(elapsed/180)%4;
         action=['Idle','Walk','Attack','Flight'][state]||'Idle';
         render3dMesh(m.meshes[state][frame],m.x,m.y,m.scale,0,elapsed/12000*Math.PI*2,0);
-      }else drawPortrait(card.portrait,2,2,.6,0,0,(paused||reduced)?0:-1,CARD_PORTRAIT_PIXELS);
+      }else drawPortrait(card.portrait,2,2,.6,0,0,0,CARD_PORTRAIT_PIXELS);
     }finally{ctx=saved.ctx;tX=saved.tX;tY=saved.tY;tL=saved.tL;tH=saved.tH;}
     dirty=false;
     const text=card.name+' · '+(kind==='3d'?'3D · '+action:'2D');if(caption.textContent!==text)caption.textContent=text;
@@ -94604,6 +95125,7 @@ const BMIntro = (() => {
         BMPerformance.flushResize();
         BMTouch.settingsUI();
         BMIntro.sync();
+        BMShell.sync();
         const perfStart=performance.now();
         BMPerformance.begin(perfStart,!document.hidden&&['explore','battle','tactics'].includes(startGame)&&!Dungeon.isLoading);
         //TIMER
@@ -94621,7 +95143,7 @@ const BMIntro = (() => {
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0,0,wX,wY);
                 }
-            else if (startGame == 1){//suncat studios 
+            else if (startGame == 1 && !BMShell.active()){//legacy studio 
                 ctx.fillStyle = "rgba(0,6,13,1)";
                 ctx.fillRect(0,0,wX,wY);
                 //music timer
@@ -94688,7 +95210,7 @@ const BMIntro = (() => {
                 drawText(0, 5.5, 10, 0.6, "PRODUCTION", "rgba(100,100,100,1)", 1,'center');
                 drawText(0, 8.5, 10, 0.8, "Tap to continue", `rgba(255,255,0,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`, 1,'center');
                 }
-            else if (startGame == 2){//runestones tcg
+            else if (startGame == 2 && !BMShell.active()){//legacy title
                 //musictimer
 
 
@@ -94702,7 +95224,7 @@ const BMIntro = (() => {
                 drawText(0, 5.5, 10, 0.6, "DIGITAL DEMO", "rgba(100,100,100,1)", 1,'center');
                 drawText(0,7.5,10,.8,"Tap to start",`rgba(255,255,0,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
                 }
-            else if (startGame == 3){//selection screen
+            else if (startGame == 3 && !BMShell.active()){//legacy selection
                 ctx.fillStyle = "rgba(0,6,13,1)";
                 ctx.fillRect(0,0,wX,wY);
                 //music timer
@@ -94721,7 +95243,7 @@ const BMIntro = (() => {
                 drawText(5,8.75,5,.8,"Options",`rgba(255,255,0,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1,'center');
 
                 }
-            else if (startGame == 'options'){
+            else if (startGame == 'options' && !BMShell.active()){
                 ctx.fillStyle = "rgba(0,6,13,1)";
                 ctx.fillRect(0,0,wX,wY);
                 //music timer
@@ -94742,7 +95264,7 @@ const BMIntro = (() => {
                 //drawText(5.75,8.75,8,.8,"Adventure",`rgba(60,60,60,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`,1);
 
                 }
-            else if (startGame == 'options2'){
+            else if (startGame == 'options2' && !BMShell.active()){
                 ctx.fillStyle = "rgba(0,6,13,1)";
                 ctx.fillRect(0,0,wX,wY);
                 //music timer
@@ -95272,7 +95794,7 @@ const BMIntro = (() => {
 
             }
             
-            if (startGame === 'journal') {
+            if (startGame === 'journal' && !BMShell.active()) {
                 // 1. Dark Overlay Background
                 ctx.fillStyle = "rgba(0,6,13,1)";
                 ctx.fillRect(0,0,wX,wY);
@@ -95496,199 +96018,7 @@ const BMIntro = (() => {
                 // ----------------------------------------------------
                 else if (journalTab === ' quest ') {
                     drawText(1, 1.5, 8, 0.8, "- QUEST LOG -", '#d4af37', 1, 'center');
-                    let allQuests = [];
-                    
-                    // --- NEW: THE ATLAS HELPER ---
-                    const getMapName = id =>
-                        MAP_DB[id]?.name || `Uncharted Sector (${id})`;
-
-                    let currentMapId = typeof Dungeon !== 'undefined' ? Dungeon.mapID : 0;
-                    let mem = typeof Dungeon !== 'undefined' ? Dungeon.memory : {};
-                    
-                    // A. MAIN QUEST PROGRESS TRACKER
-                    if (currentMapId !== 999) {
-                        let mqDesc = "";
-                        let isObjCompleted = false;
-                   
-                    if (currentMapId === 1) {
-                        mqDesc = 'Rescue the Magician in the Outer Dungeon.';
-                        isObjCompleted = !!mem.mq_map1;
-                    } else if (currentMapId === 2) {
-                        mqDesc = 'Help the Fool and expose the imposters at court.';
-                        isObjCompleted = !!mem.fake_emperor_dead;
-                    } else if (currentMapId === 5) {
-                        mqDesc = "Seek the Hermit's guidance in the Savage Forest.";
-                        isObjCompleted = !!mem.mq_map2;
-                    } else if (currentMapId === 30) {
-                        mqDesc = 'Defeat the Imp ambush and rescue the Apprentice.';
-                        isObjCompleted = !!mem.mq_map3;
-                    } else if (currentMapId === 4 || currentMapId === 31) {
-                        mqDesc = 'Defeat the Djinn and free the Witch Queen.';
-                        isObjCompleted = !!mem.djinn_dead;
-                    } else if ([6,7,8,9].includes(currentMapId)) {
-                        mqDesc = "Borrow the Ice Queen's ship and defeat the Kraken.";
-                        isObjCompleted = !!mem.kraken_dead;
-                    } else if ([10,11,12,13].includes(currentMapId)) {
-                        mqDesc = 'Aid the Fairy Queen and defeat the Dragon.';
-                        isObjCompleted = !!mem.dragon_dead;
-                    } else if (currentMapId === 14) {
-                        mqDesc = "Resolve the conflict with the Giant and his daughter, then return to the Elf Queen.";
-                        isObjCompleted = !!mem.mq_map14 || Dungeon.gd >= 6;
-                    } else if (currentMapId === 15) {
-                        mqDesc = 'Cross the Dark Bridge and reach the tower.';
-                    } else if (currentMapId >= 16 && currentMapId <= 20) {
-                        mqDesc = `Ascend the Dark Tower, floor ${currentMapId - 15} of 5.`;
-                    } else if (currentMapId === 21) {
-                        mqDesc = 'Confront the mastermind atop the tower.';
-                        isObjCompleted = !!(mem.mq_map21 || mem.fool_defeated);
-                    }
-
-                        if (mqDesc) allQuests.push({
-                            title: `- THE FOOL'S JOURNEY: ${getMapName(currentMapId)} -`,
-                            text: `Objective: ${mqDesc}`,
-                            completed: isObjCompleted,
-                            failed: false
-                        });
-                    }
-                    
-                    // A2. SCENARIO / DIRECTIVES
-                    if (typeof currentQuest !== 'undefined' && currentQuest !== "") {
-                        let isDone = currentQuest.includes("vanquished") || currentQuest.includes("defeated") || currentQuest.includes("Teleporting");
-                        allQuests.push({ title: "Scenario Directive", text: currentQuest, completed: isDone, isFailed: false });
-                    }
-
-                    // B. --- PERMANENT GUILD LEDGER ---
-                    let gRep = mem['guild_rep'] || 0;
-                    let gRank = mem['guild_rank'] || 'F';
-                    let gQuest = mem['guild_quest'] || { state: 0 };
-                    
-                    let gDetails = `Current Rank: ${gRank} | Reputation: ${gRep}. \n\n`;
-                    let isGuildDone = false;
-
-                    if (gQuest.state === 0) {
-                        gDetails += "Status: Available for work. Speak to a Guild Clerk to accept a new task.";
-                    } else if (gQuest.state === 1) {
-                        let qRank = gQuest.qRank || 'F';
-                        let tMapName = gQuest.targetMap !== undefined ? getMapName(gQuest.targetMap) : 'an Unknown Region';
-                        let coords = (gQuest.targetX !== undefined && gQuest.targetY !== undefined) ? ` at [X: ${gQuest.targetX}, Y: ${gQuest.targetY}]` : '';
-                        let objText = "Follow your guild directives.";
-                        
-                        // --- DYNAMIC QUEST DESCRIPTIONS ---
-                        switch (gQuest.type) {
-                            case 'bounty':
-                            case 'squad_bounty':
-                                objText = `Hunt down the target in ${tMapName}${coords} and eliminate them.`;
-                                break;
-                            case 'fetch':
-                                objText = `Locate the lost shipment in ${tMapName}${coords} and secure it.`;
-                                break;
-                            case 'escort':
-                                objText = `Find the VIP in ${tMapName}${coords} and safely escort them to their supplier on the same map. Keep them alive!`;
-                                break;
-                            case 'infestation':
-                                objText = `Clear out the monster infestation in ${tMapName}${coords}. (${gQuest.count || 0}/${gQuest.max || 4} defeated)`;
-                                break;
-                            case 'reinforcement':
-                                objText = `Rescue the pinned squad in ${tMapName}${coords} by joining their tactical battle.`;
-                                break;
-                            case 'mysterious_client':
-                                objText = `Meet the anonymous client in ${tMapName}${coords}. Proceed with extreme caution.`;
-                                break;
-                            case 'idol':
-                                objText = `Intercept the Cult supply line in ${tMapName}${coords} and secure the evil idol.`;
-                                break;
-                            case 'ritual':
-                                objText = `Sabotage the summoning ritual in ${tMapName}${coords}. Destroy the pillars! (${gQuest.count || 0}/${gQuest.max || 3} destroyed)`;
-                                break;
-                            case 'extraction':
-                                objText = `Locate the captured VIP in ${tMapName}${coords} and escort them to the extraction portal.`;
-                                break;
-                            case 'apex':
-                                objText = `Eradicate the regenerating bioweapon in ${tMapName}${coords}. Destroy all clones!`;
-                                break;
-                            case 'invasion':
-                                objText = `Warp to ${tMapName} immediately! Defend the town and execute the Commander.`;
-                                break;
-                            case 'exam_trap':
-                                objText = `Rendezvous with the Clerk in ${tMapName} for your private promotion exam.`;
-                                break;
-                            case 'inquisitor':
-                                objText = `Hunt the invisible stalker in the depths of ${tMapName}${coords}.`;
-                                break;
-                            case 'expedition':
-                                objText = `Monitor the trainees and secure the artifact in ${tMapName}${coords}.`;
-                                break;
-                            case 'stronghold':
-                                objText = `Raid the Cult stronghold in ${tMapName}${coords} and execute the Commander.`;
-                                break;
-                            case 'finale':
-                                objText = `Warp to ${tMapName} and reinforce the S-Rank teams against the Mastermind!`;
-                                break;
-                            case 'apex_hunt':
-                                objText = `Track down and execute the God-Tier threat in ${tMapName}${coords}.`;
-                                break;
-                            case 'dilemma':
-                                objText = `Exterminate the beast for the client in ${tMapName}${coords}.`;
-                                break;
-                        }
-
-                        gDetails += `Objective: ${objText} \nStatus: [ACTIVE] ${qRank}-Rank ${gQuest.tName || 'Task'}.`;
-                        
-                    } else if (gQuest.state === 2) {
-                        let qRank = gQuest.qRank || 'F';
-                        gDetails += `Objective: Proof secured! \nStatus: [READY] ${qRank}-Rank ${gQuest.tName || 'Task'}. Return to any Guild Clerk to collect your payment.`;
-                        isGuildDone = true; 
-                    }
-
-                    allQuests.push({
-                        title: "- ADVENTURER'S GUILD LEDGER -",
-                        text: gDetails,
-                        completed: isGuildDone,
-                        failed: false
-                    });
-
-                    // C. READ OTHER MISC QUESTS FROM MEMORY
-                    for (let key in mem) {
-                        if (key.startsWith('q_')) {
-                            let q = mem[key];
-                            if (typeof q !== 'object' || q.state === undefined) continue;
-
-                            let isDone = (q.state === 3);
-                            let isFailed = (q.state === 4);
-                            
-                            let details = "";
-                            if (!isDone && !isFailed) {
-                                let tName = (q.type || 'STORY').toUpperCase();
-                                let description = q.desc || 'Follow the current scenario.';
-                                details += `[${tName}] ${description} \n`;
-                                
-                                let tMapName = q.targetMap !== undefined ? getMapName(q.targetMap) : 'an Unknown Region';
-                                details += `Target Location: ${tMapName}. `;
-                                if (q.max > 1) details += `Progress: [${q.count}/${q.max}]. `;
-
-                                if (typeof Dungeon !== 'undefined' && Dungeon.activeWave && Dungeon.mapID === q.targetMap) {
-                                    let w = Dungeon.activeWave;
-                                    let aliveWaveFoes = Dungeon.npcs.filter(n => n.alignment === 'foe_wave' && !n.isDead).length;
-                                    details += `\n>> COMBAT EVENT ACTIVE: `;
-                                    if (w.state === 'spawning') details += `Next wave in ${Math.ceil(w.timer)}s! `;
-                                    else details += `Wave ${w.current + 1} of ${w.waves.length} | Foes remaining: ${aliveWaveFoes}! `;
-                                } else if (q.state === 2) {
-                                    details += `\n>> OBJECTIVE COMPLETE: Return to the quest giver.`;
-                                }
-                            } else if (isDone) {
-                                details = q.completeDesc || "Mission accomplished.";
-                            } else if (isFailed) {
-                                details = q.failedDesc || "Mission failed.";
-                            }
-
-                            allQuests.push({
-                                title: q.title || "Unknown Quest",
-                                text: details,
-                                completed: isDone,
-                                failed: isFailed
-                            });
-                        }
-                    }
+                    const allQuests = BMQuestEntries();
 
                     // --- STATE MANAGEMENT ---
                     if (typeof window.questFullscreenIndex === 'undefined') window.questFullscreenIndex = -1;
@@ -96119,7 +96449,7 @@ const BMIntro = (() => {
                         drawText(4, 9.25, 2, 0.6, "CLOSE", 'white', 1, 'center');
                     }        
                 // TABS You want Grimoire, Player, and Deck
-                const tabs = ['player', 'deck', 'grimoire'];
+                const tabs = ['player','deck','items','spells','grimoire'];
                 const tabWidth = 10 / tabs.length; // Will be 3.33 grid spaces each
 
                 for (let i = 0; i < tabs.length; i++) {
@@ -97869,7 +98199,7 @@ const BMIntro = (() => {
             spawn_npc:[[999,500001,'SPEAKER_X','SPEAKER_Y',15,'stationary','#ffffff',[],['Hello!'],null,'dialogue',null,false,'friendly',[],[],false,[],[]],'Native spawn arguments; use Advanced JSON. Use a unique NPC ID.'],
             mass_transform:[{targetType:15,newType:15,newRole:'battle',newAlignment:'foe'},'Targets every matching sprite.']
         };
-        const known = new Set(['give_card', 'remove_card', 'consume_items', 'rob_player', 'add_stat', 'become_ally', 'add_escort', 'remove_escort', 'load_map', 'set_flag', 'set_memory', 'change_weather', 'change_sky', 'set_map_song', 'restore_map_song', 'spawn_npc', 'spawn_ephemeral_npc', 'disappear', 'kill_type', 'kill_all', 'transform_npc', 'mass_transform', 'rout_foes', 'start_battle', 'start_wave', 'start_hunted', 'shield_bash_npc', 'npc_strike_player', 'start_minigame', 'stop_hunted', 'start_tactics', 'start_tutorial', 'notify', 'set_dialogue', 'inject_dialogue', 'trigger_dialogue', 'open_shop', 'close_dialogue', 'clear_dialogue', 'update_quest_state', 'update_quest_count', 'open_booster', 'cleanup_quest_npcs', 'open_guild_menu', 'train', 'play_song', 'play_sfx', 'spectate', 'download_text_file']);
+        const known = new Set(['give_item','give_skillbook','give_card', 'remove_card', 'consume_items', 'rob_player', 'add_stat', 'become_ally', 'add_escort', 'remove_escort', 'load_map', 'set_flag', 'set_memory', 'change_weather', 'change_sky', 'set_map_song', 'restore_map_song', 'spawn_npc', 'spawn_ephemeral_npc', 'disappear', 'kill_type', 'kill_all', 'transform_npc', 'mass_transform', 'rout_foes', 'start_battle', 'start_wave', 'start_hunted', 'shield_bash_npc', 'npc_strike_player', 'start_minigame', 'stop_hunted', 'start_tactics', 'start_tutorial', 'notify', 'set_dialogue', 'inject_dialogue', 'trigger_dialogue', 'open_shop', 'close_dialogue', 'clear_dialogue', 'update_quest_state', 'update_quest_count', 'open_booster', 'cleanup_quest_npcs', 'open_guild_menu', 'train', 'play_song', 'play_sfx', 'spectate', 'download_text_file']);
         function validateActions(list, path='Actions', issues=[], depth=0) {
             if (!Array.isArray(list)) { issues.push(path+': expected an action list.'); return issues; }
             if (depth>20) { issues.push(path+': nesting exceeds 20 levels.'); return issues; }
