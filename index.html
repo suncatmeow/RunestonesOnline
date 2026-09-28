@@ -68612,19 +68612,8 @@ window.BMPerformance=BMPerformance;
                     
                     return;
                 }
-                if (startGame == 0){
-                    MusicEngine.init();
-
-                
-
-                    MusicEngine.play3DSFX('warp');
-                    
-                    
-                    startGame = 1;
-                    lastSongTime = Date.now();
-                    lastTriggerTime = Date.now();
-                    return;
-                }
+                // The welcome overlay owns its explicit Continue button.
+                if (startGame == 0) return;
                 if (startGame == 'charSelect') {
                     /*
                     // 1. LEFT ARROW (Prev Sprite)
@@ -91075,7 +91064,7 @@ const BattleMusic = (() => {
     for(const d of EXTRA_SPRITES)if(!seen.has(d.id)){seen.add(d.id);out.push(d.id);}
     return out;
   }
-  function makeDisplayModel(id){
+  function makeDisplayModel(id,layout={}){
     const d=spriteDefinition(id),meshes=[],bounds=[Infinity,Infinity,-Infinity,-Infinity];
     const had=Object.prototype.hasOwnProperty.call(window,'cacheAngle'),old=window.cacheAngle;
     try{
@@ -91094,8 +91083,8 @@ const BattleMusic = (() => {
       }
     }finally{if(had)window.cacheAngle=old;else delete window.cacheAngle;}
     // One stable fit for every pose and view; rotating does not pump the scale.
-    const scale=Math.min(7.8/((bounds[2]-bounds[0])/.9),5.5/((bounds[3]-bounds[1])/.9))*.9;
-    return {id:d.start,meshes,scale,x:5-((bounds[0]+bounds[2])/2-.5)/.9*scale,y:6.7-((bounds[1]+bounds[3])/2-.45)/.9*scale};
+    const scale=Math.min((layout.width??7.8)/((bounds[2]-bounds[0])/.9),(layout.height??5.5)/((bounds[3]-bounds[1])/.9))*.9;
+    return {id:d.start,meshes,scale,x:5-((bounds[0]+bounds[2])/2-.5)/.9*scale,y:(layout.centerY??6.7)-((bounds[1]+bounds[3])/2-.45)/.9*scale};
   }
   function changeReading(){
     readingKind=readingMode==='all'?(displayTurn++%2?'3d':'2d'):readingMode;
@@ -91297,6 +91286,7 @@ const BattleMusic = (() => {
   }
   return {profiles,settings,attach,tick,play,stop,togglePause,cue,followScene,next,setLevel,setPersona,installUI,drawReading,
     normalizeProfile,persona,optionsFor,resolve,voiceBudget,hash,region,threats,ambientKind,rateCurrent,
+    spriteDisplay:Object.freeze({name:displaySpriteName,families:displayFamilies,model:makeDisplayModel}),
     get status(){return lastStatus;},get scene(){return desired;},get current(){return current;},
     get diagnostics(){return {repertoire:{visit:visit.epoch,selections:visit.count,nextClassicChance:Math.max(repertoirePolicy.floor,repertoirePolicy.decay**visit.count),source:current?.choice?.source,classicId:current?.choice?.classicId},generation,queued:jobs.length,cache:cache.size,building:building.size,failures,preparing:!!incoming,retiring:!!retiring,worker:!!worker,pickup:!!pickup,ambience:ambience?.kind||null};},
     _test:{vocalLines,updateLyrics,makeDisplayModel,displayFamilies,coinPose,visualState:()=>({readingMode,readingKind,readingClock,readingChanged,coinGone,coinFlight,coinHit,model:displayModel?.id}),setReader(fn){readScene=fn;},setClock(fn){now=fn;},reset(){stopPlayers();visit={owner:null,stamp:null,epoch:0,count:0,mapStarted:false,last:null,recent:[]};menuCount=0;revisions.clear();previousMode=previousBase=null;encounter=encounterMap=null;explicit=manual=null;lastThreat=lastFight=-Infinity;recoveryUntil=0;hold=paused=false;},prepare,transition,choosePiece,commitPiece,classicPool,syncVisit,repertoirePolicy}
@@ -94033,10 +94023,251 @@ BattleMusic.installUI();
             // Leave as -1 to let it animate normally!
             let testFrame = 0; 
             let testID = 219;
+// Reconstructed development history. Keep revisions, reversals and reserved work
+// explicit; these are development passes, not invented release/commit dates.
+const BM_DEVLOG = [
+  ['First sprite review', 'Review · superseded by Pass 2', [
+    'Traced small, blurry sprites to model-space fitting and the extra enlargement factors in buttons, cards, tactics and top-down drawing.',
+    'The first surgical guide proposed a partial normalization and animal-motion work. Pass 2 replaced that baseline with one shared calculation path.'
+  ]],
+  ['Sprite Pass 2 · the 128-pixel foundation', 'Integrated', [
+    'Fitted projected geometry into 128 × 128 world frames; kept four animation frames and eight directions. Shared shape calculations, normals and deterministic poses reduced repeated work.',
+    'Added face landmarks, joints and inactive part bounds. Refined selected humanoid motions and added a separate robed mage; preserved the imp, dancer, fairies, fox and rat choreography.'
+  ]],
+  ['Aura refinement', 'Integrated', [
+    'Replaced continuous rising buff confetti with body-attached curse, poison, burn, bind, shield, haste, support and electric auras, using layered shapes and motion.',
+    'Application, successful damage/healing ticks and ward hits pulse and tint the actor. Blood, debris, impacts and bursts still use particles; aura visibility follows actor and wall visibility.'
+  ]],
+  ['Proportions and form pass', 'Selective acceptance · dancer revision rolled back', [
+    'Reviewed shoulders, necks, torsos and garment seams. The queen refinement was kept.',
+    'The dancer revision was rejected: her preferred geometry and movement were restored. Imp/fire-imp movement stayed protected. The original 2D Empress artwork was left alone.'
+  ]],
+  ['Sprite Pass 4 · counterparts and attachments', 'Integrated', [
+    'Refined skeletons, the standing knight/gnome and mounted knight; corrected lance direction and added horse idle motion. Corrected sword placement, robe direction and pointed hats.',
+    'Added sixteen additional 3D counterpart families with lazy loading. Added hand, forearm, neck, pelvis and seat attachment metadata.',
+    'Dullahan camera aim was revised to the empty head slot above his torso; his carried head remains in his hand.'
+  ]],
+  ['Sprite and effects workshops', 'Separate authoring tools', [
+    'Built DOM editors to preview sprite templates, actions and views, and export code.',
+    'Built the particle/aura workshop with configurable blood, explosion, buff/debuff and electric effects, including oscillator-like motion. These are separate tools, not extra editors loaded during gameplay.'
+  ]],
+  ['Portrait framing and combined integration', 'Integrated · replaces the older paste-in guides', [
+    'Corrected small or off-center fox, slime, rat and player portraits across cards, buttons and tactics. Added matching crop placement, world projection and fractional wall-strip handling.',
+    'Combined the accepted sprite and aura work into the game. Earlier guide replacements should not be pasted over this integrated version.'
+  ]],
+  ['First Serenade integration', 'Earlier experiment · later revised', [
+    'Introduced scenario-aware music for maps, combat, menus, dialogue, guilds and shops, with NPC persona and regional music choices.',
+    'Feedback exposed slow battle changes, loud combat effects, missing familiar tunes and crackling on low-end phones. A classic-engine fallback was explored before the unified approach below.'
+  ]],
+  ['Startup and aura-tick repair', 'Integrated', [
+    'Fixed aura state being read before initialization when restoring summoned allies during startup.',
+    'Added a visible loading-error report so a script failure can be diagnosed without clearing the saved game.'
+  ]],
+  ['Classic + Serenade music director', 'Integrated', [
+    'Brought the classic repertoire into the shared music director and playback ownership, preserving familiar compositions alongside generated variations.',
+    'A fresh map visit favors its familiar tune. Later selections increasingly allow Serenade; the preference resets on the next map visit.',
+    'Refined battle entry, reinforcements, biome and dialogue cues. Added bounded generation/caches and mix headroom; footsteps, combat sounds and environmental ambience remain available.'
+  ]],
+  ['Jukebox, tarot and voices', 'Integrated', [
+    'Restored classic song selection alongside Serenade, taste training and voice choices. Taliesin and Twilight retain their original default voices; optional workshop voices can be auditioned.',
+    'Added named 2D / 3D / All portraits, rotating action displays, a coin that flicks toward the horizon, and lyric text. Removed the repeated title from the visualizer.',
+    'Generated vocals are sparse in the game world. Voice and generation fallbacks keep the lighter path available; variations are seeded, not a promise of mathematically unique songs forever.'
+  ]],
+  ['Mobile portraits and performance', 'Integrated', [
+    'Raised card portrait detail to 256 pixels while retaining 128-pixel world billboard frames. Kept caches lazy and bounded.',
+    'Added automatic graphics adjustment from observed frame timing rather than a stressful startup benchmark. Music and sound controls live in settings rather than dialogue.'
+  ]],
+  ['Flexible HUD and touch controls', 'Integrated · followed by layout corrections', [
+    'Used spare screen space for the movement pad, chat and hotbar. Portrait pad placement moves toward the center of the lower buffer and back toward its legacy location near a square view.',
+    'Added left-thumb movement, right-thumb camera look, strafing, tap attacks, larger touch attack/jump controls and adjustable camera sensitivity.',
+    'Independent touch ownership supports moving, attacking and jumping together. D-pad mode keeps world-tap attacks. Restored the minimap facing arrow.'
+  ]],
+  ['Water, dialogue and jumping', 'Integrated', [
+    'Corrected water terrain: tile 92 is passable, tile 93 remains locked; reviewed attacks and floor flashes at water boundaries.',
+    'Dialogue holds the player still and aims at a stable head position, so a drunk character can sway without dragging the camera.',
+    'Movement speed and jump height respond to AGI. Tile elevations participate in jump clearance, landing and falls. Defeated summoned monsters expend their summon card.'
+  ]],
+  ['Menu and tactics music follow-up', 'Integrated', [
+    'Start-menu navigation no longer restarts the theme. The familiar opening is held before generated menu music; settings and tarot have their own Serenade contexts.',
+    'Picking up or previewing a tactics card does not start a battle song; actual combat and results still change the music context.'
+  ]],
+  ['Taliesin lyrics and Suncat wiring', 'Client + companion server update', [
+    'Reconnected server lyrics to the active Taliesin song, with local verses as fallback, bounded requests and no stale callbacks changing a later song.',
+    'Corrected the summon path, clarified card IDs versus sprite IDs versus map NPC instances, and added bounded peaceful NPC interactions with client acknowledgements.',
+    'Limited repeated tool attempts and kept technical tool failures out of in-world journal narration. The matching server update is needed for server-side features.'
+  ]],
+  ['Hotbar, fishing and player-specific messages', 'Client + companion server update', [
+    'Corrected the accidental diagonal hotbar: it stays horizontal unless a complete vertical column fits in the landscape side buffer. Added keyboard 1–9 / 0 and numpad shortcuts for the first ten displayed actions.',
+    'Fishing catches now show a short-lived 3D silver minnow, striped river perch or moon carp with distinct shapes and colors, then disappear normally.',
+    'Routed player DM narration, private AI replies, tarot and personal journal responses to the intended recipient. Combat messages/sounds are map-scoped; public chat and intended shared Suncat/world events remain shared.'
+  ]],
+  ['Portrait visibility follow-up', 'Integrated', [
+    'Reduced and softened skill-number badges so more of each portrait remains visible.',
+    'Gave the first welcome screen 256-pixel 2D portraits, keeping later world rendering lightweight.'
+  ]],
+  ['Welcome showcase and development log', 'This update · 28 September 2026', [
+    'Added the jukebox-style 2D / 3D / All choice to the first screen, with sprite names, rotating 3D poses and a mixed default.',
+    'Made the welcome message and this log swipe-scrollable. Continue is explicit, so reading, changing portraits or scrolling does not skip the intro.',
+    'Reconstructed these passes from the conversation, guides and integrated files. This is a development record, not a complete commit history.'
+  ]],
+  ['Foundations reserved for later', 'Tracking only · not active gameplay systems', [
+    'Hand/forearm/neck/seat anchors and mini hitboxes do not yet equip items, attach mounts or resolve damage by body part.',
+    'Aura power and suppression fields do not yet enable mana sensing or aura hiding. Swimming and ships are future ways to cross locked water.'
+  ]]
+];
+
+const BMIntro = (() => {
+  let root, surface, caption, modeButton, pauseButton, reader, welcome, log, welcomeButton, logButton;
+  let visible=false, mode='all', kind='2d', turn=0, card=null, model=null, last2D=-1, last3D=-1;
+  let lastFrame=0, clock=0, changed=0, paused=false, page='welcome', logBuilt=false, dirty=true;
+  const scroll={welcome:0,log:0};
+  const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  function el(tag, parent, text, cls){const e=document.createElement(tag);if(text)e.textContent=text;if(cls)e.className=cls;if(parent)parent.append(e);return e;}
+  function button(parent,text,fn){const b=el('button',parent,text);b.type='button';b.onclick=fn;return b;}
+  function selectPage(value){
+    scroll[page]=reader.scrollTop||0;page=value;
+    if(page==='log'&&!logBuilt){
+      el('h2',log,'Development log');
+      el('p',log,'The passes, refinements and reversals behind this version. Earlier guide stages are recorded as history; the accepted changes are already combined here.','muted');
+      for(const [title,status,lines] of BM_DEVLOG){
+        const article=el('article',log);el('h3',article,title);el('p',article,status,'status');
+        const list=el('ul',article);for(const text of lines)el('li',list,text);
+      }
+      logBuilt=true;
+    }
+    welcome.hidden=page!=='welcome';log.hidden=page!=='log';
+    welcomeButton.setAttribute('aria-pressed',String(page==='welcome'));
+    logButton.setAttribute('aria-pressed',String(page==='log'));
+    reader.setAttribute('aria-label',page==='welcome'?'Welcome message':'Development log');
+    reader.scrollTop=scroll[page];
+  }
+  function create(){
+    const css=el('style',document.head);css.textContent=`
+      html.bm-intro-open,body.bm-intro-open{touch-action:pan-y}
+      #bm-intro{position:fixed;inset:0;z-index:1003;background:#000;color:#e8e3d6;font:15px/1.6 system-ui,sans-serif;touch-action:pan-y}
+      #bm-intro,#bm-intro *{box-sizing:border-box}#bm-intro[hidden],#bm-intro [hidden]{display:none!important}
+      #bm-intro .inner{height:100%;max-width:1060px;margin:auto;padding:18px max(18px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:14px}
+      #bm-intro h1{font:28px/1.2 Georgia,serif;letter-spacing:.025em;color:#dfcd9c;margin:0}
+      #bm-intro .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9f9276;margin:0 0 5px}
+      #bm-intro main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:26px;flex:1;min-height:0}
+      #bm-intro .showcase{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;min-width:0}
+      #bm-intro figure{margin:0;min-width:0;text-align:center}
+      #bm-intro canvas{display:block;margin:auto;width:min(100%,340px,calc(100vh - 250px));height:auto;aspect-ratio:1;background:#000}
+      #bm-intro figcaption{color:#d5c398;min-height:32px;font:16px/1.5 Georgia,serif;padding:4px 0;overflow-wrap:anywhere}
+      #bm-intro .controls{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+      #bm-intro button{font:inherit;font-size:14px;color:#e7ddc3;border:1px solid #524936;background:#0b0b0a;border-radius:8px;padding:8px 12px;min-height:44px;cursor:pointer;touch-action:manipulation}
+      #bm-intro button[aria-pressed=true]{border-color:#c6ac6a;background:#211d13;color:#f2dfaf}
+      #bm-intro button:focus-visible,#bm-intro .reader:focus-visible{outline:2px solid #e8c678;outline-offset:3px}
+      #bm-intro .reading{display:flex;flex-direction:column;min-height:0;min-width:0;border-top:1px solid #3a3324}
+      #bm-intro nav{display:flex;gap:8px;padding:12px 0 10px}
+      #bm-intro .reader{overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;padding:0 14px 18px 0;touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#8c7950 #13110c;overflow-wrap:anywhere}
+      #bm-intro .reader p{margin:0 0 14px}#bm-intro h2{font:23px/1.3 Georgia,serif;color:#e1c991;margin:2px 0 12px}
+      #bm-intro h3{font:19px/1.35 Georgia,serif;color:#dfcd9c;margin:0 0 5px}
+      #bm-intro article{border-top:1px solid #302b20;padding-top:20px;margin-top:22px}
+      #bm-intro .status{font-size:12px;color:#c1b089;margin-bottom:10px!important}
+      #bm-intro ul{margin:0;padding-left:19px}#bm-intro li{padding-left:2px;margin:0 0 9px}
+      #bm-intro .muted{color:#a9a397;font-size:13px}#bm-intro .hint{font-size:12px;color:#a99d83;margin:5px 0 0}
+      #bm-intro a{color:#e2c784}#bm-intro footer{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #302b20;padding-top:12px}
+      #bm-intro footer p{margin:0;font-size:12px;color:#a99d83}#bm-intro .continue{background:#d6be81;border-color:#d6be81;color:#141108;min-width:130px;font-weight:600}
+      @media(max-width:620px) and (orientation:portrait){
+        #bm-intro .inner{gap:10px;padding-top:14px}#bm-intro h1{font-size:25px}
+        #bm-intro main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);gap:12px}
+        #bm-intro canvas{width:min(26vh,210px)}#bm-intro figcaption{min-height:28px}
+        #bm-intro .controls button{font-size:13px}#bm-intro nav{padding-top:10px}#bm-intro footer{padding-top:10px}
+      }
+      @media(max-height:450px) and (orientation:landscape){
+        #bm-intro .inner{padding-top:10px;gap:8px}#bm-intro h1{font-size:22px}#bm-intro .eyebrow{display:none}
+        #bm-intro canvas{width:min(100%,calc(100vh - 186px))}#bm-intro main{gap:20px}
+        #bm-intro .controls{gap:4px}#bm-intro .controls button{font-size:12px;padding:6px 9px}
+        #bm-intro footer{padding-top:8px}#bm-intro nav{padding:8px 0}
+      }
+    `;
+    root=el('section',document.body);root.id='bm-intro';root.setAttribute('aria-label','Welcome to Runestones');
+    const inner=el('div',root,null,'inner'),header=el('header',inner);
+    el('p',header,'Battle Mage · Suncat Studios','eyebrow');el('h1',header,'Welcome to Runestones!');
+    const main=el('main',inner),stage=el('div',main,null,'showcase'),figure=el('figure',stage);
+    surface=el('canvas',figure);surface.width=surface.height=384;surface.setAttribute('aria-hidden','true');
+    caption=el('figcaption',figure);
+    const controls=el('div',stage,null,'controls');
+    modeButton=button(controls,'Portraits: All',()=>{mode=({all:'2d','2d':'3d','3d':'all'})[mode];change();lastFrame=0;});
+    modeButton.setAttribute('aria-label','Portrait display mode: All. Activate to show 2D.');
+    button(controls,'Next',()=>{change();lastFrame=0;});
+    pauseButton=button(controls,'Pause',()=>{paused=!paused;dirty=true;pauseButton.textContent=paused?'Play':'Pause';pauseButton.setAttribute('aria-pressed',String(paused));});
+    pauseButton.setAttribute('aria-label','Pause portrait animation');pauseButton.setAttribute('aria-pressed','false');
+    const reading=el('div',main,null,'reading'),nav=el('nav',reading);nav.setAttribute('aria-label','Intro reading');
+    welcomeButton=button(nav,'Welcome',()=>selectPage('welcome'));logButton=button(nav,'Devlog',()=>selectPage('log'));
+    reader=el('div',reading,null,'reader');reader.tabIndex=0;reader.setAttribute('role','region');
+    welcome=el('div',reader);log=el('div',reader);
+    el('h2',welcome,'A world in the making');
+    el('p',welcome,'This game is still in development (I recently started expanding the maps), but I invite you to check it out.');
+    el('p',welcome,'You can find the Online Game World by clicking Tutorial in the main menu.');
+    el('p',welcome,'Feel free to reach out via Instagram DM (@suncat.meow) or email (suncatmedia@gmail.com) with any questions, comments, or concerns.');
+    el('p',welcome,'— Suncat');
+    el('p',welcome,'Open Devlog for the sprite, aura, music, controls and world updates, including the earlier passes and changes we revisited.','muted');
+    el('p',reading,'Swipe or scroll to read.','hint');
+    const footer=el('footer',inner);el('p',footer,'Explore at your own pace.');
+    const next=button(footer,'Continue',()=>{
+      if(startGame!==0)return;
+      MusicEngine.init();MusicEngine.play3DSFX('warp');
+      startGame=1;lastSongTime=Date.now();lastTriggerTime=Date.now();sync();
+    });next.className='continue';
+    // Let the browser handle scrolling; block only propagation into game input.
+    for(const type of ['pointerdown','pointermove','pointerup','pointercancel','mousedown','mousemove','mouseup','touchstart','touchmove','touchend','touchcancel','click','dblclick','wheel','keydown','keyup','keypress'])root.addEventListener(type,e=>e.stopPropagation());
+    selectPage('welcome');
+  }
+  function change(){
+    kind=mode==='all'?(turn++%2?'3d':'2d'):mode;model=null;
+    if(kind==='3d'){
+      const pool=BattleMusic.spriteDisplay.families();let id=pool[Math.floor(Math.random()*pool.length)];
+      if(id===last3D)id=pool[(pool.indexOf(id)+1)%pool.length];
+      if(id!=null){model=BattleMusic.spriteDisplay.model(id,{width:8.8,height:8.6,centerY:5});last3D=id;card={name:BattleMusic.spriteDisplay.name(id)};}else kind='2d';
+    }
+    if(kind==='2d'){
+      let id=Math.floor(Math.random()*78);if(id===last2D)id=(id+1)%78;
+      last2D=id;card=new Card(id,0);
+    }
+    changed=clock;dirty=true;
+    modeButton.textContent='Portraits: '+({all:'All','2d':'2D','3d':'3D'}[mode]);
+    modeButton.setAttribute('aria-label','Portrait display mode: '+({all:'All','2d':'2D','3d':'3D'}[mode])+'. Activate to show '+({all:'2D','2d':'3D','3d':'All'}[mode])+'.');
+  }
+  function sync(){
+    const active=startGame===0;
+    if(!active&&!visible)return;
+    if(active&&!root)create();
+    if(visible!==active){
+      visible=active;root.hidden=!active;
+      for(const target of [document.documentElement,document.body])target.classList.toggle('bm-intro-open',active);
+      lastFrame=0;
+      if(!active){model=card=null;surface.width=surface.height=1;return;}
+      surface.width=surface.height=384;
+    }
+    if(document.hidden){lastFrame=0;return;}
+    const time=performance.now();if(lastFrame&&time-lastFrame<50)return;
+    if(lastFrame&&!paused&&!reduced)clock+=Math.min(100,time-lastFrame);
+    lastFrame=time;
+    if(card&&!dirty&&(paused||reduced))return;
+    if(!card||(!paused&&!reduced&&clock-changed>=14000))change();
+    const saved={ctx,tX,tY,tL,tH};let action='';
+    try{
+      ctx=surface.getContext('2d');tX=tY=0;tL=tH=surface.width;
+      ctx.clearRect(0,0,surface.width,surface.height);
+      if(kind==='3d'&&model){
+        const elapsed=clock-changed,m=model,state=Math.min(m.meshes.length-1,Math.floor(elapsed/4000)),frame=Math.floor(elapsed/180)%4;
+        action=['Idle','Walk','Attack','Flight'][state]||'Idle';
+        render3dMesh(m.meshes[state][frame],m.x,m.y,m.scale,0,elapsed/12000*Math.PI*2,0);
+      }else drawPortrait(card.portrait,2,2,.6,0,0,(paused||reduced)?0:-1,CARD_PORTRAIT_PIXELS);
+    }finally{ctx=saved.ctx;tX=saved.tX;tY=saved.tY;tL=saved.tL;tH=saved.tH;}
+    dirty=false;
+    const text=card.name+' · '+(kind==='3d'?'3D · '+action:'2D');if(caption.textContent!==text)caption.textContent=text;
+  }
+  return {sync};
+})();
+
   function drawField(){
         BMTouch.tick();
         BMPerformance.flushResize();
         BMTouch.settingsUI();
+        BMIntro.sync();
         const perfStart=performance.now();
         BMPerformance.begin(perfStart,!document.hidden&&['explore','battle','tactics'].includes(startGame)&&!Dungeon.isLoading);
         //TIMER
@@ -94050,22 +94281,9 @@ BattleMusic.installUI();
     
     
         //MAIN MENU
-            if (startGame == 0){//intro message
-                ctx.fillStyle = "rgba(0,6,13,1)";
+            if (startGame == 0){// DOM welcome, portrait showcase and swipeable devlog
+                ctx.fillStyle = '#000';
                 ctx.fillRect(0,0,wX,wY);
-                //draw a new portrait every 3 secs
-                if (now - lastTriggerTime > 3000) {
-                    lastrandom = rnd(0,77)
-                    lastTriggerTime = now;
-                }
-                else {
-                    drawPortrait(lastrandom,2.5,3,.5,0,0,-1,CARD_PORTRAIT_PIXELS);
-                    drawShape('rec',1.9,2.9,1,5,5,0,0,0,0,0,0,'gold',0);
-                }
-                //page text
-                drawText(0, .25, 10, .5, "Welcome to Runestones!", `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`, 1,'center');
-                drawText(.5, 1, 9, 1.75, "This game is still in development (I recently started expanding the maps), but I invite you to check it out. You can find the Online Game World by clicking Tutorial in the main menu. Feel free to reach out via Instagram DM (@suncat.meow) or email (suncatmedia@gmail.com) with any questions, comments, or concerns. - Suncat", `rgba(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`, 1,'center');
-                drawText(0, 8.5, 10, 0.8, "Tap to continue", `rgba(255,255,0,${0.6 + 0.4 * Math.sin(Date.now() / 400)})`, 1,'center');
                 }
             else if (startGame == 1){//suncat studios 
                 ctx.fillStyle = "rgba(0,6,13,1)";
