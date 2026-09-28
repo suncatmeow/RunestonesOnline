@@ -42954,43 +42954,32 @@ window.BMPerformance=BMPerformance;
             }
             drawWardHUD(ctx, viewX, viewY, viewW, viewH) {
                 const state = this.wardDisplayState();
-                const scale = Math.max(.9, Math.min(1.35, viewW / 520));
-                const width = 114 * scale, height = 67 * scale;
-                const x = viewX + viewW - 10 - width, y = viewY + viewH * .295;
-                const color = state.cooldown > 0 ? '#d89a7b' : '#8ed2cd';
+                // Original ward portraits and timer bars, fitted beneath the minimap controls.
+                const width = viewW * .2, x = viewX + viewW * .785;
+                const y = viewY + viewH * .29, cellWidth = width / state.count;
+                const size = Math.min(viewW * .058, cellWidth * .88);
+                const barWidth = size * .6, barHeight = Math.max(2, size * .075);
+                const barY = y + size + Math.max(2, viewH * .004);
                 ctx.save();
-                ctx.globalAlpha = 1;
-                ctx.translate(x, y);ctx.scale(scale, scale);
-                ctx.fillStyle = 'rgba(9,12,17,.88)';ctx.strokeStyle = '#75664a';ctx.lineWidth = 1;
-                ctx.beginPath();ctx.roundRect(.5, .5, 113, 66, 6);ctx.fill();ctx.stroke();
-                ctx.font = '9px system-ui, sans-serif';ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#cfbf9a';ctx.textAlign = 'left';ctx.fillText('WARDS', 8, 11);
-                ctx.textAlign = 'right';ctx.fillText(`${Math.floor(state.remaining / (state.capacity / state.count))}/${state.count}`, 106, 11);
-                // Stable front-facing shields: fill from the bottom as each ward regenerates.
-                // Large ward counts use evenly filled groups without overflowing the panel.
-                const slots = Math.min(6, state.count), gap = 98 / slots;
-                for (let i = 0; i < slots; i++) {
-                    const cx = 8 + gap * (i + .5), top = 21, sw = Math.min(19, gap - 5), sh = 22;
-                    const fill = Math.max(0, Math.min(1, state.remaining / (state.capacity / slots) - i));
-                    const shield = () => {
-                        ctx.beginPath();ctx.moveTo(cx, top);ctx.lineTo(cx + sw / 2, top + 3);
-                        ctx.lineTo(cx + sw * .4, top + sh * .66);ctx.quadraticCurveTo(cx + sw * .3, top + sh * .83, cx, top + sh);
-                        ctx.quadraticCurveTo(cx - sw * .3, top + sh * .83, cx - sw * .4, top + sh * .66);
-                        ctx.lineTo(cx - sw / 2, top + 3);ctx.closePath();
-                    };
-                    shield();ctx.fillStyle = '#222c34';ctx.fill();
-                    ctx.save();ctx.clip();ctx.fillStyle = color;
-                    ctx.fillRect(cx - sw / 2, top + sh * (1 - fill), sw, sh * fill);ctx.restore();
-                    shield();ctx.strokeStyle = fill > 0 ? '#badbd3' : '#6c7378';ctx.stroke();
-                    ctx.strokeStyle = fill > .5 ? '#446c70' : '#48535c';ctx.beginPath();
-                    ctx.moveTo(cx, top + 5);ctx.lineTo(cx, top + 16);ctx.moveTo(cx - 4, top + 9);ctx.lineTo(cx + 4, top + 9);ctx.stroke();
+                for (let i = 0; i < state.count; i++) {
+                    const shieldX = x + cellWidth * (i + .5) - size / 2;
+                    const fill = state.fills[i];
+                    ctx.globalAlpha = fill >= 1 ? 1 : .3;
+                    drawPortrait(107, (shieldX - tX) * 10 / tL, (y - tY) * 10 / tH, size / tL);
+                    let progress = null, color = window.gameViewMode === '3d' ? (this.currentWardColor || 'cyan') : 'cyan';
+                    if (fill > 0 && fill < 1) progress = fill;
+                    else if (i === 0 && fill === 0 && state.cooldown > 0) {
+                        progress = state.recovery;color = '#ff3300';
+                    }
+                    if (progress !== null) {
+                        const barX = shieldX + (size - barWidth) / 2;
+                        ctx.globalAlpha = 1;ctx.fillStyle = '#222222';
+                        ctx.fillRect(barX, barY, barWidth, barHeight);
+                        ctx.fillStyle = color;ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+                    }
                 }
-                ctx.font = '10px system-ui, sans-serif';ctx.textAlign = 'center';ctx.fillStyle = color;
-                ctx.fillText(state.cooldown > 0 ? `Recover ${state.cooldown.toFixed(1)}s` : `${state.remaining.toFixed(1)} / ${state.capacity.toFixed(1)}s`, 57, 53);
-                ctx.fillStyle = '#273039';ctx.fillRect(8, 61, 98, 2);
-                ctx.fillStyle = color;ctx.fillRect(8, 61, 98 * (state.cooldown > 0 ? state.recovery : state.remaining / state.capacity), 2);
                 ctx.restore();
-                return {x, y, width, height};
+                return {x, y, width, height: barY + barHeight - y};
             }
             drawMinimap(ctx, viewX, viewY, viewW, viewH) {
                 if (!this.maze || this.maze.length === 0 || !this.maze[0]) return;
@@ -94954,7 +94943,7 @@ const BM_DEVLOG = [
  ['Controls and exploration · September 28', 'Current update', [
   'Preserved touch camera direction across dialogue and booster screens; added shortest-turn focus tracking and steadier thumb movement.',
   'Basic attack speed now follows effective AGI across touch, keyboard and on-screen buttons. Camera collision and water rendering received a further pass.',
-  'Ward shields now share a compact display in 2D and 3D, with partial refill and an accurate recovery countdown.']],
+  'Kept the original ward shields and timer bars, with adjusted scaling and spacing beneath the minimap in 2D and 3D.']],
  ['Deck, items and journals', 'Current update', [
   'Added Items and Spells tabs, reusable equipment skills and saved hotbar inclusion switches. Fish stack by species; treasures can hold skillbooks.',
   'Journals, story entries and quests use swipeable lists with tap-to-open reading. Cooking, crafting and visible equipment attachments remain future work.']],
