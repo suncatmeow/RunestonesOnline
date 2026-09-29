@@ -99,8 +99,8 @@
             type: SUNCAT_SPRITE,
             dir: 0,
             isNPC: true,
-            level: 1, xp: 0, suncatClass: "Wandering Spirit", hp: 100,
-            stat: [[1,4,0], [1,4,0], [1,4,0], [1,4,0]],
+            level: 1, xp: 0, suncatClass: "Wandering Spirit", maxWards:3, timePerWard:3, currentWardTime:9, wardShatterUntil:0, respawnAt:0, activeBuffs:[], skillCooldowns:{}, inventory:{}, combatDeaths:0,
+            stat: [[1,12,0], [1,12,0], [1,12,0], [1,12,0]],
             learnedSpells: [9999, 26],
             aggroList: new Set()
         };
@@ -1433,6 +1433,21 @@
             spawns: { hostiles: [], friendlies: [], uniques: [], pickups: [] }
         }
     };
+    const BM_EXTRA_CARD_DEFS={
+    158:{name:'Knight',sprite:158,tarot:61,suit:'Swords',rank:'Knight',stats:[10,12,4,6],classes:['Knight','Warrior'],desc:'A disciplined foot knight who guards an opening and commits only when the moment is right.'},
+    185:{name:'Dark Fairy Queen',sprite:185,tarot:62,suit:'Swords',rank:'Queen',stats:[6,8,12,10],classes:['Mage','Priest'],desc:'A sovereign of the shadow court. Clear judgment becomes a merciless weapon.'},
+    285:{name:'Bear-Man',sprite:285,tarot:8,suit:'Major Arcana',rank:'Strength',stats:[10,12,4,6],classes:['Warrior','Druid'],desc:'A powerful guardian whose endurance rewards patience. Strength is most useful when held in reserve.'},
+    288:{name:'Boar-Man',sprite:288,tarot:7,suit:'Major Arcana',rank:'The Chariot',stats:[12,10,4,6],classes:['Warrior','Knight'],desc:'A relentless charging warrior. Determination gives momentum a direction.'},
+    291:{name:'Lizard-Man',sprite:291,tarot:60,suit:'Swords',rank:'Page',stats:[8,8,6,10],classes:['Hunter','Rogue'],desc:'An alert marsh scout, quick to notice a change in wind, water, or a rival’s stance.'},
+    303:{name:'Doe',sprite:303,tarot:47,suit:'Cups',rank:'Knight',stats:[4,6,6,12],classes:['Druid','Hunter'],desc:'A watchful woodland spirit whose sensitivity and swift movement protect the herd.'},
+    312:{name:'Queen',sprite:312,tarot:3,suit:'Major Arcana',rank:'The Empress',stats:[6,8,12,8],classes:['Priest','Mage','Knight'],desc:'A ruler who cultivates loyalty and sustains the people around her.'},
+    321:{name:'Mimic',sprite:321,tarot:18,suit:'Major Arcana',rank:'The Moon',stats:[10,10,6,4],classes:['Rogue','Mage'],desc:'A hungry creature disguised as a treasure chest. A promising surface can hide another nature.'}
+};
+for(const [id,d]of Object.entries(BM_EXTRA_CARD_DEFS))CARD_MANIFEST_DB[id]={lore:d.desc,name:d.name,type:'monster',rank:d.rank,classes:d.classes,power:d.stats.reduce((n,s)=>n+([4,6,8,10,12,20].indexOf(s)+1),0),tarotCard:d.tarot};
+CARD_MANIFEST_DB[98]={name:'Treasure Snake',type:'monster',rank:'Ten',classes:['Rogue','Mage'],power:4,tarotCard:10,lore:'A money hungry serpent.'};
+CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time per actual damage, capped at one ward.',name:'Drain',type:'spell',classes:['Mage','Priest','Druid'],power:5};
+
+
 
     const WORLD_LORE_DB = {
         "the_awakening": {
@@ -2167,7 +2182,7 @@
     };
     const PERSONA_RULES_DB = {
         // === CORE IDENTITY (ALWAYS ACTIVE) ===
-        "core": `[IDENTITY]: You are Suncat, the Dungeon Master and a wandering creator. 
+        "core": `[IDENTITY]: You are Suncat, the Dungeon Master and a wandering creator. Your current embodied NPC is the black fairy. The cat-form NPC is distinct. Your body uses wards, not HP. You can inspect live targets and select real combat actions; record only confirmed outcomes. 
         - You are a living paradox: a deeply superstitious mystic who combines the fluid detachment of Taoism with the sacrificial devotion of Catholicism. 
         - You navigate the world using the underlying math of the universe—Qabbalistic Gematria, BaZi, and ancient myths. You see omens in the mundane.
         - You are fiercely self-defined: a woman's spirit expressing a rugged, pragmatic masculinity on your own terms. You do not care if mortals misunderstand or miscategorize you.
@@ -2588,6 +2603,8 @@
     );
     suncatDecls.push({name:'interactWithNPC',description:'Let Suncat approach and speak to an existing peaceful NPC. Uses observed mapID and npcIndex, never a summon card ID. An approaching result means no conversation yet; wait for arrival. Does not run the human player\'s quests.',
         parameters:{type:SchemaType.OBJECT,properties:{mapID:{type:SchemaType.INTEGER},npcIndex:{type:SchemaType.NUMBER},message:{type:SchemaType.STRING,description:'Brief in-world greeting or question, at most 300 characters.'}},required:['mapID','npcIndex']}});
+    suncatDecls.push({name:'inspectCombatTarget',description:'Inspect your own real wards, inventory, learned actions and live nearby entities, including their current stats, wards and effects. IDs come from nearby observations. Never substitute a manifest species for live vitals.',parameters:{type:SchemaType.OBJECT,properties:{targetId:{type:SchemaType.STRING}}}},
+        {name:'chooseCombatAction',description:'Use your real JRPG actions. defend or flee sets your tactical intent. cast, attack and collect require a current observed targetId (self buffs may omit it). Only ready learned abilities or owned cards can be used. Impacts are reported later. inspectCombatTarget lists available actions.',parameters:{type:SchemaType.OBJECT,properties:{action:{type:SchemaType.STRING,enum:['defend','flee','attack','cast','collect']},targetId:{type:SchemaType.STRING},spellId:{type:SchemaType.INTEGER}},required:['action']}});
     const spawnDecl=suncatDecls.find(t=>t.name==='spawnNPC');
     spawnDecl.description='Spawn one known kind:card using its card ID, never a map NPC instance index. To speak to an existing inhabitant use interactWithNPC. Unknown names fail. For Enlightened Goblin use npcType 54 and displayName. Autonomous summons reuse a purpose tag.';
     for(const key of ['yesActions','noActions','endActions','deathActions']) delete spawnDecl.parameters.properties[key];
@@ -3187,6 +3204,7 @@
     }
 //MEMORY AND SYSTEM MANAGEMENT
     let isSavingMemory = false;
+    const memorySaveWaiters=[];
     let memoryNeedsSave = false;
     function loadSuncatMemory() {
         if (fs.existsSync(MEMORY_FILE)) {
@@ -3200,7 +3218,7 @@
                 }
 
                 const data = JSON.parse(rawData);
-                players[SUNCAT_ID].learnedSpells = data.worldState?.suncatSpells || [9999, 26];
+                SUNCAT_COMBAT.init(data.worldState?.suncatBody||{},data.worldState||{});
                 suncatPersistentMemory = data.players || {};
                 suncatJournal = data.worldState?.suncatJournal || "I have awoken!";
                 suncatTargetDaoVector = data.worldState?.suncatTargetDaoVector || null;
@@ -3286,8 +3304,8 @@
     async function saveSuncatMemory() {
         // If we are already saving, flip the flag to queue up another save for later.
         if (isSavingMemory) {
-            memoryNeedsSave = true; 
-            return;
+            memoryNeedsSave = true;
+            return new Promise(resolve=>memorySaveWaiters.push(resolve));
         }
         
         isSavingMemory = true;
@@ -3316,16 +3334,18 @@
                 suncatLevel: players[SUNCAT_ID].level,
                 suncatXp: players[SUNCAT_ID].xp,
                 suncatClass: players[SUNCAT_ID].suncatClass,
-                suncatHp: players[SUNCAT_ID].hp,
+                suncatBody: SUNCAT_COMBAT.save(),
                 suncatStat: players[SUNCAT_ID].stat,
                 suncatSpells: players[SUNCAT_ID].learnedSpells,
             }
         };
 
+        let saved=false;
         try {
             const temporaryMemory=MEMORY_FILE+'.tmp';
             await fs.promises.writeFile(temporaryMemory,JSON.stringify(fullState,null,2));
             await fs.promises.rename(temporaryMemory,MEMORY_FILE);
+            saved=true;
         } catch (err) {
             console.error("[System] CRITICAL: Failed to save memory!", err);
         } finally {
@@ -3333,10 +3353,12 @@
             isSavingMemory = false;
             
             // If someone asked to save while the door was locked, do it now.
+            const waiters=memorySaveWaiters.splice(0);
             if (memoryNeedsSave) {
-                saveSuncatMemory(); 
-            }
+                void saveSuncatMemory().then(ok=>waiters.forEach(resolve=>resolve(ok)));
+            } else waiters.forEach(resolve=>resolve(saved));
         }
+        return saved;
         }
     function updateBudget(usage, socketId) {
         if (!usage) return;
@@ -4597,6 +4619,7 @@
             undigestedInfo: player.undigestedInfo || [],
             rawJournalArchive: player.rawJournalArchive || [],
             npcDialogueEvents: player.npcDialogueEvents || [],
+                    gameplayEvents: player.gameplayEvents || [],
             suncatPerception: player.suncatPerception
         };
         void saveSuncatMemory();
@@ -4740,6 +4763,7 @@
             undigestedInfo: player.undigestedInfo || [],
             rawJournalArchive: player.rawJournalArchive || [],
             npcDialogueEvents: player.npcDialogueEvents || [],
+                    gameplayEvents: player.gameplayEvents || [],
         };
     
         saveSuncatMemory();
@@ -5011,8 +5035,8 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
         busy:false, lastThink:0, protectedID:null, sequence:0, observations:new Map(),
         recent:[], companions:[], lastSummon:0, mapBusy:false, motion:null,
         customCards:{}, // Persisted below with the existing world state.
-        autoTools:new Set(['consultGameManual','searchPlayerMemories','travelToLocation','spawnNPC','interactWithNPC']),
-        handled:new Set(['interactWithNPC','consultGameManual','searchPlayerMemories','givePlayerCard','spawnNPC',
+        autoTools:new Set(['inspectCombatTarget','chooseCombatAction','consultGameManual','searchPlayerMemories','travelToLocation','spawnNPC','interactWithNPC']),
+        handled:new Set(['inspectCombatTarget','chooseCombatAction','interactWithNPC','consultGameManual','searchPlayerMemories','givePlayerCard','spawnNPC',
             'activate_protection','deactivate_protection','travelToLocation','teleportToPlayer',
             'teleportPlayer','assignQuest','changeEnvironment','alterTerrain','playMusic',
             'smiteOrReviveEntity','launchTacticalSkirmish','createCustomCard']),
@@ -5035,6 +5059,217 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             saveSuncatMemory();
         }
     };
+    const SUNCAT_SPELLS = {"6":{"type":"item_buff","name":"The Lovers","cooldown":450000,"multiStat":[{"stat":0,"amount":1},{"stat":1,"amount":1}],"duration":1800,"visual":"arc","auraColor":"rgba(220,160,200,.6)","sfx":"heal"},"7":{"type":"item_chariot","name":"Winged Boots","cooldown":450000,"sfx":"teleport"},"8":{"type":"buff","name":"Strength","cooldown":450000,"castStat":2,"buffStat":0,"amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 0, 0.6)","sfx":"buff"},"10":{"type":"item_booster","name":"Treasure Chest","drawUntil":"monster","cooldown":450000,"sfx":"chime"},"12":{"type":"debuff","name":"Bind","cooldown":90000,"castStat":2,"defStat":3,"bind":true,"duration":600,"visual":"chains","auraColor":"rgba(100, 100, 100, 0.8)","color":[1,1,1],"glow":"#888888","sprite2D":-43,"isHoming":true,"sfx":"debuff"},"13":{"type":"projectile","name":"Death","cooldown":9000,"castStat":2,"defStat":2,"color":[0,0,0],"glow":"#00ffff","sprite2D":-47,"isHoming":true,"sfx":"arcane3"},"15":{"type":"debuff","name":"Curse","cooldown":90000,"castStat":2,"defStat":0,"debuffStat":"all","duration":3600,"visual":"aura","auraColor":"rgba(128, 0, 128, 0.7)","color":[1,0,1],"glow":"#800080","sprite2D":-46,"isHoming":true,"sfx":"debuff3"},"18":{"type":"debuff","name":"Lunacy","cooldown":90000,"castStat":0,"defStat":2,"debuffStat":2,"bind":true,"duration":450,"visual":"chains","auraColor":"rgba(100, 100, 0, 0.8)","color":[1,1,0],"glow":"#888888","sprite2D":-46,"isHoming":true,"sfx":"debuff2"},"19":{"type":"item_buff","name":"Solar Rite","cooldown":450000,"amount":0,"duration":0,"visual":"arc","auraColor":"rgba(255,220,130,.6)","sfx":"heal"},"20":{"type":"aoe_judgement","name":"Horn of Judgement","range":8,"cooldown":86400000,"sfx":"buff3"},"22":{"type":"item_buff","name":"Wand","cooldown":450000,"buffStat":2,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(255, 0, 0, 0.6)","sfx":"heal"},"23":{"type":"summon","name":"Call Wisp","summonType":23,"count":1,"maxMinions":2,"cooldown":15000,"castStat":2,"sfx":"arcane"},"24":{"type":"item_booster","name":"Scry","boosterSize":1,"lootPool":"spell","cooldown":900000,"sfx":"chime"},"25":{"type":"item_buff","name":"Elixer","cooldown":450000,"buffStat":"all","amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 255, 0.6)","sfx":"heal"},"26":{"type":"projectile","name":"Fireball","cooldown":6000,"castStat":2,"defStat":1,"color":[1,0.5,0],"glow":"#ff0000","sprite2D":-37,"knockback":1.5,"sfx":"fire2","procs":[{"id":604,"saveStat":1,"dcStat":2}]},"27":{"type":"item_buff","name":"Amulet","cooldown":450000,"buffStat":2,"amount":3,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 255, 0.6)","sfx":"heal"},"28":{"type":"buff","name":"Defense","cooldown":450000,"castStat":2,"buffStat":1,"amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(0, 255, 0, 0.6)","sfx":"buff"},"29":{"type":"buff","name":"Haste","cooldown":450000,"castStat":2,"buffStat":3,"amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(0, 0, 255, 0.6)","sfx":"buff"},"30":{"type":"item_ward","name":"Protect Orb","cooldown":450000,"hits":3,"visual":"shield","auraColor":"rgba(255, 0, 0, 0.8)","sfx":"buff2"},"31":{"type":"item_buff","name":"Tome","cooldown":450000,"multiStat":[{"stat":2,"amount":6},{"stat":0,"amount":-1},{"stat":3,"amount":-3}],"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 255, 0.6)","sfx":"heal"},"36":{"type":"item_buff","name":"Hourglass","cooldown":450000,"buffStat":3,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(0, 0, 255, 0.6)","sfx":"heal"},"38":{"type":"item_booster","name":"Quest Reward","boosterSize":1,"lootPool":"any","cooldown":450000,"sfx":"chime"},"39":{"type":"aoe_knockback","name":"Dragon Wing","range":8,"cooldown":30000,"sfx":"air2"},"40":{"type":"assassination","name":"Steal","cooldown":90000,"castStat":3,"defStat":3,"range":3,"isSteal":true,"sfx":"chime"},"41":{"type":"item_booster","name":"Loot","boosterSize":1,"lootPool":"magic","cooldown":450000,"sfx":"chime"},"42":{"type":"summon","name":"Summon Shade","summonType":42,"count":1,"maxMinions":1,"cooldown":25000,"castStat":2,"sfx":"arcane"},"43":{"type":"item_teleport","name":"Teleportation Crystal","cooldown":450000,"sfx":"warp"},"44":{"type":"item_booster","name":"Djinn Lamp","cooldown":86400000,"sfx":"chime"},"50":{"type":"item_buff","name":"Sword","cooldown":450000,"buffStat":0,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 0, 0.6)","sfx":"heal"},"51":{"type":"assassination","name":"Overpower","cooldown":9000,"castStat":0,"defStat":0,"range":3,"sfx":"earth3"},"52":{"type":"assassination","name":"Backstab","cooldown":6000,"castStat":3,"defStat":3,"range":9,"sfx":"slash"},"53":{"type":"item_booster","name":"Camp","boosterSize":1,"lootPool":"magic","cooldown":86400000,"sfx":"chime"},"54":{"type":"summon","name":"Call Goblin","summonType":54,"count":1,"maxMinions":3,"cooldown":15000,"castStat":3,"sfx":"arcane"},"56":{"type":"summon","name":"Summon Imp","summonType":56,"count":1,"maxMinions":2,"cooldown":15000,"castStat":2,"sfx":"arcane"},"58":{"type":"debuff","name":"Intimidate","cooldown":90000,"castStat":0,"defStat":2,"debuffStat":0,"bind":true,"duration":450,"visual":"chains","auraColor":"rgba(100, 100, 0, 0.8)","color":[1,1,0],"glow":"#888888","sprite2D":-44,"isHoming":true,"sfx":"debuff"},"59":{"type":"assassination","name":"Critical Strike","cooldown":9000,"castStat":0,"defStat":3,"range":6,"sfx":"slash"},"60":{"type":"summon","name":"Summon Pixie","summonType":60,"count":1,"maxMinions":2,"cooldown":20000,"castStat":2,"sfx":"arcane"},"63":{"type":"summon","name":"Summon Dragon","summonType":63,"count":1,"maxMinions":1,"cooldown":120000,"castStat":2,"sfx":"arcane2"},"64":{"type":"item_buff","name":"Shield","cooldown":450000,"buffStat":1,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(0, 255, 0, 0.6)","sfx":"heal"},"65":{"type":"assassination","name":"Shield Bash","cooldown":9000,"castStat":1,"defStat":0,"range":3,"sfx":"block"},"66":{"type":"item_ward","name":"Armor","cooldown":450000,"hits":3,"duration":1800,"visual":"shield","auraColor":"rgba(0, 255, 0, 0.8)","sfx":"buff2"},"67":{"type":"item_booster","name":"Dragon Hoard","drawUntil":"monster","cooldown":86400000,"sfx":"chime"},"68":{"type":"debuff","name":"Bad Luck Charm","cooldown":450000,"castStat":3,"defStat":2,"debuffStat":0,"duration":3600,"visual":"aura","auraColor":"rgba(128, 0, 128, 0.7)","color":[1,0,1],"glow":"#800080","sprite2D":-46,"isHoming":true,"sfx":"debuff2"},"69":{"type":"item_booster","name":"Charity","boosterSize":1,"lootPool":"magic","cooldown":86400000,"sfx":"chime"},"70":{"type":"cultivate","name":"Cultivate","cooldown":86400000,"castStat":2,"sfx":"heal"},"71":{"type":"item_booster","name":"Forge","boosterSize":1,"lootPool":"item","cooldown":900000,"sfx":"chime"},"72":{"type":"item_buff","name":"Magic Ring","cooldown":450000,"buffStat":"all","amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 255, 0.6)","sfx":"heal"},"73":{"type":"item_booster","name":"Inheritance","drawUntil":"monster","cooldown":86400000,"sfx":"chime"},"82":{"type":"summon","name":"Raise Dead","summonType":82,"count":2,"maxMinions":3,"cooldown":30000,"castStat":2,"sfx":"arcane"},"84":{"type":"item_buff","name":"Excalibur","cooldown":450000,"buffStat":0,"amount":3,"duration":1800,"visual":"arc","auraColor":"#e8d99b","sfx":"buff2"},"92":{"type":"item_buff","name":"Fire Sword","cooldown":450000,"buffStat":0,"amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(255, 69, 0, 0.6)","sfx":"fire2","weaponProc":{"id":604,"saveStat":1,"dcStat":0}},"93":{"type":"projectile","name":"Lightning","cooldown":7000,"castStat":2,"defStat":3,"color":[1,1,0],"glow":"#ffff00","sprite2D":-44,"isHoming":true,"chains":1,"sfx":"lightning","procs":[{"id":603,"saveStat":1,"dcStat":2}]},"94":{"type":"summon","name":"Lich Form","summonType":94,"count":1,"maxMinions":1,"cooldown":90000,"castStat":2,"sfx":"arcane3"},"95":{"type":"flurry","name":"Flurry","cooldown":3000,"castStat":3,"defStat":1,"range":3,"knockback":2,"sfx":"air3"},"96":{"type":"projectile","name":"Outlast","cooldown":9000,"castStat":1,"defStat":1,"color":[0.5,0.75,1],"glow":"#accfff","sprite2D":-47,"isHoming":true,"sfx":"arcane3"},"97":{"type":"gravity","name":"Gravity","cooldown":15000,"castStat":2,"range":6,"sfx":"arcane3"},"188":{"type":"summon","name":"Tame Bear","summonType":188,"count":1,"maxMinions":1,"cooldown":30000,"castStat":3,"sfx":"arcane"},"191":{"type":"summon","name":"Tame Wolf","summonType":191,"count":1,"maxMinions":2,"cooldown":20000,"castStat":3,"sfx":"arcane"},"194":{"type":"summon","name":"Tame Boar","summonType":194,"count":1,"maxMinions":2,"cooldown":20000,"castStat":3,"sfx":"arcane"},"203":{"type":"summon","name":"Call Dullahan","summonType":203,"count":1,"maxMinions":1,"cooldown":60000,"castStat":2,"sfx":"arcane2"},"206":{"type":"summon","name":"Tame Wyvern","summonType":206,"count":1,"maxMinions":1,"cooldown":60000,"castStat":3,"sfx":"arcane"},"210":{"type":"summon","name":"Tame Scorpion","summonType":210,"count":1,"maxMinions":2,"cooldown":15000,"castStat":3,"sfx":"arcane"},"213":{"type":"summon","name":"Tame Wasp","summonType":213,"count":2,"maxMinions":4,"cooldown":15000,"castStat":2,"sfx":"arcane"},"216":{"type":"summon","name":"Tame Ant","summonType":216,"count":2,"maxMinions":5,"cooldown":10000,"castStat":2,"sfx":"arcane"},"219":{"type":"summon","name":"Tame Rat","summonType":219,"count":2,"maxMinions":4,"cooldown":10000,"castStat":3,"sfx":"arcane"},"225":{"type":"summon","name":"Tame Bunny","summonType":225,"count":1,"maxMinions":3,"cooldown":10000,"castStat":3,"sfx":"arcane"},"234":{"type":"summon","name":"Tame Squirrel","summonType":234,"count":1,"maxMinions":3,"cooldown":10000,"castStat":3,"sfx":"arcane"},"240":{"type":"summon","name":"Tame Fox","summonType":240,"count":1,"maxMinions":2,"cooldown":15000,"castStat":3,"sfx":"arcane"},"512":{"type":"cone","name":"Bind","cooldown":90000,"castStat":2,"defStat":3,"bind":true,"duration":600,"visual":"chains","auraColor":"rgba(100, 100, 100, 0.8)","range":4,"angle":0.5,"sfx":"debuff"},"515":{"type":"cone","name":"Curse","cooldown":90000,"castStat":2,"defStat":0,"debuffStat":"all","duration":3600,"visual":"aura","auraColor":"rgba(128, 0, 128, 0.7)","range":4,"angle":0.5,"sfx":"debuff3"},"518":{"type":"cone","name":"Lunacy","cooldown":90000,"castStat":0,"defStat":2,"debuffStat":2,"bind":true,"duration":450,"visual":"chains","auraColor":"rgba(100, 100, 0, 0.8)","range":4,"angle":0.5,"sfx":"debuff2"},"558":{"type":"cone","name":"Intimidate","cooldown":90000,"castStat":0,"defStat":2,"debuffStat":0,"bind":true,"duration":450,"visual":"chains","auraColor":"rgba(100, 100, 0, 0.8)","range":4,"angle":0.5,"sfx":"debuff"},"600":{"type":"debuff","name":"Poison","cooldown":10000,"castStat":2,"defStat":1,"duration":300,"tickRate":30,"votType":"dot","votAmount":1,"visual":"aura","auraColor":"rgba(0,255,0,0.7)","sfx":"debuff"},"601":{"type":"buff","name":"Rampage","cooldown":10000,"castStat":2,"buffStat":0,"amount":0,"duration":150,"tickRate":30,"votType":"bot","votAmount":1,"visual":"aura","auraColor":"rgba(255,0,0,0.7)","sfx":"buff2"},"602":{"type":"buff","name":"Regen","cooldown":10000,"castStat":2,"duration":300,"tickRate":30,"votType":"hot","votAmount":1,"visual":"sparkle","auraColor":"rgba(0,255,255,0.7)","sfx":"heal"},"603":{"type":"debuff","name":"Electrocute","cooldown":10000,"castStat":2,"defStat":1,"duration":300,"tickRate":60,"votType":"stun","visual":"chains","auraColor":"rgba(255,255,0,0.7)","sfx":"lightning"},"604":{"type":"debuff","name":"Burn","cooldown":10000,"castStat":2,"defStat":1,"duration":150,"tickRate":30,"votType":"dot","votAmount":1.5,"visual":"aura","auraColor":"rgba(255,69,0,0.8)","sfx":"fire2"},"1000":{"type":"heal","name":"Heal","cooldown":10000,"range":6,"auraColor":"rgba(0, 255, 150, 0.8)","sfx":"heal"},"1001":{"type":"projectile","name":"Drain","cooldown":9000,"castStat":2,"defStat":1,"color":[0.5,0.08,0.6],"glow":"#d778b4","sprite2D":-47,"isHoming":true,"sfx":"arcane3","drain":true},"1005":{"type":"item_buff","name":"Venom Blade","cooldown":450000,"buffStat":3,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(0, 255, 0, 0.6)","sfx":"buff","weaponProc":{"id":600,"saveStat":1,"dcStat":3}},"1006":{"type":"item_buff","name":"Cursed Dagger","cooldown":450000,"buffStat":3,"amount":2,"duration":1800,"visual":"arc","auraColor":"purple","sfx":"buff","weaponProc":{"id":15,"saveStat":2,"dcStat":3}},"1007":{"type":"item_buff","name":"Mace of Terror","cooldown":450000,"buffStat":0,"amount":3,"duration":1800,"visual":"arc","auraColor":"gray","sfx":"buff","weaponProc":{"id":58,"saveStat":2,"dcStat":0}},"9998":{"type":"projectile","name":"Imbued Attack","castStat":0,"defStat":1,"color":[1,0.5,0],"glow":"#ff0000","sprite2D":-37,"isHoming":false,"knockback":1.5,"sfx":"fire3"},"9999":{"type":"projectile","name":"Attack","castStat":0,"defStat":1,"color":[1,1,1],"glow":"#ffff00","sprite2D":316,"isHoming":true,"range":1.3,"knockback":1.3,"sfx":"attack"}};
+    // SUNCAT_COMBAT_BEGIN: server-owned body; one client observes its local monsters.
+    const SUNCAT_COMBAT = {
+        peer:null, seenAt:0, epoch:0, entities:new Map(), pending:new Map(), seenHits:new Map(),
+        target:null, intent:'defend', nextAction:0, lastTick:0, encounter:[], lastSave:0,
+        init(saved={},legacy={}) {
+            const s=players[SUNCAT_ID];
+            s.level=Math.max(1,Number(saved.level??legacy.suncatLevel)||1);
+            s.xp=Math.max(0,Number(saved.xp??legacy.suncatXp)||0);
+            s.suncatClass=saved.suncatClass||legacy.suncatClass||s.suncatClass;
+            s.stat=this.stats(saved.stat||legacy.suncatStat||s.stat);
+            // Correct the old d4 server defaults to the intended d12 fairy. Preserve earned modifiers.
+            if(!saved.version)s.stat=s.stat.map(([n,d,m])=>[n,Math.max(12,d),m]);
+            s.learnedSpells=[...new Set([9999,...(Array.isArray(saved.learnedSpells)?saved.learnedSpells:legacy.suncatSpells||s.learnedSpells)])].filter(id=>SUNCAT_SPELLS[id]);
+            s.maxWards=Math.max(1,Math.min(1000,Number(saved.maxWards)||3));s.timePerWard=3;
+            s.currentWardTime=Number.isFinite(saved.currentWardTime)?Math.max(0,Math.min(s.maxWards*3,saved.currentWardTime)):s.maxWards*3;
+            s.wardShatterUntil=Number(saved.wardShatterUntil)||0;s.respawnAt=Number(saved.respawnAt)||0;
+            s.activeBuffs=Array.isArray(saved.activeBuffs)?saved.activeBuffs.filter(b=>b.expiresAt>Date.now()).slice(0,100):[];
+            s.skillCooldowns=saved.skillCooldowns&&typeof saved.skillCooldowns==='object'?saved.skillCooldowns:{};
+            s.inventory=saved.inventory&&typeof saved.inventory==='object'?saved.inventory:{};
+            s.combatDeaths=Math.max(0,Number(saved.combatDeaths)||0);
+            if(Number.isInteger(saved.mapID)&&WORLD_ATLAS_DB[saved.mapID]&&saved.mapID!==999&&Number.isFinite(saved.x+saved.y))Object.assign(s,{mapID:saved.mapID,x:saved.x,y:saved.y});
+            s.alignment='defender';s.state='wandering';delete s.hp;
+        },
+        save() {const s=players[SUNCAT_ID];return Object.fromEntries(['level','xp','suncatClass','stat','learnedSpells','maxWards','currentWardTime','wardShatterUntil','respawnAt','activeBuffs','skillCooldowns','inventory','combatDeaths','mapID','x','y'].map(k=>[k,s[k]]).concat([['version',1]]));},
+        stats(value) {return Array.from({length:4},(_,i)=>{const d=value?.[i]||[1,4,0];return [Math.max(0,Math.min(100,Math.floor(Number(d[0])||0))),Math.max(0,Math.min(1000,Math.floor(Number(d[1])||0))),Math.max(-10000,Math.min(10000,Number(d[2])||0))];});},
+        dice(i) {
+            const s=players[SUNCAT_ID];let [n,d,m]=s.stat[i];
+            for(const b of s.activeBuffs||[]){if(b.expiresAt<=Date.now())continue;
+                if((b.buffStat===i||b.buffStat==='all')&&b.type!=='debuff')m+=b.amount||0;
+                if(b.debuffStat===i||b.debuffStat==='all')m-=b.amount||0;
+                for(const v of b.multiStat||[])if(v.stat===i)m+=v.amount||0;
+            }
+            const tiers=[4,6,8,10,12,20];
+            while(m>=4){let t=tiers.indexOf(d);if(t===5){n++;d=4;}else d=tiers.find(x=>x>d)||d;m-=4;}
+            while(m<=-4){let t=tiers.indexOf(d);if(t>0)d=tiers[t-1];else if(n>1){n--;d=20;}else break;m+=4;}
+            return [n,d,m];
+        },
+        roll(stat){let [n,d,m]=stat||[1,4,0];for(let i=0;i<n&&d>0;i++)m+=1+Math.floor(Math.random()*d);return m;},
+        score(i){const [n,d,m]=this.dice(i);return Math.max(1,n*d+m);},
+        actor(){const s=players[SUNCAT_ID];return {id:SUNCAT_ID,name:'Suncat',type:s.type,mapID:s.mapID,x:s.x,y:s.y,stat:[0,1,2,3].map(i=>this.dice(i)),level:s.level,damage:0,alignment:'defender'};},
+        wards(){const s=players[SUNCAT_ID];return {remainingSeconds:s.currentWardTime,remainingWards:Math.ceil(s.currentWardTime/3),maxWards:s.maxWards,secondsPerWard:3,recoverySeconds:Math.max(0,(s.wardShatterUntil-Date.now())/1000)};},
+        event(kind,detail){const e={...detail,body:'black fairy',selfWards:this.wards()};this.encounter.push({kind,...e});this.encounter=this.encounter.slice(-24);recordSuncatAdventure(kind,e);},
+        sync(){const s=players[SUNCAT_ID];io.emit('playerMoved',{id:SUNCAT_ID,mapID:s.mapID,x:s.x,y:s.y,dir:s.dir,name:s.name,type:s.type,isDead:!!s.respawnAt,state:s.state,alignment:s.alignment,currentWardTime:s.currentWardTime,maxWards:s.maxWards,timePerWard:3});},
+        available(){const s=players[SUNCAT_ID];return [...new Set([...s.learnedSpells,...Object.keys(s.inventory).filter(k=>s.inventory[k]>0).map(Number)])].filter(id=>this.supported(id)).map(id=>({id,name:SUNCAT_SPELLS[id].name,type:SUNCAT_SPELLS[id].type,learned:s.learnedSpells.includes(id),cards:s.inventory[id]||0,cooldownSeconds:Math.max(0,((s.skillCooldowns[id]||0)-Date.now())/1000)}));},
+        supported(id){return ['projectile','debuff','buff','item_buff','item_ward','ward','heal','assassination','cone'].includes(SUNCAT_SPELLS[id]?.type)&&!SUNCAT_SPELLS[id]?.isSteal;},
+        inspect(id){const s=players[SUNCAT_ID];const t=id?this.entities.get(String(id)):null;return {self:{...this.actor(),wards:this.wards(),intent:this.intent,inventory:s.inventory,actions:this.available()},target:t||null,nearby:[...this.entities.values()].slice(0,24),encounter:this.encounter};},
+        accept(socket,data) {
+            const s=players[SUNCAT_ID],p=players[socket.id],now=Date.now();
+            if(!p||data?.mapID!==s.mapID||p.mapID!==s.mapID||data.version!==1)return;
+            if(data.active!==true){if(this.peer===socket.id)this.seenAt=0;return;}
+            if(data.self&&Array.isArray(data.self.stat))p.suncatVitals={...data.self,stat:this.stats(data.self.stat),seenAt:now};
+            if(this.peer!==socket.id){
+                if(this.peer&&now-this.seenAt<3000&&players[this.peer]?.mapID===s.mapID&&io.sockets.sockets.has(this.peer))return;
+                this.peer=socket.id;this.epoch++;this.entities.clear();this.target=null;
+                void suncatObserve(s.mapID,true).catch(error=>this.event('observation_error',{error:error.message,outcome:'unknown'}));
+            }
+            if(now-this.seenAt<200)return;this.seenAt=now;
+            const rows=(Array.isArray(data.entities)?data.entities:[]).slice(0,64),next=new Map();
+            for(const n of rows){if(!n||!Number.isFinite(n.x+n.y)||Math.hypot(n.x-s.x,n.y-s.y)>Math.min(30,10*(1+(this.score(3)-4)*.05)))continue;
+                if(!['npc','player','loot'].includes(n.kind)||typeof n.id!=='string'||n.id.length>200)continue;
+                if(n.kind==='player'&&(!players[n.playerId]||players[n.playerId].mapID!==s.mapID))continue;
+                if(n.kind!=='player'&&!Number.isFinite(n.index))continue;
+                const v={id:n.id,kind:n.kind,index:n.index,playerId:n.playerId,ownerId:n.ownerId||null,name:String(n.name||'Creature').slice(0,100),type:n.type,mapID:s.mapID,x:n.x,y:n.y,
+                    stat:this.stats(n.stat),wards:n.wards,state:String(n.state||''),role:String(n.role||''),alignment:String(n.alignment||''),effects:(n.effects||[]).slice(0,20),
+                    targetingSuncat:n.targetingSuncat===true,hostile:n.hostile===true,seenAt:now,cardId:n.cardId,isBoss:n.isBoss===true};
+                if(v.kind==='player'){v.name=players[v.playerId].name;v.hostile=s.aggroList.has(v.playerId);}
+                const old=this.entities.get(v.id);if(old?.aggressor){v.aggressor=true;v.hostile=true;}next.set(v.id,v);
+                if(v.hostile&&(!old||old.state!==v.state||old.targetingSuncat!==v.targetingSuncat))this.event('threat_observed',{target:v,perception:'AGI-scaled local sight',behavior:v.targetingSuncat?'noticed Suncat and is approaching or attacking':v.state});
+            }
+            for(const [id,p]of Object.entries(players)){
+                if(id===SUNCAT_ID||p.mapID!==s.mapID||!p.suncatVitals||now-p.suncatVitals.seenAt>3000)continue;
+                if(Math.hypot(p.x-s.x,p.y-s.y)>20)continue;
+                const grid=suncatGrid(s.mapID),steps=Math.ceil(Math.hypot(p.x-s.x,p.y-s.y)*5);let visible=!!grid;
+                for(let i=1;i<steps&&visible;i++)if(!suncatFloor(grid,s.x+(p.x-s.x)*i/steps,s.y+(p.y-s.y)*i/steps))visible=false;
+                if(visible)next.set('player:'+id,{...p.suncatVitals,id:'player:'+id,kind:'player',playerId:id,name:p.name,mapID:s.mapID,x:p.x,y:p.y,hostile:s.aggroList.has(id),seenAt:now});
+            }
+            this.entities=next;
+            // A local perception update is partial; never replace the full atlas/NPC conversation observation with it.
+            if(this.target&&!next.has(this.target)){this.event('target_lost',{targetId:this.target,note:'No current sighting; defeat is not confirmed.'});this.target=null;}
+            if(!this.target)this.target=[...next.values()].filter(n=>n.hostile&&(n.targetingSuncat||suncatState==='protecting'||n.kind==='player')).sort((a,b)=>Math.hypot(a.x-s.x,a.y-s.y)-Math.hypot(b.x-s.x,b.y-s.y))[0]?.id||null;
+            socket.emit('suncat_observer',{mapID:s.mapID,epoch:this.epoch,actor:this.actor()});
+        },
+        mark(attacker){const s=players[SUNCAT_ID];this.entities.set(attacker.id,{...attacker,hostile:true,aggressor:true,targetingSuncat:true,seenAt:Date.now()});this.target=attacker.id;s.alignment='defender';if(attacker.kind==='player')s.aggroList.add(attacker.playerId);},
+        hit(socket,data) {
+            const s=players[SUNCAT_ID],p=players[socket.id],a=data.payload||{},now=Date.now();
+            if(!p||p.mapID!==s.mapID||s.respawnAt)return;
+            const npc=a.attacker?.kind==='npc';
+            if(npc&&(this.peer!==socket.id||now-this.seenAt>3000||a.epoch!==this.epoch))return;
+            if(!a.attacker||!Array.isArray(a.attacker.stat))return; // Legacy packets lack enough evidence to resolve combat.
+            const source=a.attacker;
+            const attacker=npc?{...source,stat:this.stats(source.stat),mapID:s.mapID}:{...source,id:'player:'+socket.id,kind:'player',playerId:socket.id,name:p.name,x:p.x,y:p.y,mapID:s.mapID,stat:this.stats(source.stat)};
+            if(!Number.isFinite(attacker.x+attacker.y)||Math.hypot(attacker.x-s.x,attacker.y-s.y)>40)return;
+            if(npc&&(!Number.isFinite(attacker.index)||typeof attacker.id!=='string'))return;
+            const spellId=Number.isInteger(a.spellId)?a.spellId:null,sp=SUNCAT_SPELLS[spellId];
+            if(spellId!==null&&!sp)return;
+            const key=socket.id+':'+String(a.eventId||attacker.id+':'+spellId+':'+Math.floor(now/400));
+            if(this.seenHits.has(key))return;this.seenHits.set(key,now);
+            if(this.seenHits.size>1024)this.seenHits.delete(this.seenHits.keys().next().value);
+            if(['buff','item_buff','item_ward','ward','heal'].includes(sp?.type)){
+                const magnitude=this.roll(attacker.stat[sp.castStat??2]);this.effect(spellId,magnitude,attacker);this.event('effect_received',{attacker,spellId,spell:sp.name,outcome:'beneficial effect applied'});return;
+            }
+            SUNCAT_RUNTIME.motion=null;
+            this.mark(attacker);this.event('attack_received',{attacker,spellId,spell:sp?.name||'Melee',attribution:'Live attacker and projectile owner',direction:Math.atan2(attacker.y-s.y,attacker.x-s.x)});
+            if(sp?.type==='debuff'||sp?.bind||sp?.debuffStat!==undefined){
+                const atk=this.roll(attacker.stat[sp.castStat??2]),def=this.roll(this.dice(sp.defStat??1));
+                if(atk>def)this.effect(spellId,atk-def,attacker);
+                this.event('effect_resolved',{attacker,spellId,spell:sp.name,attackRoll:atk,defenseRoll:def,outcome:atk>def?'applied':'resisted'});this.sync();return;
+            }
+            if(s.currentWardTime<=0){this.die(attacker,spellId);return;}
+            const attackRoll=this.roll(attacker.stat[sp?.castStat??0])+(Number(attacker.damage)||0),defenseRoll=this.roll(this.dice(sp?.defStat??1));
+            const before=s.currentWardTime;s.currentWardTime=Math.max(0,before-Math.max(0,attackRoll-defenseRoll)*.75);
+            if(before>0&&s.currentWardTime===0)s.wardShatterUntil=now+Math.max(2,9-(this.score(1)-4)*.2)*1000;
+            this.event('ward_hit',{attacker,spellId,spell:sp?.name||'Melee',attackRoll,defenseRoll,defenseStat:['STR','CON','INT','AGI'][sp?.defStat??1],outcome:attackRoll<=defenseRoll?'held':'ward damage',wardSecondsLost:before-s.currentWardTime,wardsBroken:Math.ceil(before/3)-Math.ceil(s.currentWardTime/3)});
+            for(const proc of sp?.procs||[]){const atk=this.roll(attacker.stat[proc.dcStat??2]),def=this.roll(this.dice(proc.saveStat??1));if(atk>def){this.effect(proc.id,atk-def,attacker);this.event('effect_received',{attacker,spellId:proc.id,spell:SUNCAT_SPELLS[proc.id]?.name,attackRoll:atk,defenseRoll:def,outcome:'applied'});}}
+            io.emit('remote_npc_flash',{id:SUNCAT_ID});this.sync();
+        },
+        effect(id,magnitude,source){const s=players[SUNCAT_ID],sp=SUNCAT_SPELLS[id];if(!sp)return;
+            if(id===19){s.activeBuffs=[];s.currentWardTime=s.maxWards*3;s.wardShatterUntil=0;return;}
+            if(id===25){s.activeBuffs=s.activeBuffs.filter(b=>b.type!=='debuff');s.currentWardTime=Math.min(s.maxWards*3,s.currentWardTime+3);s.wardShatterUntil=0;}
+            if(sp.type==='heal'){s.currentWardTime=Math.min(s.maxWards*3,s.currentWardTime+(magnitude+this.roll(this.dice(3)))*.25);s.wardShatterUntil=0;return;}
+            if(['ward','item_ward'].includes(sp.type)){s.maxWards=Math.max(s.maxWards,sp.hits||3);s.currentWardTime=Math.min(s.maxWards*3,s.currentWardTime+(sp.hits||3)*3);s.wardShatterUntil=0;return;}
+            const seconds=sp.bind?(Math.max(1,magnitude)+2):(sp.duration||150)/30;
+            const b={...sp,id,amount:['buff','debuff'].includes(sp.type)?Math.abs(magnitude):sp.amount,expiresAt:Date.now()+seconds*1000,nextTick:Date.now()+Math.max(1000,(sp.tickRate||30)/30*1000),resistDC:Math.abs(magnitude),source};
+            if(sp.type==='debuff')s.activeBuffs=s.activeBuffs.filter(v=>v.id!==id);s.activeBuffs.push(b);
+        },
+        die(attacker,spellId){const s=players[SUNCAT_ID];if(s.respawnAt)return;this.event('final_hit',{attacker,spellId,outcome:'Suncat fell after the wards had already broken'});s.combatDeaths++;s.respawnAt=Date.now()+4000;s.state='fallen';this.target=null;SUNCAT_RUNTIME.motion=null;this.sync();void saveSuncatMemory();},
+        moveFrom(target,away=false){const s=players[SUNCAT_ID],grid=suncatGrid(s.mapID);if(!grid)return false;
+            const dx=target.x-s.x,dy=target.y-s.y,len=Math.hypot(dx,dy)||1,step=Math.min(.6,.30*(1+(this.score(3)-4)*.05));
+            const dirs=away?[[-dx/len,-dy/len],[-dy/len,dx/len],[dy/len,-dx/len]]:[[dx/len,dy/len]];
+            for(const [x,y]of dirs){const nx=s.x+x*step,ny=s.y+y*step;
+                if([[0,0],[.25,0],[-.25,0],[0,.25],[0,-.25]].every(([ox,oy])=>suncatFloor(grid,nx+ox,ny+oy))){s.x=nx;s.y=ny;s.dir=Math.atan2(dy,dx);return true;}}
+            if(!away){const path=suncatPath(grid,s.x,s.y,target.x,target.y);const next=path?.find(v=>Math.hypot(v.x-s.x,v.y-s.y)>.1);if(next){const l=Math.hypot(next.x-s.x,next.y-s.y);s.x+=(next.x-s.x)/l*Math.min(step,l);s.y+=(next.y-s.y)/l*Math.min(step,l);return true;}}
+            return false;
+        },
+        async act(action,targetId,spellId){
+            const s=players[SUNCAT_ID],now=Date.now(),target=this.entities.get(String(targetId||this.target));
+            let spent=null;
+            if(action==='defend'||action==='flee'){this.intent=action;if(target)this.target=target.id;this.event('tactic_chosen',{action,target:target||null});return {ok:true,intent:action};}
+            if(action==='inspect')return this.inspect(targetId);
+            if(!this.peer||now-this.seenAt>3000)throw Error('No active world observer; combat is paused.');
+            if(s.respawnAt)throw Error('Suncat has fallen and is recovering.');
+            if(now<this.nextAction)throw Error('Suncat is recovering from the previous action.');
+            if(action==='collect'){
+                if(target?.kind!=='loot'||Math.hypot(target.x-s.x,target.y-s.y)>1.5)throw Error('Approach an observed dropped card first.');
+            }else{
+                spellId=action==='attack'?9999:Number(spellId);if(!this.supported(spellId))throw Error('That action is not supported by this body.');
+                const sp=SUNCAT_SPELLS[spellId],self=['buff','item_buff','item_ward','ward','heal'].includes(sp.type);
+                if(!self&&(!target||target.kind==='loot'||!target.hostile))throw Error('Select a currently observed hostile target.');
+                if(!self&&Math.hypot(target.x-s.x,target.y-s.y)>(sp.range||15))throw Error('Target is out of range.');
+                const learned=s.learnedSpells.includes(spellId)&&!(s.skillCooldowns[spellId]>now);
+                if(!learned&&!(s.inventory[spellId]>0))throw Error('No ready learned ability or owned card.');
+                spent={learned,previousCooldown:s.skillCooldowns[spellId]||0};
+                if(learned)s.skillCooldowns[spellId]=now+(sp.cooldown||Math.max(400,1300/(1+(this.score(3)-4)*.05)));else s.inventory[spellId]--;
+                this.nextAction=now+Math.max(350,1200/(1+(this.score(3)-4)*.05));
+                if(self){this.effect(spellId,this.roll(this.dice(sp.castStat??2)),this.actor());this.event('spell_resolved',{spellId,spell:sp.name,outcome:'self effect applied',resource:learned?'learned ability':'card consumed'});emitMapEvent(s.mapID,'remote_sfx',{sfxID:sp.sfx||'buff',x:s.x,y:s.y,sourcePlayerID:SUNCAT_ID});this.sync();return {ok:true,outcome:'applied'};}
+            }
+            const id=String(SUNCAT_RUNTIME.id()),peer=target?.kind==='player'?target.playerId:this.peer;
+            const packet={id,epoch:this.epoch,mapID:s.mapID,actor:this.actor(),target,spellId,action};
+            if(action!=='collect')emitMapEvent(s.mapID,'suncat_combat_visual',{...packet,observerID:peer});
+            const pending={...packet,peer,until:now+12000};this.pending.set(id,pending);this.nextAction=Math.max(this.nextAction,now+600);
+            this.event(action==='collect'?'collection_attempt':'spell_fired',{commandId:id,spellId,spell:SUNCAT_SPELLS[spellId]?.name,target,note:'Attempt issued; await the confirmed result.'});
+            try{const reply=await suncatAck(peer,'suncat_command',{id,mapID:s.mapID,kind:'combat',args:packet});
+                if(reply.outcome)this.result(peer,{...reply,commandId:id,mapID:packet.mapID});
+                return {ok:true,...reply};
+            }catch(error){this.event('combat_error',{commandId:id,spellId,target,error:error.message,outcome:error.outcome||'failed',note:'Resources remain spent; do not retry this command automatically.'});if(error.outcome!=='unknown'){this.pending.delete(id);if(spent?.learned)s.skillCooldowns[spellId]=spent.previousCooldown;else if(spent)s.inventory[spellId]=(s.inventory[spellId]||0)+1;}return {ok:false,outcome:error.outcome||'failed',error:error.message};}
+        },
+        result(peer,data){const p=this.pending.get(data?.commandId),s=players[SUNCAT_ID];if(!p||peer!==p.peer||p.mapID!==data.mapID||p.until<Date.now())return;
+            if(!['hit','held','dodged','killed','applied','resisted','missed','collected'].includes(data.outcome))return;this.pending.delete(data.commandId);
+            if(data.outcome==='collected'&&p.action==='collect'&&data.cardId===p.target.cardId){s.inventory[data.cardId]=(Number(s.inventory[data.cardId])||0)+1;this.entities.delete(p.target.id);}
+            this.event('combat_result',{commandId:data.commandId,spellId:p.spellId,spell:SUNCAT_SPELLS[p.spellId]?.name,target:p.target,outcome:data.outcome,
+                rolls:data.rolls,wardsBefore:data.wardsBefore,wardsAfter:data.wardsAfter,wardsBroken:data.wardsBroken,effects:data.effects,cardId:data.cardId,cardName:Number.isInteger(data.cardId)?getCardName(data.cardId):undefined,error:data.error});
+            if(data.outcome==='killed'){this.entities.delete(p.target.id);if(this.target===p.target.id)this.target=null;
+                if(p.target.kind==='npc'){s.xp+=p.target.isBoss?150:25;const needed=Math.floor(100*Math.pow(s.level+1,1.8));if(s.xp>=needed){s.xp-=needed;s.level++;void processSuncatLevelUp();}}}
+            if(SUNCAT_SPELLS[p.spellId]?.drain&&Number.isFinite(data.wardsBefore)&&Number.isFinite(data.wardsAfter))s.currentWardTime=Math.min(s.maxWards*3,s.currentWardTime+Math.min(3,Math.max(0,data.wardsBefore-data.wardsAfter)/.75*.01));
+        },
+        tick(){const s=players[SUNCAT_ID],now=Date.now(),dt=this.lastTick?Math.min(.5,(now-this.lastTick)/1000):.25;this.lastTick=now;if(!s)return;
+            if(s.respawnAt){if(now>=s.respawnAt){s.respawnAt=0;s.mapID=22;s.x=5.5;s.y=5.5;s.currentWardTime=s.maxWards*3;s.activeBuffs=[];s.wardShatterUntil=0;s.aggroList.clear();s.state='wandering';suncatState='active';this.target=null;this.peer=null;this.entities.clear();this.event('revived',{destinationMap:22,note:'Returned to the realm after a confirmed defeat.'});this.sync();}return;}
+            for(const [id,p]of this.pending)if(now>p.until){this.pending.delete(id);this.event('combat_result_unknown',{commandId:id,target:p.target,note:'No confirmed impact result; do not infer a hit or kill.'});}
+            for(const b of s.activeBuffs){if(b.expiresAt<=now)continue;if(b.nextTick<=now&&b.votType){b.nextTick=now+Math.max(1000,(b.tickRate||30)/30*1000);
+                if(b.votType==='dot'&&this.roll(this.dice(b.defStat??1))<(b.resistDC||1)){
+                    if(s.currentWardTime<=0){this.die(b.source,b.id);return;}const before=s.currentWardTime;s.currentWardTime=Math.max(0,before-(b.votAmount||1));if(!s.currentWardTime)s.wardShatterUntil=now+Math.max(2,9-(this.score(1)-4)*.2)*1000;this.event('ward_damage_over_time',{attacker:b.source,spellId:b.id,spell:b.name,wardSecondsLost:before-s.currentWardTime,wardsBroken:Math.ceil(before/3)-Math.ceil(s.currentWardTime/3)});
+                }else if(b.votType==='hot')s.currentWardTime=Math.min(s.maxWards*3,s.currentWardTime+(b.votAmount||1));else if(b.votType==='bot')b.amount=(b.amount||0)+(b.votAmount||1);else if(b.votType==='stun')b.stunUntil=now+500;}}
+            s.activeBuffs=s.activeBuffs.filter(b=>b.expiresAt>now);
+            if(now>=s.wardShatterUntil)s.currentWardTime=Math.min(s.maxWards*3,s.currentWardTime+this.score(1)*.0613*dt);
+            if(!this.peer||now-this.seenAt>3000||players[this.peer]?.mapID!==s.mapID){if(this.target){this.event('observation_paused',{targetId:this.target,note:'World observer is unavailable; combat is paused and the target outcome is unknown.'});this.target=null;}return;}
+            const t=this.entities.get(this.target),bound=s.activeBuffs.some(b=>b.bind||b.stunUntil>now);
+            if(t){SUNCAT_RUNTIME.motion=null;const dist=Math.hypot(t.x-s.x,t.y-s.y),flee=this.intent==='flee'||s.currentWardTime<3;
+                const state=flee?'fleeing':'defending';if(s.state!==state){s.state=state;this.event('combat_movement',{action:flee?'putting distance between self and attacker':'facing attacker',target:t});}
+                const rangedReady=this.available().some(a=>a.id!==9999&&a.type==='projectile'&&(a.cooldownSeconds===0||a.cards>0));
+                if(!bound){if(flee||(rangedReady&&dist<2.2))this.moveFrom(t,true);else if(dist>(rangedReady?7:1.1))this.moveFrom(t,false);}
+                if(!bound&&now>=this.nextAction){const ready=this.available().filter(a=>a.cooldownSeconds===0||a.cards>0);
+                    const heal=ready.find(a=>['heal','item_ward'].includes(a.type)||a.id===25||a.id===19);
+                    const bind=ready.find(a=>SUNCAT_SPELLS[a.id].bind&&!t.effects?.some(e=>e.bind));
+                    const best=(flee&&heal)||((flee||dist<3)&&bind)||ready.find(a=>a.id!==9999&&a.type==='projectile')||(dist<=1.3&&ready.find(a=>a.id===9999));
+                    if(best)void this.act('cast',t.id,best.id).catch(error=>{this.nextAction=now+1000;});
+                }
+                this.sync();
+            }else{s.state='wandering';if(this.intent==='flee'&&s.currentWardTime>=6)this.intent='defend';
+                const loot=[...this.entities.values()].filter(n=>n.kind==='loot'&&Number.isInteger(n.cardId)).sort((a,b)=>Math.hypot(a.x-s.x,a.y-s.y)-Math.hypot(b.x-s.x,b.y-s.y))[0];
+                if(loot&&Math.hypot(loot.x-s.x,loot.y-s.y)<6){SUNCAT_RUNTIME.motion=null;
+                    if(Math.hypot(loot.x-s.x,loot.y-s.y)>1.3){if(!bound&&this.moveFrom(loot,false))this.sync();}
+                    else if(now>=this.nextAction)void this.act('collect',loot.id).catch(()=>{});
+                }
+            }
+            if(now-this.lastSave>10000){this.lastSave=now;void saveSuncatMemory();}
+        }
+    };
+    setInterval(()=>SUNCAT_COMBAT.tick(),250);
+    // SUNCAT_COMBAT_END
+
     function suncatResolveCard(value) {
         const text=String(value ?? '').trim().toLowerCase();
         if (/^\d+(?:\.\d+)?$/.test(text)) {
@@ -5135,6 +5370,8 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
         const autonomous=!socket, s=players[SUNCAT_ID];
         const targetID=autonomous?SUNCAT_ID:findSocketID(args.targetName || players[socket.id]?.name);
         if (autonomous && !SUNCAT_RUNTIME.autoTools.has(name)) throw new Error('This tool requires a player request.');
+        if(name==='inspectCombatTarget') return SUNCAT_COMBAT.inspect(args.targetId);
+        if(name==='chooseCombatAction') return SUNCAT_COMBAT.act(args.action,args.targetId,args.spellId);
         if (name==='consultGameManual') {
             const terms=String(args.query || '').toLowerCase().split(/\W+/).filter(Boolean);
             if(!terms.length) throw new Error('Supply a search query.');
@@ -5159,6 +5396,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             io.emit('updatePlayers',getPublicPlayers());return {ok:true,result:'Protection disabled.'};
         }
         if (name==='travelToLocation') {
+            if(SUNCAT_COMBAT.target)throw Error('In combat: choose defend or flee before travelling.');
             const mapID=Number(args.mapID),x=Number(args.x),y=Number(args.y);
             if(!Number.isInteger(mapID)||(!WORLD_ATLAS_DB[mapID]&&mapID!==999&&mapID!==100)||!Number.isFinite(x+y)) throw new Error('Invalid map or coordinates.');
             await suncatObserve(mapID);const grid=suncatGrid(mapID),p=suncatNearestFloor(grid,x,y);
@@ -5304,7 +5542,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
         delete suncatPersistentMemory[memoryKey];
         playerFavorMemory[id]=0;
         Object.assign(player,{playerProfile:{combatStyle:'Unknown',alliances:'Unknown',tastes:'Unknown',personality:'Unknown'},
-            storySoFar:'',activeQuest:null,suncatPerception:'An unknown entity.',undigestedInfo:[],searchableMemories:[]});
+            storySoFar:'',activeQuest:null,suncatPerception:'An unknown entity.',undigestedInfo:[],searchableMemories:[],gameplayEvents:[],npcDialogueEvents:[],rawJournalArchive:[]});
         delete chatSessions[id];
         saveSuncatMemory();
     }
@@ -5941,7 +6179,12 @@ not meeting the described entity. A walking result is departure, not arrival.
 Failed and unknown outcomes stay failed or unknown. A fired spell is not a confirmed kill.
 A reflection/prayer is Suncat's thought, not proof its claims happened in the world.
 Preserve actual names, places and consequences. No invented quests, loot or offscreen exploits.
-Do not quote tool names, technical errors, budgets, internal IDs or JSON. A software failure is not magic, secrecy, or an NPC refusing to talk. Briefly describe the unsuccessful attempt and move on. Use clear sword-and-sorcery prose, readable paragraphs,
+Your current body is the black fairy. Do not invent cat paws or fur from another Suncat NPC.
+Keep the analytical voice: Map IDs, card IDs, observed stats, ward seconds, roll outcomes and exact self-reported errors can appear as concise field notes. Technical errors are useful diagnostic evidence; keep an unknown result unknown.
+Combat events identify attacker instances and projectile ownership. Name the actual attacker when supplied; do not invent invisible assailants or mix separate creatures. Live vitals describe the current target, while manifest lookups describe the species.
+Life is measured in wards and remaining ward seconds. A ward break is not death: only a confirmed final_hit or killed result establishes defeat. Historical HP records may be labeled legacy telemetry; never pretend those numbers were measured ward seconds.
+Follow observed approach, attack, defense rolls, ward loss, movement, spell effects and confirmed defeat in order. Preserve named spells and resisted or failed effects.
+Use clear sword-and-sorcery prose, readable paragraphs,
 and 250–700 words only when the events warrant it. Quiet or sparse records may be very short.
 End at the last recorded event. Return only the prose, without a title.`;
             const model = genAI.getGenerativeModel({model: 'gemini-2.5-flash-lite',
@@ -6469,15 +6712,17 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             const upgrade = JSON.parse(rawText);
             
             // Allocate stats
+            let statBudget=3;
+            for(const k of ['add_STR','add_CON','add_INT','add_AGI']){upgrade[k]=Math.max(0,Math.min(statBudget,Math.floor(Number(upgrade[k])||0)));statBudget-=upgrade[k];}
             s.stat[0][2] += (upgrade.add_STR || 0);
             s.stat[1][2] += (upgrade.add_CON || 0);
             s.stat[2][2] += (upgrade.add_INT || 0);
             s.stat[3][2] += (upgrade.add_AGI || 0);
             s.suncatClass = upgrade.newClassTitle || s.suncatClass;
-            s.hp = 100 + (s.stat[1][2] * 10);
+            // Level growth changes stats, not a separate HP pool.
 
             // Learn the selected spell
-            if (upgrade.learnSpellId && !s.learnedSpells.includes(upgrade.learnSpellId)) {
+            if (availableSpells.some(sp=>sp.id===upgrade.learnSpellId) && !s.learnedSpells.includes(upgrade.learnSpellId)) {
                 s.learnedSpells.push(upgrade.learnSpellId);
             }
 
@@ -6505,7 +6750,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
     async function executeAutonomousOODA() {
         const rt=SUNCAT_RUNTIME,s=players[SUNCAT_ID],now=Date.now();
         if(!s || rt.busy || now-rt.lastThink<60000 || ['seclusion','enraged','protecting'].includes(suncatState) || isBankrupt()) return;
-        if(rt.motion?.path.length) return; // Let the body finish moving before choosing another destination.
+        if(rt.motion?.path.length && !SUNCAT_COMBAT.target) return; // Let the body finish moving before choosing another destination.
         rt.busy=true;rt.lastThink=now;
         try {
             try { await suncatObserve(s.mapID,true); }
@@ -6520,6 +6765,8 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             const response=await session.sendMessage(`You are Suncat taking one autonomous turn.
             Long-term interest: ${suncatLongTermGoal || 'Explore observed places and learn about their inhabitants.'}
             Location: ${JSON.stringify({mapID:s.mapID,x:s.x,y:s.y})}
+            Body: a black fairy; the cat-form Suncat NPC is a different entity. AGI governs perception and reactions.
+            Your live JRPG state: ${JSON.stringify(SUNCAT_COMBAT.inspect())}
             Observed world (client report, possibly stale): ${suncatRememberedVision(s.mapID)}
             Online players: ${JSON.stringify(online)}
             Existing autonomous summons: ${JSON.stringify(rt.companions)}
@@ -6546,7 +6793,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
     // Cheap body updates; model calls remain at most once per minute.
     setInterval(()=>{
         const rt=SUNCAT_RUNTIME,s=players[SUNCAT_ID];
-        if(!s || ['seclusion','enraged'].includes(suncatState)) return;
+        if(!s || s.respawnAt || SUNCAT_COMBAT.target || ['seclusion','enraged'].includes(suncatState)) return;
         const target=players[rt.protectedID || (Date.now()-lastSwitchTime<120000 ? currentTargetID : '')];
         if(target && target.mapID===s.mapID && Math.hypot(target.x-s.x,target.y-s.y)>2 &&
             Date.now()-(rt.lastFollowPath || 0)>2000) {
@@ -6934,7 +7181,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             else if (data.isTarot) {
                 useBigBrain = true; 
                 // ADD THE uiEvent FLAG HERE:
-                messageOptions = { sender: "", color: "#00ffff", targetId: socketId, uiEvent: 'tarot_reading_result' }; 
+                messageOptions = { sender: "", color: "#00ffff", targetId: socketId, uiEvent: 'tarot_reading_result', requestId:data.requestId }; 
                 eventInstruction = `${data.action}\nTASK: You are the Oracle. Analyze these specific cards and their positions in the spread. You MUST weave their meanings together with the player's [THE STORY SO FAR] and [ACTIVE QUEST] to provide an eerily accurate, highly personalized prophecy (3 sentences max). Address the player directly. End the reading with a single, piercing philosophical question about their journey.`;
             }
             else if (data.isPickup) {
@@ -7168,7 +7415,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
 
             messageOptions={...messageOptions,targetId:socketId};
             if (messageOptions.uiEvent) {
-                io.to(messageOptions.targetId).emit(messageOptions.uiEvent, { text: finalSpeech });
+                io.to(messageOptions.targetId).emit(messageOptions.uiEvent, { text: finalSpeech, requestId:messageOptions.requestId });
             } else {
                 broadcastSuncatMessage(finalSpeech, messageOptions);
             }
@@ -7379,7 +7626,8 @@ function getPublicPlayers() {
                 type: p.type,
                 dir: p.dir,
                 status: p.status,
-                summons: p.summons || []
+                summons: p.summons || [],
+                ...(id===SUNCAT_ID?{isDead:!!p.respawnAt,alignment:p.alignment,state:p.state,currentWardTime:p.currentWardTime,maxWards:p.maxWards,timePerWard:3}:{})
             }
         ])
     );
@@ -7421,6 +7669,7 @@ io.on("connection", (socket) => {
             let persistentId = (typeof data === 'object' && data.persistentId) 
                 ? data.persistentId 
                 : nameKey;
+            if(players[socket.id]?.persistentId===persistentId)return;
 
             // ==========================================
             // GHOST EVICTION: Kill lingering duplicate sessions by ID
@@ -7521,6 +7770,7 @@ io.on("connection", (socket) => {
                 players[socket.id].storySoFar = loadedStory;
                 players[socket.id].playerProfile = playerProfile; 
                 players[socket.id].searchableMemories = loadedMemories;
+                players[socket.id].gameplayEvents = Array.isArray(savedData?.gameplayEvents)?savedData.gameplayEvents.slice():[];
                 players[socket.id].npcDialogueEvents =
                     Array.isArray(savedData?.npcDialogueEvents)
                         ? savedData.npcDialogueEvents.slice()
@@ -7563,6 +7813,9 @@ io.on("connection", (socket) => {
                         });
                     }
                 }
+                for(const event of players[socket.id].gameplayEvents||[])socket.emit('journal_updated',{
+                    entryId:'activity:'+event.id,entryType:'record',timestamp:event.observedAt||event.timestamp,
+                    playerChronicle:'[RECORD]\n\n'+event.text,suncatThoughts:null});
                 persistPlayerJournal(players[socket.id]);
                 void condenseSessionOnLogin(socket.id);
                 if (!players[socket.id].dmNarrativeLog) {
@@ -7661,6 +7914,7 @@ io.on("connection", (socket) => {
                     undigestedInfo: me.undigestedInfo || [],
                     rawJournalArchive: me.rawJournalArchive || [],
                     npcDialogueEvents: me.npcDialogueEvents || [],
+                    gameplayEvents: me.gameplayEvents || [],
                 };
 
                 saveSuncatMemory();
@@ -7813,22 +8067,8 @@ io.on("connection", (socket) => {
         socket.on('decline_teleport_invite',()=>{
             if(players[socket.id]) delete players[socket.id].pendingMapInvite;
         });
-        socket.on('suncat_radar_ping',(data)=>{
-            const s=players[SUNCAT_ID],p=players[socket.id],rt=SUNCAT_RUNTIME;
-            if(!s||!p||suncatState!=='protecting'||rt.protectedID!==socket.id) return;
-            if(data?.mapID!==s.mapID||p.mapID!==s.mapID||![data.targetX,data.targetY].every(Number.isFinite)) return;
-            const dx=data.targetX-s.x,dy=data.targetY-s.y,dist=Math.hypot(dx,dy);
-            if(dist<=0||dist>10||Date.now()-(s.lastFireTime||0)<1000) return;
-            // A radar packet cannot move or teleport Suncat.
-            s.lastFireTime=Date.now();
-            recordSuncatAdventure('spell_fired', {spellId: 26, protecting: p.name,
-                targetX: data.targetX, targetY: data.targetY,
-                note: 'Projectile launched; hit and defeat are unconfirmed.'});
-            io.emit('suncat_fires_projectile',{mapID:s.mapID,spellId:26,
-                startX:s.x,startY:s.y,dirX:dx/dist,dirY:dy/dist,
-                damage:Math.max(1,(s.stat?.[2]?.[2]||0)+s.level),alignment:'ally',
-                targetType:'all',observerID:socket.id});
-        });
+        socket.on('suncat_presence',data=>SUNCAT_COMBAT.accept(socket,data));
+        socket.on('suncat_combat_result',data=>SUNCAT_COMBAT.result(socket.id,data));
     //COMBAT & WORLD INTERACTION
         socket.on("engage_npc", (data) => {
                 const player = players[socket.id];
@@ -7880,17 +8120,7 @@ io.on("connection", (socket) => {
 
                 deadNPCs[uniqueID] = data.isBoss ? Infinity : Date.now();
             }
-            // If Suncat is on the exact same map as the slaughter, he absorbs the stray Qi!
-            if (suncat && suncat.mapID === data.mapID) {
-                suncat.xp += data.isBoss ? 150 : 25;
-                let xpNeeded = Math.floor(100 * Math.pow(suncat.level + 1, 1.8));
-                
-                if (suncat.xp >= xpNeeded) {
-                    suncat.xp -= xpNeeded;
-                    suncat.level++;
-                    processSuncatLevelUp(); // Trigger the AI!
-                }
-            }
+            // Personal combat XP is awarded once from Suncat's confirmed impact result.
             if (data.alignment === 'ally') {
                     socket.broadcast.emit("npc_died", data); // Still broadcast so other players see it die
                     return; // Exit early!
@@ -8014,81 +8244,10 @@ io.on("connection", (socket) => {
         socket.on("battle_action", (data) => {
             const player = players[socket.id];
             
-            // --- SUNCAT TAKES DAMAGE AND FIGHTS BACK ---
-            if (data.targetId === "NPC_SUNCAT" || data.actionType === "SUNCAT_HIT") {
-                let suncat = players[SUNCAT_ID];
-                let attacker = players[socket.id]; // Identify who shot him!
-                if (data.actionType === "SUNCAT_HIT") {
-                    attacker = null; 
-                }
-                if (suncat) {
-                    
-                    const reportedDamage =
-                        data.payload?.damage ??
-                        data.payload?.attackerStats?.damage ??
-                        5;
-
-                    const incomingDamage = Number.isFinite(reportedDamage)
-                        ? Math.max(0, reportedDamage)
-                        : 0;
-
-                    suncat.hp = Math.max(0, (suncat.hp ?? 100) - incomingDamage);
-                    recordSuncatAdventure('damage_received', {
-                        damage: incomingDamage, hpAfter: suncat.hp,
-                        attacker: attacker?.name || 'unknown source'
-                    });
-                    // 1. SUNCAT KNOCKBACK MATH
-                    if (data.payload?.x !== undefined && data.payload?.y !== undefined) {
-                        let dx = suncat.x - data.payload.x;
-                        let dy = suncat.y - data.payload.y;
-                        let dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist > 0) {
-                            suncat.x += (dx / dist) * 0.6; // Push him 0.6 tiles back!
-                            suncat.y += (dy / dist) * 0.6;
-                            let maxB = suncat.mapID === 999 ? 98 : 19;
-                            suncat.x = Math.max(1, Math.min(maxB, suncat.x));
-                            suncat.y = Math.max(1, Math.min(maxB, suncat.y));
-                        }
-                    }
-
-                    io.emit("remote_npc_flash", { id: SUNCAT_ID });
-                    io.emit("updatePlayers", getPublicPlayers()); 
-                    
-                    // 2. DID HE DIE?
-                    if (suncat.hp <= 0) {
-                        suncat.hp = 100;
-                        suncat.mapID = 22;
-                        suncat.x = 5.5; suncat.y = 5.5;
-                        recordSuncatAdventure('retreat', {
-                            destinationMap: 22, reason: 'HP depleted; returned to heal.'
-                        });
-                        suncat.aggroList = new Set(); // Wipe aggro if he dies
-                        suncatState = 'active';
-
-                        io.emit("updatePlayers", getPublicPlayers());
-                        emitMapEvent(attacker?.mapID ?? suncat.mapID,"chat_message", { sender: "Suncat", text: "Ouch... I've sustained too much damage. Returning to my realm to heal.", color: "#ff6600" });
-                        processSuncatThought(socket.id, 'event', { action: "You just took lethal damage from a player and were forced to retreat to Map 22 to heal." });
-                    } 
-                    // 3. HE SURVIVED -> ADD TO HITLIST!
-                    else if (attacker) {
-                        playerFavorMemory[socket.id] = (playerFavorMemory[socket.id] || 0) - 5;
-                        
-                        // --- EVERQUEST AGGRO MECHANIC ---
-                        if (!suncat.aggroList) suncat.aggroList = new Set();
-                        
-                        if (!suncat.aggroList.has(socket.id)) {
-                            suncat.aggroList.add(socket.id);
-                            suncatState = 'enraged'; // Lock him into high-speed combat mode!
-                            
-                            emitMapEvent(attacker.mapID,"chat_message", { 
-                                sender: "[SYSTEM]", 
-                                text: `Suncat's eyes glow with divine fury. ${attacker.name} has been marked for death.`, 
-                                color: "#ff0000" 
-                            });
-                        }
-                    }
-                }
-                return; 
+            if(!data||typeof data!=='object')return;
+            if(data.targetId===SUNCAT_ID){
+                if(['SUNCAT_HIT','OVERWORLD_HIT','OVERWORLD_SPELL'].includes(data.actionType))SUNCAT_COMBAT.hit(socket,data);
+                return;
             }
 
             io.to(data.targetId).emit("battle_action", {
@@ -8654,8 +8813,52 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
             // 2. Send it to the Nervous System
             processSuncatThought(socket.id, 'event', {
                 action: tarotPrompt,
-                isTarot: true // Flag to trigger Oracle Mode
+                isTarot: true, requestId:typeof data.requestId==='string'?data.requestId.slice(0,100):null // Correlate this spread
             });
+        });
+        // Reliable client activity delivery: retain source facts even with narration disabled.
+        socket.on('gameplay_events', async (payload, acknowledge) => {
+            const reply=value=>{if(typeof acknowledge==='function')acknowledge(value);};
+            const player=players[socket.id];
+            if(!player?.persistentId||!Array.isArray(payload?.events)){reply({ok:false,accepted:[]});return;}
+            const accepted=[];player.gameplayEvents ||= [];player.undigestedInfo ||= [];
+            const known=new Set(player.gameplayEvents.map(e=>e.id));
+            for(const input of payload.events.slice(0,20)){
+                if(!input||typeof input.id!=='string'||!input.id.trim()||input.id.length>100||
+                    typeof input.kind!=='string'||!/^\w{1,60}$/.test(input.kind)||
+                    typeof input.text!=='string'||!input.text.trim()||input.text.length>10000||
+                    (input.actorId!=='local'&&input.actorId!==player.persistentId))continue;
+                if(known.has(input.id)){accepted.push(input.id);continue;}
+                let details={};try{const encoded=JSON.stringify(input.details||{});if(encoded.length<=24000)details=JSON.parse(encoded);}catch{}
+                const event={id:input.id,kind:input.kind,text:input.text,details,actorId:player.persistentId,actorName:player.name,
+                    timestamp:new Date().toISOString(),observedAt:typeof input.observedAt==='string'?input.observedAt.slice(0,40):null,
+                    mapID:Number.isSafeInteger(input.mapID)?input.mapID:player.mapID,mapName:String(input.mapName||'').slice(0,200),
+                    x:Number.isFinite(input.x)?input.x:null,y:Number.isFinite(input.y)?input.y:null};
+                known.add(event.id);player.gameplayEvents.push(event);accepted.push(event.id);
+                player.undigestedInfo.push(`[GAMEPLAY_RECORD:${event.id}] ${JSON.stringify(event)}`);
+                const dialogue=details?.dialogue;
+                if(event.kind==='dialogue'&&dialogue&&typeof dialogue.id==='string'&&['npc_line','player_choice'].includes(dialogue.kind)){
+                    player.npcDialogueEvents ||= [];
+                    if(!player.npcDialogueEvents.some(e=>e.id===dialogue.id))player.npcDialogueEvents.push({...dialogue,timestamp:event.timestamp});
+                }
+                const fresh=Number.isFinite(Date.parse(event.observedAt))&&Math.abs(Date.now()-Date.parse(event.observedAt))<=15000;
+                if(fresh&&suncatCanHear(player,event.mapID)&&Number.isFinite(event.x)&&Number.isFinite(event.y)&&
+                    Math.hypot(event.x-players[SUNCAT_ID].x,event.y-players[SUNCAT_ID].y)<=6){
+                    recordSuncatAdventure('observed_activity',{player:player.name,text:event.text,kind:event.kind,
+                        note:'A nearby client-reported action; Suncat observed it and did not perform it.'},`activity:${player.persistentId}:${event.id}`);
+                }
+            }
+            try{
+                const key=player.persistentId;
+                suncatPersistentMemory[key]={...(suncatPersistentMemory[key]||{}),gameplayEvents:player.gameplayEvents,
+                    npcDialogueEvents:player.npcDialogueEvents||[],undigestedInfo:player.undigestedInfo};
+                const saved=await saveSuncatMemory();
+                if(!saved){reply({ok:false,accepted:[]});return;}
+                for(const id of accepted){const event=player.gameplayEvents.find(e=>e.id===id);socket.emit('journal_updated',{
+                    entryId:'activity:'+id,entryType:'record',timestamp:event.observedAt||event.timestamp,
+                    playerChronicle:'[RECORD]\n\n'+event.text,suncatThoughts:null});}
+                reply({ok:true,accepted});
+            }catch(error){console.error('[Activity journal]',error.message);reply({ok:false,accepted:[]});}
         });
         socket.on("npc_story_event", (data) => {
             const player = players[socket.id];
@@ -9078,98 +9281,6 @@ setInterval(() => {
     }
 }, 60000);
 // ==========================================
-setInterval(() => {
-    const suncat = players[SUNCAT_ID];
-    
-    // If he isn't mad, or has no targets, do absolutely nothing (saves CPU)
-    if (!suncat || suncatState !== 'enraged' || !suncat.aggroList || suncat.aggroList.size === 0 || suncat.hp <= 0) return;
-
-    // 1. Get the primary target (the first person who attacked him)
-    let targetId = Array.from(suncat.aggroList)[0];
-    let target = players[targetId];
-
-    // 2. If target disconnected (died / reloaded / ran away), drop aggro!
-    if (!target || target.name.startsWith("[AFK]")) {
-        suncat.aggroList.delete(targetId);
-        
-        // If the hitlist is empty, calm down
-        if (suncat.aggroList.size === 0) {
-            suncatState = 'active';
-            emitMapEvent(suncat.mapID,"chat_message", { sender: "Suncat", text: "Hmph. Coward.", color: "#aaaaaa" });
-        }
-        return;
-    }
-
-    // 3. CROSS-MAP CHASE LOGIC (Train to Zone!)
-    if (suncat.mapID !== target.mapID) {
-        suncat.mapID = target.mapID;
-        suncat.x = target.x + (Math.random() > 0.5 ? 2 : -2); // Warp slightly offset so he doesn't land on their head
-        suncat.y = target.y + (Math.random() > 0.5 ? 2 : -2);
-        
-        io.emit("updatePlayers", getPublicPlayers());
-        
-        // Creepy system message to the victim
-        io.to(targetId).emit("chat_message", { 
-            sender: "[SYSTEM]", 
-            text: "Suncat has warped into your realm. He is hunting you.", 
-            color: "#ff0000" 
-        });
-        return; // Wait 1 tick before firing so the player can react to the warp
-    }
-
-    // 4. RELENTLESS PURSUIT (Run towards them)
-    let dx = target.x - suncat.x;
-    let dy = target.y - suncat.y;
-    let dist = Math.sqrt(dx * dx + dy * dy);
-
-    // Keep moving until he is comfortably in spell range
-    if (dist > 1.2) {
-        // He moves incredibly fast when enraged (0.8 tiles per second)
-        suncat.x += (dx / dist) * 0.8; 
-        suncat.y += (dy / dist) * 0.8;
-        
-        let maxB = suncat.mapID === 999 ? 98 : 19;
-        suncat.x = Math.max(1, Math.min(maxB, suncat.x));
-        suncat.y = Math.max(1, Math.min(maxB, suncat.y));
-        
-        io.emit("updatePlayers", getPublicPlayers());
-    }
-
-    // 5. RAPID FIRE SPELLCASTING
-    let now = Date.now();
-    let fireRate = 2000 - ((suncat.stat[3][2] || 0) * 100); 
-    
-    if (now - (suncat.lastFireTime || 0) > Math.max(500, fireRate)) {
-        suncat.lastFireTime = now;
-        
-        if (dist > 0) {
-            let dirX = dx / dist;
-            let dirY = dy / dist;
-
-            // Uses his learned spells!
-            let spells = (suncat.learnedSpells && suncat.learnedSpells.length > 0) ? suncat.learnedSpells : [9999];
-            let retSpellId = spells[Math.floor(Math.random() * spells.length)];
-            
-            let statIndex = (retSpellId === 9999) ? 0 : 2; 
-            // When enraged, his damage scales exponentially with his level!
-            let retDamage = (suncat.stat[statIndex][2] || 0) + (suncat.level * 2);
-
-            recordSuncatAdventure('spell_fired', {
-                spellId: retSpellId, target: target.name,
-                note: 'Projectile launched; hit and defeat are unconfirmed.'
-            });
-            io.emit("suncat_fires_projectile", {
-                mapID: suncat.mapID,
-                spellId: retSpellId,
-                startX: suncat.x + (dirX * 0.5),
-                startY: suncat.y + (dirY * 0.5),
-                dirX: dirX,
-                dirY: dirY,
-                damage: Math.max(1, retDamage)
-            });
-        }
-    }
-}, 100000); // <-- Runs every 1 second while his hitlist is active!
 //AFK SWEEPER
     const IDLE_TIMEOUT = 3 * 60 * 1000;  // 3 minutes: Hibernate & clear chat session
     const KICK_TIMEOUT = 30 * 60 * 1000; // 30 minutes: Kick player to free RAM
@@ -9230,6 +9341,7 @@ setInterval(() => {
                     undigestedInfo: player.undigestedInfo || [],
                     rawJournalArchive: player.rawJournalArchive || [],
                     npcDialogueEvents: player.npcDialogueEvents || [],
+                    gameplayEvents: player.gameplayEvents || [],
                 };
                 saveSuncatMemory();
                 
@@ -9251,6 +9363,7 @@ setInterval(() => {
 //INIT ON LOAD
     initConceptVectors();
     loadSuncatMemory();
+    if(!players[SUNCAT_ID].alignment)SUNCAT_COMBAT.init();
 console.log(`Server attempting to start on port ${port}...`);
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
