@@ -29821,7 +29821,7 @@ window.BMPerformance=BMPerformance;
                         { index: 0, x: 28.5, y: 24.5, sprite: 2, role: 'dialogue', deck: [2], alignment: 'friendly',
                             dialogueFactory: (d) => {
                                 if (!d.memory['fool_joined']) return { text: ["... hmm...", "*Her eyes penetrate deep into your soul.*"], endActions: [['close_dialogue', null]] };
-                                if (!d.memory['tutorialFinished']) return { text: ['Welcome. Do you want to learn to play Runestones?'], options: ['Yes', 'No'], yesActions: [['notify', { text: ["Fool, help me demonstrate."], sprite: 2, endActions: [['remove_escort', 100], ['disappear', 100], ['play_sfx', 'chime'], ['give_card', { card: 0, text: "You obtained the Fool card!" }], ['set_memory', {key: 'tutorialFinished', value: true}], ['start_tutorial', null]] }]], noActions: [['remove_escort', 100], ['disappear', 100], ['become_ally', 0], ['set_memory', {key: 'mq_map0', value: true}], ['set_memory', {key: 'tutorialFinished', value: true}], ['play_sfx', 'cancel'], ['spectate', 'Player skipped the tutorial.'], ['restore_map_song'], ['close_dialogue', null]] };
+                                if (!d.memory['tutorialFinished']) return { text: ['Welcome. Do you want to learn to play Runestones?'], options: ['Yes', 'No'], yesActions: [['notify', { text: ["Fool, help me demonstrate."], sprite: 2, endActions: [['remove_escort', 100], ['disappear', 100], ['play_sfx', 'chime'], ['give_card', { card: 0, text: "You obtained the Fool card!" }], ['start_tutorial', {source:'priestess'}]] }]], noActions: [['remove_escort', 100], ['disappear', 100], ['become_ally', 0], ['set_memory', {key: 'mq_map0', value: true}], ['set_memory', {key: 'tutorialFinished', value: true}], ['play_sfx', 'cancel'], ['spectate', 'Player skipped the tutorial.'], ['restore_map_song'], ['close_dialogue', null]] };
                                 return { text: ['The Magician has gone to confront our captors, but has not returned in some time.', 'I fear the worst has happened...', "He descended into the lower levels of this dungeon.", 'Come. Let us depart.'], rewardCard: 2, endActions: [['set_memory', {key: 'mq_map0', value: true}], ['become_ally', 2], ['set_flag', {key: 'MainQuest', value: 2}], ['spectate', 'Player obtained the High Priestess card and she joined the party.'], ['restore_map_song']] };
                             }
                         },
@@ -34995,7 +34995,7 @@ const BMMastery=(()=>{
                         const n=this.makeNPC({index:a.index,...p,type:a.bossId,state:'stationary',role:'battle',
                             isBoss:true,alignment:'foe',deck:a.team,deathActions:[['give_card',a.bossId],['notify',a.winText]]});
                         d.npcs.push(n);
-                        d.executeActions([['start_tactics',{id:n.index,stakes:'real',scenarioName:a.scenarioName}]]);
+                        d.executeActions([['start_tactics',{id:n.index,stakes:'real',scenarioName:a.scenarioName,cutscene:[{speaker:CARD_MANIFEST_DB[a.bossId]?.name||'Opponent',text:a.introTaunt||a.scenarioName||'The challenge begins.'}]}]]);
                         return {queued:true,index:n.index,scenarioName:a.scenarioName};
                     }
                     default: throw new Error('Unknown client command: '+packet.kind);
@@ -37480,7 +37480,8 @@ const BMMastery=(()=>{
 
             if (!this.activeBuffs) this.activeBuffs = [];
             let newEffect = JSON.parse(JSON.stringify(spell));
-            newEffect.equipmentId = spellId; 
+            newEffect.equipmentId = spellId;
+            BMEquipment.prepare(this,newEffect,spellId);
 
             if (newEffect.type === 'debuff') {
                 newEffect.amount = Math.abs(magnitude);
@@ -38264,6 +38265,7 @@ const BMMastery=(()=>{
             }  
         //MEMORY
             saveGame() {
+                if(this.mapID===888&&BMTacticsSession.practice(this.tacticsReturn?.config||{}))return;
                 if (this.isTestingMap || (typeof startGame !== 'undefined' && startGame === 'mapmaker')) {
                     console.log("Save blocked: Editor active.");
                     return; 
@@ -44432,6 +44434,7 @@ const BMMastery=(()=>{
                 }
                 let spellData = SPELL_REGISTRY[spellId];
                 if (!spellData) return;
+                if(BMEquipment.isEquip(spellId)&&!BMEquipment.status(spellId,this).ready)return false;
 
                 // 1. PRE-CALCULATE EFFICACY (The Caster's Roll)
                     let statToCast = spellData.castStat !== undefined ? spellData.castStat : 2; // Default INT
@@ -44495,7 +44498,7 @@ const BMMastery=(()=>{
                         let requiredSpellId = spellData.consume; 
                         
                         let handIndex = -1;
-                        if (this.hand) handIndex = this.hand.findIndex(c => c !== null && c.index === requiredSpellId);
+                        if (BMHotbar.isBattleMage(this)&&this.hand) handIndex = this.hand.findIndex(c => c !== null && c.index === requiredSpellId);
                         let isSkillReady = this.spellsLearned && this.spellsLearned[requiredSpellId] && !((this.skillCooldowns[requiredSpellId] || 0) > Date.now());
 
                         if (handIndex !== -1 || isSkillReady) {
@@ -45257,7 +45260,8 @@ const BMMastery=(()=>{
 
                 if (!this.activeBuffs) this.activeBuffs = [];
                 let newEffect = JSON.parse(JSON.stringify(spell));
-            newEffect.equipmentId = spellId; 
+            newEffect.equipmentId = spellId;
+            BMEquipment.prepare(this,newEffect,spellId);
 
                 if (newEffect.type === 'debuff') {
                     newEffect.amount = Math.abs(magnitude);
@@ -45567,7 +45571,7 @@ const BMMastery=(()=>{
                     dir: this.returnDir ?? this.prevDir
                 };
                 if (point.mapID === 888 || !MAP_DB[point.mapID]) {
-                    throw new Error('Missing tactics return map');
+                    point.mapID=999;point.x=point.y=undefined;
                 }
                 this.prevX = this.prevY = this.prevDir = undefined;
                 this.loadMap(point.mapID);
@@ -45579,6 +45583,8 @@ const BMMastery=(()=>{
                 this.targetMapX = this.targetMapY = undefined;
                 this.isSlidingToTile = false;
                 this.tacticsReturn = null;
+                this.currentSpeaker=null;this.currentEnemy=null;this.isAggroDashing=false;this.projectiles=[];
+                BMTouch.settleCamera();
                 this.returnX = this.returnY = this.returnDir = undefined;
                 this.requestSave();
             }
@@ -45780,8 +45786,8 @@ const BMMastery=(()=>{
 
                 // LOOT DROP
                 if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && npc.alignment !== 'ally' && npc.role !== 'summoned_minion') {                                
-                    if (Math.random() < 1 && (this.playerClass === 'Battle-Mage'||reason==='suncat_combat')) { 
-                        let loot = rnd(1, npc.deck.length-1);
+                    if (Math.random() < ((BMHotbar.isBattleMage(this)||reason==='suncat_combat')?1:(isPlayerKill?.20:0))) { 
+                        let loot = rnd(1, (npc.deck||[]).length-1);
                         let droppedCardID = (npc.deck && npc.deck.length > 0) ? npc.deck[loot] : Math.floor(npc.type);
 
                         if (typeof droppedCardID === 'object' && droppedCardID !== null) {
@@ -45796,6 +45802,8 @@ const BMMastery=(()=>{
                         this.npcs.push(lootSprite);
                     }
                 }
+
+                if(isPlayerKill&&isValidXPTarget&&npc.role!=='summoned_minion'&&baseAlignment!=='ally')BMMonsterLoot.collect(this,npc);
 
                 // NPC MINION
                 this.npcs.forEach(minion => {
@@ -46027,6 +46035,9 @@ const BMMastery=(()=>{
                 const ownedCard=[...(this.hand||[]),...(this.extra||[])].find(c=>c?.uid===cardUID);
                 const sourceCardId=cardObj?.sourceCardId??ownedCard?.index??Math.floor(cardID);
                 sourceKind=sourceKind??cardObj?.sourceKind??(ownedCard?'card':typeof cardObj==='object'?'skill':'ally');
+                if(sourceKind==='card'&&!BMHotbar.isBattleMage(this)){
+                    return false;
+                }
                 let uniqueIndex = Math.floor(Math.random() * 100000) + 900000;
                 let spawnX = this.x;
                 let spawnY = this.y;
@@ -46647,7 +46658,7 @@ const BMMastery=(()=>{
                         iRune.changeOwner(2); 
                         
                         this.tutorialFinished = 1;
-                        if(this.playerClass === 'none'){this.playerClass = 'Battle-Mage';}
+                        BMGuild.completeLesson(this);
                         this.MainQuest = 1;
                         // FIX 3: Reset Runes after tutorial finishes
                             if (typeof sRune !== 'undefined') {
@@ -47670,7 +47681,7 @@ const BMMastery=(()=>{
                         // --- COMBAT & EVENTS ---
                         case 'start_tactics':
                             let tactEnemyId = typeof payload === 'object' ? payload.id : payload;
-                            let customConfig = typeof payload === 'object' ? payload : { stakes: 'real' };
+                            let customConfig = {stakes:'real',...(typeof payload === 'object'?payload:{})};
 
                             let tactEnemy = tactEnemyId == null ? this.currentSpeaker :
                                 this.npcs.find(n => n.index === tactEnemyId && !n.isDead);
@@ -47684,8 +47695,7 @@ const BMMastery=(()=>{
                                 if (typeof btnNo !== 'undefined') btnNo.visible = false;
 
                                 // 1. Build Player Team
-                                    let pTeam = [];
-                                    if (this.deck && this.deck.length > 0) pTeam.push({ id: this.deck[0].index, source: 'player', uid: this.deck[0].uid });
+                                    let pTeam = [{id:this.deck?.[0]?.index??106,source:'player',uid:this.deck?.[0]?.uid}];
 
                                     if (this.activeSummons && this.activeSummons.length > 0) {
                                         this.activeSummons.forEach(summon => {
@@ -47699,14 +47709,15 @@ const BMMastery=(()=>{
                                     }
 
                                 // 2. Build Enemy Team
-                                let eTeam = tactEnemy.deck.map(c => typeof c === 'object' ? (c.index ?? c.id) : c);
+                                let eTeam = (tactEnemy.deck?.length?tactEnemy.deck:[Math.floor(tactEnemy.type)]).map(c => typeof c === 'object' ? (c.index ?? c.id) : c);
                                 let minions = this.npcs.filter(n => !n.isDead && n.summonerId === tactEnemy.index);
                                 eTeam.push(...minions.map(m => Math.floor(m.type)));
 
                                 // --- NEW: CACHE THE BOSS DATA BEFORE WIPING THE MAP! ---
                                 customConfig.enemyNpcId = tactEnemy.index;
                                 customConfig.bossDeck = tactEnemy.deck || [];
-                                customConfig.winActions = this.cloneEventActions(tactEnemy.deathActions || [], tactEnemy);
+                                customConfig.winActions = this.cloneEventActions(customConfig.winActions || tactEnemy.deathActions || [], tactEnemy);
+                                customConfig.bossName??=tactEnemy.name;
 
 
 
@@ -47723,6 +47734,7 @@ const BMMastery=(()=>{
                             }
                             break;
                         case 'start_tutorial':
+                            this.memory.priestessLessonAccepted=payload?.source==='priestess'&&this.mapID===2&&!!this.memory.fool_joined&&String(this.playerClass||'none').toLowerCase()==='none';
                             isBlocking = true; // PAUSES QUEUE
                             this.currentSpeaker = null;
                             if (typeof btnYes !== 'undefined') btnYes.visible = false;
@@ -49415,19 +49427,8 @@ const BMMastery=(()=>{
                 }
                 // Add to Explore class
             startEidolonMinigame(playerTeam, enemyTeam, config = { stakes: 'mock' }) {
-                if ((typeof startGame !== 'undefined')&&(startGame == 'dialogue'||startGame == 'explore')){preGame = 'explore';}else if (typeof startGame !== 'undefined'){preGame = startGame}
-                if (typeof startGame !== 'undefined') startGame = 'tactics';
-                if (this.mapID !== 888) {
-                    this.tacticsReturn = {
-                        mapID: this.mapID, x: this.x, y: this.y, dir: this.dir,
-                        returnToWorld: preGame === 'explore'
-                    };
-                    this.prevMap = this.mapID;
-                    this.prevX = this.x;
-                    this.prevY = this.y;
-                    this.prevDir = this.dir;
-                }
-                
+                config={stakes:'mock',...config};
+                if(!BMTacticsSession.begin(this,config))return false;
                 this.mapID = 888;
                 this.mapname = "Eidolon Board";
 
@@ -51266,7 +51267,7 @@ const BMMastery=(()=>{
                         if (typeof Dungeon !== 'undefined' && Dungeon.imbuedFireDamage > 0) {
                             displayIcon = 92; 
                         } 
-                        else if (typeof window.TacticsEngine !== 'undefined' && window.TacticsEngine.state !== 'GAME_OVER') {
+                        else if (window.TacticsEngine != null && window.TacticsEngine.state !== 'GAME_OVER') {
                             let pUnit = window.TacticsEngine.units.find(u => u.role === 'player');
                             if (pUnit && pUnit.imbuedFireDamage > 0) displayIcon = 92;
                         }
@@ -53034,6 +53035,7 @@ const BMMastery=(()=>{
                 }
             }
             render(ctx, dt) {
+                if(BMTacticsView.mode==='3d'){BMTacticsView.draw(this);this.renderOverlays(ctx);if(this.state==='GAME_OVER')this.renderEndScreen(ctx,dt);if(this.state==='CINEMATIC')this.renderCinematic(ctx);return;}
                 // 1. Draw Clean Slate Background
                     ctx.fillStyle = Dungeon.skyColor || '#111122';
                     ctx.fillRect(0, 0, wX, wY);
@@ -53107,7 +53109,7 @@ const BMMastery=(()=>{
                                 // --- 1. NEW: THICK HP & WARD BARS ---
                                 // Hide HP bars for loot on the ground!
                                 if (unit.role !== 'dropped_card') {
-                                    let hpColor = unit.alignment === 'ally' ? '#00ff00' : (unit.isBoss ? '#FFD700' : '#ff0000');
+                                    let hpColor = unit.alignment === 'ally' ? '#98bd9c' : (unit.isBoss ? '#dbb97a' : '#cc8178');
                                     
                                     // Dark Background (y=8.5 pushes it to the bottom, x2=10 makes it span the full tile width, y2=1.5 makes it thick!)
                                     drawShape('rec', 0, 8.5, 1, 0, 0, 10, 1.5, 0, 0, 0, 0, 'rgba(0,0,0,0.8)', 1); 
@@ -53196,7 +53198,7 @@ const BMMastery=(()=>{
             }
             renderOverlays(ctx) {
                 // --- CLICK FEEDBACK (The Blink) ---
-                if (this.clickAnim) {
+                if (this.clickAnim && BMTacticsView.mode!=='3d') {
                     let alpha = this.clickAnim.timer / this.clickAnim.max; 
                     // Draws a bright white square that fades out perfectly over 0.2s
                     drawShape('rec', this.clickAnim.x, this.clickAnim.y, 1, 0, 0, 1, 1, 0, 0, 0, 0, `rgba(255, 255, 255, ${alpha * 0.8})`, 1);
@@ -53208,19 +53210,14 @@ const BMMastery=(()=>{
                 if (!activeUnit) return;
 
                 // No offsetting required because the map is strictly 0-9
-                const mapToScreen = (mapX, mapY) => { return { x: mapX, y: mapY }; };
+                const mapToScreen = (mapX, mapY) => BMTacticsView.worldPoint(mapX,mapY);
 
                 // 1. Move Squares (Blue)
                 if (this.state === 'SELECT_MOVE' && this.validMoves) {
                     this.validMoves.forEach(move => {
                         let s = mapToScreen(move.x, move.y);
-                        drawShape('rec', s.x, s.y, 1, 0, 0, 1, 1, 0, 0, 0, 0, 'rgba(0, 150, 255, 0.4)', 1);
+                        if(BMTacticsView.mode!=='3d')BMTacticsView.highlight(s.x,s.y,'rgba(0, 150, 255, 0.4)');
                     });
-                    drawShape('rec', 2, 0.5, 1, 0, 0, 6, 1, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.7)', 1);
-                    if (typeof drawText === 'function') drawText(2, 0.6, 6, 0.8, "Click blue square to Move", 'white', 1, 'center');
-                    
-                    drawShape('rec', 8.5, 0.5, 1, 0, 0, 1.5, 1, 0, 0, 0, 0, 'rgba(200, 50, 50, 0.8)', 1);
-                    if (typeof drawText === 'function') drawText(8.5, 0.6, 1.5, 0.8, "Cancel", 'white', 1, 'center');
                 }
 
                 // 2. Attack Squares (Red)
@@ -53228,47 +53225,9 @@ const BMMastery=(()=>{
                     this.validAttacks.forEach(atk => {
                         let s = mapToScreen(atk.x, atk.y);
                         if (s.x >= 0 && s.x <= 10 && s.y >= 0 && s.y <= 10) {
-                            drawShape('rec', s.x, s.y, 1, 0, 0, 1, 1, 0, 0, 0, 0, 'rgba(255, 50, 50, 0.5)', 1);
+                            if(BMTacticsView.mode!=='3d')BMTacticsView.highlight(s.x,s.y,'rgba(255, 50, 50, 0.5)');
                         }
                     });
-                    drawShape('rec', 2, 0.5, 1, 0, 0, 6, 1, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.7)', 1);
-                    if (typeof drawText === 'function') drawText(2, 0.6, 6, 0.8, "Click red square to Attack", 'white', 1, 'center');
-                    
-                    drawShape('rec', 8.5, 0.5, 1, 0, 0, 1.5, 1, 0, 0, 0, 0, 'rgba(200, 50, 50, 0.8)', 1);
-                    if (typeof drawText === 'function') drawText(8.5, 0.6, 1.5, 0.8, "Cancel", 'white', 1, 'center');
-                }
-
-                // 3. Context Menu
-                if (this.state === 'PLAYER_TURN') {
-                    let menuX = this.menuX; 
-                    let menuY = this.menuY;
-                    
-                    // --- NEW: DRAG HANDLE ---
-                    drawShape('rec', menuX, menuY - 0.5, 1, 0, 0, 2.5, 0.5, 0, 0, 0, 0, 'rgba(100, 100, 100, 0.9)', 1);
-                    if (typeof drawText === 'function') {
-                        drawText(menuX, menuY - 0.4, 2.5, 0.4, "≡ DRAG ≡", 'white', 1, 'center');
-                    }
-
-                    // Original Menu Background
-                    drawShape('rec', menuX, menuY, 1, 0, 0, 2.5, 6, 0, 0, 0, 0, 'rgba(0, 6, 13, 0.9)', 1); 
-                    drawShape('lin', menuX, menuY, 1, 0, 0, 2.5, 0, 0, 0, 0, 0, 'white', 0);
-
-                    // Grey out actions if they've acted, or if they didn't draw a card for that slot
-                    let moveColor = activeUnit.hasMoved ? 'grey' : 'white';
-                    let atkColor = activeUnit.hasActed ? 'grey' : 'white';
-                    
-                    let itemColor = (activeUnit.hasActed || !activeUnit.tacticsHand.item) ? 'grey' : 'cyan';
-                    let spellColor = (activeUnit.hasActed || !activeUnit.tacticsHand.spell) ? 'grey' : 'magenta';
-                    let callColor = (activeUnit.hasActed || !activeUnit.tacticsHand.call) ? 'grey' : 'red';
-
-                    if (typeof drawText === 'function') {
-                        drawText(menuX + 0.2, menuY + 0.2, 2.1, 0.8, "Move", moveColor, 1);
-                        drawText(menuX + 0.2, menuY + 1.2, 2.1, 0.8, "Attack", atkColor, 1);
-                        drawText(menuX + 0.2, menuY + 2.2, 2.1, 0.8, "Item", itemColor, 1);
-                        drawText(menuX + 0.2, menuY + 3.2, 2.1, 0.8, "Spell", spellColor, 1);
-                        drawText(menuX + 0.2, menuY + 4.2, 2.1, 0.8, "Call", callColor, 1);
-                        drawText(menuX + 0.2, menuY + 5.2, 2.1, 0.8, "Wait", 'white', 1);
-                    }
                 }
 
                 // 4. Clash Animation
@@ -53307,40 +53266,25 @@ const BMMastery=(()=>{
                 if (this.state === 'SELECT_SPELL' && this.validSpells) {
                     this.validSpells.forEach(tile => {
                         let s = mapToScreen(tile.x, tile.y);
-                        drawShape('rec', s.x, s.y, 1, 0, 0, 1, 1, 0, 0, 0, 0, 'rgba(255, 0, 255, 0.4)', 1);
+                        if(BMTacticsView.mode!=='3d')BMTacticsView.highlight(s.x,s.y,'rgba(255, 0, 255, 0.4)');
                     });
                     
-                    drawShape('rec', 2, 0.5, 1, 0, 0, 6, 1, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.7)', 1);
-                    if (typeof drawText === 'function') drawText(2, 0.6, 6, 0.8, "Click magenta tile to Cast", 'white', 1, 'center');
-                    
-                    drawShape('rec', 8.5, 0.5, 1, 0, 0, 1.5, 1, 0, 0, 0, 0, 'rgba(200, 50, 50, 0.8)', 1);
-                    if (typeof drawText === 'function') drawText(8.5, 0.6, 1.5, 0.8, "Cancel", 'white', 1, 'center');
                 }
                 // --- CALL/SUMMON SQUARES (Red) ---
                 if (this.state === 'SELECT_CALL' && this.validCalls) {
                     this.validCalls.forEach(tile => {
                         let s = mapToScreen(tile.x, tile.y);
-                        drawShape('rec', s.x, s.y, 1, 0, 0, 1, 1, 0, 0, 0, 0, 'rgba(255, 50, 50, 0.5)', 1);
+                        if(BMTacticsView.mode!=='3d')BMTacticsView.highlight(s.x,s.y,'rgba(255, 50, 50, 0.5)');
                     });
                     
-                    drawShape('rec', 2, 0.5, 1, 0, 0, 6, 1, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.7)', 1);
-                    if (typeof drawText === 'function') drawText(2, 0.6, 6, 0.8, "Click red tile to Call Ally", 'white', 1, 'center');
-                    
-                    drawShape('rec', 8.5, 0.5, 1, 0, 0, 1.5, 1, 0, 0, 0, 0, 'rgba(200, 50, 50, 0.8)', 1);
-                    if (typeof drawText === 'function') drawText(8.5, 0.6, 1.5, 0.8, "Cancel", 'white', 1, 'center');
                 }
                 // --- ITEM SQUARES (Cyan) ---
                 if (this.state === 'SELECT_ITEM' && this.validItems) {
                     this.validItems.forEach(tile => {
                         let s = mapToScreen(tile.x, tile.y);
-                        drawShape('rec', s.x, s.y, 1, 0, 0, 1, 1, 0, 0, 0, 0, 'rgba(0, 255, 255, 0.4)', 1);
+                        if(BMTacticsView.mode!=='3d')BMTacticsView.highlight(s.x,s.y,'rgba(0, 255, 255, 0.4)');
                     });
                     
-                    drawShape('rec', 2, 0.5, 1, 0, 0, 6, 1, 0, 0, 0, 0, 'rgba(0, 0, 0, 0.7)', 1);
-                    if (typeof drawText === 'function') drawText(2, 0.6, 6, 0.8, "Click cyan tile to Use Item", 'white', 1, 'center');
-                    
-                    drawShape('rec', 8.5, 0.5, 1, 0, 0, 1.5, 1, 0, 0, 0, 0, 'rgba(200, 50, 50, 0.8)', 1);
-                    if (typeof drawText === 'function') drawText(8.5, 0.6, 1.5, 0.8, "Cancel", 'white', 1, 'center');
                 }
                 // --- 6. EXAMINE UNIT OVERLAY ---
                 if (this.state === 'EXAMINE_UNIT' && this.examinedUnit) {
@@ -54246,18 +54190,7 @@ const BMMastery=(()=>{
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('attack');
                             setTimeout(() => { if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('death'); }, 300);
                             
-                            // Flag the quest as complete
-                            Dungeon.memory['magician_rescued'] = true;
-                            
-                            // Force transition back to the Explore map
-                            startGame = 'explore';
-                            if (typeof preGame !== 'undefined') preGame = 'explore';
-                            Dungeon.actionQueue.unshift(
-                                ['return_from_tactics', null],
-                                ['trigger_dialogue', 1]
-                            );
-                            Dungeon.isProcessingActions = false;
-                            Dungeon.processNextAction();
+                            BMTacticsSession.finish(this,{cinematic:true});
                             return;
                         }
 
@@ -63888,7 +63821,7 @@ const BMMastery=(()=>{
             window.lastPaintX = undefined;
             window.lastPaintY = undefined;
             // --- NEW: RELEASE TACTICS MENU ---
-            if (typeof window.TacticsEngine !== 'undefined') {
+            if (window.TacticsEngine != null) {
                 window.TacticsEngine.isDraggingMenu = false;
             }
             if (typeof btnLook !== 'undefined' && !BMTouch.ownsButton(btnLook)) {
@@ -64520,8 +64453,9 @@ const BMMastery=(()=>{
                     e.preventDefault();
                     let activeUnit = window.TacticsEngine.turnQueue[0];
                     
-                    let clickX = Math.floor(gridPos.x);
-                    let clickY = Math.floor(gridPos.y);
+                    const boardPos=BMTacticsView.mode==='3d'?BMTacticsView.unproject(gridPos.x,gridPos.y):gridPos;
+                    let clickX = Math.floor(boardPos.x);
+                    let clickY = Math.floor(boardPos.y);
 
                     // 1. PREVIEW CARD DISMISSAL
                         if (window.TacticsEngine.state === 'PREVIEW_CARD') {
@@ -64538,109 +64472,6 @@ const BMMastery=(()=>{
                         }
                     // 2. PLAYER ACTION MENU
                     if (window.TacticsEngine.state === 'PLAYER_TURN') {
-                        let menuX = window.TacticsEngine.menuX; 
-                        let menuY = window.TacticsEngine.menuY; 
-                        
-                        // --- 1. START DRAG ---
-                        if (gridPos.x >= menuX && gridPos.x <= menuX + 2.5 && gridPos.y >= menuY - 0.5 && gridPos.y <= menuY) {
-                            window.TacticsEngine.isDraggingMenu = true;
-                            // Record the exact distance between your cursor and the menu's origin
-                            window.TacticsEngine.dragOffsetX = gridPos.x - menuX;
-                            window.TacticsEngine.dragOffsetY = gridPos.y - menuY;
-                            return; 
-                        }
-
-                        // --- 2. PREVENT ACCIDENTAL CLICKS ---
-                        let isDrag = e.type && (e.type === 'pointermove' || e.type === 'mousemove' || e.type === 'touchmove');
-                        if (isDrag) return;
-
-                        // --- 3. STANDARD BUTTON CLICKS ---
-                        // Fix 1: Restrict the bounding box to the actual menu area. 
-                        // We add 0.2 to the bottom (menuY + 6.2) so "Wait" is much easier to click!
-                        if (gridPos.x >= menuX && gridPos.x <= menuX + 2.5 && gridPos.y >= menuY && gridPos.y <= menuY + 6.2) {
-                            
-                            // Fix 2: Calculate exactly which slot (0 to 5) was clicked
-                            let slot = Math.floor(gridPos.y - menuY); 
-                            
-                            // 1. Move
-                            if (slot === 0 && !activeUnit.hasMoved) {
-                                window.TacticsEngine.validMoves = window.TacticsEngine.getValidMoves(activeUnit.x, activeUnit.y, activeUnit.movePoints); 
-                                window.TacticsEngine.state = 'SELECT_MOVE';
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
-                            }
-                            // 2. Attack
-                            else if (slot === 1 && !activeUnit.hasActed) {
-                                window.TacticsEngine.validAttacks = window.TacticsEngine.getValidAttacks(activeUnit.x, activeUnit.y);
-                                window.TacticsEngine.state = 'SELECT_ATTACK';
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
-                            }
-                            // 3. Item
-                            else if (slot === 2 && !activeUnit.hasActed && activeUnit.tacticsHand.item) {
-                                let iData = SPELL_REGISTRY[activeUnit.tacticsHand.item];
-                                window.TacticsEngine.validItems = window.TacticsEngine.getValidSupportTargets(activeUnit.x, activeUnit.y, 1); 
-                                window.TacticsEngine.state = 'PREVIEW_CARD';
-                                window.TacticsEngine.previewType = 'item';
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
-                            }
-                            // 4. Spell
-                                else if (slot === 3 && !activeUnit.hasActed && activeUnit.tacticsHand.spell) {
-                                    let sData = SPELL_REGISTRY[activeUnit.tacticsHand.spell];
-                                    
-                                    // --- NEW: Failsafe check to prevent the crash! ---
-                                    if (!sData) {
-                                        console.error("Missing Spell Data! ID: " + activeUnit.tacticsHand.spell);
-                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                                        return; 
-                                    }
-                                    // -------------------------------------------------
-
-                                    if (sData.type === 'buff' || sData.type === 'ward') {
-                                        window.TacticsEngine.validSpells = window.TacticsEngine.getValidSupportTargets(activeUnit.x, activeUnit.y, sData.range || 3);
-                                    } else {
-                                        window.TacticsEngine.validSpells = window.TacticsEngine.getLineOfSightTargets(activeUnit.x, activeUnit.y, sData.range || 6);
-                                    }
-                                    window.TacticsEngine.state = 'PREVIEW_CARD';
-                                    window.TacticsEngine.previewType = 'spell';
-                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
-                                }
-                            // 5. Call
-                            else if (slot === 4 && !activeUnit.hasActed && activeUnit.tacticsHand.call) {
-                                window.TacticsEngine.validCalls = window.TacticsEngine.getValidSummonTiles(activeUnit.x, activeUnit.y, 2); 
-                                window.TacticsEngine.state = 'PREVIEW_CARD';
-                                window.TacticsEngine.previewType = 'call';
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
-                            }
-                            // 6. Wait (Accounts for slot 5, or slot 6 if they clicked the forgiving bottom padding)
-                            else if (slot === 5 || slot === 6) {
-                                activeUnit.hasMoved = true;
-                                activeUnit.hasActed = true;
-                                
-                                // --- NEW: TACTICS LOOT PICKUP CHECK ---
-                                if (activeUnit.alignment === 'ally') {
-                                    // MUST check TacticsEngine.units, not Dungeon.npcs
-                                    let lootIndex = window.TacticsEngine.units.findIndex(n => 
-                                        n.role === 'dropped_card' && !n.isDead &&
-                                        Math.floor(n.x) === Math.floor(activeUnit.x) && 
-                                        Math.floor(n.y) === Math.floor(activeUnit.y)
-                                    );
-                                    
-                                    if (lootIndex !== -1) {
-                                        let lootNPC = window.TacticsEngine.units[lootIndex];
-                                        lootNPC.isDead = true;
-                                        lootNPC.visible = false;
-                                        lootNPC.x = -999;
-                                        window.TacticsEngine.openTacticsBooster(lootNPC.cardId);
-                                    }
-                                }
-
-                                window.TacticsEngine.turnQueue.shift(); 
-                                window.TacticsEngine.state = 'INIT'; 
-                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                            }
-                            
-                            // Because the Y-bounds are checked above, this safely only fires if they clicked INSIDE the menu!
-                            return; 
-                        }
                             let clickedUnit = window.TacticsEngine.getUnitAt(clickX, clickY);
                             if (clickedUnit) {
                                 window.TacticsEngine.examinedUnit = clickedUnit;
@@ -64676,141 +64507,7 @@ const BMMastery=(()=>{
                             window.TacticsEngine.canDismissEndScreen = false; // Prevent double-clicks!
                             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
                             
-                            // Extract Cached Config Data
-                            let config = window.TacticsEngine.config || {};
-                            let stakes = config.stakes || 'mock';
-                            let tacticsBossId = config.enemyNpcId || null; 
-                            let winActions = config.winActions || [];
-                            let bossDeck = config.bossDeck || [];
-                            let gatheredLootIds = []; 
-                            
-                            let playerSurvived = false;
-                            let playerUnit = window.TacticsEngine.units.find(u => u.role === 'player');
-                            if (playerUnit && !playerUnit.isDead) playerSurvived = true;
-
-                            // ---> THE FIX: Cache the win state before we reset the engine! <---
-                            let hasPlayerWon = window.TacticsEngine.playerWon; 
-                            // ==========================================
-                            // 0. HARVEST SURVIVING SUMMONS
-                            // ==========================================
-                            // NEW FIX: Block mock battles from touching the overworld save!
-                            if (typeof Dungeon !== 'undefined' && stakes !== 'mock_menu' && stakes !== 'mock') {
-                                Dungeon.settleTacticsSummonDeaths(window.TacticsEngine);
-                                Dungeon.activeSummons = []; // Clear the old overworld list
-                                
-                                window.TacticsEngine.units.forEach(u => {
-                                    // Find allies that are still alive at the end of the match
-                                    if (u.alignment === 'ally' && u.role === 'summoned_minion' && !u.isDead) {
-                                        Dungeon.activeSummons.push({
-                                            cardId: u.type,
-                                            uid: u.sourceUid || u.sourceCard?.uid || ('uid_' + Math.random().toString(36).substr(2, 9)),
-                                            sourceKind:u.summonSourceKind??u.playerData?.sourceKind,
-                                            sourceCardId:u.summonCardId??u.playerData?.sourceCardId??Math.floor(u.type),
-                                            npcId: u.sourceNpcId || (900000 + Math.floor(Math.random() * 100000))
-                                        });
-                                    }
-                                });
-                            }
-                            // ==========================================
-                            // --- 1. HANDLE REAL DEATHS ---
-                            if ((stakes === 'real' || stakes === 'scenario') && typeof Dungeon !== 'undefined') {
-                                window.TacticsEngine.units.forEach(u => {
-                                    if (u.role === 'dropped_card' && !u.isDead && u.x !== -999) gatheredLootIds.push(u.cardId);
-                                    if (u.alignment === 'ally') {
-                                        if (u.isDead) {
-                                            if (u.role === 'player') {
-                                                // THE NEW FIX: Only hard Game Over if the ENTIRE team lost
-                                                if (!hasPlayerWon) { // <--- Updated
-                                                    window.isDead = true;
-                                                    startGame = 'gameover'; // Real death triggers Game Over Screen
-                                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel'); 
-                                                } else {
-                                                    console.log("Player knocked out, but allies clutched the win!");
-                                                }
-                                            } else if (u.role === 'summoned_minion' && u.sourceNpcId) {
-                                                let overworldAlly = Dungeon.npcs.find(n => n.index === u.sourceNpcId);
-                                                if (overworldAlly) Dungeon.killNPC(overworldAlly, true, 'tactics_death');
-                                            }
-                                        } else if (u.sourceCard && u.type !== 91 && u.role !== 'summoned_minion') {
-                                            Dungeon.extra.push(u.sourceCard);
-                                        }
-                                    }
-                                });
-                            }
-
-                            // --- 2. HANDLE EXAM RESULTS ---
-                            if (stakes === 'exam' && typeof Dungeon !== 'undefined') {
-                                if (hasPlayerWon) { // <--- Updated
-                                    // Passed! Push the cached win actions directly to the queue
-                                    Dungeon.dSense += 1;
-                                    if (winActions.length > 0) {
-                                        [...winActions].reverse().forEach(a => Dungeon.actionQueue.unshift(a));
-                                    }
-                                    Dungeon.memory[Dungeon.prevMap + "_" + tacticsBossId] = { permanent: true }; // Ensure despawn
-                                } else {
-                                    // Failed! Penalize
-                                    Dungeon.actionQueue.unshift(['notify', "You failed the promotion exam. Your reputation has decreased."]);
-                                    Dungeon.actionQueue.unshift(['set_memory', { key: 'guild_rep', value: Math.max(0, (Dungeon.memory['guild_rep'] || 0) - 5) }]);
-                                    Dungeon.actionQueue.unshift(['play_sfx', 'cancel']);
-                                    Dungeon.memory[Dungeon.prevMap + "_" + tacticsBossId] = { permanent: true }; // Ensure despawn
-                                }
-                            }
-
-                            // --- 3. CLEANUP & ROUTING ---
-                            window.TacticsEngine = new TacticsController(); 
-                            
-                            if (stakes === 'mock' && !Dungeon.tacticsReturn?.returnToWorld) {
-                                startGame = 'options'; // Send straight back to the menu!
-                                return;
-                            }
-
-                            if (startGame !== 'gameover') {
-                                if (preGame === 'tactics') preGame = 'explore';
-                                startGame = preGame; // Always return to overworld for real/exam matches
-                                Dungeon.dSense += 1;
-                                if (typeof Dungeon !== 'undefined' && Dungeon.mapID === 888) {
-                                    setTimeout(() => { 
-                                        
-                                        // --- THE FIX: PROCESS WIN DATA BEFORE LOADING MAP ---
-                                        if (hasPlayerWon && stakes !== 'exam') { // <--- Updated
-                                            let allPulledCards = [];
-                                            
-                                            // A. Gather Boss Loot
-                                            if (tacticsBossId != null && bossDeck && bossDeck.length > 0) {
-                                                let availableLootIDs = bossDeck.map(c => typeof c === 'object' ? (c.index ?? c.id) : c);
-                                                let playerOwnedIDs = Dungeon.deck.map(c => c.index).concat(Dungeon.extra.map(c => c.index));
-                                                let uniqueLoot = availableLootIDs.filter(id => !playerOwnedIDs.includes(id));
-                                                if (uniqueLoot.length > 0) allPulledCards.push(uniqueLoot[Math.floor(Math.random() * uniqueLoot.length)]);
-                                                else allPulledCards.push(availableLootIDs[Math.floor(Math.random() * availableLootIDs.length)]);
-                                            }
-
-                                            // B. Gather Unopened Booster Packs
-                                            gatheredLootIds.forEach(id => allPulledCards.push(id));
-
-                                            // C. Fire REAL/SCENARIO death actions (like updating quest states!)
-                                            if (winActions.length > 0) {
-                                                [...winActions].reverse().forEach(a => Dungeon.actionQueue.unshift(a));
-                                            }
-
-                                            // D. Mark Boss Dead permanently (CRITICAL: Do this before loadMap!)
-                                            if (tacticsBossId != null) {
-                                                const map = Dungeon.tacticsReturn?.mapID ?? Dungeon.prevMap;
-                                                Dungeon.memory[`${map}_${tacticsBossId}`] = {permanent: true};
-                                                const rule = STORY_COMBAT_RULES[`${map}:${tacticsBossId}`];
-                                                if (rule) Dungeon.memory[rule.flag] = true;
-                                            }
-                                            // E. Queue Loot Popups
-                                            allPulledCards.reverse().forEach(cardID => Dungeon.actionQueue.unshift(['give_card', { card: cardID, text: "Spoils of War! You recovered loot." }]));
-                                        }
-
-                                        // --- NOW WE SAFELY LOAD THE MAP ---
-                                        Dungeon.restoreTacticsMap();
-
-                                        Dungeon.isProcessingActions = false;
-                                        Dungeon.processNextAction();
-                                    }, 50);
-                                }
-                            }
+                            BMTacticsSession.finish(window.TacticsEngine);
                         }
                         return;
                     }
@@ -66233,58 +65930,7 @@ const BMMastery=(()=>{
                                             let extraGroup = groupedExtraCards[extraScrollIndex];
                                             let cardToAdd = extraGroup.viewCard;
 
-                                            // --- NEW: CLASS RESTRICTION CHECK ---
-                                            let pClass = (Dungeon.playerClass || 'none').toLowerCase(); 
-                                            let isClassValid = false; 
-
-                                            // Battle-Mages bypass all class restrictions
-                                            if (Dungeon.tutorialFinished === 1) {
-                                                isClassValid = true;
-                                            } else {
-                                                // Look up the card in the lightweight DB
-                                                let registryEntry = typeof CARD_MANIFEST_DB !== 'undefined' ? CARD_MANIFEST_DB[cardToAdd.index] : null;
-                                                
-                                                if (registryEntry && registryEntry.classes && registryEntry.classes.includes(pClass)) {
-                                                    isClassValid = true;
-                                                } else if (!registryEntry) {
-                                                    // Safety net: If a card isn't in the DB yet, let them use it so the game doesn't break
-                                                    isClassValid = true;
-                                                }
-                                            }
-
-                                            // If the class is not allowed to use this card, reject the transfer
-                                            if (!isClassValid) {
-                                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                                                console.log(`Failed: ${pClass} cannot equip ${cardToAdd.name}`);
-                                                return; 
-                                            }
-                                            // ------------------------------------
-
-                                            // --- POWER CAP CHECK ---
-                                            // A. Calculate Current Total Deck Power
-                                            let currentDeckPower = 0;
-                                            for (let i = 0; i < Dungeon.deck.length; i++) {
-                                                let checkCard = Dungeon.deck[i];
-                                                // FORCE NUMBER: Prevent "130" + "20" = "13020" string bugs!
-                                                let pVal = (checkCard.type === 0) ? getPower(checkCard) : (checkCard.power || 0);
-                                                currentDeckPower += Number(pVal) || 0;
-                                            }
-
-                                            // B. Get Power of the Card trying to be added
-                                            let rawNewPower = (cardToAdd.type === 0) ? getPower(cardToAdd) : (cardToAdd.power || 0);
-                                            let newCardPower = Number(rawNewPower) || 0;
-
-                                            // C. Define Max Power (Force it to be a Number too!)
-                                            let maxDeckCapacity = Number(Dungeon.power) || 100; 
-
-                                            // D. The Rejection Logic
-                                            if (currentDeckPower + newCardPower > maxDeckCapacity) {
-                                                if(typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
-                                                console.log(`Failed: Deck Power (${currentDeckPower} + ${newCardPower}) exceeds Max (${maxDeckCapacity})`);
-                                                return; 
-                                            }
-                                            // ----------------------------
-
+                                            // Every class can build any deck for tavern games and card duels.
                                             // 2. The Transfer Logic (If it passed the checks above)
                                             let cardIdToMove = cardToAdd.index;
                                             let foundIndex = Dungeon.extra.findIndex(c => c.index === cardIdToMove);
@@ -66694,7 +66340,7 @@ const BMMastery=(()=>{
                             { name: 'Rogue', upgradesFrom: 'none', reqRank: 'F', desc: 'A swift and deadly shadow. Rogues gain double stat points when upgrading their AGI.' },
                             { name: 'Priest', upgradesFrom: 'none', reqRank: 'F', desc: 'A holy healer and protector. Priests gain double stat points when upgrading CON or INT.' },
                             { name: 'Knight', upgradesFrom: 'warrior', reqRank: 'D', desc: 'An armored bulwark. Knights gain double stat points when upgrading STR or CON.' },
-                            { name: 'Battle-Mage', upgradesFrom: 'mage', reqRank: 'S', desc: 'A supreme hybrid. Can use ANY card regardless of class restrictions, but only gains standard stat points.' }
+                            { name: 'Battle-Mage', upgradesFrom: 'mage', reqRank: 'F', desc: 'A secret art revealed to Mages at the guild. Invoke cards as spells and summons; standard stat point gains.' }
                         ];
 
                         let pClass = (Dungeon.playerClass || 'none').toLowerCase();
@@ -79917,7 +79563,7 @@ for (const index of directionalPortraits) {
                         let sbSailMain, sbJib, sbSailBack, sbFlag, sbPortL, sbPortR;
                     //ASSASSIN COLORS ---
                         let cAssnCloth = {r: 0.10, g: 0.10, b: 0.12, a: 1.0}; // Pitch black/dark grey robes
-                        let cAssnTrim  = {r: 0.16, g: 0.15, b: 0.20, a: 1.0}; // Deep blood-red sash and trim
+                        let cAssnTrim  = {r: 0.50, g: 0.05, b: 0.10, a: 1.0}; // Deep blood-red sash and trim
                         let cAssnSkin  = {r: 0.85, g: 0.75, b: 0.65, a: 1.0}; // Pale skin around the eyes
                         let cAssnSteel = {r: 0.75, g: 0.80, b: 0.85, a: 1.0}; // Gleaming silver daggers
                     //HUNTER COLORS ---
@@ -82472,6 +82118,7 @@ case 103: case 104: case 105: {
                             }
                         //DARK ASSASSIN (258-260)
                             case 158: case 159: case 160: {
+                                mesh.outwardRects=true;
                                 let t = window.cacheAngle || 0;
                                 let isWalk = index === 159;
                                 let isAttack = index === 160;
@@ -82480,120 +82127,114 @@ case 103: case 104: case 105: {
                                 let step1 = isWalk ? Math.sin(t) : 0;
                                 let step2 = isWalk ? Math.sin(t + Math.PI) : 0;
                                 let lunge = isAttack ? Math.cos(t) : 0;
-const strike=isAttack?Math.pow((1+Math.cos(t))/2,3):0;
 
-                                // The assassin stays in a permanent low crouch
-                                let crouch = isWalk ? 0.035+Math.abs(step1)*.015 : (isAttack ? .04+strike*.07 : 0);
-                                let pitch = isWalk ? .09 : (isAttack ? strike*.22 : 0); // Leans heavily forward
-                                let thrust = -strike * 0.48; // Extremely fast forward dart
+                                // Keep the recovered relaxed, symmetric idle with a quick attack lunge.
+                                const strike=isAttack?Math.pow((1+Math.cos(t))/2,3):0;
+                                let crouch=isWalk?.035+Math.abs(step1)*.015:isAttack?strike*.10:0;
+                                let pitch=isWalk?.08:isAttack?strike*.24:0; // Leans heavily forward
+                                let thrust=-strike*.48; // Extremely fast forward dart
 
                                 // 1. Sleek Torso
-                                let aBody = captureSpriteBone(mesh, "aBody", { x: 0, y: 0.1 + crouch, z: thrust, rx: pitch, ry: isWalk ? step1 * 0.1 : 0, rz: 0 });
+                                let aBody = captureSpriteBone(mesh,"aBody",{ x: 0, y: 0.1 + crouch, z: thrust, rx: pitch, ry: isWalk ? step1 * 0.1 : 0, rz: 0 });
                                 
                                 // Head counter-rotates the extreme body pitch so the eyes stay locked forward
-                                let aHead = captureSpriteBone(mesh, "aHead", computeBone(aBody, 0, -0.35, -.018, -pitch, -step1 * 0.1, 0));
-
-                                // Flowing scarf/tails whipping behind them in the wind (Fixed multiplier)
-                                let tailWhip = isWalk ? Math.sin(t - 0.5) * 0.18 : (isAttack ? lunge : Math.sin(t) * 0.05);
-                                let aScarf1 = computeBone(aHead, -0.05, 0.1, 0.1, -0.4, 0, -0.2 + tailWhip);
-                                let aScarf2 = computeBone(aHead,  0.05, 0.1, 0.1, -0.4, 0,  0.2 - tailWhip);
+                                let aHead = captureSpriteBone(mesh,"aHead",computeBone(aBody,0,-.35,-.018,-pitch,-step1*.1,0));
 
                                 // 2. Arms & Dual Reverse-Grip Daggers
                                 // Arms stay tight to the body. On attack, they sweep forward in an X-slash.
-                                let liftL = isAttack && strike > 0.35 ? -1.2 : (isWalk ? step2 * 0.18 : 0.1);
-                                let liftR = isAttack && strike > 0.35 ? -1.2 : (isWalk ? step1 * 0.18 : -0.15);
+                                let liftL = isAttack && strike>.35 ? -1.2 : (isWalk ? step2 * 0.24 : 0.2);
+                                let liftR = isAttack && strike>.35 ? -1.2 : (isWalk ? step1 * 0.24 : 0.2);
                                 
                                 // Cross the arms inward during the slash
-                                let sweepL = isAttack && strike > 0.35 ?  0.8 :  0.2; 
-                                let sweepR = isAttack && strike > 0.35 ? -0.8 : -0.2;
+                                let sweepL = isAttack && strike>.35 ?  0.8 :  0.2; 
+                                let sweepR = isAttack && strike>.35 ? -0.8 : -0.2;
 
-                                let aArmL = computeBone(aBody, -0.15, -0.15, 0, liftL, sweepL,  0.2);
-                                let aForeL = captureSpriteBone(mesh, "aForeL", computeBone(aArmL, 0, 0.2, 0, -0.5, 0, 0));
+                                let aArmL = computeBone(aBody, -0.15, -0.15, 0, liftL, sweepL,  0.055);
+                                let aForeL=captureSpriteBone(mesh,"aForeL",computeBone(aArmL,0,.2,0,-.5,0,0));
                                 
-                                let aArmR = computeBone(aBody,  0.15, -0.15, 0, liftR, sweepR, -0.2);
-                                let aForeR = captureSpriteBone(mesh, "aForeR", computeBone(aArmR, 0, 0.2, 0, -0.5, 0, 0));
+                                let aArmR = computeBone(aBody,  0.15, -0.15, 0, liftR, sweepR, -0.055);
+                                let aForeR=captureSpriteBone(mesh,"aForeR",computeBone(aArmR,0,.2,0,-.5,0,0));
 
-                                // Reverse grip! The daggers point DOWN (Math.PI) from the hand, rather than UP
-                                let aDagL = computeBone(aForeL, 0, 0.15, 0, Math.PI, 0, 0);
-                                let aDagR = computeBone(aForeR, 0, 0.15, 0, Math.PI, 0, 0);
+                                // Small blades unfold from the relaxed sleeve grips during the attack pose.
+                                let aDagL = computeBone(aForeL, 0, 0.15, 0, 0, 0, 0);
+                                let aDagR = computeBone(aForeR, 0, 0.15, 0, 0, 0, 0);
 
                                 // 3. Crouched Legs
                                 let liftLegL = Math.max(0, step1);
                                 let liftLegR = Math.max(0, step2);
                                 
-                                let aThighL = computeBone(aBody, -0.1, 0.15, 0, -0.2 + liftLegL * 0.8, 0, 0);
+                                let aThighL = computeBone(aBody, -0.085, 0.15, 0, -0.2 + liftLegL * 0.8, 0, 0);
                                 let aCalfL = computeBone(aThighL, 0, 0.25, 0, 0.2 - liftLegL * 0.4, 0, 0);
 
-                                let aThighR = computeBone(aBody,  0.1, 0.15, 0, -0.2 + liftLegR * 0.8, 0, 0);
+                                let aThighR = computeBone(aBody,  0.085, 0.15, 0, -0.2 + liftLegR * 0.8, 0, 0);
                                 let aCalfR = computeBone(aThighR, 0, 0.25, 0, 0.2 - liftLegR * 0.4, 0, 0);
 
 
                                 // === DRAWING PASS ===
+                                // The original long black tunic reads as a simple dress over trousers.
+                                addFormGarment(mesh,computeBone(aBody,0,.012,0,0,0,0),.255,.145,.12,.18,.13,cAssnCloth);
+                                addFormSpan(mesh,computeBone(aBody,0,-.23,0,0,0,0),computeBone(aHead,0,.08,0,0,0,0),.048,cAssnCloth);
 
-                                // Tight, dark tunic
-                                addAuraBodyShape(mesh, 'arc', aBody, .155,.225,.12,cAssnCloth);
-                                // Fitted jacket and short split coat over black leggings.
-                                add3dShapeRigged(mesh,'robe',computeBone(aBody,0,.22,.025,0,0,0),.205,.14,.145,cAssnCloth,'clothing');
-                                const buckle={r:.53,g:.52,b:.60,a:1};
-                                add3dShapeRigged(mesh,'rec',computeBone(aBody,0,.15,-.14,0,0,0),.04,.025,.016,buckle,'clothing');
+                                // A small warm face under the tall, soft black cap; a quiet expression.
+                                const hair={r:.065,g:.060,b:.077,a:1},fur={r:.115,g:.105,b:.13,a:1};
+                                add3dFace(mesh,'arc',aHead,.086,.090,.087,cAssnSkin);
+                                add3dShapeRigged(mesh,'arc',computeBone(aHead,0,.005,.051,0,0,0),.111,.109,.077,hair,'clothing');
                                 for(const side of [-1,1]){
-                                    add3dShapeRigged(mesh,'rec',computeBone(aBody,side*.066,-.05,-.122,0,0,side*.25),.012,.12,.009,cAssnTrim,'clothing');
+                                    add3dShapeRigged(mesh,'arc',computeBone(aHead,side*.094,.014,.013,0,0,side*.045),.028,.104,.076,hair,'clothing');
+                                    add3dShapeRigged(mesh,'rec',computeBone(aHead,side*.030,-.026,-.095,0,0,0),.007,.009,.003,hair);
                                 }
-                                
-                                // Crimson Sash/Belt
-                                add3dShapeRigged(mesh, 'arc', computeBone(aBody, 0, 0.15, 0, 0,0,0), 0.16, 0.04, 0.13, cAssnTrim);
-
-                                // Open face, raven bob and soft bangs; all clothing stays black.
-                                const hair={r:.055,g:.05,b:.075,a:1},pale={r:.92,g:.82,b:.83,a:1},eye={r:.49,g:.40,b:.64,a:1};
-                                addFormSpan(mesh,computeBone(aBody,0,-.19,0,0,0,0),computeBone(aHead,0,.09,0,0,0,0),.044,pale);
-                                add3dFace(mesh,'arc',aHead,.115,.13,.105,pale);
-                                add3dShapeRigged(mesh,'arc',computeBone(aHead,0,-.035,.045,0,0,0),.137,.135,.105,hair,'clothing');
+                                // Restore the tall, broad hat-like silhouette visible in the old footage.
+                                addFormGarment(mesh,computeBone(aHead,0,-.148,.025,0,0,0),.085,.127,.107,.142,.117,cAssnCloth);
+                                add3dShapeRigged(mesh,'arc',computeBone(aHead,0,-.080,.018,0,0,0),.145,.028,.120,fur,'clothing');
                                 for(const side of [-1,1]){
-                                    add3dShapeRigged(mesh,'arc',computeBone(aHead,side*.114,.012,.01,0,0,side*.08),.028,.16,.09,hair,'clothing');
-                                    add3dShapeRigged(mesh,'tri',computeBone(aHead,side*.059,-.076,-.084,-Math.PI/2,0,side*.20),.063,.027,.13,hair,'clothing');
-                                    const e=computeBone(aHead,side*.045,-.002,-.108,0,0,0);
-                                    add3dShapeRigged(mesh,'rec',e,.027,.025,.009,{r:.02,g:.015,b:.028,a:1});
-                                    add3dShapeRigged(mesh,'rec',computeBone(e,0,.003,-.012,0,0,0),.015,.017,.004,eye);
-                                    add3dShapeRigged(mesh,'rec',computeBone(e,-.004,-.009,-.017,0,0,0),.005,.006,.003,{r:1,g:.96,b:.95,a:1});
+                                    add3dShapeRigged(mesh,'arc',computeBone(aHead,side*.121,-.080,-.025,0,0,0),.027,.030,.070,cAssnCloth,'clothing');
                                 }
-                                add3dShapeRigged(mesh,'rec',computeBone(aHead,0,.071,-.1,0,0,0),.023,.008,.007,{r:.24,g:.12,b:.19,a:1});
-                                add3dShapeRigged(mesh,'arc',computeBone(aHead,0,.122,0,0,0,0),.057,.023,.059,cAssnCloth,'clothing');
-                                // Flowing Scarf Tails
-                                add3dShapeRigged(mesh, 'tri', aScarf1, 0.035, 0.02, 0.25, cAssnCloth);
-                                add3dShapeRigged(mesh, 'tri', aScarf2, 0.035, 0.02, 0.22, cAssnCloth);
 
-                                // Slim, agile limbs
-                                addFormSpan(mesh, aArmL, aForeL, 0.04, cAssnCloth);
-                                addFormSpan(mesh, aForeL, computeBone(aForeL, 0, 0.15, 0, 0, 0, 0), 0.035, cAssnCloth);
-                                addFormSpan(mesh, aArmR, aForeR, 0.04, cAssnCloth);
-                                addFormSpan(mesh, aForeR, computeBone(aForeR, 0, 0.15, 0, 0, 0, 0), 0.035, cAssnCloth);
+                                // Thick crimson scarf and fine red hair ribbons, moving with the breeze.
+                                addFormGarment(mesh,computeBone(aHead,0,.060,-.004,0,0,0),.035,.112,.121,.118,.121,cAssnTrim);
+                                add3dShapeRigged(mesh,'rec',computeBone(aHead,0,.052,-.108,0,0,0),.109,.034,.019,cAssnTrim,'clothing');
+                                const breeze=isWalk?Math.sin(t-.5)*.18:isAttack?Math.cos(t)*.22:Math.sin(t)*.065;
+                                for(const side of [-1,1]){
+                                    const ribbon=computeBone(aHead,side*.109,.028,.12,0,breeze,side*.13);
+                                    add3dShapeRigged(mesh,'arc',ribbon,.021,.024,.024,cAssnTrim,'clothing');
+                                    add3dShapeRigged(mesh,'tri',computeBone(ribbon,side*.015,.034,.145,-.12,side*.10+breeze,side*.16),.022,.012,.14,cAssnTrim,'clothing');
+                                }
+                                add3dShapeRigged(mesh,'rec',computeBone(aBody,.025,-.11,-.133,.03,0,.32),.026,.082,.009,cAssnTrim,'clothing');
 
-                                addAuraBodyShape(mesh, 'arc', aThighL, 0.06, 0.25, 0.06, cAssnCloth);
-                                addAuraBodyShape(mesh, 'arc', aCalfL, 0.05, 0.25, 0.05, cAssnCloth);
-                                addAuraBodyShape(mesh, 'arc', aThighR, 0.06, 0.25, 0.06, cAssnCloth);
-                                addAuraBodyShape(mesh, 'arc', aCalfR, 0.05, 0.25, 0.05, cAssnCloth);
+                                // Arms rest close to the dress; crimson cuffs make the familiar red hip accents.
+                                for(const [upper,fore,hand] of [[aArmL,aForeL,aDagL],[aArmR,aForeR,aDagR]]){
+                                    addFormSpan(mesh,upper,fore,.042,cAssnCloth);
+                                    addFormSpan(mesh,fore,hand,.038,cAssnCloth);
+                                    add3dShapeRigged(mesh,'rec',hand,.039,.041,.037,cAssnTrim,'clothing');
+                                    add3dShapeRigged(mesh,'rec',computeBone(hand,0,.044,0,0,0,0),.029,.014,.031,hair);
+                                }
+                                for(const [thigh,calf,side] of [[aThighL,aCalfL,-1],[aThighR,aCalfR,1]]){
+                                    const ankle=computeBone(calf,0,.25,0,0,0,0);
+                                    addAuraBodySpan(mesh,thigh,calf,.048,cAssnCloth);
+                                    addAuraBodySpan(mesh,calf,ankle,.042,cAssnCloth);
+                                    // Rounded/blocky forward toes with a slight inward turn, not downward spikes.
+                                    const boot=computeBone(ankle,0,.008,-.034,0,side*.12,0);
+                                    add3dShapeRigged(mesh,'rec',boot,.054,.042,.089,hair,'clothing');
+                                    add3dShapeRigged(mesh,'rec',computeBone(boot,0,.032,0,0,0,0),.055,.012,.091,{r:.19,g:.19,b:.20,a:1},'clothing');
+                                }
 
-                                // Dark boots
-                                let bootL = computeBone(aCalfL, 0, 0.25, -0.05, Math.PI/2, 0, 0);
-                                let bootR = computeBone(aCalfR, 0, 0.25, -0.05, Math.PI/2, 0, 0);
-                                add3dShapeRigged(mesh, 'tri', bootL, 0.06, 0.03, 0.15, {r: 0.05, g: 0.05, b: 0.05, a: 1});
-                                add3dShapeRigged(mesh, 'tri', bootR, 0.06, 0.03, 0.15, {r: 0.05, g: 0.05, b: 0.05, a: 1});
-
-                                // Dual Daggers
-                                // Crimson Hilts
-                                add3dShapeRigged(mesh, 'rec', aDagL, 0.02, 0.08, 0.02, cAssnTrim);
-                                add3dShapeRigged(mesh, 'rec', aDagR, 0.02, 0.08, 0.02, cAssnTrim);
-                                
-                                // Crossguards
-                                add3dShapeRigged(mesh, 'rec', computeBone(aDagL, 0, 0.08, 0, 0,0,0), 0.06, 0.01, 0.02, {r: 0.2, g: 0.2, b: 0.2, a: 1});
-                                add3dShapeRigged(mesh, 'rec', computeBone(aDagR, 0, 0.08, 0, 0,0,0), 0.06, 0.01, 0.02, {r: 0.2, g: 0.2, b: 0.2, a: 1});
-
-                                // Wicked curved blades
-                                let bladeL = computeBone(aDagL, 0, 0.08, 0, 0, 0, -0.1);
-                                let bladeR = computeBone(aDagR, 0, 0.08, 0, 0, 0,  0.1);
-                                add3dShapeRigged(mesh, 'tri', bladeL, 0.03, 0.01, 0.3, cAssnSteel);
-                                add3dShapeRigged(mesh, 'tri', bladeR, 0.03, 0.01, 0.3, cAssnSteel);
-
+                                // Two short curved blades appear for the attack; both stay attached to the fists.
+                                if(isAttack)for(const [hand,side] of [[aDagL,-1],[aDagR,1]]){
+                                    add3dShapeRigged(mesh,'rec',hand,.017,.060,.018,cAssnTrim);
+                                    add3dShapeRigged(mesh,'rec',computeBone(hand,0,.064,0,0,0,0),.042,.009,.022,{r:.24,g:.24,b:.27,a:1});
+                                    const outline=[[-.020,.074],[.022,.074],[.027,.140],[.049,.185],[.083,.231],[.004,.204],[-.023,.145]];
+                                    const offset=mesh.vertices.length,q=spriteRotation(hand.rx,hand.ry,hand.rz),count=outline.length;
+                                    for(const depth of [-.009,.009])for(const [x,y] of outline){
+                                        const v=rotateSpritePoint([x*side,y,depth],q);
+                                        mesh.vertices.push([v[0]+hand.x,v[1]+hand.y,v[2]+hand.z]);
+                                    }
+                                    const front=outline.map((_,i)=>offset+i),back=outline.map((_,i)=>offset+count+i);
+                                    mesh.faces.push({indices:side>0?front.slice().reverse():front,color:cAssnSteel},{indices:side>0?back:back.slice().reverse(),color:cAssnSteel});
+                                    for(let i=0;i<count;i++){
+                                        const j=(i+1)%count,indices=[offset+i,offset+j,offset+count+j,offset+count+i];
+                                        mesh.faces.push({indices:side>0?indices:indices.reverse(),color:cAssnSteel});
+                                    }
+                                }
                                 break;
                             }
                         //DARK MAGICIAN WOMAN (261-263)---
@@ -86379,9 +86020,240 @@ function buildPlayerKnight(mesh,state) {
     delete mesh.outwardRects;
 }
 
+// Match origin belongs to the match, never to the transient dialogue screen.
+const BMTacticsView=(()=>{
+    let mode=localStorage.getItem('bm-tactics-view')==='3d'?'3d':'2d',rotation=0,bar,actions,phase;
+    function project(x,y,z=0){let a=x-5,b=y-5;for(let i=0;i<rotation;i++)[a,b]=[-b,a];return {x:5+(a-b)*.43,y:5.2+(a+b)*.26-z};}
+    function unproject(x,y){let a=((y-5.2)/.26+(x-5)/.43)/2,b=((y-5.2)/.26-(x-5)/.43)/2;for(let i=0;i<rotation;i++)[a,b]=[b,-a];return {x:a+5,y:b+5};}
+    function polygon(points,fill,stroke='#4f5040'){
+        ctx.beginPath();points.forEach((p,i)=>{const x=tX+p.x*tL/10,y=tY+p.y*tH/10;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
+    }
+    function tile(x,y,color,z=0){polygon([project(x,y,z),project(x+1,y,z),project(x+1,y+1,z),project(x,y+1,z)],color);}
+    function highlight(x,y,color){if(mode==='3d')tile(x,y,color,.015);else drawShape('rec',x,y,1,0,0,1,1,0,0,0,0,color,1);}
+    function worldPoint(x,y){return mode==='3d'?project(x,y):{x,y};}
+    function draw(t){
+        ctx.fillStyle='#080b0b';ctx.fillRect(0,0,wX,wY);
+        const cells=[];for(let y=0;y<10;y++)for(let x=0;x<10;x++)cells.push({x,y,p:project(x+.5,y+.5)});cells.sort((a,b)=>a.p.y-b.p.y);
+        for(const {x,y}of cells){const wall=Dungeon.maze[y][x]>0;tile(x,y,(x+y)%2?'#303a32':'#394337');if(wall){
+            const h=.28,p=[project(x,y,h),project(x+1,y,h),project(x+1,y+1,h),project(x,y+1,h)];
+            polygon([p[1],p[2],project(x+1,y+1),project(x+1,y)],'#232a27');polygon([p[2],p[3],project(x,y+1),project(x+1,y+1)],'#1b211f');polygon(p,'#50584b');
+        }}
+        // Draw valid cells under the figures, so small targets remain readable.
+        const ranges={SELECT_MOVE:['validMoves','rgba(80,168,205,.65)'],SELECT_ATTACK:['validAttacks','rgba(193,76,65,.7)'],SELECT_SPELL:['validSpells','rgba(156,117,199,.65)'],SELECT_ITEM:['validItems','rgba(100,194,166,.7)'],SELECT_CALL:['validCalls','rgba(217,171,82,.7)']};
+        const range=ranges[t.state];if(range)for(const p of t[range[0]]||[])highlight(p.x,p.y,range[1]);
+        for(const u of t.units.filter(u=>!u.isDead).sort((a,b)=>project(a.x,a.y).y-project(b.x,b.y).y)){
+            const p=project(u.x,u.y),loot=u.role==='dropped_card',active=t.turnQueue[0]===u;
+            ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(tX+p.x*tL/10,tY+p.y*tH/10,tL*.024,tH*.009,0,0,Math.PI*2);ctx.fill();
+            drawActorPortrait(u,u.sprite??u.type,p.x-.40,p.y-.80,.08,loot?u.cardId:0,rotation*2);
+            if(!loot){const col=u.alignment==='ally'?'#9bc6a2':'#d98e84';drawShape('rec',p.x-.22,p.y+.02,1,0,0,.44,.05,0,0,0,0,col,1);const ward=u.activeBuffs?.find(b=>['ward','item_ward'].includes(b.type)&&b.hits>0);if(ward)drawText(p.x-.35,p.y+.05,.7,.23,'◇ '+ward.hits,'#a7d7de',1,'center');}
+            if(active)drawText(p.x-.25,p.y-1.01,.5,.3,'▼','#ead099',1,'center');
+        }
+        if(t.activeProjectile){const p=project(t.activeProjectile.x,t.activeProjectile.y,.35),data=SPELL_REGISTRY[t.activeProjectile.spellId];drawPortrait(data?.sprite2D??26,p.x-.25,p.y-.25,.05);}
+    }
+    function act(slot){
+        const t=window.TacticsEngine,activeUnit=t?.turnQueue?.[0];
+        if(startGame!=='tactics'||t?.state!=='PLAYER_TURN'||!activeUnit||activeUnit.alignment!=='ally')return false;
+                            // 1. Move
+                            if (slot === 0 && !activeUnit.hasMoved) {
+                                window.TacticsEngine.validMoves = window.TacticsEngine.getValidMoves(activeUnit.x, activeUnit.y, activeUnit.movePoints); 
+                                window.TacticsEngine.state = 'SELECT_MOVE';
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                            }
+                            // 2. Attack
+                            else if (slot === 1 && !activeUnit.hasActed) {
+                                window.TacticsEngine.validAttacks = window.TacticsEngine.getValidAttacks(activeUnit.x, activeUnit.y);
+                                window.TacticsEngine.state = 'SELECT_ATTACK';
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                            }
+                            // 3. Item
+                            else if (slot === 2 && !activeUnit.hasActed && activeUnit.tacticsHand.item) {
+                                let iData = SPELL_REGISTRY[activeUnit.tacticsHand.item];
+                                window.TacticsEngine.validItems = window.TacticsEngine.getValidSupportTargets(activeUnit.x, activeUnit.y, 1); 
+                                window.TacticsEngine.state = 'PREVIEW_CARD';
+                                window.TacticsEngine.previewType = 'item';
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                            }
+                            // 4. Spell
+                                else if (slot === 3 && !activeUnit.hasActed && activeUnit.tacticsHand.spell) {
+                                    let sData = SPELL_REGISTRY[activeUnit.tacticsHand.spell];
+                                    
+                                    // --- NEW: Failsafe check to prevent the crash! ---
+                                    if (!sData) {
+                                        console.error("Missing Spell Data! ID: " + activeUnit.tacticsHand.spell);
+                                        if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                                        return; 
+                                    }
+                                    // -------------------------------------------------
+
+                                    if (sData.type === 'buff' || sData.type === 'ward') {
+                                        window.TacticsEngine.validSpells = window.TacticsEngine.getValidSupportTargets(activeUnit.x, activeUnit.y, sData.range || 3);
+                                    } else {
+                                        window.TacticsEngine.validSpells = window.TacticsEngine.getLineOfSightTargets(activeUnit.x, activeUnit.y, sData.range || 6);
+                                    }
+                                    window.TacticsEngine.state = 'PREVIEW_CARD';
+                                    window.TacticsEngine.previewType = 'spell';
+                                    if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                                }
+                            // 5. Call
+                            else if (slot === 4 && !activeUnit.hasActed && activeUnit.tacticsHand.call) {
+                                window.TacticsEngine.validCalls = window.TacticsEngine.getValidSummonTiles(activeUnit.x, activeUnit.y, 2); 
+                                window.TacticsEngine.state = 'PREVIEW_CARD';
+                                window.TacticsEngine.previewType = 'call';
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('click');
+                            }
+                            // 6. Wait (Accounts for slot 5, or slot 6 if they clicked the forgiving bottom padding)
+                            else if (slot === 5 || slot === 6) {
+                                activeUnit.hasMoved = true;
+                                activeUnit.hasActed = true;
+                                
+                                // --- NEW: TACTICS LOOT PICKUP CHECK ---
+                                if (activeUnit.alignment === 'ally') {
+                                    // MUST check TacticsEngine.units, not Dungeon.npcs
+                                    let lootIndex = window.TacticsEngine.units.findIndex(n => 
+                                        n.role === 'dropped_card' && !n.isDead &&
+                                        Math.floor(n.x) === Math.floor(activeUnit.x) && 
+                                        Math.floor(n.y) === Math.floor(activeUnit.y)
+                                    );
+                                    
+                                    if (lootIndex !== -1) {
+                                        let lootNPC = window.TacticsEngine.units[lootIndex];
+                                        lootNPC.isDead = true;
+                                        lootNPC.visible = false;
+                                        lootNPC.x = -999;
+                                        window.TacticsEngine.openTacticsBooster(lootNPC.cardId);
+                                    }
+                                }
+
+                                window.TacticsEngine.turnQueue.shift(); 
+                                window.TacticsEngine.state = 'INIT'; 
+                                if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('cancel');
+                            }
+                            
+        return true;
+    }
+    function tick(){
+        if(!actions){
+            const style=document.createElement('style');style.textContent=`
+            #bm-tactics-actions{position:fixed;bottom:max(12px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 24px));z-index:901;border:1px solid #756649;border-radius:14px;padding:10px;background:#11150ff2;color:#dfcca5;font:14px/1.4 system-ui;box-shadow:0 6px 24px #0006}
+            #bm-tactics-actions[hidden]{display:none}#bm-tactics-actions .phase{min-height:24px;margin-bottom:7px;text-align:center;color:#b8b5a5}#bm-tactics-actions .controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+            #bm-tactics-actions button{min-width:0;min-height:46px;border:1px solid #796b4b;border-radius:8px;padding:8px 5px;background:#262c20;color:#ead8ae;font:inherit;touch-action:manipulation}#bm-tactics-actions button:disabled{opacity:.36}#bm-tactics-actions button:focus-visible{outline:2px solid #f1d7a0;outline-offset:2px}
+            #bm-tactics-actions .cancel{display:block;width:100%;margin-top:6px}#bm-tactics-actions .cancel[hidden]{display:none}
+            @media(max-height:650px) and (orientation:portrait){#bm-tactics-actions{padding:7px}#bm-tactics-actions .phase{min-height:18px;font-size:12px;margin-bottom:4px}#bm-tactics-actions .controls{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}#bm-tactics-actions button{min-height:40px;font-size:12px;padding:6px 1px}}
+            @media(orientation:landscape) and (min-width:760px){#bm-tactics-actions{width:190px;left:auto;right:10px;top:84px;bottom:auto;transform:none}#bm-tactics-actions .controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+            `;document.head.append(style);
+            actions=document.createElement('section');actions.id='bm-tactics-actions';actions.setAttribute('aria-label','Tactics actions');phase=document.createElement('div');phase.className='phase';phase.setAttribute('aria-live','polite');actions.append(phase);
+            const row=document.createElement('div');row.className='controls';actions.append(row);
+            ['Move','Attack','Item','Spell','Call','Wait'].forEach((name,slot)=>{const b=document.createElement('button');b.type='button';b.textContent=name;b.dataset.slot=slot;b.onclick=()=>act(slot);row.append(b);});
+            const cancel=document.createElement('button');cancel.className='cancel';cancel.textContent='Cancel action';cancel.type='button';cancel.onclick=()=>{const t=window.TacticsEngine;if(t&&['SELECT_MOVE','SELECT_ATTACK','SELECT_ITEM','SELECT_SPELL','SELECT_CALL','PREVIEW_CARD'].includes(t.state)){t.state='PLAYER_TURN';MusicEngine.play3DSFX('cancel');}};actions.append(cancel);
+            for(const event of ['pointerdown','pointerup','touchstart','touchend','click'])actions.addEventListener(event,e=>e.stopPropagation());document.body.append(actions);
+        }
+        const t=window.TacticsEngine,u=t?.turnQueue?.[0],choosing=['SELECT_MOVE','SELECT_ATTACK','SELECT_ITEM','SELECT_SPELL','SELECT_CALL','PREVIEW_CARD'].includes(t?.state);
+        actions.hidden=startGame!=='tactics'||['GAME_OVER','CINEMATIC','EXAMINE_UNIT'].includes(t?.state);
+        const ready=t?.state==='PLAYER_TURN'&&u?.alignment==='ally';
+        phase.textContent=choosing?({SELECT_MOVE:'Choose a blue tile to move',SELECT_ATTACK:'Choose a red tile to attack',SELECT_ITEM:'Choose an ally to use the item',SELECT_SPELL:'Choose a target for the spell',SELECT_CALL:'Choose a tile to summon',PREVIEW_CARD:'Tap the card to choose a target'}[t.state]):ready?'Your turn · '+(u.name||CARD_MANIFEST_DB[u.type]?.name||'Adventurer'):'Resolving the turn…';
+        actions.querySelector('.controls').hidden=choosing;actions.querySelector('.cancel').hidden=!choosing;
+        for(const b of actions.querySelectorAll('[data-slot]')){const slot=Number(b.dataset.slot),hand=u?.tacticsHand||{};b.disabled=!ready||(slot===0?u.hasMoved:slot===1?u.hasActed:slot>=2&&slot<=4?u.hasActed||!hand[['item','spell','call'][slot-2]]:false);const id=slot>=2&&slot<=4?hand[['item','spell','call'][slot-2]]:null;b.title=id?CARD_MANIFEST_DB[id]?.name||SPELL_REGISTRY[id]?.name||'':b.textContent;}
+        if(!bar){bar=document.createElement('div');bar.id='bm-tactics-view';bar.style.cssText='position:fixed;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:900;display:flex;gap:6px;max-width:96vw;padding:6px;border:1px solid #756649;border-radius:12px;background:#10120fed;color:#dfcca5;font:13px system-ui;align-items:center';
+            const text=document.createElement('span');text.style.cssText='padding:0 5px;white-space:nowrap';bar.append(text);
+            for(const label of ['2D','3D','Rotate']){const b=document.createElement('button');b.textContent=label;b.type='button';b.style.cssText='min-height:40px;padding:7px 12px;border:1px solid #7d7155;border-radius:7px;background:#24271f;color:#ead8ae';b.onclick=()=>{if(label==='Rotate')rotation=(rotation+1)%4;else {mode=label.toLowerCase();localStorage.setItem('bm-tactics-view',mode);}MusicEngine.play3DSFX('click');};bar.append(b);}
+            for(const event of ['pointerdown','pointerup','touchstart','touchend','click'])bar.addEventListener(event,e=>e.stopPropagation());document.body.append(bar);
+        }
+        bar.style.display=startGame==='tactics'?'flex':'none';if(startGame!=='tactics')return;
+        bar.firstChild.textContent='TACTICS · '+(window.TacticsEngine?.turnCount||1);
+        [...bar.querySelectorAll('button')].forEach(b=>{b.setAttribute('aria-pressed',String(b.textContent.toLowerCase()===mode));b.style.background=b.textContent.toLowerCase()===mode?'#58492e':'#24271f';if(b.textContent==='Rotate')b.hidden=mode!=='3d';});
+    }
+    return {project,unproject,worldPoint,draw,highlight,tick,act,get mode(){return mode;},setMode(v){mode=v==='3d'?'3d':'2d';}};
+})();
+
+const BMTacticsSession=(()=>{
+    const practice=c=>['mock','mock_menu'].includes(c.stakes);
+    function begin(d,config){
+        if(d.mapID===888&&d.tacticsReturn) return false;
+        config.stakes??='mock';
+        const menu=config.stakes==='mock_menu'||[0,1,2,3,'options','options2'].includes(startGame);
+        const map=d.mapID!==888&&MAP_DB[d.mapID]?d.mapID:(MAP_DB[d.prevMap]&&d.prevMap!==888?d.prevMap:999);
+        d.tacticsReturn={mapID:map,x:d.x,y:d.y,dir:d.dir,returnToWorld:!menu,menu,
+            continuation:(d.actionQueue||[]).slice(),config:{...config},
+            snapshot:practice(config)?{deck:d.deck.slice(),extra:d.extra.slice(),hand:d.hand.slice(),activeSummons:(d.activeSummons||[]).map(s=>({...s})),...(menu?{memory:JSON.parse(JSON.stringify(d.memory||{}))}:{})}:null};
+        d.actionQueue=[];d.currentSpeaker=null;d.currentEnemy=null;d.prevMap=map;d.prevX=d.x;d.prevY=d.y;d.prevDir=d.dir;
+        preGame=menu?3:'explore';startGame='tactics';BMTouch.cancel();
+        BMActivity.record('tactics_started',`${menu?'Practice tactics':config.scenarioName||'Tactical battle'} started. Stakes: ${config.stakes}.`,{stakes:config.stakes,mapID:map,scenarioName:config.scenarioName});
+        return true;
+    }
+    function finish(t=window.TacticsEngine,{cinematic=false}={}){
+        if(!t||t.settled||!Dungeon.tacticsReturn)return false;
+        const d=Dungeon,p=d.tacticsReturn,c=t.config||{},won=!!t.playerWon,real=['real','scenario'].includes(c.stakes),boss=c.enemyNpcId;
+        t.settled=true;t.canDismissEndScreen=false;
+        const actions=[],map=p.mapID;
+        if(!practice(c)){
+            d.settleTacticsSummonDeaths(t);
+            d.activeSummons=(t.units||[]).filter(u=>!u.isDead&&u.alignment==='ally'&&u.role==='summoned_minion').map(u=>({cardId:Math.floor(u.type),uid:u.sourceUid||u.sourceCard?.uid||('uid_'+Math.random().toString(36).slice(2)),sourceKind:u.summonSourceKind??u.playerData?.sourceKind,sourceCardId:u.summonCardId??u.playerData?.sourceCardId??Math.floor(u.type),npcId:u.sourceNpcId??(900000+Math.floor(Math.random()*100000))}));
+        }
+        if(p.snapshot)Object.assign(d,p.snapshot);
+        if(cinematic){d.memory.magician_rescued=true;actions.push(['trigger_dialogue',1]);}
+        else if(won&&!p.menu){
+            if(c.stakes==='exam')d.dSense++;
+            if(real){
+                const ids=(c.bossDeck||[]).map(v=>Number(typeof v==='object'?v.index??v.id:v)).filter(Number.isFinite);
+                if(ids.length){const owned=new Set([...(d.deck||[]),...BMHotbar.ownedCards(d)].map(v=>v.index)),fresh=ids.filter(id=>!owned.has(id)),pool=fresh.length?fresh:ids;actions.push(['give_card',{card:pool[Math.floor(Math.random()*pool.length)],text:'Spoils of war.'}]);}
+                for(const u of t.units||[])if(u.role==='dropped_card'&&!u.isDead&&u.x!==-999)actions.push(['give_card',{card:u.cardId,text:'Recovered from the battlefield.'}]);
+            }
+            actions.push(...(c.winActions||[]));
+            if(boss!=null){d.memory[`${map}_${boss}`]={permanent:true};const rule=STORY_COMBAT_RULES[`${map}:${boss}`];if(rule)d.memory[rule.flag]=true;}
+        }else if(c.stakes==='exam'&&!p.menu){
+            d.memory.guild_rep=Math.max(0,(d.memory.guild_rep||0)-5);
+            if(boss!=null)d.memory[`${map}_${boss}`]={permanent:true};
+            actions.push(['notify','You failed the promotion exam. Your reputation decreased by 5.']);
+        }
+        // No asynchronous routing: restore the real map before death, saves or quest actions.
+        d.actionQueue=[];d.currentSpeaker=null;d.currentEnemy=null;d.isProcessingActions=false;
+        d.restoreTacticsMap();window.TacticsEngine=null;
+        preGame=p.menu?3:'explore';startGame=p.menu?3:'explore';
+        BMActivity.record('tactics_result',`${c.scenarioName||'Tactics'}: ${cinematic?'witnessed the Magician’s escape':won?'victory':'defeat'}.`,{stakes:c.stakes,outcome:cinematic?'cinematic':won?'victory':'defeat',mapID:map,scenarioName:c.scenarioName});
+        if(real&&!won&&!p.menu){
+            d.currentWardTime=0;d.activeSummons=[];
+            d.killPlayer('tactics',c.bossName||(t.units||[]).find(u=>u.alignment==='foe'&&u.isBoss)?.name||CARD_MANIFEST_DB[(t.units||[]).find(u=>u.alignment==='foe')?.type]?.name||'the tactical battle');
+        }else if(!p.menu){d.actionQueue=[...actions,...p.continuation];d.processNextAction();}
+        d.updateSkills();d.requestSave();MusicEngine.followScene();return true;
+    }
+    return {begin,finish,practice};
+})();
+
 const BMEquipment=(()=>{
     const cache=new Map();
-    const names={6:'The Lovers',17:'Star',21:'Crown',22:'Wand',27:'Amulet',30:'Protect Orb',31:'Tome',36:'Hourglass',45:'Chalice',50:'Sword',64:'Shield',66:'Armor',72:'Magic Ring',84:'Excalibur',92:'Fire Sword',1005:'Venom Blade',1006:'Cursed Dagger',1007:'Mace of Terror'};
+    const names={6:'The Lovers',17:'Star',21:'Crown',22:'Wand',27:'Amulet',30:'Protect Orb',31:'Tome',36:'Hourglass',45:'Chalice',50:'Sword',64:'Shield',66:'Armor',72:'Magic Ring',84:'Excalibur',92:'Fire Sword',1005:'Venom Blade',1006:'Cursed Dagger',1007:'Mace of Terror',1008:'Fur Boots'};
+    const DAY_MS=24*60*60*1000,RECOVERY_MS=60000;
+    const isEquip=id=>Object.hasOwn(names,Number(id));
+    function ledger(actor){if(actor===Dungeon){actor.memory??={};return actor.memory.equipmentTimers??={};}return actor.equipmentTimers??={};}
+    function prepare(actor,b,id,now=Date.now()){
+        if(!isEquip(id))return;
+        b.equipmentId=Number(id);b.equipmentExpiresAt=now+DAY_MS;b.duration=DAY_MS/1000*30;
+        ledger(actor)[id]={expiresAt:b.equipmentExpiresAt};
+    }
+    function sync(actor=Dungeon,now=Date.now()){
+        const timers=ledger(actor),buffs=actor.activeBuffs||[];
+        for(let i=buffs.length-1;i>=0;i--){const b=buffs[i],id=Number(b.equipmentId)||Number(Object.keys(names).find(id=>names[id]===b.name));if(!isEquip(id))continue;
+            if(!b.equipmentExpiresAt)prepare(actor,b,id,now);
+            if(b.equipmentExpiresAt<=now||!auraEffectAlive(b)||b.duration<=0)buffs.splice(i,1);
+            else b.duration=(b.equipmentExpiresAt-now)/1000*30;
+        }
+        for(const [id,t]of Object.entries(timers)){
+            const live=buffs.filter(b=>Number(b.equipmentId)===Number(id));
+            if(live.length)t.expiresAt=Math.max(...live.map(b=>b.equipmentExpiresAt));
+            else if(t.expiresAt){t.readyAt=Math.min(now,t.expiresAt)+RECOVERY_MS;delete t.expiresAt;}
+            if(!t.expiresAt&&now>=t.readyAt)delete timers[id];
+        }
+    }
+    function status(id,actor=Dungeon,now=Date.now()){
+        if(!isEquip(id))return null;sync(actor,now);const t=ledger(actor)[id];
+        if(t?.expiresAt)return {active:true,remaining:t.expiresAt-now,ready:false};
+        const remaining=Math.max(0,(t?.readyAt||0)-now);return {active:false,remaining,ready:!remaining};
+    }
+    function label(id,actor=Dungeon){const s=status(id,actor);return s?.active?'Equipped · '+Math.max(1,Math.ceil(s.remaining/3600000))+'h left':s?.remaining?Math.ceil(s.remaining/1000)+'s to re-equip':'Equip';}
+    function boots(){const item=BMInventory.entries()['equip:fur_boots'];if(!item?.count||Dungeon.isDead||Dungeon.isDying||!status(1008).ready)return false;
+        Dungeon.applySpell(1008,1);BMActivity.record('equipment_used','Equipped fur boots: +1 defence for up to one day.',{item:'equip:fur_boots',stat:'CON',amount:1,durationSeconds:DAY_MS/1000});Dungeon.requestSave();MusicEngine.play3DSFX('buff2');return true;
+    }
+
     function active(actor){return [...new Set((actor?.activeBuffs||[]).filter(b=>auraEffectAlive(b)&&!(b.duration!==undefined&&b.duration<=0)).map(b=>Number(b.equipmentId)||Number(Object.keys(names).find(id=>names[id]===b.name))).filter(id=>names[id]))].sort((a,b)=>a-b);}
     function state(id,moving,attacking,upgrade=true){
         id=Number(id);const up=MODEL_UPGRADES[id];if(upgrade&&up&&(up.id<333||requestExtraSprite(up.id)))id=up.id;
@@ -86416,6 +86288,7 @@ const BMEquipment=(()=>{
             if(id===84)part(at,'arc',x,-.08,z-.085,.07,.07,.035,{r:.18,g:.63,b:.92});
         });
         for(const id of ids){
+            if(id===1008){for(const side of [-1,1]){const at=anchor(side<0?'footL':'footR',[mid[0]+side*h*.12,b.max[1]-.12*unit,mid[2]]);part(at,'rec',0,-.05,-.12,.22,.23,.33,{r:.29,g:.20,b:.14});part(at,'arc',0,-.29,-.02,.26,.09,.26,{r:.57,g:.47,b:.33});}}
             if(id===64){part(left,'arc',-.10,.15,-.16,.39,.51,.075,gold);part(left,'arc',-.10,.15,-.245,.33,.44,.03,blue);part(left,'rec',-.10,.15,-.29,.045,.37,.012,steel);part(left,'rec',-.10,.08,-.29,.24,.04,.012,steel);}
             if(id===22){const at=weapons.length?(ids.includes(64)?belt:anchor('handL',left.position)):right;const x=at===belt?-.54:0;part(at,'arc',x,-.38,.12,.055,.55,.055,{r:.4,g:.21,b:.1});part(at,'arc',x,-.97,.12,.10,.05,.10,gold);part(at,'tri',x,-1.12,.12,.15,.15,.23,{r:.63,g:.39,b:.93},Math.PI/2);}
             if(id===66){const at=A.handL&&A.handR?neck:{position:new Float32Array([mid[0],mid[1]-.25*unit,b.min[2]+.32*unit]),basis:new Float32Array([1,0,0,0,1,0,0,0,1])};part(at,'rec',0,.43,-.32,.50,.38,.085,steel);part(at,'rec',0,.43,-.42,.035,.31,.015,gold);if(A.handL&&A.handR)for(const s of [-1,1])part(at,'arc',s*.58,.16,0,.24,.16,.29,steel);}
@@ -86451,7 +86324,7 @@ const BMEquipment=(()=>{
         const old=p.crop||{left:0,top:0,side:1},next=equipped.meta,unit=p.w/old.side;
         return {...p,image:equipped.image,x:p.x+(next.left-old.left)*unit,y:p.y+(next.top-old.top)*unit,w:unit*next.side,h:unit*next.side,crop:next};
     }
-    return {active,state,append,frame,portrait};
+    return {active,state,append,frame,portrait,isEquip,prepare,sync,status,label,boots,DAY_MS,RECOVERY_MS};
 })();
 
 function spriteDefinition(id) {
@@ -86615,12 +86488,14 @@ function materializeSpriteFrame(frame,pixels=PORTRAIT_PIXELS) {
     }
     const saved={ctx,tX,tY,tL,tH,angle:window.cacheAngle,
         hadAngle:Object.prototype.hasOwnProperty.call(window,'cacheAngle')};
-    const image=document.createElement('canvas');image.width=image.height=pixels;
+    // Rogue blades and eye slit get a sharper raster; all pose/collision coordinates stay unchanged.
+    const rasterPixels=frame.id>=258&&frame.id<=260?Math.max(pixels,192):pixels;
+    const image=document.createElement('canvas');image.width=image.height=rasterPixels;
     try {
         const d=spriteDefinition(frame.id),crop=frame.crop;
         window.cacheAngle=frame.pose/4*Math.PI*2-Math.PI;
         const mesh=drawSpritePaths(d.base,5,4.5,9,0,0,0,d.variant,true);
-        ctx=image.getContext('2d');tX=tY=0;tL=tH=pixels;
+        ctx=image.getContext('2d');tX=tY=0;tL=tH=rasterPixels;
         render3dMesh(mesh,(.5-crop.left)/crop.side*10,(.45-crop.top)/crop.side*10,
             9/crop.side,0,frame.direction*Math.PI/4,0);
         images.set(frame,image);
@@ -90206,7 +90081,7 @@ const BattleMusic = (() => {
     const worldId=String(d.mapID??'world'),area=region(s);
     if(encounterMap!==worldId){encounterMap=worldId;encounter=null;lastThreat=-Infinity;recoveryUntil=0;previousBase=null;}
     const death=m==='gameover'||(['explore','battle','tactics','dialogue'].includes(m)&&(d.isDead||d.isDying||d.status==='dead'));
-    const tacticsLoot=m==='dialogue'&&s.pre==='tactics'&&s.tactics&&d.currentSpeaker?.role==='dropped_card';
+    const tacticsLoot=['dialogue','djinn_lamp'].includes(m)&&d.mapID===888&&!!d.tacticsReturn&&!!s.tactics;
     const tactical=m==='tactics'||tacticsLoot;
     const activeWorld=['explore','battle','tactics'].includes(m)||tacticsLoot;
     const danger=activeWorld?threats(tacticsLoot?{...s,mode:'tactics'}:s):{enemies:[],active:false,boss:false};
@@ -93826,8 +93701,9 @@ const BMLearning=(()=>{
         BMActivity.record('skill_learned',`Learned ${subject} from ${source}. Insight: ${insight(id)}`,{skillId:id,source,learned:true});Dungeon.updateSkills();Dungeon.requestSave();MusicEngine.play3DSFX('buff2');return true;
     }
     function open(key){current=key;message='';startGame='trainer';BMTouch.cancel();BMActivity.record('trainer_visit',`Visited ${Dungeon.currentSpeaker?.name||key.replace('_trainer','')} for instruction.`,{trainer:key});}
-    function close(){startGame='explore';Dungeon.isProcessingActions=false;Dungeon.processNextAction();}
-    return {eligibility,insight,learn,open,close,name,get catalog(){return BM_TRAINER_CATALOGS[current]||[];},get message(){return message;}};
+    function clear(){message='';current=null;}
+    function close(){clear();startGame='explore';Dungeon.isProcessingActions=false;Dungeon.processNextAction();}
+    return {eligibility,insight,learn,open,close,clear,name,get catalog(){return BM_TRAINER_CATALOGS[current]||[];},get message(){return message;}};
 })();
 
 const BMGuild=(()=>{
@@ -93838,7 +93714,7 @@ const BMGuild=(()=>{
         {name:'Rogue',from:'none',rank:'F',sprite:258,desc:'A swift shadow. Double stat points when upgrading AGI.'},
         {name:'Priest',from:'none',rank:'F',sprite:255,desc:'A healer and protector. Double stat points when upgrading CON or INT.'},
         {name:'Knight',from:'warrior',rank:'D',sprite:158,desc:'An armored bulwark. Double stat points when upgrading STR or CON.'},
-        {name:'Battle-Mage',from:'mage',rank:'S',sprite:106,desc:'A supreme hybrid. Use any card regardless of class restrictions, with standard stat point gains.'}
+        {name:'Battle-Mage',from:'mage',rank:'F',sprite:106,desc:'A secret art revealed to Mages at the guild. Invoke physical cards as spells and summons. Standard stat point gains.'}
     ];
     const advanced=[{name:'Dragon Knight',from:'knight',rank:'S',tier:1,sprite:306,desc:'Channel draconic fury. Double stats on STR and INT.'},{name:'Archmage',from:'battle-mage',rank:'S',tier:2,sprite:330,desc:'Master of reality. Double stats on spellcasts.'}];
     const hires=[{name:'Warrior',cardId:252,cost:1,reqRank:'F',desc:'A reckless fighter.'},{name:'Mage',cardId:261,cost:1,reqRank:'F',desc:'Provides magical support.'},{name:'Priest',cardId:255,cost:1,reqRank:'F',desc:'Heals wounds and binds enemies.'},{name:'Hunter',cardId:264,cost:1,reqRank:'E',desc:'Ranged combat and survival.'},{name:'Rogue',cardId:258,cost:1,reqRank:'F',desc:'Strikes from the shadows.'},{name:'Knight',cardId:306,cost:1,reqRank:'B',desc:'A mounted bulwark against foes.'}];
@@ -93852,6 +93728,12 @@ const BMGuild=(()=>{
         if(c.tier!==undefined&&(Dungeon.memory.s_class_rank||0)<c.tier)return 'Requires Avalon '+tiers[c.tier].toLowerCase()+' tier';return '';
     }
     function promote(name){const c=classList().find(c=>c.name===name);if(!c||classStatus(c))return false;const old=Dungeon.playerClass;Dungeon.playerClass=c.name;Dungeon.updateSkills();Dungeon.requestSave();note='You are now a '+c.name+'.';BMActivity.record('class_promotion',`Advanced from ${old||'unclassed'} to ${c.name}.`,{from:old,to:c.name});return true;}
+    function completeLesson(d){
+        const unlock=d.mapID===2&&d.memory?.fool_joined&&d.memory?.priestessLessonAccepted&&String(d.playerClass||'none').toLowerCase()==='none';
+        d.memory??={};d.memory.tutorialFinished=true;delete d.memory.priestessLessonAccepted;
+        if(unlock){d.playerClass='Battle-Mage';BMActivity.record('class_promotion','The High Priestess completed the lesson and initiated the unclassed adventurer as a Battle-Mage.',{from:'none',to:'Battle-Mage',source:'priestess'});}
+        d.updateSkills?.();d.requestSave?.();return !!unlock;
+    }
     function selectRank(rank){const list=window.isAvalonBoard?tiers:ranks,unlocked=window.isAvalonBoard?(Dungeon.memory.s_class_rank||0):rankValue(Dungeon.memory.guild_rank);if(list.indexOf(rank)<0||list.indexOf(rank)>unlocked)return false;window.selectedBountyRank=rank;window.activeBountyList=Dungeon.getBountyList(rank);window.selectedQuestInfo=null;window.guildSubState='quest_list';return true;}
     function accept(index){
         const q=window.activeBountyList?.[index],active=Dungeon.memory.guild_quest||{state:0};
@@ -93878,13 +93760,13 @@ const BMGuild=(()=>{
         window.isGuildShop=true;window.shopOpenRecruit=recruit;startGame='shop';
     }
     function leave(){startGame=preGame==='explore'?'explore':3;Dungeon.requestSave();if(startGame==='explore'){Dungeon.isProcessingActions=false;Dungeon.processNextAction();}}
-    return {ranks,tiers,rankValue,classList,classStatus,promote,selectRank,accept,deploy,turnIn,abandon,hireList,openShop,leave,get note(){return note;}};
+    return {ranks,tiers,rankValue,classList,classStatus,promote,completeLesson,selectRank,accept,deploy,turnIn,abandon,hireList,openShop,leave,get note(){return note;}};
 })();
 
 // One ability per button. Learned casts and physical cards share the same rotation.
 const BMHotbar=(()=>{
     const states=new WeakMap();
-    const isBattleMage=d=>['battle-mage','battlemage','none'].includes(String(d.playerClass||'none').toLowerCase());
+    const isBattleMage=d=>String(d.playerClass||'none').toLowerCase().replace(/[\s-]/g,'')==='battlemage';
     const tier=s=>s>=20?5:s>=12?4:s>=10?3:s>=8?2:s>=6?1:0;
     const capacity=d=>isBattleMage(d)?Math.min(9,2+[0,1,2,3].reduce((n,i)=>n+tier(d.stat?.[i]?.[1]||4),0)):9;
     function state(d){let s=states.get(d);if(!s){s={order:[],learned:new Map(),signature:'',nextCheck:0,busy:false};states.set(d,s);}return s;}
@@ -93912,8 +93794,9 @@ const BMHotbar=(()=>{
         for(const id of Object.keys(d.spellsLearned||{}))if(d.spellsLearned[id])ensure(id);
         if(isBattleMage(d))for(const card of cards)ensure(card.index).cards.push(card);
         for(const g of groups.values()){
+            g.equipment=BMEquipment.status(g.id,d);
             g.playable=playable(g.id,g.cards[0]);g.hidden=!!d.memory?.disabledSkills?.[g.id];
-            g.cooldown=Math.max(0,(d.skillCooldowns?.[g.id]||0)-now);
+            g.cooldown=g.equipment?0:Math.max(0,(d.skillCooldowns?.[g.id]||0)-now);
             g.active=(d.activeSummons||[]).find(s=>s&&typeof s==='object'&&s.sourceKind!=='ally'&&summonId(s)===g.id&&
                 (s.sourceKind==='skill'?g.learned:g.cards.some(c=>c.uid===s.uid)||(!s.sourceKind&&g.learned)));
             if(g.active){
@@ -93921,6 +93804,7 @@ const BMHotbar=(()=>{
                 g.source=card?'card':'skill';g.card=card||learnedCard(d,g.id);
             }else if(g.learned&&g.playable&&g.cooldown===0){g.source='skill';g.card=learnedCard(d,g.id);}
             else if(g.playable&&g.cards.length){g.source='card';g.card=g.cards[0];}
+            if(g.equipment&&!g.equipment.ready){g.source=null;g.cooldown=g.equipment.remaining;} 
         }
         return {groups,cards};
     }
@@ -93929,6 +93813,13 @@ const BMHotbar=(()=>{
         const s=state(d),now=Date.now();if(s.busy||continuous&&now<s.nextCheck)return;
         s.nextCheck=now+100;
         if(!window.uiSpellButtons)return;
+        if(!isBattleMage(d)){
+            // Recover cards left in old unclassed hotbars without spending or duplicating them.
+            d.extra=ownedCards(d);d.hand=[];
+            const owned=new Set(d.extra.map(c=>c.uid));
+            const invalid=(d.activeSummons||[]).filter(a=>a.sourceKind==='card'||(!a.sourceKind&&owned.has(a.uid)));
+            if(invalid.length){const ids=new Set(invalid.map(a=>a.npcId));d.npcs=(d.npcs||[]).filter(n=>!ids.has(n.index));d.activeSummons=d.activeSummons.filter(a=>!invalid.includes(a));}
+        }
         const {groups,cards}=catalog(d),eligible=[...groups.values()].filter(g=>g.source&&!g.hidden),max=capacity(d);
         const signature=[d.playerClass,max,...eligible.map(g=>[g.id,g.source,g.card.uid,g.active?.uid||''].join(':'))].join('|');
         const overflow=eligible.length>max;
@@ -93974,7 +93865,7 @@ const BMHotbar=(()=>{
             }else{
                 if(d.castSpell(g.id)===false)return false;
                 if(g.source==='card')removeCard(d,g.card.uid);
-                else d.skillCooldowns[g.id]=Math.max(d.skillCooldowns[g.id]||0,Date.now()+(SPELL_REGISTRY[g.id]?.cooldown||5000));
+                else if(!BMEquipment.isEquip(g.id))d.skillCooldowns[g.id]=Math.max(d.skillCooldowns[g.id]||0,Date.now()+(SPELL_REGISTRY[g.id]?.cooldown||5000));
                 if(startGame==='tutorial'&&d.option===3){d.option=4;d.dCounter=0;}
             }
             d.requestSave?.();return true;
@@ -93987,6 +93878,8 @@ const BMHotbar=(()=>{
     return {isBattleMage,capacity,ownedCards,catalog,source,refresh,cast,playable,summonId};
 })();
 
+SPELL_REGISTRY[1008]={name:'Fur Boots',type:'item_buff',buffStat:1,amount:1,duration:2592000,sfx:'buff2',auraColor:'#ba956b',visual:'arc'};
+
 const BMInventory=(()=>{
     const equipment=new Set([6,17,21,22,27,30,31,36,45,50,64,66,72,84,92,1005,1006,1007]);
     const treasures=new Set([10,38,44,69,73]);
@@ -93997,7 +93890,13 @@ const BMInventory=(()=>{
         const index=item.fishIndex??(/^cooked:([0-2])$/.exec(item.key||'')?.[1]);
         return index!==undefined?fishEffect(index):(Object.hasOwn(descriptions,item.effect)?item.effect:'medicine');
     }
-    const description=item=>descriptions[consumableEffect(item)];
+    const quality=item=>Number.isFinite(item.quality)?Math.max(.1,Math.min(1,item.quality)):null;
+    const wardAmount=item=>quality(item)===null?Dungeon.timePerWard:quality(item)>=.99?Dungeon.maxWards*Dungeon.timePerWard:quality(item)>=.62?Dungeon.timePerWard*2:Dungeon.timePerWard;
+    const description=item=>{const effect=consumableEffect(item),q=quality(item);if(q===null)return descriptions[effect];
+        const lines=[];if(['ward','medicine','elixir','restorative'].includes(effect))lines.push(q>=.99?'Restore all wards.':q>=.62?'Restore 2 wards.':'Restore 1 ward.');
+        if(['cleanse','medicine','elixir','restorative'].includes(effect))lines.push('Clear all debuffs.');
+        if(['stats','elixir','restorative'].includes(effect))lines.push('Gain +1 to all stats for '+Math.round(30+30*q)+' seconds.');
+        return lines.join(' ');};
     const entries=()=>{Dungeon.memory??={};const stacks=Dungeon.memory.itemStacks??={};for(const item of Object.values(stacks))if(item.kind==='skillbook')item.category='use';return stacks;};
     function add(item,count=1){
         const n=Math.floor(Number(count)),key=String(item?.key||'');
@@ -94005,12 +93904,13 @@ const BMInventory=(()=>{
         const book=item.kind==='skillbook',id=Number(item.spellId);
         if(book&&(!Number.isFinite(id)||(!SPELL_REGISTRY[id]&&!CARD_MANIFEST_DB[id])))return false;
         const stacks=entries(),old=Object.hasOwn(stacks,key)?stacks[key]:null;
-        const kind=book?'skillbook':['fish','herb','powder','consumable'].includes(item.kind)?item.kind:'material';
+        const kind=book?'skillbook':['fish','herb','powder','consumable','equipment'].includes(item.kind)?item.kind:'material';
         stacks[key]={key,name:String(item.name||key),kind,
-            category:book||kind==='consumable'?'use':'misc',count:Math.min(999999,(Number(old?.count)||0)+n),
+            category:kind==='equipment'?'equip':book||kind==='consumable'?'use':'misc',count:Math.min(999999,(Number(old?.count)||0)+n),
             ...(book?{spellId:id}:{}),...((kind==='fish'||item.fishIndex!==undefined)?{fishIndex:Math.max(0,Math.min(2,Number(item.fishIndex)||0))}:{}),
             ...(['herb','powder'].includes(kind)?{herbId:String(item.herbId||'')}:{}),
-            ...(kind==='consumable'?{effect:consumableEffect(item)}:{})};
+            ...(kind==='consumable'?{effect:consumableEffect(item)}:{}),
+            ...(Number.isFinite(item.quality)?{quality:((old?.quality??item.quality)*(Number(old?.count)||0)+item.quality*n)/((Number(old?.count)||0)+n),grade:item.grade||'Good'}:{})};
         Dungeon.requestSave();return true;
     }
     function readBook(key){
@@ -94049,13 +93949,77 @@ const BMInventory=(()=>{
         const effect=consumableEffect(item);Dungeon.activeBuffs??=[];
         if(['cleanse','medicine','elixir','restorative'].includes(effect))Dungeon.activeBuffs=Dungeon.activeBuffs.filter(b=>b.type!=='debuff'&&!b.bind&&!b.isBinding&&b.debuffStat===undefined&&b.votType!=='dot'&&b.votType!=='stun');
         if(['ward','medicine','elixir','restorative'].includes(effect)){
-            Dungeon.currentWardTime=Math.min(Dungeon.maxWards*Dungeon.timePerWard,Math.max(0,Dungeon.currentWardTime)+Dungeon.timePerWard);
+            Dungeon.currentWardTime=Math.min(Dungeon.maxWards*Dungeon.timePerWard,Math.max(0,Dungeon.currentWardTime)+wardAmount(item));
             Dungeon.wardShatterCooldown=0;
         }
-        if(['stats','elixir','restorative'].includes(effect)){const buff={name:item.name,type:'item_buff',buffStat:'all',amount:1,duration:1800,tickTimer:0,visual:'arc',auraColor:'#93c994'};Dungeon.activeBuffs.push(buff);markAuraTick(buff,Dungeon);}
+        if(['stats','elixir','restorative'].includes(effect)){const buff={name:item.name,type:'item_buff',buffStat:'all',amount:1,duration:quality(item)===null?1800:Math.round((30+30*quality(item))*30),tickTimer:0,visual:'arc',auraColor:'#93c994'};Dungeon.activeBuffs.push(buff);markAuraTick(buff,Dungeon);}
         BMActivity.record('consumable_used',`Used ${item.name}. ${description(item)}`,{item:key,effect});refreshSkills();Dungeon.saveGame();MusicEngine.play3DSFX('heal');return true;
     }
     return {entries,add,readBook,category,learned,toggle,use,refreshSkills,takeMany,consume,fishEffect,description};
+})();
+
+// Collected cards are game pieces for everyone; invoking them is a class ability.
+const BMCollection=(()=>{
+    const bonus=(d,i)=>({warrior:[0],knight:[0,1],rogue:[3],mage:[2],priest:[1,2]}[String(d.playerClass||'none').toLowerCase()]||[]).includes(i)?2:1;
+    function upgrade(d,i){
+        if(!Number.isInteger(i)||i<0||i>3||!(d.statPoints>0)||!d.stat?.[i])return false;
+        d.statProgress??=d.stat.map(v=>Number(v[2])||0);
+        const stat=d.stat[i],dice=[4,6,8,10,12,20];
+        d.statProgress[i]=(Number(d.statProgress[i])||0)+bonus(d,i);
+        while(d.statProgress[i]>=4){d.statProgress[i]-=4;const tier=dice.indexOf(stat[1]);if(tier===5){stat[1]=4;stat[0]++;}else stat[1]=dice[Math.max(0,tier+1)];}
+        stat[2]=d.statProgress[i];d.statPoints--;
+        d.syncLivingPlayerCards?.();d.updateSkills?.();d.requestSave?.();
+        BMActivity.record('stat_trained',`Trained ${['STR','CON','INT','AGI'][i]} to ${stat[0]}d${stat[1]}${stat[2]?' + '+stat[2]:''}.`,{stat:i,value:stat.slice(0,3)});
+        MusicEngine.play3DSFX('buff2');return true;
+    }
+    function transfer(d,id,toDeck,all=false){
+        id=Number(id);d.deck??=[];d.extra??=[];d.hand??=[];
+        const source=toDeck?BMHotbar.ownedCards(d):d.deck;
+        const available=source.filter(c=>c&&Number(c.index)===id);
+        const moving=all?available:available.slice(0,1);if(!moving.length)return 0;
+        if(toDeck){
+            const uids=new Set(moving.map(c=>c.uid));
+            // Recall a deployed card before putting that same physical card into the game deck.
+            const recalled=(d.activeSummons||[]).filter(a=>a.sourceKind!=='ally'&&uids.has(a.uid));
+            const npcIds=new Set(recalled.map(a=>a.npcId));
+            d.npcs=(d.npcs||[]).filter(n=>!npcIds.has(n.index));
+            d.activeSummons=(d.activeSummons||[]).filter(a=>!recalled.includes(a));
+            d.hand=d.hand.map(c=>c&&uids.has(c.uid)?null:c);
+            d.extra=d.extra.filter(c=>!uids.has(c.uid));d.deck.push(...moving);
+        }else{
+            for(const card of moving){const i=d.deck.indexOf(card);if(i!==-1)d.deck.splice(i,1);}
+            d.extra.push(...moving);
+        }
+        d.updateSkills?.();d.requestSave?.();
+        BMActivity.record('deck_edited',`${toDeck?'Added':'Removed'} ${moving.length} ${CARD_MANIFEST_DB[id]?.name||moving[0].name} card${moving.length===1?'':'s'} ${toDeck?'to':'from'} the game deck.`,{cardId:id,count:moving.length,toDeck});
+        return moving.length;
+    }
+    return {bonus,upgrade,transfer};
+})();
+
+const BMMonsterLoot=(()=>{
+    // Animal bodies only: humanoids, spirits, skeletons and constructs yield no meat or fur.
+    const furred=new Set([188,191,194,219,225,231,234,240,246,267,300,303]);
+    const meatOnly=new Set([206,228,279]);
+    function roll(npc,random=Math.random){
+        const id=Math.floor(Number(npc.type)),family=SPRITE_META[id]?.family??id,loot=[];
+        if((furred.has(family)||meatOnly.has(family))&&random()<.45)loot.push({key:'material:meat',name:'Raw meat',kind:'material',count:1});
+        if(furred.has(family)&&random()<.30)loot.push({key:'material:fur',name:'Fur',kind:'material',count:1});
+        return loot;
+    }
+    function collect(d,npc){
+        if(d!==Dungeon)return [];
+        // killNPC owns the per-death lock; respawned animals must be able to drop loot again.
+        const loot=roll(npc);
+        for(const item of loot)BMInventory.add(item,item.count);
+        if(loot.length){
+            const summary=loot.map(i=>`${i.name} × ${i.count}`).join(', ');
+            BMActivity.record('monster_loot',`Collected ${summary} after defeating ${npc.name||CARD_MANIFEST_DB[Math.floor(npc.type)]?.name||'a beast'}.`,{sourceId:npc.index,sourceType:npc.type,items:loot});
+            chatLog.push('Loot: '+summary);if(chatLog.length>100)chatLog.shift();
+        }
+        return loot;
+    }
+    return {roll,collect};
 })();
 
 const BMHerbs=(()=>{
@@ -94105,41 +94069,97 @@ const BMHerbs=(()=>{
 
 const BMCrafting=(()=>{
     let game=null;
-    const requirements=recipe=>recipe==='medicine'?{'powder:moonleaf':1,'powder:bitterroot':1}:recipe==='elixir'?{'powder:moonleaf':1,'powder:bitterroot':1,'powder:sunsage':1}:{['herb:'+recipe.split(':')[1]]:1};
-    function stats(){return Dungeon.memory.craftStats??={cooking:{attempts:0,successes:0},alchemy:{attempts:0,successes:0}};}
-    function beginFish(key){if(game?.status==='playing')return false;const item=BMInventory.entries()[key];if(item?.kind!=='fish'||!BMInventory.takeMany({[key]:1}))return false;
-        BMActivity.record('cooking_started',`Started cooking ${item.name}.`,{fishIndex:item.fishIndex});stats().cooking.attempts++;game={kind:'fish',status:'playing',fishIndex:item.fishIndex,name:item.name,side:0,brown:[0,0],heat:60,temp:20,elapsed:0,message:'Brown both sides in the gold zone. Flip before the underside burns.'};Dungeon.saveGame();return true;}
-    function beginAlchemy(recipe){if(game?.status==='playing')return false;if(!['medicine','elixir',...BMHerbs.species.map(s=>'refine:'+s.id)].includes(recipe))return false;
-        if(!BMInventory.takeMany(requirements(recipe)))return false;const herb=recipe.split(':')[1];
-        const stages=recipe==='medicine'?[['powder:moonleaf',45,62],['powder:bitterroot',55,72],['stir',48,65]]:recipe==='elixir'?[['powder:moonleaf',42,60],['powder:bitterroot',53,70],['powder:sunsage',65,82],['stir',52,70]]:[[ 'herb:'+herb,45,63],['stir',56,74],['reduce',66,84]];
-        BMActivity.record('alchemy_started',`Started ${recipe.startsWith('refine:')?'refining '+herb:'brewing '+recipe}.`,{recipe});stats().alchemy.attempts++;game={kind:'alchemy',status:'playing',recipe,stages,stage:0,stageTime:0,added:false,elapsed:0,heat:60,temp:20,onTarget:0,scored:0,mistakes:0,overheat:0,message:'Keep the temperature in green. Add the highlighted ingredient between 1.5 and 8.5 seconds.'};Dungeon.saveGame();return true;
+    const requirements=recipe=>recipe==='medicine'?{'powder:moonleaf':1,'powder:bitterroot':1}:recipe==='elixir'?{'powder:moonleaf':1,'powder:bitterroot':1,'powder:sunsage':1}:recipe==='fur_boots'?{'material:fur':2}:{['herb:'+recipe.split(':')[1]]:1};
+    function stats(){const s=Dungeon.memory.craftStats??={};for(const k of ['cooking','alchemy','sewing'])s[k]??={attempts:0,successes:0};return s;}
+    function grade(score){return score>=.86?{name:'Perfect',value:1}:score>=.62?{name:'Good',value:.7}:{name:'Rustic',value:.4};}
+    function beginFish(key,method='fry',seasoning=''){
+        if(game?.status==='playing'||!['fry','soup','roast'].includes(method))return false;
+        const item=BMInventory.entries()[key],meat=key==='material:meat';if((item?.kind!=='fish'&&!meat)||!BMInventory.takeMany({[key]:1}))return false;
+        game={kind:'fish',status:'playing',method,meat,fishIndex:meat?undefined:item.fishIndex,name:item.name,side:0,brown:method==='roast'?[0,0,0,0]:[0,0],heat:method==='soup'?80:60,height:35,temp:20,core:20,target:meat?75:65,hold:0,elapsed:0,stirAge:0,scorch:0,seasoning,seasoned:false,seasonScore:0,message:method==='roast'?'The spit rotates automatically. Raise it to ease the heat; take it off when the centre is cooked.':method==='soup'?'Stir regularly and keep a gentle simmer until the centre is cooked.':'Flip every few seconds. Surface colour alone does not mean the centre is cooked.'};
+        stats().cooking.attempts++;BMActivity.record('cooking_started',`Started ${method} cooking ${item.name}.`,{ingredient:key,method});Dungeon.saveGame();return true;
     }
-    function finish(success,message){if(!game||game.status!=='playing')return false;game.status=success?'success':'failed';game.message=message;BMActivity.record(game.kind==='fish'?'cooking_result':'alchemy_result',`${game.kind==='fish'?'Cooking '+game.name:'Brewing '+game.recipe}: ${message}`,{success,recipe:game.recipe||game.name});
-        if(success){stats()[game.kind==='fish'?'cooking':'alchemy'].successes++;
-            if(game.kind==='fish')BMInventory.add({key:'cooked:'+game.fishIndex,kind:'consumable',name:'Grilled '+game.name,fishIndex:game.fishIndex,effect:BMInventory.fishEffect(game.fishIndex)},1);
-            else if(game.recipe.startsWith('refine:')){const def=BMHerbs.species.find(s=>s.id===game.recipe.split(':')[1]);BMInventory.add({key:'powder:'+def.id,kind:'powder',herbId:def.id,name:def.powder},1);}
-            else BMInventory.add({key:game.recipe,kind:'consumable',name:game.recipe==='medicine'?'Herbal medicine':'Herbal elixir',effect:game.recipe},1);
+    function beginAlchemy(recipe){
+        if(game?.status==='playing'||!['medicine','elixir',...BMHerbs.species.map(s=>'refine:'+s.id)].includes(recipe))return false;
+        const req=requirements(recipe),quality=Object.keys(req).reduce((n,k)=>n+(BMInventory.entries()[k]?.quality??1),0)/Object.keys(req).length;
+        if(!BMInventory.takeMany(req))return false;const herb=recipe.split(':')[1];
+        const stages=recipe==='medicine'?[['powder:moonleaf',45,62],['powder:bitterroot',55,72],['stir',48,65]]:recipe==='elixir'?[['powder:moonleaf',42,60],['powder:bitterroot',53,70],['powder:sunsage',65,82],['stir',52,70]]:[['herb:'+herb,45,63],['stir',56,74],['reduce',66,84]];
+        game={kind:'alchemy',status:'playing',recipe,stages,stage:0,stageTime:0,added:false,elapsed:0,heat:60,temp:20,onTarget:0,scored:0,mistakes:0,overheat:0,quality,additionScore:0,message:'Keep each stage in its green heat band. Add or stir during the bright timing window.'};
+        stats().alchemy.attempts++;BMActivity.record('alchemy_started',`Started ${recipe}.`,{recipe,ingredientQuality:quality});Dungeon.saveGame();return true;
+    }
+    function beginSewing(){
+        if(game?.status==='playing'||!BMInventory.takeMany(requirements('fur_boots')))return false;
+        game={kind:'sewing',status:'playing',name:'Fur boots',elapsed:0,tension:50,stitches:0,mistakes:0,score:0,needle:0,target:.5,lastStitch:-1,message:'Press Stitch as the needle crosses the gold mark. Keep thread tension near the centre.'};
+        stats().sewing.attempts++;BMActivity.record('sewing_started','Cut two pieces of fur for a pair of boots.');Dungeon.saveGame();return true;
+    }
+    function finish(success,message,score=0){
+        if(!game||game.status!=='playing')return false;
+        game.status=success?'success':'failed';game.grade=success?grade(score):null;game.message=(success?game.grade.name+' · ':'')+message;
+        const kind=game.kind==='fish'?'cooking':game.kind;
+        if(success){stats()[kind].successes++;const q=game.grade;
+            if(kind==='cooking'){
+                const dish={fry:'Pan-fried',soup:'Soup of',roast:'Roasted'}[game.method],subject=game.meat?'meat':game.name;
+                BMInventory.add({key:`cooked:${game.meat?'meat':game.fishIndex}:${game.method}:${q.name.toLowerCase()}`,kind:'consumable',name:`${q.name} ${dish.toLowerCase()} ${subject}`,...(game.meat?{effect:'ward'}:{fishIndex:game.fishIndex}),quality:q.value,grade:q.name},1);
+            }else if(kind==='sewing')BMInventory.add({key:'equip:fur_boots',kind:'equipment',name:'Fur boots',quality:q.value,grade:q.name},1);
+            else if(game.recipe.startsWith('refine:')){const def=BMHerbs.species.find(s=>s.id===game.recipe.split(':')[1]);BMInventory.add({key:'powder:'+def.id,kind:'powder',herbId:def.id,name:def.powder,quality:q.value,grade:q.name},1);}
+            else BMInventory.add({key:game.recipe+':'+q.name.toLowerCase(),kind:'consumable',name:q.name+' herbal '+game.recipe,effect:game.recipe,quality:q.value,grade:q.name},1);
         }
-        Dungeon.saveGame();MusicEngine.play3DSFX(success?'chime':'cancel');return success;
+        BMActivity.record(kind+'_result',`${game.name||game.recipe}: ${game.message}`,{success,recipe:game.recipe||game.name,method:game.method,grade:game.grade?.name,quality:game.grade?.value});Dungeon.saveGame();MusicEngine.play3DSFX(success?'chime':'cancel');return success;
     }
-    function step(dt){if(!game||game.status!=='playing')return;dt=Math.max(0,Math.min(.15,dt));game.elapsed+=dt;game.temp+=(game.heat-game.temp)*(1-Math.exp(-dt/1.8));
-        if(game.kind==='fish'){game.brown[game.side]+=Math.max(0,(game.temp-24)/50)*.115*dt;if(game.brown.some(b=>b>1.08))finish(false,'Burnt fish. This catch was used up; try a gentler heat and flip sooner.');}
-        else{const [ingredient,low,high]=game.stages[game.stage];game.stageTime+=dt;game.scored+=dt;if(game.temp>=low&&game.temp<=high)game.onTarget+=dt;
-            game.overheat=game.temp>94?game.overheat+dt:Math.max(0,game.overheat-dt);if(game.overheat>2){finish(false,'The mixture scorched. The ingredients were used up.');return;}
-            if(ingredient==='reduce')game.added=true;
-            if(game.stageTime>=10){if(!game.added){finish(false,'The ingredient window was missed. This batch failed.');return;}game.stage++;
-                if(game.stage>=game.stages.length){const ok=game.onTarget/game.scored>=.55&&game.mistakes<2;finish(ok,ok?(game.recipe.startsWith('refine:')?'Dry powder recovered. Find it in Items → Misc.':'Brew complete. Find it in Items → Use.'):'The heat wandered too far or the additions were incorrect. This batch failed.');}
-                else{game.stageTime=0;game.added=false;game.message='Next stage: follow the new temperature band and addition.';}}
+    function step(dt){
+        if(!game||game.status!=='playing')return;dt=Math.max(0,Math.min(.15,dt));const g=game;g.elapsed+=dt;
+        if(g.kind==='sewing'){g.needle=(Math.sin(g.elapsed*2.3)+1)/2;return;}
+        if(g.kind==='fish'){
+            const wanted=g.method==='soup'?20+g.heat*.95:g.method==='roast'?20+g.heat*3*(1-g.height/120):20+g.heat*2.2;
+            g.temp+=(wanted-g.temp)*(1-Math.exp(-dt/2));g.core+=(g.temp-g.core)*(1-Math.exp(-dt*(g.method==='soup'?.045:g.method==='roast'?.018:.015)));
+            g.hold=g.core>=g.target?g.hold+dt:0;
+            if(g.method==='soup'){
+                g.stirAge+=dt;g.scorch+=Math.max(0,g.temp-88)/24*Math.max(0,g.stirAge-6)*.013*dt;
+                if(g.scorch>=1.3)finish(false,'The soup stuck and scorched. Stir sooner or reduce the fire.');
+            }else{
+                if(g.method==='roast')g.side=Math.floor(g.elapsed/4)%4;
+                g.brown[g.side]+=Math.max(0,(g.temp-80)/90)*.062*dt;
+                if(g.brown.some(b=>b>=1.3))finish(false,'The surface burnt before the dish was ready. Flip sooner, lower the fire, or raise the roast.');
+            }
+            return;
+        }
+        g.temp+=(g.heat-g.temp)*(1-Math.exp(-dt/1.8));const [ingredient,low,high]=g.stages[g.stage];g.stageTime+=dt;
+        // Give each new temperature band time to settle before grading its heat.
+        if(g.stageTime>2){g.scored+=dt;if(g.temp>=low&&g.temp<=high)g.onTarget+=dt;}
+        g.overheat=g.temp>92?g.overheat+dt:Math.max(0,g.overheat-dt*.25);
+        if(g.overheat>2){finish(false,'The mixture scorched. Lower the heat earlier.');return;}
+        if(ingredient==='reduce')g.added=true;
+        if(g.stageTime>=10){
+            if(!g.added){finish(false,'The ingredient window was missed. This batch failed.');return;}
+            g.stage++;
+            if(g.stage>=g.stages.length){const score=(g.onTarget/Math.max(.01,g.scored))*.75+g.quality*.25-g.mistakes*.16;finish(score>=.35,score>=.35?(g.recipe.startsWith('refine:')?'Powder recovered in Items → Misc. Its quality carries into the next brew.':'Brew bottled in Items → Use.'): 'The heat wandered too far to recover this batch.',score);}
+            else {g.stageTime=0;g.added=false;g.message='Next stage: follow the new heat band and addition.';}
         }
     }
-    function flip(){if(game?.kind!=='fish'||game.status!=='playing')return false;game.side=1-game.side;game.flipAt=performance.now();MusicEngine.play3DSFX('step');return true;}
-    function plate(){if(game?.kind!=='fish'||game.status!=='playing')return false;const ready=game.brown.every(b=>b>=.65&&b<=1.08);return finish(ready,ready?'Golden on both sides! Your cooked fish is in Items → Use.':'The fish was still raw on one side. Try again with a fresh catch.');}
-    function add(key){if(game?.kind!=='alchemy'||game.status!=='playing')return false;const [wanted,low,high]=game.stages[game.stage];if(game.added)return false;
-        if(key!==wanted||game.stageTime<1.5||game.stageTime>8.5||game.temp<low||game.temp>high){game.mistakes++;game.message='Too early, too hot/cold, or the wrong ingredient. Check the highlighted cue.';if(game.mistakes>=2)finish(false,'Two incorrect additions spoiled the mixture.');return false;}
-        game.added=true;game.message=key==='stir'?'Stirred at the right moment. Hold the heat.':'Added at the right moment. Hold the heat.';MusicEngine.play3DSFX('step');return true;
+    function flip(){const g=game;if(g?.kind!=='fish'||g.status!=='playing'||g.method==='roast')return false;
+        if(g.method==='soup'){g.stirAge=0;g.message='Stirred. Watch the centre temperature and keep a gentle simmer.';}
+        else{g.side=1-g.side;g.flipAt=performance.now();}MusicEngine.play3DSFX('step');return true;
+    }
+    function plate(){const g=game;if(g?.kind!=='fish'||g.status!=='playing')return false;
+        if(g.core<g.target||g.hold<2)return finish(false,'The centre was undercooked. Let it reach the target and hold for two seconds.');
+        let score;
+        if(g.method==='soup')score=1-g.scorch*.45-Math.max(0,g.core-g.target-18)*.012;
+        else {const lo=Math.min(...g.brown),hi=Math.max(...g.brown);score=1-Math.max(0,(g.method==='roast'?.30:.62)-lo)*.9-Math.max(0,hi-1.02)*.8-Math.max(0,g.core-g.target-18)*.009;}
+        score+=g.seasonScore;return finish(true,'Dish ready in Items → Use.',score);
+    }
+    function season(){const g=game;if(g?.kind!=='fish'||g.status!=='playing'||g.seasoned||!g.seasoning)return false;
+        if(!BMInventory.takeMany({[g.seasoning]:1}))return false;g.seasoned=true;const p=(g.core-20)/(g.target-20);g.seasonScore=p>=.55&&p<=.8?.07:-.06;g.message=g.seasonScore>0?'Seasoned at just the right moment.':'Seasoning missed its best moment. The dish can still cook well.';return true;
+    }
+    function add(key){const g=game;if(g?.kind!=='alchemy'||g.status!=='playing'||g.added)return false;const [wanted,low,high]=g.stages[g.stage];
+        if(key!==wanted||g.stageTime<1.5||g.stageTime>8.5||g.temp<low||g.temp>high){g.mistakes++;g.message='Check the highlighted ingredient, timing window and heat band.';if(g.mistakes>=2)finish(false,'Two incorrect additions spoiled the mixture.');return false;}
+        g.added=true;g.message=key==='stir'?'Stirred at the right moment. Hold the heat.':'Added at the right moment. Hold the heat.';MusicEngine.play3DSFX('step');return true;
+    }
+    function stitch(){const g=game;if(g?.kind!=='sewing'||g.status!=='playing'||g.elapsed-g.lastStitch<.3)return false;g.lastStitch=g.elapsed;
+        const error=Math.abs(g.needle-g.target),tension=Math.abs(g.tension-50);if(error>.19||tension>25){g.mistakes++;g.message=tension>25?'The thread snagged. Relax the tension.':'Missed the seam. Follow the needle to the next gold mark.';if(g.mistakes>=4)finish(false,'Too many torn stitches. The cut fur could not be recovered.');return false;}
+        g.stitches++;g.score+=error<=.09&&tension<=12?1:.65;g.target=.3+(g.stitches%4)*.13;g.message='Stitch secured · '+g.stitches+' / 12';MusicEngine.play3DSFX('step');
+        if(g.stitches>=12)finish(true,'Fur boots are ready in Items → Equip. Reuse them after their buff expires.',g.score/12-g.mistakes*.05);return true;
     }
     function abandon(){if(game?.status==='playing')finish(false,'Batch abandoned. Started ingredients were used up.');game=null;}
-    return {requirements,stats,beginFish,beginAlchemy,step,flip,plate,add,abandon,get game(){return game;}};
+    return {requirements,stats,grade,beginFish,beginAlchemy,beginSewing,step,flip,plate,season,stitch,add,abandon,get game(){return game;}};
 })();
 
 const BMBlackjack=(()=>{
@@ -94167,7 +94187,7 @@ const BMCamp=(()=>{
         #bm-camp{position:fixed;inset:0;z-index:1100;background:#080b0b;color:#e6e1d3;font:15px/1.5 system-ui,sans-serif;touch-action:pan-y;overflow:auto;overscroll-behavior:contain}
         #bm-camp[hidden]{display:none}#bm-camp *{box-sizing:border-box}#bm-camp .wrap{max-width:880px;margin:auto;padding:20px max(16px,env(safe-area-inset-right)) 26px max(16px,env(safe-area-inset-left))}
         #bm-camp header,#bm-camp nav,#bm-camp .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}#bm-camp header{justify-content:space-between;margin-bottom:16px}#bm-camp h1{font:30px/1.2 Georgia,serif;color:#e0c68f;margin:3px 0}#bm-camp h2{font:22px Georgia,serif;color:#e0c68f;margin:12px 0}#bm-camp p{margin:10px 0}#bm-camp .muted{color:#aaa99b;font-size:13px}
-        #bm-camp button,#bm-camp select{background:#15221e;color:#e7dfc9;border:1px solid #68735c;border-radius:9px;min-height:44px;padding:9px 14px;font:inherit;cursor:pointer;touch-action:manipulation}#bm-camp button:disabled{opacity:.4;cursor:default}#bm-camp button[aria-pressed=true],#bm-camp .primary{background:#374130;border-color:#d5bc80}#bm-camp button:focus-visible{outline:2px solid #f5dba2;outline-offset:2px}
+        #bm-camp label{max-width:100%}#bm-camp select{max-width:100%;margin:6px 0 12px}#bm-camp button,#bm-camp select{background:#15221e;color:#e7dfc9;border:1px solid #68735c;border-radius:9px;min-height:44px;padding:9px 14px;font:inherit;cursor:pointer;touch-action:manipulation}#bm-camp button:disabled{opacity:.4;cursor:default}#bm-camp button[aria-pressed=true],#bm-camp .primary{background:#374130;border-color:#d5bc80}#bm-camp button:focus-visible{outline:2px solid #f5dba2;outline-offset:2px}
         #bm-camp nav{padding-bottom:14px;border-bottom:1px solid #3b4137;margin-bottom:16px}#bm-camp main{min-height:200px}#bm-camp .panel{background:#101a17;border:1px solid #3b4b3d;border-radius:14px;padding:16px;margin:14px 0}#bm-camp .play{display:block;width:100%;height:auto;aspect-ratio:720/340;border-radius:16px;background:#101a17;border:1px solid #3b4b3d;margin:12px 0}
         #bm-camp input[type=range]{width:100%;accent-color:#d8ad61;height:38px;touch-action:pan-x}#bm-camp .heat{display:block;margin:10px 0}#bm-camp .status{min-height:44px;color:#d8e6bc}#bm-camp .cards{display:flex;gap:9px;flex-wrap:wrap}#bm-camp .arcana{width:106px;min-height:158px;border:1px solid #aa9162;border-radius:9px;background:#131d20;padding:7px;display:flex;flex-direction:column;text-align:center;font-size:11px}#bm-camp .arcana canvas{width:88px;height:88px}#bm-camp .arcana strong{font:15px Georgia,serif;color:#f3d598}#bm-camp .arcana.back{background:repeating-linear-gradient(45deg,#19252a,#19252a 6px,#283435 6px,#283435 7px);justify-content:center;color:#e0c68f;font-size:34px}#bm-camp details{margin-top:18px;color:#aaa99b;font-size:13px}#bm-camp summary{cursor:pointer;min-height:44px;padding:10px 0}#bm-camp .outcome{font:24px Georgia,serif;color:#ead397}
         @media(max-width:500px){#bm-camp .wrap{padding-top:12px}#bm-camp h1{font-size:26px}#bm-camp .arcana{width:92px;min-height:146px}#bm-camp .arcana canvas{width:76px;height:76px}#bm-camp nav{gap:6px}#bm-camp nav button{padding:8px 11px}}`;
@@ -94175,7 +94195,7 @@ const BMCamp=(()=>{
         for(const type of ['pointerdown','pointermove','pointerup','pointercancel','touchstart','touchmove','touchend','click','wheel','keydown','keyup'])root.addEventListener(type,e=>e.stopPropagation());
         const wrap=el('div',root,null,'wrap'),head=el('header',wrap),names=el('div',head);el('div',names,'SUNCAT · CAMP & CARDS','muted');title=el('h1',names);
         exitButton=button(head,'Return to game',close);nav=el('nav',wrap);body=el('main',wrap);
-        for(const [key,label]of [['cook','Cooking'],['alchemy','Alchemy'],['blackjack','Blackjack']]){const b=button(nav,label,()=>{mode=key;stamp='';render();});b.dataset.mode=key;}
+        for(const [key,label]of [['cook','Cooking'],['alchemy','Alchemy'],['sewing','Sewing'],['blackjack','Blackjack']]){const b=button(nav,label,()=>{mode=key;stamp='';render();});b.dataset.mode=key;}
     }
     function open(next='cook'){
         if(Dungeon.isDead||Dungeon.isDying||Dungeon.inCombat||Dungeon.isThreatNearby){say('Find a safe moment outside combat before opening camp.');return false;}
@@ -94184,26 +94204,50 @@ const BMCamp=(()=>{
         isChatActive=false;chatInput.blur();root.hidden=false;stamp='';lastTime=performance.now();render();root.focus({preventScroll:true});return true;
     }
     function close(){BMCrafting.abandon();BMBlackjack.leave();startGame=returnTo;root.hidden=true;BMTouch.cancel();Dungeon.requestSave();}
-    function command(msg){const match=msg.trim().match(/^\.hack(?:\/\/|\s+)(camp|cook|cooking|blackjack|alchemy|gather)\s*$/i);if(!match)return false;
-        const cmd=match[1].toLowerCase();if(cmd==='gather'){if(!BMHerbs.gather())say('Stand beside an unpicked herb to gather it.');}else open(cmd==='blackjack'?'blackjack':cmd==='alchemy'?'alchemy':'cook');return true;
+    function command(msg){const match=msg.trim().match(/^\.hack(?:\/\/|\s+)(camp|cook|cooking|blackjack|alchemy|sew|sewing|craft|gather)\s*$/i);if(!match)return false;
+        const cmd=match[1].toLowerCase();if(cmd==='gather'){if(!BMHerbs.gather())say('Stand beside an unpicked herb to gather it.');}else open(cmd==='blackjack'?'blackjack':cmd==='alchemy'?'alchemy':['sew','sewing','craft'].includes(cmd)?'sewing':'cook');return true;
     }
     function recipeName(key){if(key==='stir')return 'Stir';if(key==='reduce')return 'Reduce gently';const [kind,id]=key.split(':'),herb=BMHerbs.species.find(s=>s.id===id);return herb?(kind==='powder'?herb.powder:herb.name):key;}
-    function makeSurface(){surface=el('canvas',body,null,'play');surface.width=720;surface.height=340;surface.setAttribute('aria-label',mode==='cook'?'Fish frying and browning indicators':'Cauldron temperature and ingredient timing');}
+    function makeSurface(){surface=el('canvas',body,null,'play');surface.width=720;surface.height=340;surface.setAttribute('aria-label',mode==='cook'?'Cooking surface and centre heat':mode==='sewing'?'Needle timing and boot seams':'Cauldron temperature and ingredient timing');}
     function heatControl(g){const label=el('label',body,null,'heat');const caption=el('span',label);caption.dataset.heatCaption='';const input=el('input',label);input.type='range';input.min=0;input.max=100;input.step=1;input.value=g.heat;input.setAttribute('aria-label','Heat control');input.oninput=()=>{if(g.status==='playing')g.heat=Number(input.value);};input.disabled=g.status!=='playing';const cue=el('p',body,'','status');cue.dataset.craftCue='';}
     function cooking(){
-        title.textContent='Campfire kitchen';const stats=BMCrafting.stats().cooking;el('p',body,`Cooking level ${1+Math.floor(stats.successes/5)} · ${stats.successes} successful dishes`,'muted');
-        const g=BMCrafting.game;
+        title.textContent='Campfire kitchen';const stats=BMCrafting.stats().cooking;el('p',body,`Cooking level ${1+Math.floor(stats.successes/5)} · ${stats.successes} successful dishes`,'muted');const g=BMCrafting.game;
         if(!g||g.kind!=='fish'){
-            el('p',body,'A hot pan, a fresh catch, and good timing. Brown both sides, flip before they burn, then plate your fish.');
-            const box=el('div',body,null,'panel'),fish=Object.values(BMInventory.entries()).filter(i=>i.kind==='fish'&&i.count>0);const label=el('label',box,'Choose a fish '),select=el('select',label);select.setAttribute('aria-label','Fish to cook');
-            for(const f of fish){const o=el('option',select,`${f.name} × ${f.count} · ${BMInventory.description(f)}`);o.value=f.key;}
-            const b=button(box,'Start cooking · 1 fish',()=>{BMCrafting.beginFish(select.value);stamp='';render();},'primary');b.disabled=!fish.length;
-            if(!fish.length)el('p',box,'Catch a fish beside water first. Your catch will appear here.','muted');
-            const effects=el('div',body,null,'panel');el('p',effects,'Each cooked fish has one effect:');
-            BMFishSprites.species.forEach((f,fishIndex)=>el('p',effects,`${f.name}: ${BMInventory.description({fishIndex})}`));
-            el('p',body,'Starting uses one fish. Burnt, undercooked, or abandoned attempts produce no food.','muted');
-        }else{makeSurface();heatControl(g);const row=el('div',body,null,'row');button(row,'Flip fish',()=>BMCrafting.flip(),'primary').disabled=g.status!=='playing';button(row,'Plate fish',()=>{BMCrafting.plate();stamp='';render();}).disabled=g.status!=='playing';
-            el('p',body,g.message,'status').dataset.craftStatus='';if(g.status!=='playing')button(body,'Cook another fish',()=>{BMCrafting.abandon();stamp='';render();});}
+            el('p',body,'Cook the centre while tending the surface. Turn a fish in the pan, stir a soup, or hang a rotating roast above the fire.');
+            const box=el('div',body,null,'panel'),foods=Object.values(BMInventory.entries()).filter(i=>(i.kind==='fish'||i.key==='material:meat')&&i.count>0);
+            const label=el('label',box,'Ingredient '),select=el('select',label);select.setAttribute('aria-label','Food to cook');
+            for(const f of foods){const o=el('option',select,`${f.name} × ${f.count}`);o.value=f.key;}
+            const methodLabel=el('label',box,' Method '),method=el('select',methodLabel);method.setAttribute('aria-label','Cooking method');
+            for(const [key,name]of [['fry','Pan fry · flip'],['soup','Soup · stir'],['roast','Roast · height & timing']]){const o=el('option',method,name);o.value=key;}
+            const herbLabel=el('label',box,' Seasoning '),herb=el('select',herbLabel);herb.setAttribute('aria-label','Seasoning');el('option',herb,'No seasoning').value='';
+            for(const h of Object.values(BMInventory.entries()).filter(i=>i.kind==='herb'&&i.count>0))el('option',herb,h.name+' × '+h.count).value=h.key;
+            const b=button(box,'Start cooking · 1 ingredient',()=>{BMCrafting.beginFish(select.value,method.value,herb.value);stamp='';render();},'primary');b.disabled=!foods.length;
+            if(!foods.length)el('p',box,'Catch fish or collect meat from an animal first.','muted');
+            const effects=el('div',body,null,'panel');el('h2',effects,'A dish worth tending');el('p',effects,'Ward fish and meat: Perfect restores all wards, Good restores two, Rustic restores one.');
+            el('p',effects,'Cleansing fish removes debuffs. The third fish gives +1 to all stats; better cooking makes its buff last longer. Each fish keeps its own effect.');
+            el('p',body,'Started ingredients are used up. Burnt, raw or abandoned food gives no consumable. Heat readings are game meters.','muted');
+        }else{
+            makeSurface();heatControl(g);
+            if(g.method==='roast'){const label=el('label',body,'Height above fire · higher is gentler','heat'),input=el('input',label);input.type='range';input.min=0;input.max=100;input.value=g.height;input.setAttribute('aria-label','Roast height');input.oninput=()=>g.height=Number(input.value);input.disabled=g.status!=='playing';}
+            const row=el('div',body,null,'row');
+            if(g.method!=='roast')button(row,g.method==='soup'?'Stir soup':'Flip food',()=>BMCrafting.flip(),'primary').disabled=g.status!=='playing';
+            button(row,g.method==='roast'?'Take off fire':'Serve dish',()=>{BMCrafting.plate();stamp='';render();},'primary').disabled=g.status!=='playing';
+            if(g.seasoning){const b=button(row,'Say when · season',()=>{BMCrafting.season();stamp='';render();});b.disabled=g.seasoned||g.status!=='playing';el('p',body,'Season during the gold window at 55–80% of the centre’s heat-up.','muted');}
+            el('p',body,g.message,'status').dataset.craftStatus='';if(g.status!=='playing')button(body,'Cook another dish',()=>{BMCrafting.abandon();stamp='';render();});
+        }
+    }
+    function sewing(){
+        title.textContent='Fur & thread';const stats=BMCrafting.stats().sewing;el('p',body,`Sewing level ${1+Math.floor(stats.successes/5)} · ${stats.successes} finished pairs`,'muted');const g=BMCrafting.game;
+        if(!g||g.kind!=='sewing'){
+            const panel=el('div',body,null,'panel');el('h2',panel,'Fur boots');el('p',panel,'Join the seams of two boots. Stitch on the gold mark, keeping the thread neither slack nor tight.');
+            el('p',panel,'Fur: '+(BMInventory.entries()['material:fur']?.count||0)+' / 2 · Needle and thread provided.','muted');
+            button(panel,'Cut fur · begin sewing',()=>{BMCrafting.beginSewing();stamp='';render();},'primary').disabled=(BMInventory.entries()['material:fur']?.count||0)<2;
+            el('p',panel,'Wear for +1 DEF (CON) for up to 24 hours. The boots stay in your bag; re-equip 60 seconds after the buff expires or is removed.');
+        }else {
+            makeSurface();const label=el('label',body,'Thread tension · keep near 50','heat'),input=el('input',label);input.type='range';input.min=0;input.max=100;input.value=g.tension;input.setAttribute('aria-label','Thread tension');input.disabled=g.status!=='playing';input.oninput=()=>g.tension=Number(input.value);
+            button(body,'Stitch',()=>BMCrafting.stitch(),'primary').disabled=g.status!=='playing';el('p',body,g.message,'status').dataset.craftStatus='';el('p',body,'12 stitches · four torn stitches spoil the cut fur.','muted');
+            if(g.status!=='playing')button(body,'Sew another pair',()=>{BMCrafting.abandon();stamp='';render();});
+        }
     }
     function alchemy(){
         title.textContent='Herbal alchemy';const stats=BMCrafting.stats().alchemy;el('p',body,`Alchemy level ${1+Math.floor(stats.successes/5)} · ${stats.successes} successful batches`,'muted');const g=BMCrafting.game;
@@ -94212,10 +94256,10 @@ const BMCamp=(()=>{
             for(const key of [...BMHerbs.species.map(s=>'refine:'+s.id),'medicine','elixir']){
                 const req=BMCrafting.requirements(key),box=el('div',body,null,'panel');el('h2',box,key.startsWith('refine:')?'Refine '+recipeName('herb:'+key.split(':')[1]):key==='medicine'?'Herbal medicine':'Herbal elixir');
                 el('p',box,Object.entries(req).map(([id,n])=>`${recipeName(id)}: ${BMInventory.entries()[id]?.count||0} / ${n}`).join(' · '),'muted');
-                el('p',box,key.startsWith('refine:')?'Steep, stir, and dry one herb into a powder.':key==='medicine'?'Restores 1 ward and clears all debuffs.':'Restores 1 ward, clears all debuffs, and grants +1 to all stats for 60 seconds.');
+                el('p',box,key.startsWith('refine:')?'Steep, stir, and dry one herb into a powder.':key==='medicine'?'Clears debuffs. Better quality restores more wards; Perfect restores all.':'Restores wards, clears debuffs and grants +1 to all stats. Quality improves restoration and buff duration.');
                 const b=button(box,'Begin batch',()=>{BMCrafting.beginAlchemy(key);stamp='';render();},'primary');b.disabled=Object.entries(req).some(([id,n])=>(BMInventory.entries()[id]?.count||0)<n);
             }
-            el('p',body,'Ingredients are committed when a batch starts. Keep the heat within each green band for at least 55% of the brew; two incorrect additions spoil it.','muted');
+            el('p',body,'Ingredients are committed when a batch starts. Steady heat improves quality and potency. Overheating or two incorrect additions spoil the batch.','muted');
         }else{
             makeSurface();heatControl(g);const row=el('div',body,null,'row');row.dataset.ingredients='';
             const keys=g.recipe.startsWith('refine:')?BMHerbs.species.map(s=>'herb:'+s.id):BMHerbs.species.map(s=>'powder:'+s.id);
@@ -94241,16 +94285,41 @@ const BMCamp=(()=>{
         el('p',rules,'Major arcana use their printed value: Fool 0, Winged Boots 7, Treasure Chest 10, Crown 21. A two-card 21 is resolved at the deal. All 78 cards are unique; the shoe reshuffles between hands when fewer than 40 remain. Leaving an unfinished hand counts as a loss.');
     }
     function render(){if(!root)return;body.replaceChildren();surface=null;for(const b of nav.children){b.setAttribute('aria-pressed',String(b.dataset.mode===mode));b.disabled=BMCrafting.game?.status==='playing'||BMBlackjack.round?.status==='playing';}
-        if(mode==='cook')cooking();else if(mode==='alchemy')alchemy();else blackjack();
+        if(mode==='cook')cooking();else if(mode==='alchemy')alchemy();else if(mode==='sewing')sewing();else blackjack();
         exitButton.textContent=BMCrafting.game?.status==='playing'?'Abandon & return':BMBlackjack.round?.status==='playing'?'Leave table':'Return to game';
         stamp=mode+':'+(BMCrafting.game?.status||'')+':'+(BMBlackjack.round?.status||'');
     }
+    function drawFood(c,g,now){
+        c.fillStyle='#e4d6b4';c.fillText(g.name+' · '+{fry:'Pan fry',soup:'Gentle soup',roast:'Rotating roast'}[g.method],360,27);
+        if(g.method==='soup'){
+            c.fillStyle='#323b36';c.beginPath();c.ellipse(360,164,138,76,0,0,Math.PI*2);c.fill();c.fillStyle=g.scorch>.9?'#604f2a':'#a58d4b';c.beginPath();c.ellipse(360,136,130,40,0,0,Math.PI*2);c.fill();
+            for(let i=0;i<8;i++){c.strokeStyle='#dfc48b';c.beginPath();c.arc(280+i*23,136+Math.sin(now/470+i)*12,3+Math.abs(Math.sin(now/630+i))*4,0,Math.PI*2);c.stroke();}
+            c.save();c.translate(360,135);c.rotate(g.stirAge<.8?g.stirAge*5:.4);c.fillStyle='#886648';c.fillRect(-6,-102,12,125);c.restore();
+            c.fillStyle='#c9d4c7';c.fillText(`Stirred ${g.stirAge.toFixed(0)}s ago · sticking ${Math.round(g.scorch/1.3*100)}%`,360,230);
+        }else{
+            if(g.method==='roast'){
+                c.strokeStyle='#8e8470';c.lineWidth=3;c.beginPath();c.moveTo(230,47);c.lineTo(290,114);c.moveTo(490,47);c.lineTo(430,114);c.stroke();
+                for(let i=0;i<7;i++){c.fillStyle=i%2?'#e49343':'#a9492e';c.beginPath();c.ellipse(285+i*25,216,13,24+Math.sin(now/190+i)*7,0,0,Math.PI*2);c.fill();}
+            }else{c.fillStyle='#383e3a';c.beginPath();c.ellipse(360,142,160,83,0,0,Math.PI*2);c.fill();c.fillRect(500,130,115,22);}
+            const shade=Math.min(1.3,g.brown[g.side])/1.3;c.save();c.translate(360,137);if(g.method==='roast')c.scale(1,.8+.2*Math.cos(g.elapsed*Math.PI/2));else if(g.flipAt)c.scale(Math.max(.08,Math.abs(Math.cos(Math.min(1,(now-g.flipAt)/400)*Math.PI))),1);
+            c.fillStyle=`rgb(${Math.round(182-95*shade)},${Math.round(156-111*shade)},${Math.round(113-90*shade)})`;c.beginPath();c.ellipse(0,0,105,g.meat?52:39,0,0,Math.PI*2);c.fill();
+            if(!g.meat){c.beginPath();c.moveTo(87,0);c.lineTo(142,-35);c.lineTo(142,35);c.closePath();c.fill();c.fillStyle='#1b211e';c.beginPath();c.arc(-72,-8,5,0,Math.PI*2);c.fill();}else {c.fillStyle='#d8b88c';c.beginPath();c.ellipse(16,8,18,13,-.5,0,Math.PI*2);c.fill();}c.restore();
+            g.brown.forEach((v,i)=>{const width=560/g.brown.length,x=80+i*width;c.fillStyle='#28382f';c.fillRect(x,230,width-12,12);c.fillStyle=v>1.1?'#d28060':v>=.62?'#d5b974':'#96b3a4';c.fillRect(x,230,(width-12)*Math.min(1,v/1.3),12);c.font='13px system-ui';c.fillText(`Side ${i+1} · ${Math.round(v*100)}%`,x+(width-12)/2,220);});
+        }
+        c.font='17px system-ui';c.fillStyle='#e4d6b4';c.fillText(`Centre ${Math.round(g.core)}° / ${g.target}° · ${g.hold>=2?'Ready to serve':g.hold>0?'Hold for 2 seconds':'Still cooking'}`,360,278);
+        const progress=Math.min(1.1,(g.core-20)/(g.target-20));c.fillStyle='#29382f';c.fillRect(70,293,580,16);if(g.seasoning&&!g.seasoned){c.fillStyle='#8d7547';c.fillRect(70+580*.55,293,580*.25,16);}c.fillStyle=g.hold>=2?'#b9d694':'#9bb8b0';c.fillRect(70,297,580*Math.min(1,progress),8);
+        c.fillStyle='#a9b6a8';c.font='13px system-ui';c.fillText(g.method==='roast'?`Height ${g.height}% · rotates itself every 4 seconds`:g.method==='soup'?'Stir before the bottom sticks.':'Golden sides: 62–102% · burning at 130%.',360,329);
+    }
+    function drawSewing(c,g){
+        c.fillStyle='#e4d6b4';c.fillText('Fur boots · '+g.stitches+' / 12 stitches',360,29);
+        for(const x of [255,405]){c.fillStyle='#61482e';c.beginPath();c.moveTo(x-35,67);c.lineTo(x+24,67);c.lineTo(x+25,154);c.lineTo(x+59,174);c.lineTo(x+58,203);c.lineTo(x-35,203);c.closePath();c.fill();c.fillStyle='#ac9270';c.fillRect(x-39,65,67,24);
+            c.strokeStyle='#e2c891';c.lineWidth=2;const n=Math.max(0,Math.min(6,g.stitches-(x===255?0:6)));for(let i=0;i<n;i++){c.beginPath();c.moveTo(x-5,96+i*17);c.lineTo(x+6,102+i*17);c.stroke();}}
+        c.fillStyle='#29382f';c.fillRect(65,261,590,22);c.fillStyle='#866d3b';c.fillRect(65+(g.target-.09)*590,261,.18*590,22);c.fillStyle='#e9dec1';c.fillRect(65+g.needle*590-2,248,4,49);
+        c.fillStyle='#c9d4c7';c.fillText(`Tension ${g.tension} · torn stitches ${g.mistakes} / 4`,360,326);
+    }
     function draw(now){const g=BMCrafting.game;if(!surface||!g)return;const c=surface.getContext('2d'),w=720,h=340;c.clearRect(0,0,w,h);c.fillStyle='#101a17';c.fillRect(0,0,w,h);c.textAlign='center';c.font='18px system-ui';
-        if(g.kind==='fish'){
-            c.fillStyle='#3d4241';c.beginPath();c.ellipse(360,151,179,107,0,0,Math.PI*2);c.fill();c.strokeStyle='#8c9188';c.lineWidth=7;c.stroke();c.fillStyle='#575c56';c.fillRect(525,137,110,25);
-            const show=g.brown[1-g.side],shade=Math.min(1,show),flip=g.flipAt?Math.min(1,(now-g.flipAt)/400):1;c.save();c.translate(360,147);c.scale(Math.max(.08,Math.abs(Math.cos(flip*Math.PI))),1);c.fillStyle=`rgb(${Math.round(179-75*shade)},${Math.round(174-99*shade)},${Math.round(137-103*shade)})`;c.beginPath();c.ellipse(0,0,113,51,0,0,Math.PI*2);c.fill();c.beginPath();c.moveTo(94,0);c.lineTo(150,-44);c.lineTo(143,43);c.closePath();c.fill();c.fillStyle='#181e1d';c.beginPath();c.arc(-79,-10,6,0,Math.PI*2);c.fill();c.strokeStyle='#514531';c.lineWidth=4;for(let i=0;i<4;i++){c.beginPath();c.moveTo(-38+i*25,-29);c.lineTo(-51+i*25,27);c.stroke();}c.restore();
-            c.fillStyle='#e4d6b4';c.fillText(g.name+' · Side '+(g.side+1)+' on the pan',360,28);
-            g.brown.forEach((v,i)=>{const x=70+i*325,y=273;c.textAlign='left';c.fillStyle='#c9d4c7';c.fillText('Side '+(i+1)+' · '+(v<.65?'raw':v<=1.08?'golden':'burnt'),x,y-12);c.fillStyle='#263630';c.fillRect(x,y,255,18);c.fillStyle='#746142';c.fillRect(x+255*.65/1.1,y,255*.43/1.1,18);c.fillStyle=v>=.65?'#e0af59':'#89b5ac';c.fillRect(x,y+5,255*Math.min(1,v/1.1),8);});
+        if(g.kind==='fish'){drawFood(c,g,now);
+        }else if(g.kind==='sewing'){drawSewing(c,g);
         }else{
             const stage=g.stages[Math.min(g.stage,g.stages.length-1)],[key,low,high]=stage;
             c.strokeStyle='#728178';c.lineWidth=8;c.beginPath();c.arc(360,156,87,Math.PI,0);c.stroke();c.fillStyle='#202c2b';c.beginPath();c.ellipse(360,195,117,83,0,0,Math.PI*2);c.fill();c.fillStyle=g.recipe==='elixir'?'#9b8757':g.recipe==='medicine'?'#6e936d':'#82907d';c.beginPath();c.ellipse(360,139,103,29,0,0,Math.PI*2);c.fill();
@@ -94262,11 +94331,11 @@ const BMCamp=(()=>{
         }
     }
     function tick(now=performance.now()){
-        BMHerbs.tick();if(!active()){if(root)root.hidden=true;lastTime=now;return;}
+        BMEquipment.sync();BMTacticsView.tick();BMHerbs.tick();if(!active()){if(root)root.hidden=true;lastTime=now;return;}
         if(!root)create();root.hidden=false;const dt=document.hidden?0:Math.min(.15,Math.max(0,(now-lastTime)/1000));lastTime=now;BMCrafting.step(dt);
         const next=mode+':'+(BMCrafting.game?.status||'')+':'+(BMBlackjack.round?.status||'');if(next!==stamp)render();
-        const g=BMCrafting.game;if(g){const caption=root.querySelector('[data-heat-caption]');if(caption)caption.textContent=`Heat: ${g.heat}% · ${g.kind==='fish'?'Pan':'Cauldron'}: ${Math.round(g.temp)}°`;
-            const cue=root.querySelector('[data-craft-cue]');if(cue){if(g.kind==='fish')cue.textContent=`Side 1: ${Math.round(g.brown[0]*100)}% · Side 2: ${Math.round(g.brown[1]*100)}% · Golden at 65–108%.`;else{const [ingredient,lo,hi]=g.stages[Math.min(g.stage,g.stages.length-1)];cue.textContent=`Target: ${lo}–${hi}° · ${g.added?'Hold the heat':recipeName(ingredient)} · ${g.stageTime.toFixed(1)} / 10s`;}}
+        const g=BMCrafting.game;if(g){const caption=root.querySelector('[data-heat-caption]');if(caption)caption.textContent=`Heat: ${g.heat}% · ${g.kind==='fish'?(g.method==='roast'?'Fire':g.method==='soup'?'Soup':'Pan'):'Cauldron'}: ${Math.round(g.temp)}°`;
+            const cue=root.querySelector('[data-craft-cue]');if(cue){if(g.kind==='fish')cue.textContent=`Centre: ${Math.round(g.core)}° / ${g.target}° · ${g.hold>=2?'Ready to serve':'Cook the centre; tend the surface.'}`;else if(g.kind==='alchemy'){const [ingredient,lo,hi]=g.stages[Math.min(g.stage,g.stages.length-1)];cue.textContent=`Target: ${lo}–${hi}° · ${g.added?'Hold the heat':recipeName(ingredient)} · ${g.stageTime.toFixed(1)} / 10s`;}}
             const status=root.querySelector('[data-craft-status]');if(status)status.textContent=g.message;
             for(const b of root.querySelectorAll('[data-ingredient]')){const expected=g.stages?.[g.stage]?.[0];b.setAttribute('aria-pressed',String(b.dataset.ingredient===expected));b.disabled=g.status!=='playing'||g.added;}
         }
@@ -94425,7 +94494,7 @@ const BMShell=(()=>{
     const art=[],cards=new Map(),scenes=new Set([1,2,3,'options','options2']);
     const el=(tag,parent,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;parent?.append(e);return e;};
     function button(parent,text,fn,cls){const b=el('button',parent,text,cls);b.type='button';b.onclick=fn;return b;}
-    function active(){return scenes.has(startGame)||startGame==='shop'||['journal','tarot','grimoire','guild_menu','trainer'].includes(startGame)||startGame==='deck_menu'&&['items','spells','grimoire'].includes(activeDeckTab);}
+    function active(){return scenes.has(startGame)||startGame==='shop'||['journal','tarot','grimoire','guild_menu','trainer'].includes(startGame)||startGame==='deck_menu';}
     function sound(){MusicEngine.play3DSFX('click');}
     function invalidate(){key='';}
     function exit(){selected=null;startGame=preGame==='explore'?'explore':3;BMTouch.cancel();invalidate();}
@@ -94477,7 +94546,7 @@ const BMShell=(()=>{
     function clear(){nav.replaceChildren();body.replaceChildren();footer.replaceChildren();art.length=0;lastFrame=0;}
     function tabs(items,current,onChange){for(const [id,name]of items){const b=button(nav,name,()=>{sound();selected=null;limit=100;listScroll=0;onChange(id);invalidate();});b.setAttribute('aria-pressed',String(id===current));}}
     function foot(label='Close',fn=exit){el('p',footer,'Swipe or scroll to read.','muted');button(footer,label,()=>{sound();fn();});}
-    function surface(parent,kind,data){const c=el('canvas',parent);c.width=kind==='card'?384:kind==='model'?384:192;c.height=kind==='card'?576:c.width;c.setAttribute('aria-hidden','true');art.push({c,kind,data});return c;}
+    function surface(parent,kind,data){const c=el('canvas',parent);c.width=kind==='card'?384:['model','actor'].includes(kind)?384:192;c.height=kind==='card'?576:c.width;c.setAttribute('aria-hidden','true');art.push({c,kind,data});return c;}
     function studio(){
         heading.textContent='A Suncat Studio Production';
         const dice=el('div',body,null,'dice');for(const type of ['d4','d6','d8','d10','d12','d20']){const f=el('figure',dice);surface(f,'dice',new Dice(type));el('figcaption',f,type.toUpperCase());}
@@ -94744,17 +94813,79 @@ const BMShell=(()=>{
         foot('Leave guild',()=>{BMGuild.leave();invalidate();});
     }
 
+    let collectionSide='extra',deckSearch='';
+    function playerPanel(){
+        heading.textContent='Your character';
+        const hero=el('article',body,null,'card'),picture=surface(hero,'actor',null);picture.className='thumb';
+        const cls=String(Dungeon.playerClass||'none');
+        el('h2',hero,playerName||'Adventurer');el('p',hero,`${cls==='none'?'Unclassed':cls} · Level ${Dungeon.level||0} · Guild rank ${Dungeon.memory?.guild_rank||'F'}`,'status');
+        if(myLivePerception){const bio=el('details',hero);el('summary',bio,'Character description');el('p',bio,myLivePerception,'prose muted');}
+        const current=Math.max(0,Dungeon.currentWardTime||0),max=(Dungeon.maxWards||3)*(Dungeon.timePerWard||3);
+        el('p',hero,`Wards: ${current.toFixed(1)} / ${max.toFixed(1)} seconds · ${Dungeon.maxWards||3} wards`);
+        const wards=el('progress',hero);wards.max=max;wards.value=current;wards.setAttribute('aria-label','Remaining ward time');
+        el('p',hero,`Experience: ${Math.floor(Dungeon.xp||0)} / ${Dungeon.xpNeeded||100}`,'muted');
+        const xp=el('progress',hero);xp.max=Math.max(1,Dungeon.xpNeeded||100);xp.value=Math.max(0,Dungeon.xp||0);xp.setAttribute('aria-label','Experience toward next level');
+        el('h2',body,'Attributes');el('p',body,`${Dungeon.statPoints||0} unspent stat point${Dungeon.statPoints===1?'':'s'}. Every four points of progress upgrade the die.`,'muted');
+        const grid=el('div',body,null,'grid'),names=['Strength','Constitution','Intelligence','Agility'],short=['STR','CON','INT','AGI'];
+        names.forEach((name,i)=>{
+            const card=el('article',grid,null,'card'),stat=Dungeon.stat?.[i]||[1,4,0],gain=BMCollection.bonus(Dungeon,i);
+            el('h3',card,`${name} · ${short[i]}`);el('p',card,`Base: ${stat[0]}d${stat[1]}${stat[2]?' + '+stat[2]:''}`,'status');
+            const effective=Dungeon.getEffectiveDice(i);
+            if(effective.numDice!==stat[0]||effective.diceSides!==stat[1]||effective.flatMod!==stat[2])el('p',card,`With effects: ${effective.numDice}d${effective.diceSides}${effective.flatMod?' '+(effective.flatMod>0?'+ ':'− ')+Math.abs(effective.flatMod):''}`,'muted');
+            const progress=Dungeon.statProgress?.[i]??stat[2]??0;
+            el('p',card,`${progress} / 4 progress · +${gain} per point${gain===2?' from your class':''}`,'muted');
+            const train=button(card,'Spend 1 point',()=>{if(BMCollection.upgrade(Dungeon,i))invalidate();},'primary');train.disabled=!(Dungeon.statPoints>0);train.setAttribute('aria-label','Spend 1 point on '+name);
+        });
+        const status=el('article',body,null,'card');el('h3',status,'Adventure');
+        el('p',status,`${Dungeon.deck?.length||0} cards in your game deck · ${BMHotbar.ownedCards(Dungeon).length} extra cards · ${BMHotbar.capacity(Dungeon)} ability slots`,'muted');
+        el('p',status,BMHotbar.isBattleMage(Dungeon)?'Battle-Mage: learned techniques and physical cards share your ability rotation.':'Use learned techniques in the field. Keep cards for trading and card games.','muted');
+        const effects=(Dungeon.activeBuffs||[]).map(b=>b.name).filter(Boolean);
+        el('p',status,effects.length?'Active effects: '+effects.join(', '):'No active effects.','muted');
+    }
+    function deckPanel(){
+        heading.textContent='Your card deck';
+        el('p',body,'Build freely for card games: every class, every card, any number of copies. No power or deck-size cap.','muted');
+        el('p',body,'Invoking a card as an RPG spell or summon is exclusive to Battle-Mages. Learned skills and consumables are separate.','muted');
+        const row=el('div',body,null,'row');
+        for(const [id,label,count]of [['deck','Game deck',Dungeon.deck?.length||0],['extra','Extra cards',BMHotbar.ownedCards(Dungeon).length]]){
+            const b=button(row,`${label} · ${count}`,()=>{collectionSide=id;invalidate();});b.setAttribute('aria-pressed',String(collectionSide===id));
+        }
+        const search=el('input',el('div',body,null,'row'));search.type='search';search.placeholder='Find a card';search.setAttribute('aria-label','Find a card in your collection');search.value=deckSearch;
+        const list=el('div',body,null,'grid');
+        const render=()=>{
+            // Remove old art registrations along with filtered-out DOM nodes.
+            for(let i=art.length-1;i>=0;i--)if(list.contains(art[i].c))art.splice(i,1);
+            list.replaceChildren();const groups=new Map();
+            for(const c of collectionSide==='deck'?(Dungeon.deck||[]):BMHotbar.ownedCards(Dungeon)){if(!c)continue;const id=Number(c.index);if(!groups.has(id))groups.set(id,{id,card:c,count:0});groups.get(id).count++;}
+            const entries=[...groups.values()].filter(g=>(CARD_MANIFEST_DB[g.id]?.name||g.card.name||'').toLowerCase().includes(deckSearch.toLowerCase())).sort((a,b)=>(a.card.name||'').localeCompare(b.card.name||''));
+            if(!entries.length){el('p',list,deckSearch?'No matching cards.':collectionSide==='deck'?'Your deck is empty. Add cards from Extra cards.':'No extra cards yet. Collect loot or visit a shop.','card muted');return;}
+            for(const g of entries.slice(0,limit)){
+                const panel=el('article',list,null,'card');portrait(panel,g.id);el('h3',panel,(CARD_MANIFEST_DB[g.id]?.name||g.card.name)+' × '+g.count);
+                el('p',panel,[g.card.rank,g.card.suit,g.card.mastery?'Mastery '+g.card.mastery:null].filter(Boolean).join(' · '),'muted');
+                const details=el('details',panel);el('summary',details,'Card details');el('p',details,g.card.desc||'A card for your collection.','muted');
+                if(g.card.type===0)el('p',details,(g.card.stat||[]).slice(0,4).map((v,i)=>`${['STR','CON','INT','AGI'][i]} ${v[0]}d${v[1]}${v[2]?' + '+v[2]:''}`).join(' · '),'muted');
+                const actions=el('div',panel,null,'row'),toDeck=collectionSide!=='deck';
+                for(const all of [false,true]){const b=button(actions,`${toDeck?'Add':'Remove'} ${all?'all':'one'}`,()=>{if(BMCollection.transfer(Dungeon,g.id,toDeck,all)){sound();invalidate();}},all?'':'primary');b.disabled=all&&g.count<2;b.setAttribute('aria-label',`${toDeck?'Add':'Remove'} ${all?'all':'one'} ${g.card.name} ${toDeck?'to':'from'} deck`);}
+            }
+            if(entries.length>limit)button(list,'Show more cards',()=>{limit+=100;render();});
+        };
+        search.oninput=()=>{deckSearch=search.value;render();};render();
+    }
+
     function inventory(){
         heading.textContent='Your collection';
         tabs([['player','Player'],['deck','Deck'],['items','Items'],['spells','Spells'],['grimoire','Grimoire']],activeDeckTab,id=>{activeDeckTab=id;});
+        if(activeDeckTab==='player'){playerPanel();foot('Back to game');return;}
+        if(activeDeckTab==='deck'){deckPanel();foot('Back to game');return;}
         if(activeDeckTab==='grimoire'){gallery(true);foot('Back to game');return;}
         if(activeDeckTab==='items'){
             const row=el('div',body,null,'shop-categories');for(const [id,label]of [['equip','Equip'],['use','Use'],['treasure','Treasure'],['misc','Misc']]){const b=button(row,'',()=>{itemTab=id;invalidate();});b.setAttribute('aria-label',label);const art=surface(b,'mesh',BMShopModels.mesh(id));art.className='shop-icon';el('span',b,label);b.setAttribute('aria-pressed',String(itemTab===id));}
-            if(itemTab==='misc'){const tools=el('div',body,null,'row');button(tools,'Cook fish',()=>BMCamp.open('cook'));button(tools,'Alchemy',()=>BMCamp.open('alchemy'));}
-            el('p',body,({equip:'Equip skills apply buffs or wards. Use again after cooldown to re-equip or stack their effects.',use:'Instant utilities, remedies, cooked food and skillbooks. Books are consumed only after you learn their technique.',treasure:'Treasure chests, charity and quest rewards.',misc:'Fish, herbs and powders stack here. Cook fish or refine herbs at camp.'})[itemTab],'muted');
+            if(itemTab==='misc'){const tools=el('div',body,null,'row');button(tools,'Cook food',()=>BMCamp.open('cook'));button(tools,'Alchemy',()=>BMCamp.open('alchemy'));button(tools,'Sew fur boots',()=>BMCamp.open('sewing'));}
+            el('p',body,({equip:'Equipment lasts up to one day (24 hours), or until its buff is removed. Re-equip 60 seconds later. Different pieces work together.',use:'Instant utilities, remedies, cooked food and skillbooks. Books are consumed only after you learn their technique.',treasure:'Treasure chests, charity and quest rewards.',misc:'Fish, meat, fur, herbs and powders stack here. Cook food, refine herbs or sew fur boots at camp.'})[itemTab],'muted');
         }else el('p',body,'Enable spells and summons for the hotbar rotation. Hidden abilities remain yours; active summons are not dismissed.','muted');
         el('p',body,`${BMHotbar.capacity(Dungeon)} hotbar slots. All ready abilities stay visible when they fit; larger pools rotate every ${Math.round((Dungeon.spellShuffleCooldown||5000)/1000)} seconds.`,'muted');
         if(BMHotbar.isBattleMage(Dungeon))el('p',body,'Learned skills and extra cards share one button per ability. Use the learned cast first; while it cools down, another cast spends one matching extra card.','muted');
+        if(!BMHotbar.isBattleMage(Dungeon))el('p',body,'Your cards are for collecting, trading and card games. Only Battle-Mages invoke physical cards; learned skills and real consumable items remain usable.','muted');
         const abilities=BMHotbar.catalog(Dungeon).groups;
         let count=0;
         for(const id of BMInventory.learned()){
@@ -94784,9 +94915,13 @@ const BMShell=(()=>{
                 else if(item.kind==='herb'||item.kind==='powder'){const art=el('canvas',card,null,'thumb');art.width=art.height=128;const index=BMHerbs.species.findIndex(s=>s.id===item.herbId);art.getContext('2d').drawImage(BMHerbs.imageFor(Math.max(0,index)),0,0);}
                 else if(item.kind==='skillbook')portrait(card,item.spellId);
                 el('h3',card,item.name+' × '+item.count);
+                if(Number.isFinite(item.quality))el('p',card,'Quality '+Math.round(item.quality*100)+'%'+(item.kind==='powder'?' · carries into the next brew':''),'muted');
                 if(item.kind==='skillbook'){
                     const learned=!!Dungeon.spellsLearned?.[item.spellId];el('p',card,BMLearning.eligibility(item.spellId).text,'muted');el('p',card,'A successful reading consumes one book. Unmet prerequisites leave it intact.','muted');
                     const b=button(card,learned?'Learned':'Read skillbook',()=>{BMInventory.readBook(item.key);invalidate();});b.disabled=learned;
+                }else if(item.kind==='equipment'){
+                    el('p',card,'+1 DEF (CON) · up to 24 hours. Reusable; ready 60 seconds after removal or expiry.','muted');
+                    const b=button(card,BMEquipment.label(1008),()=>{BMEquipment.boots();invalidate();},'primary');b.dataset.equipBoots='';b.disabled=!BMEquipment.status(1008).ready;
                 }else if(item.kind==='consumable'){
                     el('p',card,BMInventory.description(item),'muted');
                     button(card,'Consume one',()=>{BMInventory.consume(item.key);invalidate();},'primary');
@@ -94841,6 +94976,7 @@ const BMShell=(()=>{
                 const bounds=a.c.getBoundingClientRect();if(bounds.bottom<0||bounds.top>innerHeight)continue;
                 if(a.done&&['portrait','fish','card'].includes(a.kind))continue;
                 ctx=a.c.getContext('2d');tX=tY=0;tL=tH=a.c.width;ctx.clearRect(0,0,a.c.width,a.c.height);
+                if(a.kind==='actor')drawActorPortrait(Dungeon,playerSprite,.6,.6,.88,0,reduced?0:Math.floor(now/700)%8,0);
                 if(a.kind==='card'){a.data.location='field';a.data.place(.5,.35,4,false);}
                 if(a.kind==='model'){let m=modelCache.get(a.data);if(!m){m=BattleMusic.spriteDisplay.model(a.data,{width:7.7,height:7.7,centerY:5});modelCache.set(a.data,m);if(modelCache.size>8)modelCache.delete(modelCache.keys().next().value);}const pose=reduced?0:Math.floor(now/1100)%m.meshes.length;render3dMesh(m.meshes[pose][0],m.x,m.y,m.scale,0,angle,0);}
                 if(a.kind==='mesh')render3dMesh(a.data,5,5,a.c.classList.contains('shop-icon')?10:12,.12,a.c.classList.contains('shop-icon')?.35+Math.sin(angle)*.55:angle,0);
@@ -94860,7 +94996,7 @@ const BMShell=(()=>{
         document.documentElement.classList.toggle('bm-shell-open',on);document.body.classList.toggle('bm-shell-open',on);
         if(!on){if(mode){mode='';key='';art.length=0;body.replaceChildren();}previousState=startGame;return;}
         BMTouch.cancel();
-        if(previousState!==startGame){if(startGame==='shop')BMShop.enter();if(startGame==='guild_menu')BMActivity.record('guild_visit',`Visited the ${window.isAvalonBoard?'Avalon':'adventurers’'} guild.`);selected=null;limit=100;listScroll=0;if(startGame===3)menuPage='home';else if(startGame==='options'||startGame==='options2')menuPage='options';previousState=startGame;key='';}
+        if(previousState!==startGame){if(startGame==='deck_menu')BMLearning.clear();if(startGame==='shop')BMShop.enter();if(startGame==='guild_menu')BMActivity.record('guild_visit',`Visited the ${window.isAvalonBoard?'Avalon':'adventurers’'} guild.`);selected=null;limit=100;listScroll=0;if(startGame===3)menuPage='home';else if(startGame==='options'||startGame==='options2')menuPage='options';previousState=startGame;key='';}
         mode=startGame===1?'studio':scenes.has(startGame)?'menu':startGame==='shop'?'shop':startGame==='journal'?'journal':['tarot','grimoire','guild_menu','trainer'].includes(startGame)?startGame:'inventory';
         const next=[mode,mode==='menu'?menuPage:'',mode==='inventory'?activeDeckTab+itemTab:'',mode==='journal'?journalTab+filter+storyViewMode:'',selected?'detail':'list'].join('|');
         if(next!==key){const detail=!!selected;clear();key=next;if(mode==='studio')studio();else if(mode==='menu')menu();else if(mode==='journal')journal();else if(mode==='shop')shop();else if(mode==='tarot')tarot();else if(mode==='grimoire')gallery();else if(mode==='guild_menu')guild();else if(mode==='trainer')trainer();else inventory();body.scrollTop=detail?0:listScroll;}
@@ -94873,8 +95009,10 @@ const BMShell=(()=>{
             for(const label of root.querySelectorAll('[data-activity-status]'))label.textContent=BMActivity.error||`${BMActivity.pending} records waiting to sync · ${socket?.connected?'Connected':'Offline'}`;
             for(const b of root.querySelectorAll('[data-use-skill]')){
             const id=Number(b.dataset.useSkill),ready=BMHotbar.source(Dungeon,id,true),ms=(Dungeon.skillCooldowns?.[id]||0)-Date.now();b.disabled=!ready;
+            if(BMEquipment.isEquip(id)){b.textContent=BMEquipment.label(id);continue;}
             b.textContent=ready?b.dataset.readyLabel+(ready.source==='card'?' · card ×'+ready.cards.length:' · learned'):ms>0?Math.ceil(ms/1000)+'s cooldown':'Unavailable';
         }}
+        for(const b of root.querySelectorAll('[data-equip-boots]')){b.textContent=BMEquipment.label(1008);b.disabled=!BMEquipment.status(1008).ready;}
         drawArt(now);
     }
     return {sync,active,invalidate};
@@ -96924,7 +97062,7 @@ const BMIntro = (() => {
                             { name: 'Rogue', upgradesFrom: 'none', reqRank: 'F', reqText: 'Base Class', desc: 'A swift and deadly shadow. Rogues gain double stat points when upgrading their AGI.' },
                             { name: 'Priest', upgradesFrom: 'none', reqRank: 'F', reqText: 'Base Class', desc: 'A holy healer and protector. Priests gain double stat points when upgrading CON or INT.' },
                             { name: 'Knight', upgradesFrom: 'warrior', reqRank: 'D', reqText: 'D-Rank License', desc: 'An armored bulwark. Knights gain double stat points when upgrading STR or CON.' },
-                            { name: 'Battle-Mage', upgradesFrom: 'mage', reqRank: 'S', reqText: 'S-Rank License', desc: 'A supreme hybrid. Can use ANY card regardless of class restrictions, but only gains standard stat points.' }
+                            { name: 'Battle-Mage', upgradesFrom: 'mage', reqRank: 'F', reqText: 'Mage initiation', desc: 'A secret art revealed to Mages at the guild. Invoke cards as spells and summons; standard stat point gains.' }
                         ];
 
                         let pClass = (Dungeon.playerClass || 'none').toLowerCase();
