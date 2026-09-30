@@ -2620,7 +2620,8 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
     entityDecl.parameters.properties.index={type:SchemaType.NUMBER,description:'Exact instance index when more than one matches'};
     suncatDecls.find(t=>t.name==='teleportPlayer').parameters.properties.mapID.description='Existing client atlas map ID, including 30/31, or active generated map 999. Hub 100 is unsupported.';
     suncatDecls.find(t=>t.name==='travelToLocation').description='Move Suncat on observed traversable geometry; report walking separately from arrival. Unknown maps require an observer.';
-    suncatDecls.find(t=>t.name==='createCustomMap').description='Generate one shared bounty scenario and invite the named online player. Existing occupants or invitations must finish first.';
+    suncatDecls.find(t=>t.name==='createCustomMap').description='Generate a shared region with an LLM-written siege, expedition or bounty and optional encounters. Invite with the existing messenger imp. Existing occupants or invitations must finish first.';
+    suncatDecls.find(t=>t.name==='createCustomMap').parameters.properties.scenarioType={type:SchemaType.STRING,enum:['siege','expedition','bounty'],description:'Optional scenario style. Siege has four timed waves stopped by defeating the commander early. All regions remain explorable afterward.'};
     suncatDecls.find(t=>t.name==='alterTerrain').parameters.properties.tileId.description='Exact client tile ID: 0 floor, 1 wall, 92/93 water, 96/97 chasm, 99/101 lava. Negative odd IDs are legacy chasms.';
     const T_PERSONA = `
         You are Taliesin, the bard of ancient Welsh myth, singing a continuous song. 
@@ -4007,97 +4008,27 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
                 miniCenter: { x: mini.cx, y: mini.cy }
             };
     }
-    function generateActorDrivenMap(size, baseWallType, floorType = 0, waterTile = null, cliffTile = null) {
+    function generateActorDrivenMap(size, baseWallType, floorType = 0, waterTile = null, cliffTile = null, scenarioKind = 'bounty') {
         if(size!==100) throw new Error('This generator currently uses a 100 by 100 layout.');
         let grid = Array(size).fill().map(() => Array(size).fill(baseWallType));
-        let layoutVariant = Math.floor(Math.random() * 6); 
-        let nodes = {};
-        let layoutName = "";
-        let layoutDesc = "";
-
-        // Common node defaults
-        let radSmall = 4, radMed = 6, radLarge = 8;
-
-        if (layoutVariant === 0) {
-            layoutName = "The Classic Diagonal";
-            layoutDesc = "A traditional journey from one corner of the realm to the other.";
-            nodes = {
-                start:     { x: 15, y: 15, radius: radSmall, theme: 'BASIC' },
-                allyCamp:  { x: 30, y: 30, radius: radMed, theme: 'CITY' },
-                ambush1:   { x: 20, y: 75, radius: radMed, theme: 'BASIC' },
-                ambush2:   { x: 75, y: 20, radius: radMed, theme: 'BASIC' },
-                bossLair:  { x: 85, y: 85, radius: radLarge, theme: 'CASTLE' }
-            };
-        } 
-        else if (layoutVariant === 1) {
-            layoutName = "The Stronghold Siege";
-            layoutDesc = "The heroes are defending a central stronghold while enemy forces spawn on the perimeter and push inward.";
-            nodes = {
-                bossLair:  { x: 15, y: 15, radius: radLarge, theme: 'CAVE' },
-                ambush1:   { x: 85, y: 15, radius: radMed, theme: 'BASIC' },
-                ambush2:   { x: 15, y: 85, radius: radMed, theme: 'BASIC' },
-                allyCamp:  { x: 50, y: 50, radius: radLarge, theme: 'CITY', customWall: 25 }, // Stone walls
-                start:     { x: 50, y: 60, radius: radSmall, theme: 'BASIC' } // Spawns safely inside the camp
-            };
+        // Combine orientation, room geometry, branches and road topology rather
+        // than replaying a fixed start-to-boss arrangement for each scenario.
+        const variant=Math.floor(Math.random()*5),turn=Math.floor(Math.random()*4),mirror=Math.random()<.5;
+        const seeds=[[[18,22],[45,25],[64,72],[83,44]],[[50,50],[18,25],[79,27],[70,83]],
+            [[22,78],[25,43],[70,63],[78,20]],[[17,48],[46,18],[50,80],[83,50]],[[50,83],[20,54],[79,49],[48,16]]][variant];
+        const transform=([x,y])=>{if(mirror)x=99-x;for(let i=0;i<turn;i++)[x,y]=[99-y,x];return {x:Math.max(14,Math.min(85,x+Math.floor(Math.random()*11)-5)),y:Math.max(14,Math.min(85,y+Math.floor(Math.random()*11)-5))};};
+        const sites=seeds.map(transform);
+        let nodes={start:{...sites[0],radius:10,theme:'CITY',customWall:25},
+            allyCamp:{x:sites[0].x,y:sites[0].y-3,radius:7,theme:'CITY',customWall:25},
+            ambush1:{...sites[1],radius:5+Math.floor(Math.random()*5),theme:['FOREST','CAVE','PARK'][Math.floor(Math.random()*3)]},
+            ambush2:{...sites[2],radius:5+Math.floor(Math.random()*5),theme:['PARK','FOREST','BASIC'][Math.floor(Math.random()*3)]},
+            bossLair:{...sites[3],radius:7+Math.floor(Math.random()*4),theme:Math.random()<.5?'CASTLE':'CAVE'}};
+        const layoutName=['The Braided Frontier','The Broken Ring','The Long Crossing','The Forked March','The Scattered Holds'][variant];
+        const layoutDesc='A defended Travelers of the Wilderness outpost opens onto branching roads, secluded clearings and alternate routes. The arrival plaza contains a campfire, merchants, a reader, a card table and the independent guild clerk. All objectives remain in this region; the return portal stays available after the conflict.';
+        for(let i=0,attempts=0;i<5&&attempts<100;attempts++){
+            const n={x:12+Math.floor(Math.random()*76),y:12+Math.floor(Math.random()*76),radius:3+Math.floor(Math.random()*4),theme:['FOREST','CAVE','BASIC','PARK'][Math.floor(Math.random()*4)]};
+            if(Object.values(nodes).every(p=>Math.hypot(n.x-p.x,n.y-p.y)>16))nodes['discovery'+i++]=n;
         }
-        else if (layoutVariant === 2) {
-            layoutName = "The Multi-Zone Epic";
-            layoutDesc = "A massive mosaic of distinct regions: a city, a forest, a cave system, and a towering castle all connected by narrow bridges.";
-            nodes = {
-                start:     { x: 15, y: 15, radius: 5, theme: 'CITY', customWall: 25 }, // Stone city
-                allyCamp:  { x: 15, y: 85, radius: 7, theme: 'FOREST', customWall: 23 }, // Tree camp
-                ambush1:   { x: 85, y: 15, radius: 7, theme: 'CAVE', customWall: 1 }, // Dirt cave
-                ambush2:   { x: 50, y: 50, radius: 6, theme: 'PARK', customWall: 3 }, // Park lake in center
-                bossLair:  { x: 85, y: 85, radius: 9, theme: 'CASTLE', customWall: 5 } // Ruby castle
-            };
-        }
-        else if (layoutVariant === 3) {
-            layoutName = "The Subterranean Lake";
-            layoutDesc = "A sprawling, claustrophobic underground cavern system wrapped around a massive, dark underground lake.";
-            nodes = {
-                start:     { x: 50, y: 90, radius: 4, theme: 'CAVE', customWall: baseWallType },
-                allyCamp:  { x: 80, y: 80, radius: 6, theme: 'CAVE', customWall: baseWallType },
-                ambush1:   { x: 20, y: 50, radius: 6, theme: 'CAVE', customWall: baseWallType },
-                ambush2:   { x: 80, y: 20, radius: 6, theme: 'CAVE', customWall: baseWallType },
-                bossLair:  { x: 50, y: 10, radius: 8, theme: 'CAVE', customWall: baseWallType }
-            };
-            // Override the base wall to be jagged for the whole map
-            for (let y = 0; y < size; y++) {
-                for (let x = 0; x < size; x++) {
-                    if (Math.random() < 0.1) grid[y][x] = cliffTile || baseWallType;
-                }
-            }
-        }
-        else if (layoutVariant === 4) {
-            layoutName = "The Vertical Gauntlet";
-            layoutDesc = "A grueling, straight-shot climb from the bottom of the map to a heavily fortified peak.";
-            nodes = {
-                start:     { x: 50, y: 85, radius: radSmall, theme: 'BASIC' },
-                allyCamp:  { x: 50, y: 70, radius: radMed, theme: 'CITY' },
-                ambush1:   { x: 30, y: 45, radius: radMed, theme: 'BASIC' },
-                ambush2:   { x: 70, y: 45, radius: radMed, theme: 'BASIC' },
-                bossLair:  { x: 50, y: 15, radius: radLarge, theme: 'CASTLE' }
-            };
-        }
-        else {
-            layoutName = "The Outward Spiral";
-            layoutDesc = "The journey begins in the center and spirals dangerously outward into hostile territory.";
-            nodes = {
-                start:     { x: 50, y: 50, radius: radSmall, theme: 'CITY' },
-                allyCamp:  { x: 50, y: 65, radius: radMed, theme: 'BASIC' },
-                ambush1:   { x: 20, y: 80, radius: radMed, theme: 'FOREST' },
-                ambush2:   { x: 80, y: 20, radius: radMed, theme: 'CAVE' },
-                bossLair:  { x: 20, y: 20, radius: radLarge, theme: 'CASTLE' }
-            };
-        }
-
-        // Introduce some random jitter to the nodes so they aren't EXACTLY perfectly aligned every time
-        Object.values(nodes).forEach(n => {
-            n.x += Math.floor(Math.random() * 6 - 3);
-            n.y += Math.floor(Math.random() * 6 - 3);
-            n.x = Math.max(10, Math.min(size - 10, n.x));
-            n.y = Math.max(10, Math.min(size - 10, n.y));
-        });
 
         // --- THE CARVER ---
         const carveRoom = (node) => {
@@ -4241,26 +4172,35 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
             }
         };
 
-        // Pathing Network
-        carvePath(nodes.start, nodes.allyCamp);
-        carvePath(nodes.allyCamp, nodes.ambush1);
-        carvePath(nodes.allyCamp, nodes.ambush2);
-        carvePath(nodes.ambush1, nodes.bossLair);
-        carvePath(nodes.ambush2, nodes.bossLair);
-
-        for(const n of Object.values(nodes)) {
-            for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++) {
-                const x=n.x+dx,y=n.y+dy;
-                if(x>0&&y>0&&x<size-1&&y<size-1) grid[y][x]=floorType;
-            }
+        // Several route graphs, with side clearings reachable independently of victory.
+        carvePath(nodes.start,nodes.allyCamp);
+        carvePath(nodes.start,nodes.ambush1);
+        carvePath(nodes.start,nodes.ambush2);
+        carvePath(nodes.ambush1,nodes.bossLair);
+        if(variant!==2)carvePath(nodes.ambush2,nodes.bossLair);
+        if(variant%2===0)carvePath(nodes.ambush1,nodes.ambush2);
+        const linked=[nodes.start,nodes.ambush1,nodes.ambush2,nodes.bossLair];
+        for(const [key,n]of Object.entries(nodes))if(key.startsWith('discovery')){
+            const near=linked.slice().sort((a,b)=>Math.hypot(n.x-a.x,n.y-a.y)-Math.hypot(n.x-b.x,n.y-b.y));
+            carvePath(n,near[0]);if(Math.random()<.5)carvePath(n,near[1]);linked.push(n);
         }
+        for(const n of Object.values(nodes))for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)grid[n.y+dy][n.x+dx]=floorType;
+        // A traversable village plaza always surrounds arrival, regardless of biome.
+        const town=nodes.start;
+        for(let dy=-9;dy<=9;dy++)for(let dx=-9;dx<=9;dx++)grid[town.y+dy][town.x+dx]=floorType;
+        for(const [ox,oy]of [[-7,-7],[5,-7],[-7,5],[5,5]]){
+            for(let dy=0;dy<3;dy++)for(let dx=0;dx<3;dx++)grid[town.y+oy+dy][town.x+ox+dx]=(dy===0||dy===2||dx===0||dx===2)?25:floorType;
+            grid[town.y+oy+2][town.x+ox+1]=floorType; // Every building has a door.
+        }
+        for(let y=town.y-1;y<=town.y+1;y++)for(let x=town.x-8;x<=town.x-7;x++)grid[y][x]=92;
+        const outpost={name:'Travelers’ Outpost',x:town.x+.5,y:town.y+.5,radius:9,campfire:{x:town.x+.5,y:town.y-1.5}};
         const validFloors=suncatReachable(grid,nodes.start,floorType);
         for(const n of Object.values(nodes)) {
             if(!validFloors.some(p=>p.x===n.x&&p.y===n.y)) throw new Error('Disconnected scenario node.');
         }
 
         // Return the layoutName and Description so Suncat knows what it is!
-        return { grid, nodes, validFloors, hasWaterFeature, layoutName, layoutDesc };
+        return { grid, nodes, validFloors, hasWaterFeature, layoutName, layoutDesc, outpost };
     }
     //AI & NARRATIVE GENERATORS/TOOLS
     async function initConceptVectors() {
@@ -4369,6 +4309,7 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
         return profileTraits.join(", ");
         }
     async function generateScenarioScript(biomeName, scenarioType, bossCardName, questGiverName, thirdFactionName, targetPlayer, spatialLayout) {        
+        const encounterCast=suncatShuffle(Object.entries(CARD_MANIFEST_DB).filter(([,card])=>card.type==='monster')).slice(0,24).map(([id,card])=>`${id}: ${card.name}`).join('; ');
         let currentVibe = "Peace.";
         let shadowVibe = "Chaos.";
 
@@ -4426,11 +4367,11 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
 
             [WORLD BLUEPRINT - The map generated for this session]:
             - BIOME: ${biomeName}
-            - IMPLEMENTED OBJECTIVE: ${scenarioType}. Defeat the named boss; do not promise escort/fetch mechanics.
+            - IMPLEMENTED OBJECTIVE: ${SUNCAT_SCENARIOS.spec(scenarioType,bossCardName)}. A defended arrival outpost always contains eight services and a campfire. The Travelers of the Wilderness Guild is independent of the Adventurers Guild. Optional prisoners can be freed after nearby guards are defeated, waystone artifacts recovered, deserters spared/recruited, and threatened wardens aided. All tasks stay on this map. There is no automatic exit after victory. Describe only these implemented mechanics.
             ${spatialLayout}
             - THE VILLAIN FACTION: ${bossCardName} (Occupies the Castle/Dungeon)
             - THE ALLY FACTION: ${questGiverName} (Occupies the Village/Camp)
-            - THE THIRD TRIBE: ${thirdFactionName} (Occupies the Ruins/Wilderness. They are native monsters hostile to BOTH factions.)
+            - THE THIRD TRIBE: ${thirdFactionName} (Occupies the Ruins/Wilderness. They are hostile to the player and armed defenders. Their hostility toward the villain is only a rumor unless an actual encounter implements it.)
 
             [NARRATIVE TASK]: 
             Write a deeply compelling, morally ambiguous scenario. 
@@ -4454,6 +4395,15 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
             11. thirdTribeRumors: Array of 3 lines. Humorous, annoyed, or terrified rumors from the Ally OR Villain factions about ${thirdFactionName} (e.g., "Me uncle lost a leg to a ${thirdFactionName} in the ruins!", "I thought the war was bad, then the ${thirdFactionName} showed up.").
             12. thirdTribeTaunts: Array of 3 feral, monstrous, or alien battle cries for the ${thirdFactionName}.
 
+            [PLAYABLE ENCOUNTERS]:
+            Actual objective: ${SUNCAT_SCENARIOS.spec(scenarioType,bossCardName)}.
+            Create 6 optional encounters. Include hostage, artifact, coward and rescue; vary the other two among traveller, cache, ambush, defender, merchant and shrine. Write names and dialogue that connect them to this conflict. Hostage/rescue scenes have a hostile raider nearby. Cowards may be spared or recruited. Artifacts are lost waystones.
+            Supply encounters as objects with kind, cardId, name, dialogue (1-3 lines), rewardCardId and rewardText.
+            Available encounter cast (choose real card IDs from this list): ${encounterCast}.
+            Allowed rewards: 7,10,14,17,19,21,25,26,27,28. A cache/shrine gives one card on investigation and disappears. An ambush is a hostile lurking creature defeated for one card. Traveller/defender are armed defenders, merchant opens a card shop. Do not promise extra mechanics.
+            Seek unusual but coherent combinations: a monster taking sanctuary with a former enemy, a knight guarding a tiny creature's nest, a battlefield scavenger running a neutral shop. Avoid repeating these examples literally every time.
+            Two encounters may echo the main conflict; the others have independent concerns. Nobody teleports the player after victory. All merchants, the reader, card keeper and guild clerk are armed defenders. Captive prisoners and inert artifacts are special interactions, not fighting shops. Write uncertain rumors as rumors; do not claim a scripted Suncat response or fabricate his participation.
+
             [WILDERNESS POI DIALOGUE]:
             Also generate 5 quirky, completely unrelated lines of dialogue for random NPCs wandering the map. Make them funny, weird, or intriguing to add flavor to the world.
             13. narcissistDialogue: 1 sentence of an arrogant NPC bragging about defeating something completely pathetic.
@@ -4466,6 +4416,11 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
             const schema = {
                 type: SchemaType.OBJECT,
                 properties: {
+                    encounters:{type:SchemaType.ARRAY,items:{type:SchemaType.OBJECT,properties:{
+                        kind:{type:SchemaType.STRING,enum:['traveller','cache','ambush','defender','merchant','shrine','hostage','artifact','coward','rescue']},
+                        cardId:{type:SchemaType.NUMBER},name:{type:SchemaType.STRING},dialogue:{type:SchemaType.ARRAY,items:{type:SchemaType.STRING}},
+                        rewardCardId:{type:SchemaType.NUMBER},rewardText:{type:SchemaType.STRING}
+                    },required:['kind','cardId','name','dialogue','rewardCardId','rewardText']}},
                     mapLore: { type: SchemaType.STRING },
                     questObjective: { type: SchemaType.STRING },
                     bossTaunt: { type: SchemaType.STRING },
@@ -4486,7 +4441,7 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
                     lovelornDialogue: { type: SchemaType.STRING }
                 },
                 required: [
-                    "mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", 
+                    "encounters", "mapLore", "questObjective", "bossTaunt", "hostileTaunts", "traitorBegs", 
                     "friendlyLore", "friendlyLife", "friendlyProfound", "recruitPlea", 
                     "prisonerLines", "thirdTribeRumors", "thirdTribeTaunts",
                     // REQUIRE THE NEW FIELDS
@@ -4504,7 +4459,7 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
             let rawText = result.response.text().trim();
             if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
             if(result.response.usageMetadata) updateBudget(result.response.usageMetadata,SUNCAT_ID);
-                return suncatNormalizeScript(JSON.parse(rawText),bossCardName);
+                return suncatNormalizeScript(JSON.parse(rawText),bossCardName,scenarioType);
             } catch (e) {
                 console.error("Script Generation Failed:", e);
                 return null; 
@@ -5563,14 +5518,14 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             let best=null,bestD=Infinity;
             for(const p of mapData.validFloors) {
                 if(used.has(`${p.x},${p.y}`)) continue;
-                if(n.alignment==='foe' && Math.hypot(p.x-mapData.nodes.start.x,p.y-mapData.nodes.start.y)<8) continue;
+                if(String(n.alignment).startsWith('foe') && Math.hypot(p.x-mapData.nodes.start.x,p.y-mapData.nodes.start.y)<14) continue;
                 const distance=(p.x+0.5-n.x)**2+(p.y+0.5-n.y)**2;
                 if(distance<bestD) {best=p;bestD=distance;}
             }
             if(!best) throw new Error('Insufficient reachable actor positions.');
             n.x=best.x+0.5;n.y=best.y+0.5;n.index=SUNCAT_RUNTIME.id();
             used.add(`${best.x},${best.y}`);
-            if(n.classification==='lore_main') n.isCinematic=true;
+            if(n.service){n.homeX=n.x;n.homeY=n.y;} // Return to the stall after defending it.
         }
     }
     function suncatShuffle(items) {
@@ -5578,7 +5533,221 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
         for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}
         return out;
     }
-    function suncatNormalizeScript(script,bossName) {
+    // Server owns scenario plans, wave timing and shared outcomes. The existing
+    // offline client still simulates movement/combat; reports are labelled as such.
+    const SUNCAT_SCENARIOS = {
+        peers:new Map(), lastTick:0,
+        spec(kind,boss) {
+            return kind==='siege'
+                ? `Hold the bastion against four reinforcement waves, then defeat ${boss} at the source. Defeating the commander early stops future waves; surviving defenders remain. Existing enemies still need clearing.`
+                : kind==='expedition'
+                ? `Explore the region and its optional encounters. Defeat ${boss} in the lair when ready.`
+                : `Defeat ${boss} in the lair. Optional encounters remain available afterward.`;
+        },
+        route(grid,start,goal) {
+            const key=p=>`${p.x},${p.y}`,queue=[start],prev=new Map([[key(start),null]]);
+            for(let i=0;i<queue.length;i++){
+                const p=queue[i];if(p.x===goal.x&&p.y===goal.y){const path=[];let q=p;while(q){path.push({x:q.x+.5,y:q.y+.5});q=prev.get(key(q));}return path.reverse();}
+                for(const d of [[1,0],[-1,0],[0,1],[0,-1]]){const n={x:p.x+d[0],y:p.y+d[1]};if(grid[n.y]?.[n.x]!==0||prev.has(key(n)))continue;prev.set(key(n),p);queue.push(n);}
+            }
+            return [];
+        },
+        decorate(mapData,npcs,script,kind,minions) {
+            const kinds=['traveller','cache','ambush','defender','merchant','shrine','hostage','artifact','coward','rescue'];
+            const plans=Array.isArray(script.encounters)?script.encounters.slice(0,6):[];
+            for(const k of ['hostage','artifact','coward','rescue'])if(!plans.some(e=>e?.kind===k))plans.push({kind:k});
+            // All story text is written by the server LLM. Safe mechanical templates
+            // prevent invented scripts or NPC IDs from damaging the main world.
+            const used=[];
+            for(let i=0;i<plans.length;i++){
+                const e=plans[i];if(!e||!kinds.includes(e.kind))continue;
+                const candidate=Number(e.cardId),id=CARD_MANIFEST_DB[candidate]?.type==='monster'?candidate:minions[i%minions.length];
+                const reward=[7,10,14,17,19,21,25,26,27,28].includes(Number(e.rewardCardId))?Number(e.rewardCardId):10;
+                const tile=suncatShuffle(mapData.validFloors).find(p=>Math.hypot(mapData.nodes.start.x-p.x,mapData.nodes.start.y-p.y)>18&&Object.values(mapData.nodes).every(n=>Math.hypot(n.x-p.x,n.y-p.y)>9)&&used.every(n=>Math.hypot(n.x-p.x,n.y-p.y)>6));
+                if(!tile)break;used.push(tile);
+                const words=(Array.isArray(e.dialogue)?e.dialogue:[e.dialogue]).filter(t=>typeof t==='string').map(t=>t.slice(0,650)).slice(0,3);
+                const n={type:CARD_MANIFEST_DB[id]?.sprite||id,x:tile.x+.5,y:tile.y+.5,state:'stationary',role:'dialogue',alignment:'friendly',
+                    deck:[],dialogue:words.length?words:[script.lunchBreakDialogue||'A traveller watches the road.'],classification:'encounter_'+e.kind,
+                    name:String(e.name||getCardName(id)).slice(0,80),color:'#d6bc7b'};
+                if(e.kind==='defender'||e.kind==='traveller'){n.alignment='defender';n.deck=buildSynergisticDeck(id,100);n.state='wandering';}
+                else if(e.kind==='merchant'){n.alignment='defender';n.service='cards';n.serviceStock={cards:[10,26,27,28,50,52,57]};n.deck=buildSynergisticDeck(id,100);}
+                else if(['hostage','artifact','coward','rescue'].includes(e.kind)){
+                    n.objectiveKind=e.kind;n.cardId=id;n.deck=buildSynergisticDeck(id,100);
+                    n.name=String(e.name||({hostage:'Stranded prisoner',artifact:'Lost waystone',coward:'Frightened deserter',rescue:'Wounded road warden'}[e.kind])).slice(0,80);
+                    n.alignment=e.kind==='coward'?'foe_coward':e.kind==='artifact'?'neutral':'defender';
+                    n.isCinematic=e.kind==='hostage'||e.kind==='artifact';
+                    if(e.kind==='artifact'){n.type=-27;n.deck=[];}
+                    if(e.kind==='hostage'||e.kind==='rescue'){const guard=minions[(i+1)%minions.length];npcs.push({type:CARD_MANIFEST_DB[guard]?.sprite??guard,x:tile.x+2.5,y:tile.y+.5,state:'stationary',role:'battle',alignment:'foe',deck:buildSynergisticDeck(guard,80),name:'Road raider',classification:'encounter_captor'});}
+                }
+                else if(e.kind==='ambush'){n.alignment='foe';n.role='battle';n.deck=buildSynergisticDeck(id,100);n.deathActions=[['give_card',{card:reward,text:'Recovered a card from the hidden threat.'}]];}
+                else {n.isCinematic=true;n.options=['Investigate','Leave'];n.yesActions=[['give_card',{card:reward,text:String(e.rewardText||'Found a forgotten card.').slice(0,400)}],['disappear',null],['close_dialogue',null]];n.noActions=[['close_dialogue',null]];}
+                npcs.push(n);
+            }
+        },
+        outpost(mapData,npcs,script,minions) {
+            const t=mapData.nodes.start,book=id=>({key:'skillbook:'+id,kind:'skillbook',spellId:id,name:'Skillbook: '+getCardName(id)}),
+                equip=(id,name)=>({key:'equip:'+id,kind:'equipment',spellId:id,name}),
+                herb=(id,name)=>({key:'herb:'+id,kind:'herb',herbId:id,name});
+            const stalls=[
+                ['items','Item merchant',-4,-3,{items:[{key:'medicine',kind:'consumable',effect:'medicine',quality:1,name:'Herbal medicine'},herb('moonleaf','Moonleaf')]}],
+                ['food','Food merchant',-4,3,{items:[{key:'material:meat',kind:'material',name:'Raw meat'},{key:'meal:outpost',kind:'consumable',effect:'ward',quality:.75,name:'Traveller’s stew'}]}],
+                ['books','Spellbook merchant',4,-3,{items:[book(26),book(28),book(52),book(53)]}],
+                ['weapons','Weapon merchant',4,3,{items:[equip(50,'Sword'),equip(22,'Wand')]}],
+                ['armor','Armor merchant',6,0,{items:[equip(64,'Shield'),equip(66,'Armor'),equip(1008,'Fur boots')]}],
+                ['tarot','Tarot reader',-5,0,null],['blackjack','Card table keeper',-3,6,null],
+                ['guild','Travelers of the Wilderness Guild clerk',3,6,{cards:[7,10,26,27],items:[book(53),equip(64,'Shield'),herb('sunsage','Sunsage')]}]
+            ];
+            for(let i=0;i<stalls.length;i++){
+                const [service,name,dx,dy,stock]=stalls[i],id=minions[i%minions.length]||41;
+                npcs.push({type:CARD_MANIFEST_DB[id]?.sprite??id,cardId:id,x:t.x+dx+.5,y:t.y+dy+.5,
+                    state:'stationary',role:'dialogue',alignment:'defender',deck:buildSynergisticDeck(id,150),
+                    service,serviceStock:stock,name,color:'#cbb477',classification:'outpost_'+service,
+                    dialogue:[script.serviceGreetings?.[service]||'The road is dangerous. We stand together.']});
+            }
+            npcs.push({type:-205,x:mapData.outpost.campfire.x,y:mapData.outpost.campfire.y,state:'stationary',role:'dialogue',
+                alignment:'neutral',deck:[],isCinematic:true,service:'campfire',name:'Outpost campfire',classification:'outpost_campfire'});
+        },
+        init(map,mapData,minions,script) {
+            const siege=map.scenarioType==='siege';
+            for(const n of map.npcs)n.instanceId=map.instanceId;
+            map.scenario={version:1,phase:'waiting',wave:0,totalWaves:siege?4:0,elapsed:0,nextWaveAt:12,revision:0,
+                objective:script.questObjective,bossIndex:map.npcs.find(n=>n.classification==='villain_boss')?.index,
+                defenderIds:map.npcs.filter(n=>n.alignment==='defender'&&!n.isCinematic).map(n=>n.index),defendersLost:0,clearedWaves:[],
+                wavePlans:[]};
+            if(siege){
+                const camp=mapData.nodes.allyCamp;
+                const gates=mapData.validFloors.filter(p=>{const d=Math.hypot(p.x-camp.x,p.y-camp.y);return d>=11&&d<=15&&Math.hypot(p.x-mapData.nodes.start.x,p.y-mapData.nodes.start.y)>=9;});
+                const candidates=suncatShuffle(gates);
+                for(let w=0;w<4;w++){
+                    const gate=candidates.find(p=>this.route(map.maze,p,camp).length<40)||{x:camp.x,y:camp.y+6};
+                    const plans=[];
+                    for(let i=0;i<3+w;i++){
+                        const id=minions[(w+i)%minions.length],p=mapData.validFloors.filter(p=>Math.hypot(p.x-gate.x,p.y-gate.y)<=3)[i]||gate;
+                        plans.push({index:SUNCAT_RUNTIME.id(),type:CARD_MANIFEST_DB[id]?.sprite||id,x:p.x+.5,y:p.y+.5,
+                            mapID:999,instanceId:map.instanceId,state:'chasing',role:'battle',alignment:'foe',deck:buildSynergisticDeck(id,60+w*20),
+                            dialogue:[],name:getCardName(id),classification:'siege_wave',scenarioWave:w+1,
+                            marchRoute:this.route(map.maze,p,camp),color:'#bd453b'});
+                    }
+                    map.scenario.wavePlans.push(plans);
+                    if(gate)candidates.sort((a,b)=>Math.hypot(b.x-gate.x,b.y-gate.y)-Math.hypot(a.x-gate.x,a.y-gate.y));
+                }
+            }
+            const contract=(id,title,text,metric,target,renown,credits)=>({id,title,text,metric,target,renown,credits});
+            const contracts=[contract('conflict',siege?'Break the siege':'End the threat',map.scenario.objective,'commander',1,20,30),
+                contract('patrol','Keep the roads open','Defeat three enemies during this visit.','kills',3,6,10),
+                contract('forage','Live from the land','Gather three native plants during this visit.','gathered',3,3,5),
+                contract('kitchen','The travelling kitchen','Successfully cook a meal during this visit.','cooked',1,4,8)];
+            for(const [kind,id,title,text,metric]of [
+                ['hostage','rescue','Bring them home','Find a stranded prisoner and free them after clearing nearby enemies.','hostages'],
+                ['artifact','relic','Recover the waystones','Recover a lost artifact from the region.','artifacts'],
+                ['coward','mercy','A second chance','Spare a frightened deserter, with or without inviting them to join.','spared'],
+                ['rescue','aid','Aid on the road','Help a threatened traveller, or defeat an enemy attacking a friendly creature.','assisted']])
+                if(map.npcs.some(n=>n.objectiveKind===kind))contracts.push(contract(id,title,text,metric,1,5,8));
+            map.wilderness={name:'Travelers of the Wilderness Guild',contracts};
+            map.scenario.resolvedActors=[];
+            this.peers.clear();this.lastTick=Date.now();
+        },
+        participants(){return Object.entries(players).filter(([id,p])=>id!==SUNCAT_ID&&p.mapID===999);},
+        record(kind,text,details={}){
+            const map=activeCustomMap;if(!map?.scenario)return;
+            const stamp=new Date().toISOString(),id=`scenario:${map.instanceId}:${++map.scenario.revision}`;
+            for(const [pid,p]of this.participants()){
+                const e={id,kind,text,details:{instanceId:map.instanceId,...details},actorId:'world',actorName:'World event',mapID:999,mapName:map.name,timestamp:stamp,observedAt:stamp};
+                p.gameplayEvents ||= [];p.undigestedInfo ||= [];p.gameplayEvents.push(e);p.undigestedInfo.push(`[GAMEPLAY_RECORD:${id}] ${JSON.stringify(e)}`);
+                if(p.persistentId)suncatPersistentMemory[p.persistentId]={...(suncatPersistentMemory[p.persistentId]||{}),gameplayEvents:p.gameplayEvents,undigestedInfo:p.undigestedInfo};
+                io.to(pid).emit('journal_updated',{entryId:id,entryType:'record',timestamp:stamp,playerChronicle:'[RECORD]\n\n'+text,suncatThoughts:null});
+            }
+            if(players[SUNCAT_ID]?.mapID===999)recordSuncatAdventure('scenario_report',{text,...details,note:'Shared world report; this does not prove Suncat personally witnessed or caused the event.'},id);
+            void saveSuncatMemory();this.publish(text);
+        },
+        activity(player,event){
+            // The offline RPG reports its own actions. Preserve attribution and
+            // reconcile shared objective state only against the current blueprint.
+            if(event.kind!=='realm_objective_resolved')return false;
+            const d=event.details,m=activeCustomMap,n=m?.npcs.find(n=>n.index===d.index);
+            if(event.mapID!==999||d.instanceId!==m?.instanceId||!n||n.realmResolution||n.isDead||n.objectiveKind!==d.objectiveKind)return false;
+            const allowed={hostage:['free','recruit'],artifact:['collect'],coward:['spare','recruit','drive'],rescue:['aid','recruit']}[n.objectiveKind]||[];
+            if(!allowed.includes(d.action))return false;
+            const r={index:n.index,instanceId:m.instanceId,objectiveKind:n.objectiveKind,action:d.action,actorId:event.actorId};
+            n.realmResolution=r;n.objectiveKind=null;n.isCinematic=false;
+            if(['collect','drive','spare'].includes(r.action)){n.isDead=true;n.departed=true;}
+            else{n.alignment='defender';n.state='wandering';}
+            m.scenario.resolvedActors.push(r);
+            this.record('scenario_encounter',`${player.name}: ${event.text}`,{...r,reportedBy:player.name});return true;
+        },
+        publish(text=''){
+            const m=activeCustomMap;if(!m?.scenario)return;
+            const {wavePlans,...state}=m.scenario;
+            for(const [id]of this.participants())io.to(id).emit('scenario_state',{instanceId:m.instanceId,name:m.name,text,state});
+        },
+        presence(id,data){
+            const p=players[id],m=activeCustomMap;
+            if(!p||p.mapID!==999||!m?.scenario||data?.instanceId!==m.instanceId)return false;
+            const fresh=!this.peers.has(id);this.peers.set(id,{at:Date.now(),playing:data.playing===true});
+            p.lastScenarioInstance=m.instanceId;
+            if(Array.isArray(data.defeats))for(const defeat of data.defeats.slice(0,64))this.death(id,{...defeat,mapID:999,instanceId:m.instanceId});
+            if(fresh)this.publish();return true;
+        },
+        death(id,data){
+            const m=activeCustomMap,p=players[id];
+            if(!p||!m?.scenario||data?.instanceId!==m.instanceId||data.mapID!==999||
+                (p.mapID!==999&&p.lastScenarioInstance!==m.instanceId))return false;
+            const n=m.npcs.find(n=>n.index===data.index);
+            if(!n||n.isDead||!['combat','melee_combat','projectile_spell','card_battle','npc_infighting','suncat_combat','firestorm','gravity_crunch','spell','poison','burn','dot','dot_damage','judgement','backstab','cone_attack','smite'].includes(data.reason)&&!String(data.reason||'').startsWith('ally_'))return false;
+            n.isDead=true;n.visible=false;deadNPCs[`999_${n.index}`]=Infinity;
+            const source=['suncat_combat','npc_infighting'].includes(data.reason)?data.reason:data.reason==='smite'?'suncat_admin':'player_led_combat';
+            const notice={mapID:999,index:n.index,type:n.type,instanceId:m.instanceId,reason:data.reason};
+            for(const [pid]of this.participants())io.to(pid).emit('npc_died',notice);
+            if(m.scenario.defenderIds.includes(n.index))m.scenario.defendersLost++;
+            this.record('scenario_defeat',`${n.name||getCardName(n.type)} fell in ${m.name}. Reported by ${p.name}; source: ${source}.`,{npcIndex:n.index,source,reporter:p.name});
+            if(n.scenarioWave&&!m.npcs.some(other=>other.scenarioWave===n.scenarioWave&&!other.isDead)){
+                m.scenario.clearedWaves ||= [];
+                if(!m.scenario.clearedWaves.includes(n.scenarioWave)){
+                    m.scenario.clearedWaves.push(n.scenarioWave);
+                    this.record('scenario_wave_cleared',`Wave ${n.scenarioWave} has been cleared. ${m.scenario.defenderIds.length-m.scenario.defendersLost} defenders remain.`,{wave:n.scenarioWave});
+                }
+            }
+            if(n.index===m.scenario.bossIndex){
+                m.scenario.phase='aftermath';
+                for(const [,participant]of this.participants())participant.activeQuest=`${m.name}: commander defeated. Explore the remaining encounters or leave through the return portal.`;
+                const stopped=m.scenario.totalWaves-m.scenario.wave;
+                this.record('scenario_objective',`The commander has fallen. ${stopped?`${stopped} reinforcement waves were prevented. `:''}${m.scenario.defenderIds.length-m.scenario.defendersLost} defenders remain. Surviving enemies and optional encounters remain; the return portal is available when ready.`,{stoppedWaves:stopped,defendersLost:m.scenario.defendersLost});
+            }
+            return true;
+        },
+        tick(now=Date.now()){
+            const dt=Math.max(0,Math.min(2,(now-this.lastTick)/1000));this.lastTick=now;
+            const m=activeCustomMap,s=m?.scenario;if(!s||s.phase==='aftermath')return;
+            const occupied=this.participants().some(([id])=>{const p=this.peers.get(id);return p?.playing&&now-p.at<5000;});
+            if(!occupied)return; // Menus, disconnects and offline play cannot accrue unseen waves.
+            if(s.phase==='waiting'){s.phase='active';this.record('scenario_started',`${m.name}: ${s.objective} The return portal remains available.`);}
+            s.elapsed+=dt;
+            if(!s.totalWaves||s.wave>=s.totalWaves||s.elapsed<s.nextWaveAt)return;
+            if(m.npcs.filter(n=>n.scenarioWave&&!n.isDead).length>=10)return;
+            const planned=s.wavePlans[s.wave],wave=[],occupiedTiles=new Set(m.npcs.filter(n=>!n.isDead).map(n=>`${Math.floor(n.x)},${Math.floor(n.y)}`));
+            for(const n of planned){
+                // Nearby explorers should see arrivals approach, never materialize
+                // inside their body. Keep the authored gate or an adjacent floor.
+                const candidates=(m.floorTiles||suncatReachable(m.maze,{x:Math.floor(m.spawnX),y:Math.floor(m.spawnY)}))
+                    .filter(p=>Math.hypot(p.x+.5-n.x,p.y+.5-n.y)<=6&&!occupiedTiles.has(`${p.x},${p.y}`)&&
+                        this.participants().every(([,player])=>Math.hypot(p.x+.5-player.x,p.y+.5-player.y)>=6))
+                    .sort((a,b)=>Math.hypot(a.x+.5-n.x,a.y+.5-n.y)-Math.hypot(b.x+.5-n.x,b.y+.5-n.y));
+                const p=candidates[0];if(!p)return;
+                const end=n.marchRoute.at(-1),route=this.route(m.maze,p,{x:Math.floor(end.x),y:Math.floor(end.y)});if(!route.length)return;
+                wave.push({...n,x:p.x+.5,y:p.y+.5,marchRoute:route});occupiedTiles.add(`${p.x},${p.y}`);
+            }
+            s.wave++;s.nextWaveAt=s.elapsed+55;
+            for(const n of wave){m.npcs.push(n);for(const [id]of this.participants())io.to(id).emit('remote_spawn_npc',n);}
+            this.record('scenario_wave',`Reinforcement wave ${s.wave} of ${s.totalWaves} is approaching the bastion. ${wave.length} enemies arrived.`,{wave:s.wave,enemies:wave.length});
+        },
+        context(){const m=activeCustomMap;if(!m?.scenario)return 'No active generated scenario.';const s=m.scenario;
+            return JSON.stringify({mapID:999,name:m.name,instanceId:m.instanceId,phase:s.phase,objective:s.objective,wavesSent:s.wave,wavesCleared:s.clearedWaves||[],totalWaves:s.totalWaves,
+                friendlyAlive:m.npcs.filter(n=>!n.isDead&&n.type>=0&&String(n.alignment).startsWith('defender')).length,enemyAlive:m.npcs.filter(n=>!n.isDead&&String(n.alignment).startsWith('foe')).length,hostagesFreed:(s.resolvedActors||[]).filter(r=>r.objectiveKind==='hostage').length,artifactsRecovered:(s.resolvedActors||[]).filter(r=>r.objectiveKind==='artifact').length,defendersRemaining:s.defenderIds.length-s.defendersLost,reportedLiveWaveEnemies:m.npcs.filter(n=>n.scenarioWave&&!n.isDead).length,
+                note:'Global reported facts. Use your current local perception to assess danger; do not invent witnessing events, being overwhelmed or asking for help. Participation is your choice; nobody is automatically teleported after victory.'});}
+    };
+    setInterval(()=>SUNCAT_SCENARIOS.tick(),1000);
+
+    function suncatNormalizeScript(script,bossName,kind="bounty") {
         if(!script||typeof script!=='object') throw new Error('Invalid generated narrative.');
         const texts=(value,fallback)=>{
             const list=(Array.isArray(value)?value:typeof value==='string'?[value]:[])
@@ -5586,7 +5755,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             return list.length?list:[fallback];
         };
         for(const key of ['friendlyLore','hostileTaunts','thirdTribeTaunts','recruitPlea']) script[key]=texts(script[key],'Stay alert.');
-        script.questObjective=`Defeat ${bossName} in the boss lair.`;
+        script.questObjective=SUNCAT_SCENARIOS.spec(kind,bossName);
         if(typeof script.bossTaunt!=='string') script.bossTaunt='You have come far enough.';
         return script;
     }
@@ -5701,7 +5870,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                                 const bEnum = Math.floor(Math.random() * Object.keys(BIOME_DB).length);
                                 const biome = BIOME_DB[bEnum] || BIOME_DB[0];
                                 
-                                const scenarioType='bounty';
+                                const scenarioType=['siege','expedition','bounty'].includes(call.args.scenarioType)?call.args.scenarioType:['siege','expedition','bounty'][Math.floor(Math.random()*3)];
                                 
                                 const monsterIDs = Object.keys(CARD_MANIFEST_DB).filter(id => CARD_MANIFEST_DB[id].type === "monster" && CARD_MANIFEST_DB[id].rank !== "0");
                                 let antagID = parseInt(monsterIDs[Math.floor(Math.random() * monsterIDs.length)]);
@@ -5728,7 +5897,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                                     let cTile = biome.cliffTile || null;
 
                                     // Pass them into the updated generator!
-                                    const mapData = generateActorDrivenMap(100, biome.walls[0], 0, wTile, cTile);
+                                    const mapData = generateActorDrivenMap(100, biome.walls[0], 0, wTile, cTile, scenarioType);
 
                                     // Build a spatial layout string to feed the LLM
                                     let spatialLayout = `
@@ -5802,7 +5971,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                                     type: CARD_MANIFEST_DB[protagID]?.sprite || protagID,
                                     x: mapData.nodes.allyCamp.x + 0.5, y: mapData.nodes.allyCamp.y + 0.5,
                                     state: 'stationary', role: 'dialogue', alignment: 'defender',
-                                    deck: [], color: '#00ff00', 
+                                    deck: buildSynergisticDeck(protagID,150), color: '#00ff00',
                                     dialogue: script.friendlyLore || ["Please, you must help us!"],
                                     classification: 'lore_main'
                                 });
@@ -5813,8 +5982,8 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                                 mapNPCs.push({
                                     type: 41, 
                                     x: mapData.nodes.allyCamp.x + 2.5, y: mapData.nodes.allyCamp.y + 0.5,
-                                    state: 'stationary', role: 'shop', alignment: 'friendly',
-                                    deck: shopInv, color: '#00ff00', dialogue: ["Buy something will ya?"],
+                                    state: 'stationary', role: 'dialogue', alignment: 'defender', service:'cards',serviceStock:{cards:shopInv},
+                                    deck: buildSynergisticDeck(41,150), color: '#00ff00', dialogue: ["Buy something will ya?"],
                                     classification: 'shop'
                                 });
 
@@ -5884,6 +6053,8 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                                     placedWanderers++;
                                 }
 
+                                SUNCAT_SCENARIOS.outpost(mapData,mapNPCs,script,friendlyMinions);
+                                SUNCAT_SCENARIOS.decorate(mapData,mapNPCs,script,scenarioType,friendlyMinions);
                                 // Apply global indices to all array items
                                 suncatPlaceActors(mapData,mapNPCs);                        
 
@@ -5891,7 +6062,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                                 // 5. CACHE INSTANCE & DISPATCH MESSENGER
                                 // ==========================================
                                 const customMapData = {
-                                    id:999, maze:mapData.grid,
+                                    id:999, maze:mapData.grid,outpost:mapData.outpost,
                                     instanceId:String(SUNCAT_RUNTIME.id()),exitIndex:SUNCAT_RUNTIME.id(),scenarioType,
                                     skyColor: biome.skies[0], floorColor: biome.floors[0], 
                                     name: `${biome.name}: ${CARD_MANIFEST_DB[antagID].name}`,
@@ -5918,6 +6089,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                                     }
                                 };
 
+                                SUNCAT_SCENARIOS.init(customMapData,mapData,hostileMinions,script);
                                 activeCustomMap = customMapData;
 
                                 for(const requesterID of recipients) {
@@ -6767,6 +6939,8 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             Location: ${JSON.stringify({mapID:s.mapID,x:s.x,y:s.y})}
             Body: a black fairy; the cat-form Suncat NPC is a different entity. AGI governs perception and reactions.
             Your live JRPG state: ${JSON.stringify(SUNCAT_COMBAT.inspect())}
+            Generated region report: ${SUNCAT_SCENARIOS.context()}
+            You may investigate or help if you choose. Base requests for help on your actual wards, local visible threats and confirmed actions. Preserve your own resources and ability to flee.
             Observed world (client report, possibly stale): ${suncatRememberedVision(s.mapID)}
             Online players: ${JSON.stringify(online)}
             Existing autonomous summons: ${JSON.stringify(rt.companions)}
@@ -8055,9 +8229,10 @@ io.on("connection", (socket) => {
             p.acceptingMapInvite=true;
             try {
                 const result=await suncatCommand(socket.id,'customMap',{
-                    ...activeCustomMap,returnTo:{mapID:p.mapID,x:p.x,y:p.y}
+                    ...activeCustomMap,visit:{id:invite.visitId||(invite.visitId='visit_'+SUNCAT_RUNTIME.id()),acceptedAt:new Date().toISOString()},returnTo:p.mapID===999?p.realmReturn:{mapID:p.mapID,x:p.x,y:p.y}
                 });
-                Object.assign(p,{mapID:999,x:result.x,y:result.y,stepsTaken:0,exploredTiles:new Set()});
+                if(p.mapID!==999)p.realmReturn={mapID:p.mapID,x:p.x,y:p.y};
+                Object.assign(p,{mapID:999,x:result.x,y:result.y,stepsTaken:0,exploredTiles:new Set(),realmVisitId:invite.visitId});
                 delete p.pendingMapInvite;
                 if(p.activeQuest) socket.emit('new_quest_objective',{questText:p.activeQuest});
                 io.emit('updatePlayers',getPublicPlayers());
@@ -8067,6 +8242,8 @@ io.on("connection", (socket) => {
         socket.on('decline_teleport_invite',()=>{
             if(players[socket.id]) delete players[socket.id].pendingMapInvite;
         });
+        socket.on('scenario_presence',data=>SUNCAT_SCENARIOS.presence(socket.id,data));
+        socket.on('client_killed_npc',data=>SUNCAT_SCENARIOS.death(socket.id,data));
         socket.on('suncat_presence',data=>SUNCAT_COMBAT.accept(socket,data));
         socket.on('suncat_combat_result',data=>SUNCAT_COMBAT.result(socket.id,data));
     //COMBAT & WORLD INTERACTION
@@ -8111,6 +8288,7 @@ io.on("connection", (socket) => {
                 data.mapID !== reportingPlayer.mapID
             ) return;
 
+            if(data.mapID===999&&activeCustomMap?.scenario){SUNCAT_SCENARIOS.death(socket.id,data);return;}
             const uniqueID = `${data.mapID}_${data.index}`;
 
             if (data.alignment !== "ally") {
@@ -8176,7 +8354,7 @@ io.on("connection", (socket) => {
 
                             if (gladiatorsLeft <= 0) {
                                 setTimeout(() => {
-                                    let victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the FINAL gladiator! The Arena is empty! Act disappointed that they survived, formally declare them the victor, give them a reward card, and IMMEDIATELY use the 'teleportPlayer' tool to send them back to Map 22.`;
+                                    let victorySpeech = `[SYSTEM DIRECTIVE]: The player just defeated the FINAL gladiator! The Arena is empty! Act disappointed that they survived, formally declare them the victor, give them a reward card, and let them continue exploring. Only offer to leave if they ask.`;
                                     processSuncatThought(player.id, 'chat', { text: victorySpeech });
                                 }, 2000); 
                             } else {
@@ -8834,6 +9012,8 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
                     timestamp:new Date().toISOString(),observedAt:typeof input.observedAt==='string'?input.observedAt.slice(0,40):null,
                     mapID:Number.isSafeInteger(input.mapID)?input.mapID:player.mapID,mapName:String(input.mapName||'').slice(0,200),
                     x:Number.isFinite(input.x)?input.x:null,y:Number.isFinite(input.y)?input.y:null};
+                if(event.kind==='scenario_npc_defeated')SUNCAT_SCENARIOS.death(socket.id,{...details,mapID:event.mapID});
+                SUNCAT_SCENARIOS.activity(player,event);
                 known.add(event.id);player.gameplayEvents.push(event);accepted.push(event.id);
                 player.undigestedInfo.push(`[GAMEPLAY_RECORD:${event.id}] ${JSON.stringify(event)}`);
                 const dialogue=details?.dialogue;
