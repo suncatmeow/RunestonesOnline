@@ -43,7 +43,10 @@
    
 //GLOBAL STATE & VARIABLES
     //SYSTEM TRACKING
-        const MEMORY_FILE = path.join(__dirname, 'suncat_memory.json');
+        // Use a mounted persistent disk on hosting; preserve the local default.
+        const MEMORY_FILE = process.env.SUNCAT_MEMORY_FILE
+            ? path.resolve(process.env.SUNCAT_MEMORY_FILE)
+            : path.join(__dirname, 'suncat_memory.json');
         let suncatPersistentMemory = {};
         const GLOBAL_LORE_CACHE = {};
         let players = {};
@@ -3096,6 +3099,55 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
             t.name!=='createCustomCard' &&
             (moderation || !['kickPlayer','banishPlayer','vanquishPlayer'].includes(t.name)));
     }
+    // Recognize direct requests, not descriptions of bugs, refusals or questions
+    // about the rules. The world writer still chooses the scenario and opponents.
+    function requestedSuncatAction(input) {
+        let text=String(input||'').toLowerCase().replace(/’/g,"'").trim()
+            .replace(/^\[(?:reply|system directive)\]\s*/,'')
+            .replace(/^(?:hey\s+)?(?:suncat|sunat|sunct)\b[\s,:!-]*/,'')
+            .replace(/^please\s+/,'')
+            .replace(/^(?:can|could|would|will)\s+you\s+(?:please\s+)?/,'')
+            .replace(/^(?:let's|let us)\s+/,'');
+        if (/\b(?:don't|do not|never|not now|later|instead of)\b/.test(text)) return null;
+        if(/^(?:i want|i would like|i'd like)\s+(?:to\s+)?(?:know|learn|understand|ask|hear|talk|discuss)\b/.test(text))return null;
+        if(/^(?:tactics|skirmish)(?:\s+(?:please|match))?[.!?]*$/.test(text))return {name:'launchTacticalSkirmish',args:{}};
+        const action=/^(?:(?:make|create|generate|build|start|launch|begin|give|host|play|run|set up)\b|(?:i want|i would like|i'd like)\b)/.test(text);
+        if (!action) return null;
+        if (/\b(?:tactics|tactical|skirmish)\b/.test(text)) return {name:'launchTacticalSkirmish',args:{}};
+        if (/\b(?:map|scenario|adventure|dungeon|quest|siege|expedition|bounty)\b/.test(text)) {
+            const kind=text.match(/\b(siege|expedition|bounty)\b/)?.[1];
+            return {name:'createCustomMap',args:kind?{scenarioType:kind}:{}};
+        }
+        return null;
+    }
+    async function runRequestedSuncatAction(socketId,request) {
+        const player=players[socketId],socket=io.sockets.sockets.get(socketId);
+        if(!player||!socket) throw new Error('Player disconnected before the request started.');
+        const call={name:request.name,args:{...request.args,targetName:player.name}};
+        socket.emit('chat_message',{sender:'[SYSTEM]',text:request.name==='createCustomMap'
+            ?'Suncat is preparing a region. An imp will bring the invitation when it is ready.'
+            :'Suncat is preparing your tactics encounter.'});
+        let receipt;
+        // Native dispatch does not depend on the model deciding to call a tool.
+        // This adapter captures the result without forging a Gemini chat history.
+        await executeAITools({functionCalls:()=>[call]}, {sendMessage:async parts=>{
+            receipt=parts.find(p=>p.functionResponse)?.functionResponse.response;
+            return {response:{functionCalls:()=>[],text:()=>''}};
+        }},socket);
+        receipt ||= {ok:false,error:'The action returned no result.'};
+        if(players[socketId]!==player) return receipt;
+        const ok=receipt.ok!==false;
+        const summary=ok?(request.name==='createCustomMap'
+            ?'The region is ready. Speak to the messenger imp to accept the invitation.'
+            :'The game acknowledged the tactics encounter. Follow its opening dialogue.')
+            :`Suncat could not confirm the action: ${receipt.error||receipt.result||'Unknown error.'}`;
+        socket.emit('chat_message',{sender:'[SYSTEM]',text:summary,color:ok?'#aaddaa':'#ffaaaa'});
+        player.undigestedInfo ||= [];
+        player.undigestedInfo.push('[SUNCAT_ACTION_RESULT] '+JSON.stringify({tool:call.name,result:receipt}));
+        persistPlayerJournal(player);
+        console.log(`[Suncat request] ${call.name}: ${ok?'confirmed':receipt.status||'failed'}`);
+        return receipt;
+    }
     // --- AUTONOMOUS DEV AGENT: RECURSIVE FILE TRACING ---
     
     function extractCodeBlock(sourceCode, keyword) {
@@ -3343,6 +3395,7 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
 
         let saved=false;
         try {
+            if(process.env.SUNCAT_MEMORY_FILE)await fs.promises.mkdir(path.dirname(MEMORY_FILE),{recursive:true});
             const temporaryMemory=MEMORY_FILE+'.tmp';
             await fs.promises.writeFile(temporaryMemory,JSON.stringify(fullState,null,2));
             await fs.promises.rename(temporaryMemory,MEMORY_FILE);
@@ -4115,16 +4168,16 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
         // --- CARVE THE NODES ---
         Object.values(nodes).forEach(n => carveRoom(n));
 
-        // --- GLOBAL LAKE PLACEMENT (If it's not the Multi-Zone map which has a park) ---
+        // --- GLOBAL LAKE PLACEMENT ---
         let hasWaterFeature = false;
-        if (waterTile !== null && cliffTile !== null && layoutVariant !== 2) {
+        if (waterTile !== null && cliffTile !== null && variant !== 2) {
             hasWaterFeature = true;
             let lakeRadius = 8 + Math.floor(Math.random() * 6);
             let lakeX = Math.floor(size / 2 + Math.random() * 20 - 10);
             let lakeY = Math.floor(size / 2 + Math.random() * 20 - 10);
             
-            // Subterranean map has a massive center lake
-            if (layoutVariant === 3) {
+            // The forked layout can wind around a larger central lake
+            if (variant === 3) {
                 lakeX = 50; lakeY = 50; lakeRadius = 15;
             }
 
@@ -4451,10 +4504,10 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
 
         try {
             const scriptModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-            const result = await scriptModel.generateContent({
+            const result = await journalDeadline(scriptModel.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.85 } 
-            });
+            }));
             
             let rawText = result.response.text().trim();
             if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
@@ -4462,7 +4515,7 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
                 return suncatNormalizeScript(JSON.parse(rawText),bossCardName,scenarioType);
             } catch (e) {
                 console.error("Script Generation Failed:", e);
-                return null; 
+                throw new Error(`Scenario writer failed: ${e.message}`); 
             }
     }
     async function generateTacticsScript(player, bossName, minionNames) {
@@ -4496,10 +4549,11 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
 
         try {
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-            const result = await model.generateContent({
+            const result = await journalDeadline(model.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 generationConfig: { responseMimeType: "application/json", responseSchema: schema }
-            });
+            }));
+            updateBudget(result.response.usageMetadata, SUNCAT_ID);
             let rawText = result.response.text().trim().replace(/^```(json)?|```$/g, "").trim();
             return JSON.parse(rawText);
         } catch (e) {
@@ -4515,7 +4569,7 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
     // JOURNAL V2: persistence and scheduling are independent of Suncat's mood.
     const JOURNAL_POLICY = {
         digestMs: 60000, chapterMs: 120000, maxWaitMs: 300000,
-        retryMs: 60000, timeoutMs: 90000
+        retryMs: 60000, timeoutMs: 90000, digestItems:64
     };
     let suncatAdventureEvents = [];
     let suncatAdventureChapters = [];
@@ -4532,7 +4586,7 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
         return Promise.race([
             Promise.resolve(work),
             new Promise((_, reject) => {
-                timer = setTimeout(() => reject(new Error('Journal request timed out')), ms);
+                timer = setTimeout(() => reject(new Error('AI request timed out')), ms);
             })
         ]).finally(() => clearTimeout(timer));
     }
@@ -4609,6 +4663,9 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
             `worker: ${player._journalWorker ? 'working' : 'idle'}; ` +
             `narration: ${player.narrationEnabled === false ? 'off' : 'on'}; ` +
             `budget: ${isBankrupt() ? 'paused until reset' : 'available'}; ` +
+            `digest error: ${player._digestError || 'none'}; ` +
+            `chapter error: ${player._chapterError || 'none'}; ` +
+            `next digest: ${Math.max(0,Math.ceil((Math.max(player._digestRetryAt||0,player._digestNextAt||0)-Date.now())/1000))}s; ` +
             `last error: ${player._journalError || 'none'}. ` +
             `Suncat pending: ${suncatAdventureEvents.filter(e => !e.chapterId).length}; ` +
             `Suncat error: ${suncatJournalError || 'none'}.`;
@@ -4692,7 +4749,8 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
             journalKind: kind,
             text: `${title}\n\n${body}`,
             vector: [],
-            isCore: true
+            isCore: true,
+            sourceEntryIds: journalSourceLinks(sourceMemories).entryIds
         };
     
         // Preserve every source entry. Only mark it as already adapted.
@@ -4729,6 +4787,7 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
             entryType: kind,
             timestamp: chapter.timestamp,
             title: chapter.title,
+            sourceEntryIds: chapter.sourceEntryIds,
             playerChronicle: chapter.text,
             suncatThoughts: null
         });
@@ -4746,9 +4805,8 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
         const sourceText = getChapterSourceText(sourceMemories);
         const archive = player.npcDialogueEvents || [];
 
-        const currentEvents = archive.filter(event =>
-            sourceText.includes(`[NPC_EVENT:${event.id}]`)
-        );
+        const dialogueIds=new Set(journalSourceLinks(sourceMemories).dialogueIds);
+        const currentEvents = archive.filter(event => dialogueIds.has(event.id));
 
         const currentIds = new Set(currentEvents.map(event => event.id));
         const npcIds = new Set(currentEvents.map(event => event.npc.id));
@@ -4786,6 +4844,24 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
         ].join("\n");
     }
     
+    function journalSourceLinks(memories) {
+        const entries=new Set(),dialogueIds=new Set();
+        for(const memory of memories){
+            if(memory.id)entries.add(memory.id);
+            for(const event of memory.sourceEvents||[memory.text||'']){
+                const text=journalEventText(event);
+                const activity=text.match(/^\[GAMEPLAY_RECORD:([^\]]+)\]/);
+                const npc=text.match(/\[NPC_EVENT:([^\]]+)\]/);
+                if(activity)entries.add('activity:'+activity[1]);
+                if(npc){entries.add('npc-event:'+npc[1]);dialogueIds.add(npc[1]);}
+                if(activity)try{
+                    const source=JSON.parse(text.slice(text.indexOf('{')));
+                    if(source.kind==='dialogue'&&source.details?.dialogue?.id)dialogueIds.add(source.details.dialogue.id);
+                }catch{} // Legacy text remains source material even without structured links.
+            }
+        }
+        return {entryIds:[...entries],dialogueIds:[...dialogueIds]};
+    }
     function getChapterSourceText(memories) {
         return memories.map(memory => {
             const sources = Array.isArray(memory.sourceEvents) && memory.sourceEvents.length
@@ -4810,6 +4886,8 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
       - Distinguish observed events from rumors, theories and narrator speculation.
       - Preserve names, locations, chronology, choices and consequences.
       - Do not invent quests, rewards, deaths, discoveries or offscreen meetings.
+      - Spoken plans, promises and claims do not prove an action happened. Tool
+        receipts and observed gameplay outcomes determine whether it actually ran.
       - Logging out does not establish that days passed or anyone traveled.
       - Earlier chapters may contain literary interpretation; that interpretation
         must not become proof of a new gameplay event.
@@ -5323,7 +5401,8 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
     }
     async function suncatTool(name,args,socket) {
         const autonomous=!socket, s=players[SUNCAT_ID];
-        const targetID=autonomous?SUNCAT_ID:findSocketID(args.targetName || players[socket.id]?.name);
+        const ownName=players[socket?.id]?.name;
+        const targetID=autonomous?SUNCAT_ID:(!args.targetName||String(args.targetName).toLowerCase()===String(ownName).toLowerCase()?socket.id:findSocketID(args.targetName));
         if (autonomous && !SUNCAT_RUNTIME.autoTools.has(name)) throw new Error('This tool requires a player request.');
         if(name==='inspectCombatTarget') return SUNCAT_COMBAT.inspect(args.targetId);
         if(name==='chooseCombatAction') return SUNCAT_COMBAT.act(args.action,args.targetId,args.spellId);
@@ -5354,7 +5433,9 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             if(SUNCAT_COMBAT.target)throw Error('In combat: choose defend or flee before travelling.');
             const mapID=Number(args.mapID),x=Number(args.x),y=Number(args.y);
             if(!Number.isInteger(mapID)||(!WORLD_ATLAS_DB[mapID]&&mapID!==999&&mapID!==100)||!Number.isFinite(x+y)) throw new Error('Invalid map or coordinates.');
-            await suncatObserve(mapID);const grid=suncatGrid(mapID),p=suncatNearestFloor(grid,x,y);
+            await suncatObserve(mapID);const grid=suncatGrid(mapID);
+            if(!grid)throw new Error(`Map ${mapID} has no observed geometry. Visit a map with an online observer or wait for a client report; atlas lore alone cannot establish a safe landing tile.`);
+            const p=suncatNearestFloor(grid,x,y);
             currentTargetID=null;SUNCAT_RUNTIME.protectedID=null;
             if(suncatState==='protecting') suncatState='active';
             if(s.mapID!==mapID) {
@@ -5482,8 +5563,9 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             const bossId=Number(ids[Math.floor(Math.random()*ids.length)]),team=[bossId,...getMinions(bossId).slice(0,3)];
             const script=await generateTacticsScript(target,CARD_MANIFEST_DB[bossId].name,team.slice(1).map(id=>CARD_MANIFEST_DB[id].name));
             if(!script) throw new Error('Narrative generation failed; no battle started.');
+            if(players[targetID]!==target) throw new Error('Player disconnected during tactics preparation.');
             return suncatCommand(targetID,'tactics',{index:SUNCAT_RUNTIME.id(),bossId,team,
-                winText:script.winText || 'Victory!',scenarioName:script.scenarioName || 'Skirmish'});
+                introTaunt:script.introTaunt,winText:script.winText || 'Victory!',scenarioName:script.scenarioName || 'Skirmish'});
         }
         if(name==='createCustomCard') {
             throw new Error('Custom-card creation is not wired to a durable client card registry. Use spawnNPC with a known npcType and displayName for a named variant. No card was created.');
@@ -5862,7 +5944,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                             }
                             const recipients=String(call.args.targetName).toLowerCase()==='all'
                                 ?Object.keys(players).filter(id=>id!==SUNCAT_ID)
-                                :[findSocketID(call.args.targetName)];
+                                :(socket&&String(call.args.targetName).toLowerCase()===String(players[socket.id]?.name).toLowerCase()?[socket.id]:[findSocketID(call.args.targetName)]);
                             if(!recipients.length||recipients.some(id=>!id||id===SUNCAT_ID)) throw new Error('Choose an online player or All.');
                             SUNCAT_RUNTIME.mapBusy=true;
                             try {
@@ -6089,6 +6171,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                                     }
                                 };
 
+                                if(!recipients.some(id=>players[id]===targetPlayer||io.sockets.sockets.has(id))) throw new Error('All invited players disconnected during generation.');
                                 SUNCAT_SCENARIOS.init(customMapData,mapData,hostileMinions,script);
                                 activeCustomMap = customMapData;
 
@@ -6110,7 +6193,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
 
                             } catch (err) {
                                 console.error("Map Generation Error:", err);
-                                functionResult = { result: `Map generation failed: ${err.message}` };
+                                functionResult = {ok:false,status:'failed',error:`Map generation failed: ${err.message}`};
                             } finally {SUNCAT_RUNTIME.mapBusy=false;}
                         }
                         
@@ -6132,8 +6215,14 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                 }
                 // Hand the batch back to Suncat
                 const finished=callsRun>=maxCalls||chainCount>=MAX_CHAIN;
-                if(finished)toolResponsesBatch.push({text:'This turn is finished. Do not request more tools. Summarize only confirmed results; failed or unknown actions did not prove a world event. Wait for a later turn to continue.'});
-                const completion = await activeSession.sendMessage(toolResponsesBatch);
+                // Gemini rejects a FunctionResponse mixed with a text part.
+                // Put turn guidance inside the result JSON, keeping this a pure
+                // batch of responses (one response for every requested call).
+                if(finished)for(const part of toolResponsesBatch)Object.assign(part.functionResponse.response,{
+                    turnComplete:true,
+                    nextStep:'Do not request more tools. Summarize only confirmed results; failed or unknown actions did not prove a world event. Wait for a later turn to continue.'
+                });
+                const completion = await journalDeadline(activeSession.sendMessage(toolResponsesBatch));
                 currentResponse = completion.response; 
 
                 if (currentResponse.usageMetadata) {
@@ -6503,10 +6592,12 @@ End at the last recorded event. Return only the prose, without a title.`;
             if (!chapter) return;
             player._chapterNextAt = Date.now() + JOURNAL_POLICY.chapterMs;
             player._chapterRetryAt = 0;
-            player._journalError = '';
+            player._chapterError = '';
+            player._journalError = player._digestError || '';
             console.log(`[Journal] ${chapter.title} saved for ${player.name}.`);
         } catch (error) {
             player._chapterRetryAt = Date.now() + JOURNAL_POLICY.retryMs;
+            player._chapterError = error.message;
             player._journalError = error.message;
             console.error('[Journal] Chapter failed; sources remain pending:', error.message);
         } finally { player.isConsolidating = false; }
@@ -6521,7 +6612,7 @@ End at the last recorded event. Return only the prose, without a title.`;
             (!forceDigest && now < (player._digestNextAt || 0))) return;
         const queue = player.undigestedInfo;
         const memories = player.searchableMemories;
-        const batch = journalBatch(queue, journalEventText);
+        const batch = journalBatch(queue, journalEventText, JOURNAL_POLICY.digestItems || 64, 28000);
         const sources = batch.filter(journalIsSource);
         player.isDigesting = true;
         try {
@@ -6535,6 +6626,8 @@ Return JSON with updatedStory (a concise factual record), newRumor (optional),
 and suncatPerception (optional, at most six words, only when choices support it).
 Preserve names, dialogue meaning, choices and outcomes. No scenery, philosophy,
 psychological guessing or invented events. A selected action is not proof of success.
+Spoken promises or claims of success are dialogue, not verified world events.
+Use server action receipts and recorded gameplay outcomes to establish what happened.
 Do not write Suncat's personal journal. It has a separate first-person source ledger.`;
                 const result = await journalDeadline(model.generateContent({
                     contents: [{role: 'user', parts: [{text: prompt}]}],
@@ -6583,12 +6676,16 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                 playerChronicle: `[RECORD]\n\n${record.text}`, suncatThoughts: null,
                 perception: data.suncatPerception
             });
-            player._digestNextAt = Date.now() + JOURNAL_POLICY.digestMs;
+            // A busy session can produce many small dialogue/loot records. Drain
+            // its backlog on the next worker tick instead of only eight per minute.
+            player._digestNextAt = queue.length ? 0 : Date.now() + JOURNAL_POLICY.digestMs;
             player._digestRetryAt = 0;
-            player._journalError = '';
+            player._digestError = '';
+            player._journalError = player._chapterError || '';
             console.log(`[Journal] ${player.name}: archived ${batch.length} events; ${queue.length} remain.`);
         } catch (error) {
             player._digestRetryAt = Date.now() + JOURNAL_POLICY.retryMs;
+            player._digestError = error.message;
             player._journalError = error.message;
             console.error('[Journal] Digest failed; events remain pending:', error.message);
         } finally { player.isDigesting = false; }
@@ -6934,7 +7031,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                 systemInstruction:PERSONA_RULES_DB.core+'\n'+getCultivationAura(suncatCultivationStage,suncatDaoName),
                 tools:[{functionDeclarations:declarations}]});
             const session=model.startChat({history:[]});
-            const response=await session.sendMessage(`You are Suncat taking one autonomous turn.
+            const response=await journalDeadline(session.sendMessage(`You are Suncat taking one autonomous turn.
             Long-term interest: ${suncatLongTermGoal || 'Explore observed places and learn about their inhabitants.'}
             Location: ${JSON.stringify({mapID:s.mapID,x:s.x,y:s.y})}
             Body: a black fairy; the cat-form Suncat NPC is a different entity. AGI governs perception and reactions.
@@ -6943,6 +7040,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             You may investigate or help if you choose. Base requests for help on your actual wards, local visible threats and confirmed actions. Preserve your own resources and ability to flee.
             Observed world (client report, possibly stale): ${suncatRememberedVision(s.mapID)}
             Online players: ${JSON.stringify(online)}
+            Travel candidates: ${JSON.stringify([...new Set([...rt.observations.keys(),...online.map(p=>p.mapID),...(activeCustomMap?[999]:[])])])}. Other atlas maps are lore only until a client supplies geometry. Do not repeatedly try an unavailable destination.
             Existing autonomous summons: ${JSON.stringify(rt.companions)}
             Recent real tool results: ${JSON.stringify(rt.recent)}
             Choose a useful next action or say IDLE. You do not have to use a tool.
@@ -6957,7 +7055,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             Do not repeat failed or pending actions. A timeout has an unknown outcome.
             Travel requires known map geometry. A walking response means travel started, not completed.
             Never claim GOAL COMPLETE based only on your own prose. Describe progress only from tool results or current observations.
-            CRITICAL: You may ONLY use functions explicitly defined in your tools list. DO NOT hallucinate tools like 'arrival' or 'system_navigation'.`);
+            CRITICAL: You may ONLY use functions explicitly defined in your tools list. DO NOT hallucinate tools like 'arrival' or 'system_navigation'.`));
             if(response.response.usageMetadata) updateBudget(response.response.usageMetadata,SUNCAT_ID);
             if(response.response.functionCalls()?.length) await executeAITools(response.response,session,null);
         } catch(error) { console.error('[Suncat autonomous turn]',error.message); }
@@ -7028,8 +7126,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
 
         //SUNCAT TOKEN LIMIT
             if (isBankrupt()) {
-                if (triggerType === 'chat') {
-                }
+                if (triggerType === 'chat') io.to(socketId).emit('chat_message',{sender:'[SYSTEM]',text:'The server AI budget is paused until its hourly reset. Your journal sources remain queued.'});
                 return; 
             }
             // Prevent Suncat from firing ambient narration if he spoke in the last 6 seconds
@@ -7061,7 +7158,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             // Direct conversations MUST process
             if (triggerType === 'chat') {
                 const textLower = data.text ? data.text.toLowerCase() : "";
-                if (data.isConversing || textLower.includes("suncat") || textLower.includes("[system directive]")) {
+                if (data.isConversing || /\b(?:suncat|sunat|sunct)\b/.test(textLower) || textLower.includes("[system directive]")) {
                     isEssential = true;
                 }
                 // Sugar Trigger: Polite players give Suncat energy
@@ -7091,10 +7188,16 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             }
     
         //CONTEXT PROCESSING
+        const requestedAction=triggerType==='chat'&&!data.isEavesdropping?requestedSuncatAction(data.text):null;
+        let actionReceipt=null;
         player.npcIsTyping = true;
         const typingFailSafe = setTimeout(() => { player.npcIsTyping = false; }, 9000);
         let rngRoll = Math.random();
         try {
+            if(requestedAction){
+                actionReceipt=await runRequestedSuncatAction(socketId,requestedAction);
+                if(players[socketId]!==player)return;
+            }
             /// 2. GATHER CORE CONTEXT (RAG-LITE INJECTION)
                 //VARIABLES
                     const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -7260,26 +7363,15 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                 messageOptions = { sender: "", color: "#FFD700", targetId: socketId };            
             }
             const chatText = data.text.toLowerCase();
-            const wantsNewMap = ["make me a scenario","give me a quest","give me an adventure","create a map","generate a quest","start a scenario","build a dungeon"].some(kw => chatText.includes(kw));            
-            const wantsAction = ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
+            const wantsAction = !requestedAction && ["teleport", "spawn", "boss", "enemy"].some(kw => chatText.includes(kw));
             const needsOracle = ["tarot", "fortune", "reading", "interpret", "meaning of"].some(kw => chatText.includes(kw));            
             const isDirectCommand = chatText.includes("[reply]") || chatText.includes("suncat")|| data.isConversing;
-            const wantsCode = ["code", "bug", "fix", "report", "renderer", "boilerplate", "refactor", "function", "debug"].some(kw => chatText.includes(kw));
-            const wantsTactics = ["tactics", "skirmish", "duel", "arena fight", "tactical"].some(kw => chatText.includes(kw));
+            const wantsCode = !requestedAction && ["code", "bug", "fix", "report", "renderer", "boilerplate", "refactor", "function", "debug"].some(kw => chatText.includes(kw));
             const asksPersonal = ["who are", "your past", "remember", "real life", "favorite", "you like", "about yourself", "memories", "where are you from", "your name"].some(kw => chatText.includes(kw));
             const asksHistory = ["remember when", "my past", "did i ever", "what did i do", "our adventure"].some(kw => chatText.includes(kw));
             const needsSlayer = ["slay", "smite", "kill", "destroy"].some(kw => chatText.includes(kw));
             const asksOpinion = ["think of me", "your opinion", "judge me", "evaluate me", "how do you see me", "what kind of person"].some(kw => chatText.includes(kw));
             const isMap999Active = Object.values(players).some(p => p.mapID === 999 && p.id !== SUNCAT_ID);
-            let needsDM = wantsNewMap || wantsAction;
-            if (wantsNewMap) {
-                useBigBrain = true;
-                systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a new map, adventure, or quest. DO NOT roleplay the terrain shifting. DO NOT tell the player to use a .hack command. You MUST execute the 'createCustomMap' tool right now to physically generate the world.`;
-            }
-            else if (wantsTactics) {
-                useBigBrain = true;
-                systemOverride += `\n[CRITICAL OVERRIDE]: The player is asking for a tactical skirmish or duel. You MUST execute the 'launchTacticalSkirmish' tool right now. The server will handle rolling the enemy team and will ping your writer-brain to generate the dialogue in the background.`;
-            }
             if (wantsCode) {
                 useBigBrain = true;
                 systemOverride += `\n[DEVELOPER OVERRIDE]: The player is asking you to act as an autonomous coding agent. You MUST execute the 'generateDevReport' tool immediately to extract and read their project files. Acknowledge their request in chat like a technical mentor, then cast the tool. Do NOT try to solve the code in your chat response.`;
@@ -7328,6 +7420,8 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                 ? "The player is speaking directly to you. You MUST respond to them and not leave them hanging." 
                 : "You overheard the player say this.";
             
+            if(requestedAction)systemOverride += '\n[SERVER ACTION RECEIPT]: '+JSON.stringify({tool:requestedAction.name,result:actionReceipt})+'\nThe server already attempted this request. No more tools this turn. Briefly acknowledge the confirmed result or exact failure. Do not promise a later launch, ask what kind, repeat the action, or turn an unknown result into success.';
+
             // ---> THE INSTANT RAG INJECTION <---
             let instantRagContext = getRelevantContext(data.text, player.searchableMemories || []);
 
@@ -7502,7 +7596,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
         };
 
         // SECURITY FIX & DYNAMIC ROUTING: Only load tools relevant to the conversation
-        if (useBigBrain || triggerType==='chat') {
+        if (!requestedAction && (useBigBrain || triggerType==='chat')) {
             const playerFavor = playerFavorMemory[socketId] || 0;
             const activeToolDecls = getActiveTools(data.text, triggerType, playerFavor);
             
@@ -7526,10 +7620,10 @@ Do not write Suncat's personal journal. It has a separate first-person source le
         }
 
         // 1. Send the prompt!
-        let result = await activeSession.sendMessage(prompt);
+        let result = await journalDeadline(activeSession.sendMessage(prompt));
         updateBudget(result.response.usageMetadata, socketId);
        // 2. If he decided to use a tool, run it through the executor! 
-        if (useBigBrain && result.response.functionCalls()) {
+        if (!requestedAction && modelConfig.tools && result.response.functionCalls()?.length) {
             const toolOutput = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId));
             result = { response: toolOutput }; // <-- Re-wrap it to prevent the crash!
         }
@@ -7644,6 +7738,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
         
         } catch (e) {
             console.error("Nervous System Error:", e);
+            if(triggerType==='chat'&&players[socketId]===player)io.to(socketId).emit('chat_message',{sender:'[SYSTEM]',text:actionReceipt?'The action result is shown above; Suncat could not finish his spoken reply. No action was retried.':`Suncat could not finish this request: ${e.message}`,color:'#ffaaaa'});
             } finally {
                 clearTimeout(typingFailSafe); 
                 player.npcIsTyping = false;
@@ -7836,6 +7931,13 @@ io.on("connection", (socket) => {
             });
 
         socket.on('delete_save',()=>suncatForgetPlayer(socket.id));
+        socket.on('toggle_narration',enabled=>{
+            const player=players[socket.id];
+            if(!player||typeof enabled!=='boolean')return;
+            player.narrationEnabled=enabled;
+            // Raw acknowledged activities continue to be saved while narration is off.
+            if(enabled&&player.persistentId)void runJournalMaintenance(socket.id);
+        });
         socket.on("join_game", (data) => {
             let name = (typeof data === 'object') ? data.name : data;
             const nameKey = name.toLowerCase(); 
@@ -7969,11 +8071,13 @@ io.on("connection", (socket) => {
                 for (const mem of players[socket.id].searchableMemories || []) {
                     mem.id ||= journalId(mem.isCore ? 'legacy-chapter' : 'legacy-record');
                     if (mem.isCore && mem.text) {
+                        mem.sourceEntryIds ||= journalSourceLinks(players[socket.id].searchableMemories.filter(m=>m.adaptedInChapter===mem.id)).entryIds;
                         socket.emit("journal_updated", {
                             entryId: mem.id,
                             entryType: mem.journalKind || "chapter",
                             timestamp: mem.timestamp,
                             title: mem.title,
+                            sourceEntryIds: mem.sourceEntryIds,
                             playerChronicle: mem.text,
                             suncatThoughts: null
                         });
@@ -8878,7 +8982,7 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
             const now = Date.now();
             const suncat = players[SUNCAT_ID];
             
-            const mentionsName = content.includes("suncat");
+            const mentionsName = /\b(?:suncat|sunat|sunct)\b/.test(content);
 
             // 1. Is Suncat physically nearby? (Only eavesdrop on local chatter)
             const isLocal = (suncat && suncat.mapID === player.mapID);
@@ -8928,7 +9032,7 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
                 if (now - (suncat.lastEavesdropTime || 0) > eavesdropCooldown) {
                     try {
                         // FIX: Only calculate the vector if the cooldown has actually passed!
-                        msgVector = await createMemoryVector(safeText);
+                        msgVector = await journalDeadline(createMemoryVector(safeText),5000);
                         let semanticScore = 0;
                         if (msgVector && suncatAttentionVector) {
                             semanticScore = cosineSimilarity(msgVector, suncatAttentionVector);
@@ -8946,7 +9050,7 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
                 }
             } else if (mentionsName || isConversing) {
                 // If we are already talking to him, grab the vector for memory storage anyway
-                try { msgVector = await createMemoryVector(safeText); } catch(e){}
+                try { msgVector = await journalDeadline(createMemoryVector(safeText),5000); } catch(e){}
             }
 
             let shouldListen = mentionsName || isConversing || isEavesdropping;
