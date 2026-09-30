@@ -29500,6 +29500,7 @@ window.BMPerformance=BMPerformance;
                         { index: 8003, x: 59.5, y: 30.5, sprite: 261, role: 'dialogue', deck: [22, 24, 26, 29, 93], alignment: 'friendly', customDialogue: ["Life is suffering."], options: ["Listen", "Leave"], yesActions: [['train', 'mage_trainer']], noActions: [['close_dialogue', null]] },
                         { index: 8004, x: 47.5, y: 30.5, sprite: 255, role: 'dialogue', deck: [27, 28, 8, 12], alignment: 'friendly', customDialogue: ["Life is joy."], options: ["Listen", "Leave"], yesActions: [['train', 'priest_trainer']], noActions: [['close_dialogue', null]] },
                         { index: 8005, x: 55.5, y: 35.5, sprite: 306, role: 'dialogue', deck: [64, 65, 66, 71, 70], alignment: 'friendly', customDialogue: ["The strong have a duty to protect the weak."], options: ["Listen", "Leave"], yesActions: [['train', 'knight_trainer']], noActions: [['close_dialogue', null]] },
+                        { index: 8007, x: 57.5, y: 19.5, sprite: 2, name: 'The Moors card sage', role: 'tarot_reader', service: 'tarot', homeX: 57.5, homeY: 19.5, state: 'stationary', deck: [2, 26, 28, 52, 64], alignment: 'defender', customDialogue: ['The road writes on you. Let us see what the cards can read.'] },
                         { index: 8006, x: 56.5, y: 23.5, sprite: 264, role: 'dialogue', deck: [191, 194, 188], alignment: 'friendly', customDialogue: ["Nature teaches those who listen."], options: ["Ask about survival", "Leave"], yesActions: [['train', 'hunter_trainer']], noActions: [['close_dialogue', null]] },
                         { index: 541713, x: 77.5, y: 90.5, sprite: 243, role: 'portal', deck: [81.5, 8.5, 14, 2], alignment: 'friendly', 
                             onSpawn: (npc, d) => {
@@ -35256,6 +35257,7 @@ const BMMastery=(()=>{
             }
         triggerInteraction(dungeon, index = 0) {
             // Camp landmarks act immediately on walking into them or targeting them.
+            if(this.service==='tarot'||this.role==='tarot_reader'){BMCardSage.open(this);return;}
             if(dungeon.mapID===999&&(this.service||this.objectiveKind)){BMRealm.interact(this);return;}
             if(dungeon.mapID===700&&this.index===70001){BMCamp.openAtFire();return;}
             if(dungeon.mapID===700&&this.index===70002){BMCamp.leave();return;}
@@ -36001,7 +36003,7 @@ const BMMastery=(()=>{
                         }
                         isChasingNPC = false; 
                     } else if (this.alignment.startsWith('defender')) {
-                        targetX = this.originx; targetY = this.originy; isChasingNPC = false;
+                        targetX = this.service&&Number.isFinite(this.homeX)?this.homeX:this.originx; targetY = this.service&&Number.isFinite(this.homeY)?this.homeY:this.originy; isChasingNPC = false;
                         let distToHome = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
                         if (distToHome > (this.service?.35:2.0)) { this.state = 'following'; this.speed = 1.5; }
                         else { this.state = this.service?'stationary':'wandering'; this.speed = this.service?0:1; }
@@ -36110,6 +36112,13 @@ const BMMastery=(()=>{
                         } else {
                             moveTargetX = targetX; moveTargetY = targetY;
                         }
+                    }
+                }
+                else if(this.service&&this.alignment.startsWith('defender')&&['following','chasing'].includes(this.state)){
+                    if(!this.hasLineOfSight(maze,targetX,targetY)){
+                        if(this.pathTimer<=0){this.cachedPath=dungeon.findPath(this.x,this.y,targetX,targetY);this.pathTimer=15;}else this.pathTimer-=tickScale;
+                        const path=this.cachedPath||[];while(path.length>1&&Math.hypot(path[0].x-this.x,path[0].y-this.y)<.5)path.shift();
+                        if(path.length){moveTargetX=path[0].x;moveTargetY=path[0].y;}
                     }
                 }
                 else if (this.state === 'patrolling' && this.patrolPath && this.patrolPath.length > 0) {
@@ -43407,10 +43416,9 @@ const BMMastery=(()=>{
                         const screenX = startX + size/2 + diffX * cellSize;
                         const screenY = startY + size/2 + diffY * cellSize;
                         
-                        ctx.fillStyle = drawColor;
-                        ctx.beginPath();
-                        ctx.arc(screenX + cellSize/2, screenY + cellSize/2, cellSize/3, 0, Math.PI*2);
-                        ctx.fill();
+                        if(!BMServiceIcon.draw(ctx,npc,screenX+cellSize/2,screenY+cellSize/2,Math.max(6,Math.min(9,cellSize*.9)))){
+                            ctx.fillStyle=drawColor;ctx.beginPath();ctx.arc(screenX+cellSize/2,screenY+cellSize/2,cellSize/3,0,Math.PI*2);ctx.fill();
+                        }
                     }
                 });
 
@@ -43525,6 +43533,12 @@ const BMMastery=(()=>{
                     }
                 }
                 
+                const knownNpcs=this.npcs.filter(n=>!n.isDead&&!n.isDying&&this.explored[Math.floor(n.y)]?.[Math.floor(n.x)]===1);
+                for(const n of knownNpcs)if(!BMServiceIcon.kind(n)&&n.visible&&(Math.hypot(n.x-this.x,n.y-this.y)<=this.dSense||this.checkLineOfSight(n.x,n.y))){
+                    const align=String(n.alignment||'');ctx.fillStyle=align.startsWith('foe')?'#ed7770':/^(friendly|defender|ally|escort)/.test(align)?'#8fda97':'#aaa';
+                    ctx.beginPath();ctx.arc(tX+(mapBoxX+n.x*pSize)*tL/10,tY+(mapBoxY+n.y*pSize)*tH/10,Math.max(1.4,tL/420),0,Math.PI*2);ctx.fill();
+                }
+                for(const n of knownNpcs)BMServiceIcon.draw(ctx,n,tX+(mapBoxX+n.x*pSize)*tL/10,tY+(mapBoxY+n.y*pSize)*tH/10,5);
                 // 3. Draw Player Position (Cyan Dot)
                 let pDrawX = mapBoxX + (this.x * pSize);
                 let pDrawY = mapBoxY + (this.y * pSize);
@@ -43601,6 +43615,10 @@ const BMMastery=(()=>{
                     }
                 });
                 
+                // Known services retain their marker on explored tiles; unseen tiles stay hidden.
+                for(const n of this.npcs)if(!n.isDead&&!n.isDying&&this.explored[Math.floor(n.y)]?.[Math.floor(n.x)]===1)
+                    BMServiceIcon.draw(ctx,n,tX+(startX+n.x*pSize)*tL/10,tY+(startY+n.y*pSize)*tH/10,Math.max(6,tL/100));
+                drawText(0,8.95,10,.22,'Purse: shop  ·  Flag: guild  ·  Card: sage  ·  Dot: person','#dbc697',1,'center');
                 // 4. Draw Player Position (Pulsing Cyan Dot)
                 let pDrawX = startX + (this.x * pSize);
                 let pDrawY = startY + (this.y * pSize);
@@ -45565,7 +45583,8 @@ const BMMastery=(()=>{
                 const fields = [
                     'name', 'options', 'yesActions', 'noActions', 'endActions',
                     'deathActions', 'rewardCard', 'isCinematic', 'isTarget',
-                    'dialogueFactory', 'respawnDelay', 'signText', 'musicPersona', 'musicProfile'
+                    'dialogueFactory', 'respawnDelay', 'signText', 'musicPersona', 'musicProfile',
+                    'service', 'serviceStock', 'homeX', 'homeY'
                 ];
                 for (const field of fields) {
                     if (data[field] !== undefined) npc[field] = data[field];
@@ -63586,6 +63605,7 @@ const BMMastery=(()=>{
             });
     //CAMERA
         window.addEventListener('wheel', (e) => {
+            if(BMTacticsView.wheel(e))return;
             if (typeof startGame !== 'undefined') {
                 // Tarot Wheel Scroll
                 if (startGame === 'tarot' && window.showTarotPopup) {
@@ -63638,6 +63658,7 @@ const BMMastery=(()=>{
         window.addEventListener('contextmenu', e => e.preventDefault());
 
         window.addEventListener('pointerdown', (e) => {
+            if(BMTacticsView.pointerDown(e))return;
             if(BMTouch.down(e))return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             // --- NEW: START MAP MAKER PAINTING ---
@@ -63771,6 +63792,7 @@ const BMMastery=(()=>{
         }, { passive: false });
 
         window.addEventListener('pointermove', (e) => {
+            if(BMTacticsView.pointerMove(e))return;
             if(BMTouch.move(e))return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
@@ -63860,6 +63882,7 @@ const BMMastery=(()=>{
         });
 
         const endPointer = (e) => {
+            if(BMTacticsView.pointerUp(e))return;
             if(BMTouch.up(e))return;
             delete activePointers[e.pointerId];
             window.isDraggingTarot = false;
@@ -86070,9 +86093,29 @@ function buildPlayerKnight(mesh,state) {
 
 // Match origin belongs to the match, never to the transient dialogue screen.
 const BMTacticsView=(()=>{
-    let mode=localStorage.getItem('bm-tactics-view')==='3d'?'3d':'2d',rotation=0,bar,actions,phase;
-    function project(x,y,z=0){let a=x-5,b=y-5;for(let i=0;i<rotation;i++)[a,b]=[-b,a];return {x:5+(a-b)*.43,y:5.2+(a+b)*.26-z};}
-    function unproject(x,y){let a=((y-5.2)/.26+(x-5)/.43)/2,b=((y-5.2)/.26-(x-5)/.43)/2;for(let i=0;i<rotation;i++)[a,b]=[b,-a];return {x:a+5,y:b+5};}
+    let mode=localStorage.getItem('bm-tactics-view')==='3d'?'3d':'2d',rotation=0,zoom=1,bar,actions,phase;
+    const fingers=new Map();
+    function setZoom(value){if(Number.isFinite(value))zoom=Math.max(.65,Math.min(2,value));}
+    function project(x,y,z=0){const c=Math.cos(rotation),s=Math.sin(rotation),a=(x-5)*c-(y-5)*s,b=(x-5)*s+(y-5)*c;return {x:5+(a-b)*.43*zoom,y:5.2+((a+b)*.26-z)*zoom};}
+    function unproject(x,y){const a=((y-5.2)/(.26*zoom)+(x-5)/(.43*zoom))/2,b=((y-5.2)/(.26*zoom)-(x-5)/(.43*zoom))/2,c=Math.cos(rotation),s=Math.sin(rotation);return {x:a*c+b*s+5,y:-a*s+b*c+5};}
+    function boardEvent(e){return startGame==='tactics'&&mode==='3d'&&!['CINEMATIC','GAME_OVER','EXAMINE_UNIT','PREVIEW_CARD'].includes(window.TacticsEngine?.state)&&e.target?.tagName==='CANVAS'&&e.clientX>=tX&&e.clientX<=tX+tL&&e.clientY>=tY&&e.clientY<=tY+tH;}
+    function pointerDown(e){if(!boardEvent(e)||e.button>0)return false;
+        fingers.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,moved:false,state:window.TacticsEngine?.state,engine:window.TacticsEngine});
+        if(fingers.size>1)for(const p of fingers.values())p.moved=true;
+        try{e.target.setPointerCapture(e.pointerId);}catch{}e.preventDefault();return true;}
+    function pointerMove(e){const p=fingers.get(e.pointerId);if(!p)return false;e.preventDefault();
+        const pair=[...fingers.values()],before=pair.length===2?Math.hypot(pair[0].x-pair[1].x,pair[0].y-pair[1].y):0;
+        const oldX=p.x;p.x=e.clientX;p.y=e.clientY;
+        if(startGame!=='tactics'||mode!=='3d'){p.moved=true;return true;}
+        if(pair.length===2){const after=Math.hypot(pair[0].x-pair[1].x,pair[0].y-pair[1].y);if(before>4)setZoom(zoom*after/before);}
+        else if(pair.length===1){const was=p.moved;p.moved||=Math.hypot(p.x-p.sx,p.y-p.sy)>8;
+            if(p.moved)rotation=(rotation+(p.x-(was?oldX:p.sx))*.012)%(Math.PI*2);}
+        return true;}
+    function pointerUp(e){const p=fingers.get(e.pointerId);if(!p)return false;fingers.delete(e.pointerId);e.preventDefault();
+        if(e.type!=='pointercancel'&&!p.moved&&!fingers.size&&Math.hypot(e.clientX-p.sx,e.clientY-p.sy)<=8&&boardEvent(e)&&p.engine===window.TacticsEngine&&p.state===window.TacticsEngine.state)handleInput(e);
+        return true;}
+    function wheel(e){if(!boardEvent(e))return false;e.preventDefault();setZoom(zoom*Math.exp(-e.deltaY*.001));return true;}
+    window.addEventListener('blur',()=>fingers.clear());
     function polygon(points,fill,stroke='#4f5040'){
         ctx.beginPath();points.forEach((p,i)=>{const x=tX+p.x*tL/10,y=tY+p.y*tH/10;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
     }
@@ -86084,19 +86127,20 @@ const BMTacticsView=(()=>{
         const cells=[];for(let y=0;y<10;y++)for(let x=0;x<10;x++)cells.push({x,y,p:project(x+.5,y+.5)});cells.sort((a,b)=>a.p.y-b.p.y);
         for(const {x,y}of cells){const wall=Dungeon.maze[y][x]>0;tile(x,y,(x+y)%2?'#303a32':'#394337');if(wall){
             const h=.28,p=[project(x,y,h),project(x+1,y,h),project(x+1,y+1,h),project(x,y+1,h)];
-            polygon([p[1],p[2],project(x+1,y+1),project(x+1,y)],'#232a27');polygon([p[2],p[3],project(x,y+1),project(x+1,y+1)],'#1b211f');polygon(p,'#50584b');
+            const base=[project(x,y),project(x+1,y),project(x+1,y+1),project(x,y+1)],center=project(x+.5,y+.5);
+            for(let edge=0;edge<4;edge++){const j=(edge+1)%4;if((base[edge].y+base[j].y)/2>=center.y)polygon([p[edge],p[j],base[j],base[edge]],edge%2?'#232a27':'#1b211f');}polygon(p,'#50584b');
         }}
         // Draw valid cells under the figures, so small targets remain readable.
         const ranges={SELECT_MOVE:['validMoves','rgba(80,168,205,.65)'],SELECT_ATTACK:['validAttacks','rgba(193,76,65,.7)'],SELECT_SPELL:['validSpells','rgba(156,117,199,.65)'],SELECT_ITEM:['validItems','rgba(100,194,166,.7)'],SELECT_CALL:['validCalls','rgba(217,171,82,.7)']};
         const range=ranges[t.state];if(range)for(const p of t[range[0]]||[])highlight(p.x,p.y,range[1]);
         for(const u of t.units.filter(u=>!u.isDead).sort((a,b)=>project(a.x,a.y).y-project(b.x,b.y).y)){
             const p=project(u.x,u.y),loot=u.role==='dropped_card',active=t.turnQueue[0]===u;
-            ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(tX+p.x*tL/10,tY+p.y*tH/10,tL*.024,tH*.009,0,0,Math.PI*2);ctx.fill();
-            drawActorPortrait(u,u.sprite??u.type,p.x-.40,p.y-.80,.08,loot?u.cardId:0,rotation*2);
-            if(!loot){const col=u.alignment==='ally'?'#9bc6a2':'#d98e84';drawShape('rec',p.x-.22,p.y+.02,1,0,0,.44,.05,0,0,0,0,col,1);const ward=u.activeBuffs?.find(b=>['ward','item_ward'].includes(b.type)&&b.hits>0);if(ward)drawText(p.x-.35,p.y+.05,.7,.23,'◇ '+ward.hits,'#a7d7de',1,'center');}
-            if(active)drawText(p.x-.25,p.y-1.01,.5,.3,'▼','#ead099',1,'center');
+            ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(tX+p.x*tL/10,tY+p.y*tH/10,tL*.024*zoom,tH*.009*zoom,0,0,Math.PI*2);ctx.fill();
+            drawActorPortrait(u,u.sprite??u.type,p.x-.40*zoom,p.y-.80*zoom,.08*zoom,loot?u.cardId:0,((Math.round(rotation/(Math.PI/4))%8)+8)%8);
+            if(!loot){const col=u.alignment==='ally'?'#9bc6a2':'#d98e84';drawShape('rec',p.x-.22*zoom,p.y+.02*zoom,1,0,0,.44*zoom,.05*zoom,0,0,0,0,col,1);const ward=u.activeBuffs?.find(b=>['ward','item_ward'].includes(b.type)&&b.hits>0);if(ward)drawText(p.x-.35*zoom,p.y+.05*zoom,.7*zoom,.23*zoom,'◇ '+ward.hits,'#a7d7de',1,'center');}
+            if(active)drawText(p.x-.25*zoom,p.y-1.01*zoom,.5*zoom,.3*zoom,'▼','#ead099',1,'center');
         }
-        if(t.activeProjectile){const p=project(t.activeProjectile.x,t.activeProjectile.y,.35),data=SPELL_REGISTRY[t.activeProjectile.spellId];drawPortrait(data?.sprite2D??26,p.x-.25,p.y-.25,.05);}
+        if(t.activeProjectile){const p=project(t.activeProjectile.x,t.activeProjectile.y,.35),data=SPELL_REGISTRY[t.activeProjectile.spellId];drawPortrait(data?.sprite2D??26,p.x-.25*zoom,p.y-.25*zoom,.05*zoom);}
     }
     function act(slot){
         const t=window.TacticsEngine,activeUnit=t?.turnQueue?.[0];
@@ -86201,16 +86245,17 @@ const BMTacticsView=(()=>{
         phase.textContent=choosing?({SELECT_MOVE:'Choose a blue tile to move',SELECT_ATTACK:'Choose a red tile to attack',SELECT_ITEM:'Choose an ally to use the item',SELECT_SPELL:'Choose a target for the spell',SELECT_CALL:'Choose a tile to summon',PREVIEW_CARD:'Tap the card to choose a target'}[t.state]):ready?'Your turn · '+(u.name||CARD_MANIFEST_DB[u.type]?.name||'Adventurer'):'Resolving the turn…';
         actions.querySelector('.controls').hidden=choosing;actions.querySelector('.cancel').hidden=!choosing;
         for(const b of actions.querySelectorAll('[data-slot]')){const slot=Number(b.dataset.slot),hand=u?.tacticsHand||{};b.disabled=!ready||(slot===0?u.hasMoved:slot===1?u.hasActed:slot>=2&&slot<=4?u.hasActed||!hand[['item','spell','call'][slot-2]]:false);const id=slot>=2&&slot<=4?hand[['item','spell','call'][slot-2]]:null;b.title=id?CARD_MANIFEST_DB[id]?.name||SPELL_REGISTRY[id]?.name||'':b.textContent;}
-        if(!bar){bar=document.createElement('div');bar.id='bm-tactics-view';bar.style.cssText='position:fixed;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:900;display:flex;gap:6px;max-width:96vw;padding:6px;border:1px solid #756649;border-radius:12px;background:#10120fed;color:#dfcca5;font:13px system-ui;align-items:center';
+        if(!bar){bar=document.createElement('div');bar.id='bm-tactics-view';bar.style.cssText='position:fixed;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:900;display:flex;flex-wrap:wrap;gap:6px;width:max-content;max-width:96vw;padding:6px;border:1px solid #756649;border-radius:12px;background:#10120fed;color:#dfcca5;font:13px system-ui;align-items:center';
             const text=document.createElement('span');text.style.cssText='padding:0 5px;white-space:nowrap';bar.append(text);
-            for(const label of ['2D','3D','Rotate']){const b=document.createElement('button');b.textContent=label;b.type='button';b.style.cssText='min-height:40px;padding:7px 12px;border:1px solid #7d7155;border-radius:7px;background:#24271f;color:#ead8ae';b.onclick=()=>{if(label==='Rotate')rotation=(rotation+1)%4;else {mode=label.toLowerCase();localStorage.setItem('bm-tactics-view',mode);}MusicEngine.play3DSFX('click');};bar.append(b);}
+            for(const label of ['2D','3D','−','+','Reset']){const b=document.createElement('button');b.textContent=label;b.type='button';b.setAttribute('aria-label',label==='−'?'Zoom out':label==='+'?'Zoom in':label==='Reset'?'Reset camera':label+' view');b.style.cssText='min-width:40px;min-height:44px;padding:7px 9px;border:1px solid #7d7155;border-radius:7px;background:#24271f;color:#ead8ae';b.onclick=()=>{if(label==='−')setZoom(zoom*.85);else if(label==='+')setZoom(zoom/.85);else if(label==='Reset'){rotation=0;zoom=1;}else {mode=label.toLowerCase();fingers.clear();localStorage.setItem('bm-tactics-view',mode);}MusicEngine.play3DSFX('click');};bar.append(b);}
+            const hint=document.createElement('small');hint.className='gesture-hint';hint.textContent='Swipe to turn · Pinch to zoom';hint.style.cssText='flex-basis:100%;text-align:center;color:#b6b39e';bar.append(hint);
             for(const event of ['pointerdown','pointerup','touchstart','touchend','click'])bar.addEventListener(event,e=>e.stopPropagation());document.body.append(bar);
         }
-        bar.style.display=startGame==='tactics'?'flex':'none';if(startGame!=='tactics')return;
-        bar.firstChild.textContent='TACTICS · '+(window.TacticsEngine?.turnCount||1);
-        [...bar.querySelectorAll('button')].forEach(b=>{b.setAttribute('aria-pressed',String(b.textContent.toLowerCase()===mode));b.style.background=b.textContent.toLowerCase()===mode?'#58492e':'#24271f';if(b.textContent==='Rotate')b.hidden=mode!=='3d';});
+        bar.style.display=startGame==='tactics'?'flex':'none';if(startGame!=='tactics'){fingers.clear();return;}
+        bar.querySelector('.gesture-hint').hidden=mode!=='3d';bar.firstChild.textContent=mode==='3d'?Math.round(zoom*100)+'%':'TACTICS';bar.title=mode==='3d'?'Swipe to rotate · Pinch or scroll to zoom · Tap a tile to act':'Top-down tactics';
+        [...bar.querySelectorAll('button')].forEach(b=>{b.setAttribute('aria-pressed',String(b.textContent.toLowerCase()===mode));b.style.background=b.textContent.toLowerCase()===mode?'#58492e':'#24271f';if(['−','+','Reset'].includes(b.textContent))b.hidden=mode!=='3d';});
     }
-    return {project,unproject,worldPoint,draw,highlight,tick,act,get mode(){return mode;},setMode(v){mode=v==='3d'?'3d':'2d';}};
+    return {project,unproject,worldPoint,draw,highlight,tick,act,pointerDown,pointerMove,pointerUp,wheel,setZoom,get zoom(){return zoom;},get rotation(){return rotation;},get mode(){return mode;},setMode(v){mode=v==='3d'?'3d':'2d';fingers.clear();}};
 })();
 
 const BMTacticsSession=(()=>{
@@ -93572,8 +93617,9 @@ const BMRealm=(()=>{
         Dungeon.currentSpeaker=n;preGame='explore';BMTouch.cancel();
         if(n.objectiveKind){target=n.index;startGame='wilderness_encounter';BMActivity.record('realm_encounter_met',`Met ${n.name}. ${(n.customDialogue||[]).join(' ')}`,{index:n.index,objectiveKind:n.objectiveKind,dialogueLines:(n.customDialogue||[]).slice()});return true;}
         if(n.service==='guild'){startGame='wilderness_guild';BMActivity.record('wilderness_guild_visit','Visited the Travelers of the Wilderness Guild.',{rank:rank(),renown:mem().wildernessRenown||0});return true;}
-        if(n.service==='tarot'){window.realmTarot=true;tarotCards=[];startGame='tarot';BMActivity.record('tarot_visit','Consulted the outpost tarot reader.');return true;}
+        if(n.service==='tarot')return BMCardSage.open(n);
         if(n.service==='blackjack')return BMCamp.open('blackjack');
+        if(!['merchant','items','food','books','weapons','armor','shop'].includes(n.service))return false;
         window.isGuildShop=false;window.isWildernessShop=false;BMShop.configure(n.serviceStock||{});startGame='shop';return true;
     }
     function enemyNear(n){return Dungeon.npcs.some(e=>!e.isDead&&!e.isDying&&String(e.alignment).startsWith('foe')&&e.alignment!=='foe_coward'&&Math.hypot(e.x-n.x,e.y-n.y)<6);}
@@ -94720,18 +94766,87 @@ const BMMenuModels=(()=>{
     return {mesh};
 })();
 
+const BMServiceIcon=(()=>{
+    function kind(n){if(n.service==='guild'||n.endActions?.some(a=>a?.[0]==='open_guild_menu'))return 'guild';if(n.service==='tarot'||n.role==='tarot_reader')return 'tarot';
+        if(n.service==='campfire')return 'campfire';
+        if(['merchant','shop','items','food','books','weapons','armor'].includes(n.service)||n.role==='shop'||n.endActions?.some(a=>a?.[0]==='open_shop'))return 'shop';return null;}
+    function draw(c,n,x,y,r=7){const type=kind(n);if(!type)return false;
+        c.save();c.translate(x,y);c.scale(r/7,r/7);c.fillStyle='#101510';c.strokeStyle='#d2bd88';c.lineWidth=1.15;c.beginPath();c.arc(0,0,7,0,Math.PI*2);c.fill();c.stroke();
+        c.strokeStyle=type==='guild'?'#93d7de':type==='tarot'?'#dcc0f5':type==='campfire'?'#ffc079':'#ecd18c';c.fillStyle=c.strokeStyle;
+        if(type==='shop'){c.beginPath();c.moveTo(-2,-4);c.lineTo(2,-4);c.lineTo(1,-2);c.quadraticCurveTo(6,4,1,4);c.lineTo(-1,4);c.quadraticCurveTo(-6,4,-1,-2);c.closePath();c.stroke();c.beginPath();c.moveTo(-2,-1.5);c.lineTo(2,-1.5);c.stroke();}
+        else if(type==='guild'){c.beginPath();c.moveTo(-3,4);c.lineTo(-3,-4);c.lineTo(4,-4);c.lineTo(2,-1);c.lineTo(-3,-1);c.stroke();}
+        else if(type==='tarot'){c.strokeRect(-3.2,-4.5,6.4,9);c.beginPath();c.moveTo(0,-2.6);c.lineTo(1.8,0);c.lineTo(0,2.6);c.lineTo(-1.8,0);c.closePath();c.fill();}
+        else {c.beginPath();c.moveTo(0,-5);c.bezierCurveTo(1,0,5,0,2,3);c.bezierCurveTo(-3,6,-5,1,0,-5);c.fill();c.beginPath();c.moveTo(-4,5);c.lineTo(4,4);c.stroke();}
+        c.restore();return true;}
+    return {kind,draw};
+})();
+
+// Silver is a saved, local RPG resource; guild reputation and supply credits stay separate.
+const BMCurrency=(()=>{
+    function balance(){Dungeon.memory??={};const v=Dungeon.memory.silver;return Number.isSafeInteger(v)&&v>=0?v:0;}
+    function add(n){if(!Number.isSafeInteger(n)||n<0||!Number.isSafeInteger(balance()+n))return false;Dungeon.memory.silver=balance()+n;return true;}
+    function spend(n){if(!Number.isSafeInteger(n)||n<0||balance()<n)return false;Dungeon.memory.silver=balance()-n;return true;}
+    return {balance,add,spend};
+})();
+
+// A reading is a single saved transaction: draw -> context -> interpretation -> award.
+const BMCardSage=(()=>{
+    let timeout=null;
+    const prices={1:18,3:48};
+    function gematria(name){const letters=String(name).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z]/g,'');const sum=[...letters].reduce((n,c)=>n+c.charCodeAt(0)-64,0);return {method:'English A1Z26',letters,sum,root:sum?1+(sum-1)%9:0};}
+    function context(){return {name:String(playerName||'Traveller').slice(0,80),class:Dungeon.playerClass||'none',level:Dungeon.level||1,
+        realm:BMRealm.current()?BMRealm.snapshot(BMRealm.current()).slice(0,2400):'',
+        recent:playerChronicle.filter(e=>e.entryType==='record').slice(-12).map(e=>String(e.text).replace(/^\[RECORD\]\s*/, '').slice(0,480))};}
+    const receipt=()=>Dungeon.memory?.sageReading||null;
+    function fallback(r){const cards=r.cardIds.map(id=>new Card(id,0).name).join(' beside '),facts=r.context.recent.join(' ').toLowerCase();
+        const trace=/hostage|prisoner|rescued|freed/.test(facts)?'You have stopped for those whom others left behind. The next locked door may ask whether your mercy extends to its keeper.':
+            /cook|fish|herb|craft/.test(facts)?'You have learned to wait while small things change in your hands. Soon the harder choice may be what to leave untouched.':
+            /slain|defeated|battle|combat/.test(facts)?'You have answered danger by stepping closer. Watch for the quiet offer after the clash; strength cannot choose its price for you.':
+            'Your road has not yet told me enough to name its turning. When the next invitation comes, notice what you are unwilling to leave behind.';
+        return `“${cards}: ${r.meanings[0].split('. When reversed:')[0]}. ${trace}”`;}
+    function finish(id,reading,source){const r=receipt();if(!r||r.id!==id||r.status!=='pending')return false;
+        clearTimeout(timeout);timeout=null;
+        // Mark and award together in the same synchronous save; late replies cannot award again.
+        r.reading=String(reading||fallback(r)).slice(0,1800);r.source=source;r.status='complete';r.completedAt=Date.now();
+        for(const cardId of r.cardIds)Dungeon.extra.push(BMMastery.card(Dungeon,cardId));
+        Dungeon.updateSkills();Dungeon.requestSave();
+        BMActivity.record('tarot_reading',`${r.reader} read ${r.cardIds.map(id=>new Card(id,0).name).join(', ')} for ${r.cost} silver. Kept every drawn card. Reading: ${r.reading}`,
+            {transactionId:r.id,cardIds:r.cardIds,cost:r.cost,currency:'silver',reading:r.reading,interpretationSource:source,gematria:r.gematria,context:r.context,readingIsAnOmen:true});
+        BMShell.invalidate();return true;
+    }
+    function recover(){const r=receipt();if(r?.status==='pending'&&!timeout)finish(r.id,fallback(r),'local');}
+    function open(n){if(!n||n.isDead||n.cachedPrey&&!n.cachedPrey.isDead)return false;
+        Dungeon.currentSpeaker=n;preGame='explore';BMTouch.cancel();window.isGuildShop=false;window.isWildernessShop=false;
+        BMShop.configure({cardSage:true});recover();startGame='shop';return true;}
+    function draw(count){if(!BMShop.isSage||!prices[count]||receipt()?.status==='pending'||BMCurrency.balance()<prices[count])return false;
+        const pool=Array.from({length:78},(_,id)=>id),cardIds=[];
+        for(let i=0;i<count;i++)cardIds.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
+        // Snapshot only after drawing. The interpreter never gets to choose or change the cards.
+        const info=context(),id='reading_'+newStoryId(),r={id,cardIds,cost:prices[count],reader:Dungeon.currentSpeaker?.name||'The card sage',status:'pending',createdAt:Date.now(),context:info,gematria:gematria(info.name),meanings:cardIds.map(id=>getOracleText(new Card(id,0)))};
+        if(!BMCurrency.spend(r.cost))return false;Dungeon.memory.sageReading=r;Dungeon.requestSave();
+        BMActivity.record('tarot_reading_started',`Paid ${r.cost} silver to ${r.reader}; drew ${cardIds.map(id=>new Card(id,0).name).join(', ')}. Awaiting the reading.`,{transactionId:id,cardIds,cost:r.cost,gematria:r.gematria});
+        if(!socket?.connected){finish(id,fallback(r),'local');return true;}
+        timeout=setTimeout(()=>finish(id,fallback(r),'local'),25000);
+        try{BMActivity.join();socket.emit('request_sage_reading',{requestId:id,cardIds,context:info},reply=>{
+            if(reply?.ok&&reply.requestId===id&&typeof reply.reading==='string'&&reply.reading.trim())finish(id,reply.reading,'suncat');
+            else finish(id,fallback(r),'local');
+        });}catch{finish(id,fallback(r),'local');}
+        return true;
+    }
+    return {open,draw,receipt,prices,gematria,recover,finish};
+})();
+
 // Merchant stock supports physical cards, stack items/books and recruit contracts.
-// Existing barter and guild reputation remain the currencies.
 const BMShop=(()=>{
     const labels={cards:'Cards',items:'Items',recruit:'Recruit'};
-    let selected=null,offers=new Set(),ingredients=[],message='',category='',hireStock=[],merchantKey='',stockSignature='';
+    let selected=null,offers=new Set(),ingredients=[],message='',category='',hireStock=[],merchantKey='',stockSignature='',sage=false;
     const cleanName=id=>new Card(id,0).name;
     const currencyKey=()=>window.isWildernessShop?'wildernessCredits':'guild_rep';
-    const balance=()=>Dungeon.memory?.[currencyKey()]||0;
-    const currency=()=>window.isWildernessShop?'Wilderness supply credits':'guild reputation';
+    const balance=()=>window.isGuildShop?(Dungeon.memory?.[currencyKey()]||0):BMCurrency.balance();
+    const currency=()=>window.isGuildShop?(window.isWildernessShop?'Wilderness supply credits':'guild reputation'):'silver';
     function configure(payload){
         if(!window.isGuildShop)window.isWildernessShop=false;
-        const data=Array.isArray(payload)?{cards:payload}:payload||{};
+        const data=Array.isArray(payload)?{cards:payload}:payload||{};sage=!!data.cardSage;
         shopInventory=[...(data.cards||[]),...(data.items||[])];hireStock=(data.hires||[]).map(h=>({...h}));
     }
     function stock(){return shopInventory.map((value,index)=>{
@@ -94747,13 +94862,13 @@ const BMShop=(()=>{
     }).filter(Boolean);}
     function hires(){return hireStock.map((h,index)=>({...h,index,name:h.name||cleanName(h.cardId)})).filter(h=>CARD_MANIFEST_DB[h.cardId]?.type==='monster'&&(h.count===undefined||h.count>0));}
     function enter(){
-        selected=null;offers.clear();ingredients=[];message='';category=window.shopOpenRecruit?'recruit':'';window.shopOpenRecruit=false;activeShopTab='browse';
+        selected=null;offers.clear();ingredients=[];message='';category=window.shopOpenRecruit?'recruit':'';window.shopOpenRecruit=false;activeShopTab=sage?'reading':'browse';
         for(const c of [...offeredCards,comboSlot1,comboSlot2])if(c)Dungeon.extra.push(c);offeredCards=[];comboSlot1=comboSlot2=null;BMMastery.sync(Dungeon);
         merchantKey=(!window.isGuildShop||window.isWildernessShop)&&Dungeon.currentSpeaker?.index!=null?`${Dungeon.mapID}:${Dungeon.customMapInstance||''}:${Dungeon.currentSpeaker.index}`:'';
         stockSignature=JSON.stringify({stock:shopInventory,hires:hireStock});
         const saved=merchantKey&&Dungeon.memory?.merchantStock?.[merchantKey];
         if((saved?.signature===stockSignature||saved?.signature===JSON.stringify(shopInventory))&&Array.isArray(saved.stock)){shopInventory=saved.stock.slice();if(Array.isArray(saved.hires))hireStock=saved.hires.map(h=>({...h}));}
-        BMActivity.record('shop_visit',`Visited ${window.isGuildShop?'the guild stores':Dungeon.currentSpeaker?.name||'a merchant'}.`,{cards:stock().filter(s=>s.kind==='card').map(s=>s.id),items:stock().filter(s=>s.kind==='item').map(s=>s.name),hires:hires().map(h=>h.name)});
+        BMActivity.record(sage?'tarot_visit':'shop_visit',`Visited ${window.isGuildShop?'the guild stores':Dungeon.currentSpeaker?.name||'a merchant'}.`,{cards:stock().filter(s=>s.kind==='card').map(s=>s.id),items:stock().filter(s=>s.kind==='item').map(s=>s.name),hires:hires().map(h=>h.name)});
     }
     function rememberStock(){if(merchantKey){Dungeon.memory??={};Dungeon.memory.merchantStock??={};Dungeon.memory.merchantStock[merchantKey]={signature:stockSignature,stock:shopInventory.slice(),hires:hireStock.map(h=>({...h}))};}}
     const available=()=>BMMastery.available(Dungeon),grouped=()=>groupCards(available()),offered=()=>available().filter(c=>offers.has(c.uid));
@@ -94766,39 +94881,43 @@ const BMShop=(()=>{
     }
     function purchase(){
         const entry=selected,current=entry&&stock().find(s=>s.index===entry.index&&s.kind===entry.kind&&s.name===entry.name);
-        if(!current){message='That stock is no longer available.';return false;}
+        if(sage||!current){message='That stock is no longer available.';return false;}
         const cost=price(entry),offerCards=offered();
         if(window.isGuildShop){if(balance()<cost){message='Not enough '+currency()+'.';return false;}}
-        else if(getPower(null,offerCards)<cost){message='Choose enough cards to meet the trade value.';return false;}
+        else if(BMCurrency.balance()<cost){message='Not enough silver. Sell spare cards to earn more.';return false;}
         // Validate item definitions before spending anything.
         if(entry.kind==='item'&&!entry.item.key&&entry.item.kind!=='skillbook'){message='This item has no inventory identity.';return false;}
         if(window.isGuildShop)Dungeon.memory[currencyKey()]=balance()-cost;
-        else if(!BMMastery.consume(Dungeon,offerCards.map(c=>c.uid)))return false;
+        else if(!BMCurrency.spend(cost))return false;
         if(entry.kind==='card')Dungeon.extra.push(BMMastery.card(Dungeon,entry.id));
         else BMInventory.add({...entry.item,name:entry.name,key:entry.item.key||'skillbook:'+entry.item.spellId},1);
-        shopInventory.splice(entry.index,1);rememberStock();BMActivity.record('shop_purchase',`Received ${entry.name} for ${cost} ${window.isGuildShop?currency():'trade value'}.`,{kind:entry.kind,id:entry.id,spentCards:offerCards.map(c=>c.index),price:cost});
+        shopInventory.splice(entry.index,1);rememberStock();BMActivity.record('shop_purchase',`Received ${entry.name} for ${cost} ${currency()}.`,{kind:entry.kind,id:entry.id,spentCards:offerCards.map(c=>c.index),price:cost});
         message=`Received ${entry.name}.`;selected=null;offers.clear();finish();return true;
     }
     function hireStatus(h){if(BMGuild.rankValue(Dungeon.memory.guild_rank)<BMGuild.rankValue(h.reqRank||'F'))return 'Requires guild rank '+h.reqRank;if((Dungeon.activeSummons||[]).length>=3)return 'Party full · 3 allies';if((Dungeon.memory.guild_rep||0)<(h.cost||0))return 'Not enough guild reputation';return '';}
     function hire(index){const h=hires().find(h=>h.index===index);if(!h||hireStatus(h))return false;Dungeon.memory.guild_rep=(Dungeon.memory.guild_rep||0)-(h.cost||0);Dungeon.summonAlly(h.cardId);if(!h.repeat)hireStock[index].count=Math.max(0,(hireStock[index].count??1)-1);rememberStock();message=h.name+' joined your party.';BMActivity.record('ally_hired',`Hired ${h.name} for ${h.cost||0} guild reputation.`,{cardId:h.cardId,cost:h.cost||0});finish();return true;}
+    const sellPrice=id=>Math.max(1,Math.floor(getPower(new Card(id,0))||1));
+    function sell(id){if(sage||window.isGuildShop)return false;const c=available().find(c=>c.index===id);if(!c)return false;
+        const value=sellPrice(id);if(!Number.isSafeInteger(BMCurrency.balance()+value)||!BMMastery.consume(Dungeon,[c.uid]))return false;
+        BMCurrency.add(value);message=`Sold ${cleanName(id)} for ${value} silver.`;BMActivity.record('shop_sale',message,{cardId:id,count:1,silver:value});finish();return true;}
     function finish(){Dungeon.updateSkills();Dungeon.requestSave();}
-    function feed(id,count){const before=BMMastery.level(Dungeon,id),success=BMMastery.feed(Dungeon,id,count);message=success?`${cleanName(id)} gained ${count*BMMastery.copyXP} mastery XP${BMMastery.level(Dungeon,id)>before?` · now +${BMMastery.level(Dungeon,id)}`:''}.`:'Keep one owned copy. Active summon cards cannot be fed.';if(success)BMActivity.record('mastery_refined',`Fed ${count} ${cleanName(id)} cards into mastery; now +${BMMastery.level(Dungeon,id)}.`,{cardId:id,count});return success;}
-    function chooseIngredient(id){if(ingredients.length>=2)return false;const c=available().find(c=>c.index===id&&!ingredients.includes(c.uid));if(c)ingredients.push(c.uid);return !!c;}
+    function feed(id,count){if(!sage)return false;const before=BMMastery.level(Dungeon,id),success=BMMastery.feed(Dungeon,id,count);message=success?`${cleanName(id)} gained ${count*BMMastery.copyXP} mastery XP${BMMastery.level(Dungeon,id)>before?` · now +${BMMastery.level(Dungeon,id)}`:''}.`:'Keep one owned copy. Active summon cards cannot be fed.';if(success)BMActivity.record('mastery_refined',`Fed ${count} ${cleanName(id)} cards into mastery; now +${BMMastery.level(Dungeon,id)}.`,{cardId:id,count});return success;}
+    function chooseIngredient(id){if(!sage||ingredients.length>=2)return false;const c=available().find(c=>c.index===id&&!ingredients.includes(c.uid));if(c)ingredients.push(c.uid);return !!c;}
     const ingredientCards=()=>ingredients.map(uid=>available().find(c=>c.uid===uid)).filter(Boolean);
     const recipeKey=r=>[r.mat1,r.mat2].sort((a,b)=>a-b).join('+');
     function recipeFor(ids){return ids.length===2?FUSION_RECIPES.find(r=>(r.mat1===ids[0]&&r.mat2===ids[1])||(r.mat1===ids[1]&&r.mat2===ids[0])):null;}
     const discovered=()=>FUSION_RECIPES.filter(r=>Dungeon.memory.discoveredRecipes?.[recipeKey(r)]);
     function knownPair(ids){const r=recipeFor(ids);return r&&Dungeon.memory.discoveredRecipes?.[recipeKey(r)]?r:null;}
     function combine(){
-        const cards=ingredientCards();if(cards.length!==2)return false;const recipe=recipeFor(cards.map(c=>c.index)),pair=cards.map(c=>cleanName(c.index)).join(' + ');
+        if(!sage)return false;const cards=ingredientCards();if(cards.length!==2)return false;const recipe=recipeFor(cards.map(c=>c.index)),pair=cards.map(c=>cleanName(c.index)).join(' + ');
         if(!recipe){ingredients=[];message='Nothing formed. Both cards have been returned.';BMActivity.record('combination_failed',`Tried combining ${pair}. Nothing formed; both cards were returned.`,{cards:cards.map(c=>c.index)});return false;}
         if(!BMMastery.consume(Dungeon,cards.map(c=>c.uid)))return false;
         Dungeon.extra.push(BMMastery.card(Dungeon,recipe.result));ingredients=[];Dungeon.memory.discoveredRecipes??={};const first=!Dungeon.memory.discoveredRecipes[recipeKey(recipe)];Dungeon.memory.discoveredRecipes[recipeKey(recipe)]=true;
         message=`${first?'Recipe discovered! ':''}Created ${cleanName(recipe.result)}.`;BMActivity.record('combination_success',`Combined ${pair} into ${cleanName(recipe.result)}${first?' and discovered its recipe':''}.`,{recipe,first});finish();return true;
     }
-    function absorb(id){const c=available().find(c=>c.index===id);if(!c)return false;const xp=getPower(new Card(id,0))*10;if(xp<=0||!BMMastery.consume(Dungeon,[c.uid]))return false;Dungeon.xp+=xp;Dungeon.levelUpPlayer();message=`Channeled ${cleanName(id)} into ${xp} character XP.`;BMActivity.record('card_channeled',message,{cardId:id,xp});finish();return true;}
+    function absorb(id){if(!sage)return false;const c=available().find(c=>c.index===id);if(!c)return false;const xp=getPower(new Card(id,0))*10;if(xp<=0||!BMMastery.consume(Dungeon,[c.uid]))return false;Dungeon.xp+=xp;Dungeon.levelUpPlayer();message=`Channeled ${cleanName(id)} into ${xp} character XP.`;BMActivity.record('card_channeled',message,{cardId:id,xp});finish();return true;}
     function leave(){offers.clear();ingredients=[];selected=null;Dungeon.requestSave();if(Dungeon.savedViewMode)window.gameViewMode=Dungeon.savedViewMode;if(Dungeon.savedCameraMode)Dungeon.cameraMode=Dungeon.savedCameraMode;const wilderness=window.isWildernessShop,guild=window.isGuildShop;window.isGuildShop=false;window.isWildernessShop=false;startGame=wilderness?'wilderness_guild':guild?'guild_menu':preGame==='explore'?'explore':3;if(guild){window.activeGuildTab='bounties';window.guildSubState='rank_select';}else{Dungeon.isProcessingActions=false;Dungeon.processNextAction();}BMTouch.cancel();}
-    return {labels,configure,stock,hires,hire,hireStatus,enter,balance,currency,available,grouped,offered,pick,offer,price,purchase,feed,chooseIngredient,ingredientCards,recipeFor,knownPair,discovered,combine,absorb,leave,get selected(){return selected;},get message(){return message;},get category(){return category;},set category(v){category=v;},cancel(){selected=null;offers.clear();},clearIngredients(){ingredients=[];},removeIngredient(i){ingredients.splice(i,1);}};
+    return {labels,configure,stock,hires,hire,hireStatus,enter,sell,sellPrice,get isSage(){return sage;},balance,currency,available,grouped,offered,pick,offer,price,purchase,feed,chooseIngredient,ingredientCards,recipeFor,knownPair,discovered,combine,absorb,leave,get selected(){return selected;},get message(){return message;},get category(){return category;},set category(v){category=v;},cancel(){selected=null;offers.clear();},clearIngredients(){ingredients=[];},removeIngredient(i){ingredients.splice(i,1);}};
 })();
 
 const BMShopModels=(()=>{
@@ -94973,12 +95092,31 @@ const BMShell=(()=>{
     }
     function portrait(parent,id){const c=surface(parent,'portrait',id);c.className='thumb';}
     function shop(){
-        heading.textContent=window.isWildernessShop?'Wilderness supplies':window.isGuildShop?'Guild stores':Dungeon.currentSpeaker?.service?Dungeon.currentSpeaker.name:'Merchant & workshop';
-        tabs([['browse','Stock'],['refine','Refine'],['combo','Combine'],['absorb','Channel']],activeShopTab,id=>{activeShopTab=id;BMShop.cancel();});
+        heading.textContent=BMShop.isSage?(Dungeon.currentSpeaker?.name||'The card sage'):window.isWildernessShop?'Wilderness supplies':window.isGuildShop?'Guild stores':Dungeon.currentSpeaker?.name||'Merchant';
+        const shopTabs=BMShop.isSage?[['reading','Reading'],['refine','Refine'],['combo','Combine'],['absorb','Channel']]:window.isGuildShop?[['browse','Stock']]:[['browse','Buy'],['sell','Sell cards']];
+        if(!shopTabs.some(t=>t[0]===activeShopTab))activeShopTab=shopTabs[0][0];
+        tabs(shopTabs,activeShopTab,id=>{activeShopTab=id;BMShop.cancel();});
         const note=el('p',body,BMShop.message,'status');note.setAttribute('role','status');note.setAttribute('aria-live','polite');
         const act=fn=>()=>{fn();sound();listScroll=body.scrollTop;invalidate();};
-        if(activeShopTab==='browse'){
-            el('p',body,window.isGuildShop?`Available: ${BMShop.balance()} ${BMShop.currency()}.`:'Trade extra cards for cards and supplies. Recruitment uses guild reputation.','muted');
+        const greeting=(Dungeon.currentSpeaker?.customDialogue||[]).join(' ');if(greeting)el('p',body,greeting,'prose');
+        if(activeShopTab==='reading'){
+            el('h2',body,'A card for the road');el('p',body,`Purse: ${BMCurrency.balance()} silver. Every card in your reading is yours to keep.`,'status');
+            el('p',body,'The sage draws first, then reads the cards against your name and the trail you have left in the world.','muted');
+            const r=BMCardSage.receipt(),row=el('div',body,null,'row');
+            for(const [n,label]of [[1,'One card'],[3,'Three-card spread']]){const b=button(row,`${label} · ${BMCardSage.prices[n]} silver`,act(()=>BMCardSage.draw(n)),'primary');b.disabled=r?.status==='pending'||BMCurrency.balance()<BMCardSage.prices[n];}
+            if(BMCurrency.balance()<BMCardSage.prices[1])el('p',body,'Sell spare cards to a merchant to earn silver.','muted');
+            if(r){const panel=el('article',body,null,'card');el('h3',panel,r.status==='pending'?'The sage studies your cards…':r.reader+' says');
+                if(r.status==='pending')el('p',panel,'The draw is saved. You may leave while the sage considers it.','status');else el('p',panel,r.reading,'prose');
+                const grid=el('div',panel,null,'grid');r.cardIds.forEach((id,i)=>{const c=el('article',grid,null,'card');portrait(c,id);el('h3',c,new Card(id,0).name);el('p',c,r.cardIds.length===3?['Your trail','Your crossroads','The road ahead'][i]:'Your omen','eyebrow');const lore=el('details',c);el('summary',lore,'Card lore');el('p',lore,CARD_MANIFEST_DB[id]?.lore||new Card(id,0).desc);el('p',lore,r.meanings[i],'muted');});
+                const note=el('details',panel);el('summary',note,'The letters of your name');el('p',note,`${r.context.name} · ${r.gematria.method}: ${r.gematria.sum} → ${r.gematria.root}.`,'muted');
+            }
+        }else if(activeShopTab==='sell'){
+            el('h2',body,`Your purse · ${BMCurrency.balance()} silver`);el('p',body,'Sell one spare card at a time. Cards in your deck and active summons are reserved. Selling a hotbar card removes that physical copy.','muted');
+            const grid=el('div',body,null,'grid');for(const group of BMShop.grouped()){const id=group.viewCard.index,panel=el('article',grid,null,'card');portrait(panel,id);el('h3',panel,`${new Card(id,0).name} × ${group.count}`);button(panel,`Sell 1 · ${BMShop.sellPrice(id)} silver`,act(()=>BMShop.sell(id)));}
+            if(!BMShop.grouped().length)el('p',body,'No spare cards to sell.','muted');
+        }else if(activeShopTab==='browse'){
+            el('p',body,`Available: ${BMShop.balance()} ${BMShop.currency()}.`,'muted');
+            if(Dungeon.currentSpeaker?.service==='merchant')button(body,'Play blackjack',()=>{BMShop.leave();BMCamp.open('blackjack');invalidate();});
             const stock=BMShop.stock(),cats=Object.keys(BMShop.labels).filter(cat=>cat==='recruit'?BMShop.hires().length:stock.some(s=>s.category===cat));
             if(!cats.includes(BMShop.category))BMShop.category=cats[0]||'';
             const categoryRow=el('div',body,null,'shop-categories');
@@ -94992,30 +95130,19 @@ const BMShell=(()=>{
             }else if(entry){
                 const panel=el('section',body,null,'card');if(entry.id!==undefined)portrait(panel,entry.id);el('h2',panel,entry.name);
                 el('p',panel,entry.kind==='card'?new Card(entry.id,0).desc:entry.item.kind==='skillbook'?'Read to learn '+BMLearning.name(entry.item.spellId)+'. Consumed only after successful learning.':BMInventory.description(entry.item),'muted');if(entry.item?.kind==='skillbook')el('p',panel,BMLearning.eligibility(entry.item.spellId).text,'status');
-                el('p',panel,`Cost: ${BMShop.price()} ${window.isGuildShop?BMShop.currency():'trade value'}.`);
-                if(!window.isGuildShop){
-                    const offered=BMShop.offered(),value=getPower(null,offered);
-                    el('p',panel,`Your offer: ${value} / ${BMShop.price()} · ${offered.length} cards`,'status');
-                    el('p',panel,'Cards stay in your collection until you confirm the trade. Active summon cards are reserved.','muted');
-                    for(const group of BMShop.grouped()){
-                        const c=group.viewCard,n=offered.filter(o=>o.index===c.index).length,row=el('div',panel,null,'shop-offer');
-                        el('span',row,`${new Card(c.index,0).name} · ${n} / ${group.count} offered · ${getPower(new Card(c.index,0))} each`);
-                        const less=button(row,'−',act(()=>BMShop.offer(c.index,false)));less.setAttribute('aria-label','Remove '+new Card(c.index,0).name+' from offer');less.disabled=!n;
-                        const more=button(row,'+',act(()=>BMShop.offer(c.index,true)));more.setAttribute('aria-label','Offer '+new Card(c.index,0).name);more.disabled=n===group.count;
-                    }
-                }
+                el('p',panel,`Cost: ${BMShop.price()} ${BMShop.currency()}.`);
                 const actions=el('div',panel,null,'row');
-                const buy=button(actions,window.isGuildShop?'Buy with '+BMShop.currency():'Confirm trade',act(()=>BMShop.purchase()),'primary');
-                buy.disabled=window.isGuildShop?BMShop.balance()<BMShop.price():!BMShop.offered().length||getPower(null,BMShop.offered())<BMShop.price();
+                const buy=button(actions,'Buy with '+BMShop.currency(),act(()=>BMShop.purchase()),'primary');
+                buy.disabled=BMShop.balance()<BMShop.price();
                 button(actions,'Back to stock',act(()=>BMShop.cancel()));
             }else{
                 const grid=el('div',body,null,'grid');
                 for(const entry of stock.filter(s=>s.category===BMShop.category)){
                     const card=el('article',grid,null,'card');if(entry.id!==undefined)portrait(card,entry.id);el('h3',card,entry.name);
-                    el('p',card,`${BMShop.price(entry)} ${window.isGuildShop?'reputation':'trade value'} · ${entry.kind==='card'?'Physical card':entry.item.kind==='skillbook'?'Skillbook':'Item'}`,'muted');
-                    button(card,window.isGuildShop?'View purchase':'View trade',act(()=>BMShop.pick(entry.index)));
+                    el('p',card,`${BMShop.price(entry)} ${BMShop.currency()} · ${entry.kind==='card'?'Physical card':entry.item.kind==='skillbook'?'Skillbook':'Item'}`,'muted');
+                    button(card,'View purchase',act(()=>BMShop.pick(entry.index)));
                 }
-                if(!stock.length)el('p',body,'This merchant has no stock left. The workshop is still available.','muted');
+                if(!stock.length)el('p',body,'This merchant has no stock left.','muted');
             }
         }else if(activeShopTab==='refine'){
             el('h2',body,'Feed the bottomless pit');
@@ -95055,7 +95182,7 @@ const BMShell=(()=>{
                 const b=button(row,`Spend 1 → ${xp} character XP`,act(()=>BMShop.absorb(c.index)));b.disabled=xp<=0;
             }
         }
-        foot(window.isGuildShop?'Back to guild':'Leave shop',()=>{BMShop.leave();invalidate();});
+        foot(BMShop.isSage?'Leave the sage':window.isGuildShop?'Back to guild':'Leave shop',()=>{BMShop.leave();invalidate();});
     }
 
     let galleryTab='original',gallerySuit='ALL',galleryRank='ALL',galleryQuery='',galleryId=null,galleryArt3D=false,tarotCards=[],tarotMeanings=[],tarotIndex=0;
@@ -95133,6 +95260,7 @@ const BMShell=(()=>{
     }
     function wildernessGuild(){
         heading.textContent='Travelers of the Wilderness';const v=BMRealm.current();
+        if(Dungeon.currentSpeaker?.customDialogue?.length)el('p',body,Dungeon.currentSpeaker.customDialogue.join(' '),'prose');
         el('p',body,`${BMRealm.rank()} · ${Dungeon.memory.wildernessRenown||0} renown · ${Dungeon.memory.wildernessCredits||0} supply credits`,'status');
         el('p',body,'An independent guild of the open road. Its rank and stores are separate from the Adventurers’ Guild. Every assignment stays within this realm.','muted');
         if(!v)el('p',body,'Accept an imp’s invitation to begin a new visit ledger.','card');
@@ -98408,7 +98536,7 @@ const BMIntro = (() => {
             remove_card:[{card:0},'Removes one matching card.'],
             play_sfx:['chime','Sound effect name.'], play_song:[0,'Song ID.'],
             close_dialogue:[null,'Closes dialogue and continues the sequence.'],
-            open_shop:[{cards:[50,63],items:[{kind:'skillbook',spellId:1001,name:'Spell: Drain',price:8}],hires:[{cardId:252,name:'Warrior',cost:1,reqRank:'F'}]},'Stock only the sections this keeper offers. Book price uses trade value, or guild reputation at guild stores. Hire cost uses guild reputation.'],
+            open_shop:[{cards:[50,63],items:[{kind:'skillbook',spellId:1001,name:'Spell: Drain',price:8}],hires:[{cardId:252,name:'Warrior',cost:1,reqRank:'F'}]},'Stock only the sections this keeper offers. Book price uses silver, or guild reputation at guild stores. Hire cost uses guild reputation.'],
             start_battle:[null,'NPC ID; blank means the speaking NPC. Use a battle-role NPC.'],
             disappear:[null,'NPC ID; blank means the speaking NPC.'],
             trigger_dialogue:[0,'NPC ID to speak next.'],
