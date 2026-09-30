@@ -28487,12 +28487,39 @@ function bufferHUDLayout(width=wX,height=wY,left=tX,top=tY,board=tL) {
     const padY=height>=width?Math.min(5,Math.max(0,height-top-board)/unit):0;
     return {padX:width>height?Math.min(5,Math.max(0,width-left-board)/unit):-padY*.5,
         padY,
-        chatX:.01369,chatY:-Math.min(2.86,Math.max(0,top)/unit),chatW:7.8,chatH:2.86};
+        chatX:.01369,chatY:-Math.max(0,top)/unit,chatW:7.8,chatH:2.86};
 }
-function positionMovementControl(button,x,y,type) {
-    if(startGame==='mapmaker'||!['d_pad','b_pad','turn_l','turn_r','joystick'].includes(type))return {x,y};
-    if(![btnMove,btnMove2,btnTurnL,btnTurnR,btnLook].includes(button))return {x,y};
-    const layout=bufferHUDLayout();return {x:x+layout.padX,y:y+layout.padY};
+// Portrait/square: dominant-thumb movement on the right, actions above
+// the skills on the left. Wide buffers keep the two-handed arrangement.
+// All touch targets and the drawn controls share these CSS-pixel rectangles.
+function controlHUDLayout(){
+    const margin=12,gap=6,board=Math.min(wX,wY);
+    const sideBuffer=Math.max(0,(wX-board)/2),wide=sideBuffer>=52;
+    const padSize=wide?Math.min(196,Math.max(160,board*.34)):Math.min(216,Math.max(144,board*.45));
+    const lift=wide?32:Math.min(68,Math.max(40,board*.13));
+    const padX=wide?margin:wX-margin-padSize,padY=Math.max(margin,wY-lift-padSize);
+    const radius=Math.min(36,Math.max(28,board*.078));
+    const skillLeft=wide?margin+padSize+12:margin;
+    const skillRight=wide?wX-margin:padX-8;
+    const skillSize=board<360?44:48;
+    const skillCols=Math.max(1,Math.min(5,Math.floor((skillRight-skillLeft+gap)/(skillSize+gap))));
+    // Reserve the normal nine-slot capacity, so cooldowns/shuffles cannot
+    // move the primary buttons underneath a held finger.
+    const skillRows=Math.ceil(9/skillCols),skillHeight=skillRows*skillSize+(skillRows-1)*gap;
+    const skillTop=wY-24-skillHeight;
+    return {margin,gap,padSize,padX,padY,radius,sideBuffer,wide,skillSize,skillCols,skillTop,
+        actionY:wide?wY-margin-radius:skillTop-radius-20,
+        skillLeft,skillRight,skillBottom:wY-margin-2*radius-12};
+}
+function movementHUDRect(){
+    const dock=controlHUDLayout();
+    return {x:dock.padX,y:dock.padY,size:dock.padSize};
+}
+function positionMovementControl(button,x,y,type,z=1) {
+    if(startGame==='mapmaker'||!['d_pad','b_pad','turn_l','turn_r','joystick'].includes(type))return {x,y,z};
+    if(![btnMove,btnMove2,btnTurnL,btnTurnR,btnLook].includes(button))return {x,y,z};
+    const r=movementHUDRect(),u=tL/10,scale=r.size/(5*u);
+    return {x:(r.x-tX)/u+(x-5)*scale,y:(r.y-tY)/u+(y-5)*scale,z:z*scale};
 }
 function chatHUDLayout(){return bufferHUDLayout();}
 function isChatHUDHit(x,y){const r=chatHUDLayout();return x>=r.chatX&&x<=r.chatX+r.chatW&&y>=r.chatY&&y<=r.chatY+(isChatActive||r.chatY<0?r.chatH:2.36);}
@@ -28592,7 +28619,7 @@ const BMTouch = (() => {
     let mover = null, looker = null, attackAt = 0;
     let lastMap = null, moveSpeed = 1, lastScene = null;
     const live = () => startGame === 'explore' && !Dungeon.isLoading && !Dungeon.isDying && !Dungeon.isViewingAtlas && !Dungeon.isViewingWorld && !isChatActive && !document.hidden;
-    const enabled = () => live() && window.gameViewMode === '3d' && window.settingsControlsMode === 'touch';
+    const enabled = () => live() && window.settingsControlsMode === 'touch';
     const cameraAngle = () => (Dungeon.currentAngle ?? Dungeon.dir * Math.PI / 2) + (Dungeon.lookPan || 0);
     const freeCamera = () => window.gameViewMode === '3d' && window.settingsControlsMode === 'touch';
     function settleCamera() {
@@ -28603,7 +28630,7 @@ const BMTouch = (() => {
         Dungeon.lookPan=Math.atan2(Math.sin(angle-Dungeon.currentAngle),Math.cos(angle-Dungeon.currentAngle));
         Dungeon._cinePan=undefined;Dungeon._cinePitch=undefined;
     }
-    let sensitivity=1.6,settingsPanel=null,jumpPlacement=null;
+    let sensitivity=1.6,settingsPanel=null;
     try{const saved=Number(localStorage.getItem('bm-touch-camera-sensitivity'));if(saved>=.5&&saved<=3)sensitivity=saved;}catch(_){}
     function setSensitivity(value){sensitivity=Math.max(.5,Math.min(3,Number(value)||1.6));try{localStorage.setItem('bm-touch-camera-sensitivity',String(sensitivity));}catch(_){}return sensitivity;}
     function settingsUI(){
@@ -28632,7 +28659,7 @@ const BMTouch = (() => {
     function ownsButton(button){for(const f of fingers.values())if(f.button===button)return true;return false;}
     function releaseButton(f){if(f?.button){f.button.isPressed=false;f.button.currentDir=null;f.button.joyX=f.button.joyY=0;}}
     function padDown(e){
-        if(window.settingsControlsMode!=='dpad'&&window.gameViewMode!=='2d')return false;
+        if(window.settingsControlsMode!=='dpad')return false;
         const x=(e.clientX-tX)/(tL/10),y=(e.clientY-tY)/(tH/10);
         // Match the existing overlapping pad hit order, especially the centre look stick.
         const pads=window.gameViewMode==='3d'?[btnMove2,btnTurnL,btnTurnR,btnLook,btnMove]:[btnMove];
@@ -28646,33 +28673,30 @@ const BMTouch = (() => {
         return false;
     }
     function bound() { return Dungeon.activeBuffs?.some(b => b.bind); }
-    function placeJump(x,y,r,px,py,u){
-        const count=Dungeon.activeBtnsCache?.length||0,key=[wX,wY,tX,tY,tL,count,r,px,py].join('|');
-        if(jumpPlacement?.key===key)return jumpPlacement;
-        const cards=Array.from({length:count},(_,i)=>{const q=skillHUDRect(i,count);return {x:q.x,y:q.y,w:q.size,h:q.size};});
-        const chat=chatHUDLayout(),blocks=[...cards,{x:px,y:py,w:5*u,h:5*u},{x:tX+chat.chatX*u,y:tY+chat.chatY*u,w:chat.chatW*u,h:chat.chatH*u},{x:tX+7.5*u,y:tY,w:2.5*u,h:3.7*u}];
-        const clear=(cx,cy)=>cx>=r+8&&cx<=wX-r-8&&cy>=r+8&&cy<=wY-r-8&&blocks.every(b=>Math.hypot(cx-Math.max(b.x,Math.min(cx,b.x+b.w)),cy-Math.max(b.y,Math.min(cy,b.y+b.h)))>=r+8);
-        let best={key,x,y},distance=Infinity;
-        const xs=[x,px-r-12,r+16,...cards.flatMap(b=>[b.x-r-8,b.x+b.w+r+8])];
-        const ys=[y,wY-r-16,py-r-12,...cards.flatMap(b=>[b.y-r-8,b.y+b.h+r+8])];
-        for(const cx of xs)for(const cy of ys)if(clear(cx,cy)){const d=(cx-x)**2+(cy-y)**2;if(d<distance){distance=d;best={key,x:cx,y:cy};}}
-        jumpPlacement=best;return best;
-    }
     function buttons() {
-        if (!live() || window.gameViewMode !== '3d') return [];
-        const u=tL/10,r=Math.max(32,Math.min(40,u*.8)),portrait=wY>wX,touch=window.settingsControlsMode==='touch';
-        const bottom=portrait?Math.min(wY-r-18,tY+tL+(touch?2.7:3.7)*u):tY+6.65*u;
-        const right=wX-r-16;
-        const out=touch?[{id:'attack',label:'Attack',x:right,y:bottom,r},{id:'jump',label:'Jump',x:right-2*r-16,y:bottom,r}]:[];
-        if(!touch){
-            let x=portrait?right:tX+1.6*u,y=portrait?bottom:tY+6.6*u;
-            const layout=bufferHUDLayout(),px=tX+(5+layout.padX)*u,py=tY+(5+layout.padY)*u;
-            if(x+r+8>px&&x-r-8<px+5*u&&y+r+8>py&&y-r-8<py+5*u){x=px-r-12;if(x<r+8){x=right;y=py-r-12;}}
-            if(wX>wY)({x,y}=placeJump(x,y,r,px,py,u));
-            out.push({id:'jump',label:'Jump',x,y,r});
+        if (!live()) return [];
+        const dock=controlHUDLayout(),r=dock.radius,y=dock.actionY;
+        if(!dock.wide){
+            const out=[{id:'attack',label:'Attack',x:dock.margin+3*r+14,y:y-6,r}];
+            if(window.gameViewMode==='3d')out.push({id:'jump',label:'Jump',x:dock.margin+r,y:y+6,r});
+            if(BMFishing.available())out.push({id:'fish',label:BMFishing.active?'Reel':'Fish',x:dock.margin+r,y:y-r-42,r:24});
+            return out;
         }
-        if(BMFishing.available())out.push({id:'fish',label:BMFishing.active?'Reel':'Fish',x:tX+.7*u,y:tY+5.1*u,r:Math.max(22,Math.min(28,u*.48))});
+        const x=wX-dock.margin-r,out=[{id:'attack',label:'Attack',x,y,r}];
+        if(window.gameViewMode==='3d')out.push({id:'jump',label:'Jump',x:x-2*r-12,y,r});
+        if(BMFishing.available()){
+            const left=dock.skillLeft,right=out.at(-1).x-r-12;
+            const fishR=Math.max(12,Math.min(24,(right-left)/2));
+            out.push({id:'fish',label:BMFishing.active?'Reel':'Fish',x:(left+right)/2,y,r:fishR});
+        }
         return out;
+    }
+    function skillHit(e){
+        return (Dungeon.activeBtnsCache||[]).find(b=>{
+            if(!b?.visible)return false;
+            const u=tL/10,s=b.scale||1;
+            return e.clientX>=tX+b.x*u&&e.clientX<=tX+(b.x+b.l*b.z*s)*u&&e.clientY>=tY+b.y*u&&e.clientY<=tY+(b.y+b.h*b.z*s)*u;
+        });
     }
     function overUI(e) {
         const x=(e.clientX-tX)/(tL/10), y=(e.clientY-tY)/(tH/10);
@@ -28700,10 +28724,12 @@ const BMTouch = (() => {
     function down(e) {
         if (e.target!==canvas || (e.pointerType==='mouse' && e.button!==0)) return false;
         if (!live()) { cancel();return false; }
+        // Skills win hit testing, even during a resize or a second held pointer.
+        const skill=skillHit(e);
+        if(skill){claim(e,'skill');BMFishing.cancel();skill.press();return true;}
         if(padDown(e))return true;
         // A second finger on a skill/attack button must not release movement.
         // Opening a menu still cancels held controls through live()/tick().
-        if (overUI(e)) return false;
         for (const b of buttons()) {
             if (Math.hypot(e.clientX-b.x,e.clientY-b.y)<=b.r+5) {
                 claim(e,b.id);
@@ -28713,13 +28739,19 @@ const BMTouch = (() => {
                 return true;
             }
         }
+        if (overUI(e)) return false;
         if (!enabled() || !['touch','pen'].includes(e.pointerType)) return false;
-        const v=worldViewport();
-        if (e.clientX<wX*.5 && e.clientY>Math.max(wY*.45,v.y+v.h*.45)) {
+        const v=worldViewport(),dock=controlHUDLayout(),pad=movementHUDRect();
+        const inMoveZone=dock.wide
+            ?e.clientX<wX*.5&&e.clientY>Math.max(wY*.45,v.y+v.h*.45)
+            :e.clientX>=pad.x-12&&e.clientY>=pad.y-12;
+        if (inMoveZone) {
             if (mover!==null) return false;
             claim(e,'move');mover=e.pointerId;return true;
         }
-        if (e.clientX>=wX*.5 && e.clientY>=v.y && e.clientY<wY) {
+        // In one-hand layouts the world above the right pad remains available
+        // for camera swipes; a movement finger never turns into a look finger.
+        if (window.gameViewMode==='3d' && (!dock.wide||e.clientX>=wX*.5) && e.clientY>=v.y && e.clientY<wY) {
             if (looker!==null) return false;
             claim(e,'look');looker=e.pointerId;return true;
         }
@@ -28730,7 +28762,7 @@ const BMTouch = (() => {
         e.preventDefault();
         if (!live() || (['look','move'].includes(f.role) && !enabled())) { cancel();return true; }
         if(f.button){
-            if(window.settingsControlsMode!=='dpad'&&window.gameViewMode!=='2d'){cancel();return true;}
+            if(window.settingsControlsMode!=='dpad'){cancel();return true;}
             const x=(e.clientX-tX)/(tL/10),y=(e.clientY-tY)/(tH/10);
             if(f.button.type==='joystick')f.button.updateJoystick(x,y);
             else if(!f.button.isTouched(x,y))f.button.currentDir=null;
@@ -28753,12 +28785,13 @@ const BMTouch = (() => {
         if(tap)attack();
         e.preventDefault();return true;
     }
+    function thumbRadius(){return Math.max(62,Math.min(82,movementHUDRect().size*.38));}
     function vector() {
         const f=fingers.get(mover);if (!f || !enabled()) return null;
         const dx=f.x-f.ox,dy=f.y-f.oy,len=Math.hypot(dx,dy);
-        const dead=14,radius=62;
+        const dead=14,radius=thumbRadius();
         if (len<dead) { f.octant=null;return null; }
-        const angle=cameraAngle()+Math.atan2(dx,-dy),candidate=Math.round(angle/(Math.PI/4));
+        const angle=(window.gameViewMode==='2d'?0:cameraAngle())+Math.atan2(dx,-dy),candidate=Math.round(angle/(Math.PI/4));
         // Hysteresis holds a direction through small thumb/camera tremors.
         if(f.octant==null || Math.abs(Math.atan2(Math.sin(angle-f.octant*Math.PI/4),Math.cos(angle-f.octant*Math.PI/4)))>Math.PI/8+.10)f.octant=candidate;
         const strength=Math.min(1,(len-dead)/(radius-dead));
@@ -28770,6 +28803,7 @@ const BMTouch = (() => {
         const base=Math.max(.10,Math.min(.30,.22/(1+.035*(BMPlayerMotion.agility()-4))));
         Dungeon.currentCooldown=base;Dungeon.targetCooldown=base;
         Dungeon.inputCooldown=base*Math.hypot(v.x,v.y)/moveSpeed;
+        if(window.gameViewMode==='2d')Dungeon.dir=Math.abs(v.x)>Math.abs(v.y)?(v.x>0?1:3):(v.y>0?2:0);
         executeDungeonMove(v.x,v.y,true);
     }
     function tick(now=performance.now()) {
@@ -28780,15 +28814,20 @@ const BMTouch = (() => {
             lastMap=Dungeon.mapID;
         }
         if (!enabled() && (mover!==null || looker!==null)) cancel();
-        if(window.settingsControlsMode!=='dpad'&&window.gameViewMode!=='2d'&&[...fingers.values()].some(f=>f.button))cancel();
+        if(window.settingsControlsMode!=='dpad'&&[...fingers.values()].some(f=>f.button))cancel();
         if (live() && [...fingers.values()].some(f=>f.role==='attack')) attack(now);
         BMFishing.tick(now);
     }
     function draw() {
         ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
         const thumb=fingers.get(mover);
+        if(enabled()&&!thumb){
+            const p=movementHUDRect();ctx.strokeStyle='rgba(201,184,87,.35)';ctx.fillStyle='rgba(13,15,8,.30)';ctx.lineWidth=1.5;
+            ctx.beginPath();ctx.arc(p.x+p.size/2,p.y+p.size/2,p.size*.45,0,Math.PI*2);ctx.fill();ctx.stroke();
+            ctx.fillStyle='#d6c89d';ctx.font='12px sans-serif';ctx.fillText('Move',p.x+p.size/2,p.y+p.size/2);
+        }
         if(thumb&&enabled()){
-            const dx=thumb.x-thumb.ox,dy=thumb.y-thumb.oy,len=Math.hypot(dx,dy),r=62,k=Math.min(1,r/Math.max(1,len));
+            const dx=thumb.x-thumb.ox,dy=thumb.y-thumb.oy,len=Math.hypot(dx,dy),r=thumbRadius(),k=Math.min(1,r/Math.max(1,len));
             ctx.strokeStyle='rgba(220,205,156,.40)';ctx.fillStyle='rgba(15,15,10,.22)';ctx.lineWidth=1.5;
             ctx.beginPath();ctx.arc(thumb.ox,thumb.oy,r,0,Math.PI*2);ctx.fill();ctx.stroke();
             ctx.beginPath();ctx.arc(thumb.ox,thumb.oy,14,0,Math.PI*2);ctx.stroke();
@@ -28802,8 +28841,8 @@ const BMTouch = (() => {
         }
         ctx.restore();BMFishing.draw();
     }
-    return {freeCamera,settleCamera,settingsUI,setSensitivity,get sensitivity(){return sensitivity;},enabled,live,down,move,up,cancel,step,tick,draw,buttons,cameraAngle,vector,ownsButton,
-        get moving(){return !!vector();},get travelSpeed(){return freeCamera()?moveSpeed:1;},
+    return {attack,freeCamera,settleCamera,settingsUI,setSensitivity,get sensitivity(){return sensitivity;},enabled,live,down,move,up,cancel,step,tick,draw,buttons,cameraAngle,vector,ownsButton,
+        get moving(){return !!vector();},get travelSpeed(){return enabled()?moveSpeed:1;},
         get jumpHeight(){return BMPlayerMotion.height;}};
 })();
 
@@ -28926,19 +28965,30 @@ const BMFishing=(()=>{
     return {available:()=>safe()&&(!!cast||!!nearby()),press,tick,cancel,draw,reset(){cancel();reveal=null;checked=-Infinity;water=null;notice='';},get active(){return !!cast;},get biting(){return !!cast&&performance.now()>=cast.bite;}};
 })();
 window.addEventListener('blur',()=>{BMTouch.cancel();BMFishing.cancel();});
+window.addEventListener('resize',()=>BMTouch.cancel());
 window.addEventListener('lostpointercapture',e=>BMTouch.up(e));
 document.addEventListener('visibilitychange',()=>{if(document.hidden){BMTouch.cancel();BMFishing.cancel();}});
 
-// Reflow only when the full left-hand column fits outside the camera.
-// Near-square and portrait views retain straight horizontal rows.
+// Wide screens use the left buffer as a vertical rail. Portrait/square
+// skill rows begin below the action buttons, filling left-to-right/downward.
 function skillHUDRect(index,count){
-    const u=tL/10,old={x:tX+(index%6)*1.05*u,y:tY+(9-Math.floor(index/6)*1.05)*u,size:u};
-    if(wX<=wY)return old;
-    const size=Math.max(u,Math.min(64,Math.max(48,u*1.6)));
-    const rows=Math.min(Math.max(1,count),Math.max(1,Math.floor((wY-16)/(size+8))));
-    const columns=Math.ceil(Math.max(1,count)/rows),margin=worldViewport().x;
-    if(margin<24+columns*(size+8))return old;
-    return {x:16+Math.floor(index/rows)*(size+8),y:wY-12-rows*size-(rows-1)*8+(index%rows)*(size+8),size};
+    const dock=controlHUDLayout(),pad=movementHUDRect(),total=Math.max(1,count);
+    if(dock.wide){
+        const size=wY<650?44:48,gap=4,availableH=pad.y-24;
+        const rows=Math.max(1,Math.floor((availableH+gap)/(size+gap)));
+        const cols=Math.ceil(total/rows),usedRows=Math.min(rows,total);
+        const width=cols*size+(cols-1)*gap,height=usedRows*size+(usedRows-1)*gap;
+        if(width<=dock.sideBuffer-8){
+            return {x:(dock.sideBuffer-width)/2+Math.floor(index/rows)*(size+gap),
+                y:12+Math.max(0,(availableH-height)/2)+(index%rows)*(size+gap),size};
+        }
+        const sizeFallback=48,colsFallback=Math.max(1,Math.min(5,Math.floor((dock.skillRight-dock.skillLeft+dock.gap)/(sizeFallback+dock.gap))));
+        const rowsFallback=Math.ceil(total/colsFallback),used=Math.min(colsFallback,total);
+        return {x:dock.skillRight-used*sizeFallback-(used-1)*dock.gap+(index%colsFallback)*(sizeFallback+dock.gap),
+            y:dock.skillBottom-rowsFallback*sizeFallback-(rowsFallback-1)*dock.gap+Math.floor(index/colsFallback)*(sizeFallback+dock.gap),size:sizeFallback};
+    }
+    return {x:dock.skillLeft+(index%dock.skillCols)*(dock.skillSize+dock.gap),
+        y:dock.skillTop+Math.floor(index/dock.skillCols)*(dock.skillSize+dock.gap),size:dock.skillSize};
 }
 function drawSkillHUD(buttons){
     const u=tL/10;
@@ -28965,6 +29015,11 @@ function skillHUDKey(e){
     e.preventDefault();BMFishing.cancel();button.press();return true;
 }
 window.addEventListener('keydown',skillHUDKey);
+window.addEventListener('keydown',e=>{
+    if((e.code!=='Space'&&e.key!==' ')||!BMTouch.live()||e.ctrlKey||e.altKey||e.metaKey||e.isComposing||e.defaultPrevented)return;
+    for(const el of [e.target,document.activeElement])if(el&&(el.isContentEditable||/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName||'')))return;
+    e.preventDefault();BMTouch.attack();
+});
 
 function worldViewport(){
     // Keep the square HUD coordinate system. Widen only the 3D camera frustum.
@@ -29126,6 +29181,28 @@ window.BMPerformance=BMPerformance;
             };
 
             const MAP_DB = {
+                // A quiet pocket of the world. The fire and the tent are interactable landmarks.
+                700: {
+                    name: 'Wanderer’s Camp', biome: 'Sylvan', skyColor: '#17283c',
+                    floorColor: '#193b27', weather: 'clear',
+                    maze: [
+                        [3,3,3,3,3,3,3,3,3,3],
+                        [3, 0, 0, 0, 0, 0, 0, 0, 0,3],
+                        [3,93,93, 0, 0, 0, 0, 0, 0,3],
+                        [3,93,93, 0, 0, 0, 0, 0, 0,3],
+                        [3, 0, 0, 0, 0, 0, 0, 0, 0,3],
+                        [3, 0, 0, 0, 0, 0, 0, 0, 0,3],
+                        [3, 0, 0, 0, 0, 0, 0, 0, 0,3],
+                        [3, 0, 0, 0, 0, 0, 0, 0, 0,3],
+                        [3, 0, 0, 0, 0, 0, 0, 0, 0,3],
+                        [3,3,3,3,3,3,3,3,3,3]
+                    ],
+                    npcs: [
+                        {index:70001,x:4.5,y:4.5,sprite:-205,name:'Campfire',role:'dialogue',alignment:'friendly',deck:[]},
+                        {index:70002,x:7.5,y:6.5,sprite:-206,name:'Leather tent',role:'dialogue',alignment:'friendly',deck:[]}
+                    ]
+                },
+
                 // ---------------------------------------------------------
                 // MAP -2: Gibraltar
                 // ---------------------------------------------------------
@@ -29423,7 +29500,7 @@ window.BMPerformance=BMPerformance;
                         { index: 8003, x: 59.5, y: 30.5, sprite: 261, role: 'dialogue', deck: [22, 24, 26, 29, 93], alignment: 'friendly', customDialogue: ["Life is suffering."], options: ["Listen", "Leave"], yesActions: [['train', 'mage_trainer']], noActions: [['close_dialogue', null]] },
                         { index: 8004, x: 47.5, y: 30.5, sprite: 255, role: 'dialogue', deck: [27, 28, 8, 12], alignment: 'friendly', customDialogue: ["Life is joy."], options: ["Listen", "Leave"], yesActions: [['train', 'priest_trainer']], noActions: [['close_dialogue', null]] },
                         { index: 8005, x: 55.5, y: 35.5, sprite: 306, role: 'dialogue', deck: [64, 65, 66, 71, 70], alignment: 'friendly', customDialogue: ["The strong have a duty to protect the weak."], options: ["Listen", "Leave"], yesActions: [['train', 'knight_trainer']], noActions: [['close_dialogue', null]] },
-                        { index: 8006, x: 56.5, y: 23.5, sprite: 264, role: 'dialogue', deck: [191, 194, 188], alignment: 'friendly', customDialogue: ["Some hunters capture and tame beasts."], options: ["Listen", "Leave"], yesActions: [['train', 'beastmaster_trainer']], noActions: [['close_dialogue', null]] },
+                        { index: 8006, x: 56.5, y: 23.5, sprite: 264, role: 'dialogue', deck: [191, 194, 188], alignment: 'friendly', customDialogue: ["Nature teaches those who listen."], options: ["Ask about survival", "Leave"], yesActions: [['train', 'hunter_trainer']], noActions: [['close_dialogue', null]] },
                         { index: 541713, x: 77.5, y: 90.5, sprite: 243, role: 'portal', deck: [81.5, 8.5, 14, 2], alignment: 'friendly', 
                             onSpawn: (npc, d) => {
                                 let rankValues = { 'F':0, 'E':1, 'D':2, 'C':3, 'B':4, 'A':5, 'S':6 };
@@ -29812,7 +29889,7 @@ window.BMPerformance=BMPerformance;
                                 let dialogueText = rejections === 0 ? ["This Emperor seems a bit weird.", "He's making me uncomfortable...", "Can I come with you?"] : [["C'mon. Please?", "I really need you.", "Don't leave me hanging here!", "I'll carry your bags! I'll sing you songs! ...Actually I'm tone deaf, but please?!", "Are you seriously going to leave a poor, defenseless Fool in a dungeon?", "Look into my eyes. Do you see the desperation? Say yes!", "I'm not asking anymore. I'm telling you to let me ask you again. Please?", "If you click 'No' one more time, I'm going to cry. Right here on the floor.", "You're just doing this to see how many lines of dialogue I have, aren't you?", "*Inhales deeply* PLEEAAASEEEEE!!!", "My mom said I could go if you said yes!", "I'll give you a shiny rock I found! ...I don't actually have a rock, but the thought counts?", "Ugh, fine! Be that way! ...Wait no, come back, take me with you!"][Math.floor(Math.random() * 13)]];
                                 return {
                                     text: dialogueText, options: ['Sure, tag along.', 'Not a chance.'],
-                                    yesActions: [['set_memory', { key: 'fool_joined', value: true }], ['set_flag', { key: 'MainQuest', value: 1 }], ['play_sfx', 'chime'], ['transform_npc', { index: 100, newAlignment: 'escort', newState: 'following' }], ['add_escort', { index: 100, type: 158, color: '#00ff00' }], ['notify', { text: "The Fool enthusiastically joined your party!", endActions: [['close_dialogue', null]] }]],
+                                    yesActions: [['set_memory', { key: 'fool_joined', value: true }], ['set_flag', { key: 'MainQuest', value: 1 }], ['play_sfx', 'chime'], ['transform_npc', { index: 100, newAlignment: 'escort', newState: 'following' }], ['add_escort', { index: 100, type: 0, color: '#00ff00', storyId: 'fool' }], ['notify', { text: "The Fool enthusiastically joined your party!", endActions: [['close_dialogue', null]] }]],
                                     noActions: [['set_memory', { key: 'fool_rejections', value: rejections + 1 }], ['play_sfx', 'cancel'], ['trigger_dialogue', 100]]
                                 };
                             }
@@ -31955,7 +32032,7 @@ window.BMPerformance=BMPerformance;
                     38: { type: 'item_booster', name: 'Quest Reward', boosterSize: 1, lootPool: 'any', cooldown: 450000, sfx: 'chime' },
                     41: { type: 'item_booster', name: 'Loot',  boosterSize: 1, lootPool: 'magic', cooldown: 450000, sfx: 'chime' },
                     44: { type: 'item_booster', name: 'Djinn Lamp', cooldown: 86400000, sfx: 'chime' },
-                    53: { type: 'item_booster', name: 'Camp',  boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' }, 
+                    53: { type: 'item_booster', name: 'Camp',  boosterSize: 1, lootPool: 'magic', cooldown: 0, sfx: 'chime' },
                     69: { type: 'item_booster', name: 'Charity',       boosterSize: 1, lootPool: 'magic', cooldown: 86400000, sfx: 'chime' },
                     71: { type: 'item_booster', name: 'Forge', boosterSize: 1, lootPool: 'item', cooldown: 900000, sfx: 'chime' },
 
@@ -33244,6 +33321,7 @@ function applyExtraCardDefinition(card){
                 console.log(">>> NETWORK EVENT: NPC Died!", data);
 
                 if (typeof Dungeon !== 'undefined') {
+                    if(data.mapID===999&&data.instanceId&&data.instanceId!==Dungeon.customMapInstance)return;
                     let targetMap = parseInt(data.mapID);
                     let targetIndex = parseInt(data.index);
 
@@ -33261,17 +33339,18 @@ function applyExtraCardDefinition(card){
                     }
 
                     // 2. Only write to the death ledger if it was a Native map NPC
-                    if (!wasSpawned) {
+                    if (!wasSpawned || targetMap===999) {
                         let uniqueID = targetMap + "_" + targetIndex;
                         Dungeon.memory[uniqueID] = { permanent: true };
                     }
 
+                    if(targetMap===999){BMScenario.defeated({index:targetIndex},data.reason);BMRealm.retire(targetIndex);}
                     // 3. Clean it up visually if we are on the same map
                     if (Dungeon.mapID === targetMap) {
                         let arrayIndex = Dungeon.npcs.findIndex(n => parseInt(n.index) === targetIndex);
                         
                         // EXACT SPRITE FALLBACK FOR STANDARD MAPS
-                        if (arrayIndex === -1 && data.type !== undefined) {
+                        if (targetMap!==999 && arrayIndex === -1 && data.type !== undefined) {
                             arrayIndex = Dungeon.npcs.findIndex(n => n.type === data.type);
                         }
                         
@@ -33285,20 +33364,6 @@ function applyExtraCardDefinition(card){
                     
                     Dungeon.requestSave();
                 }
-                });
-            socket.on("client_killed_npc", (data) => {
-                // 1. (Optional) Log it to the server's master dead list if you are tracking global states
-                let uniqueID = data.mapID + "_" + data.index;
-                serverDeadList[uniqueID] = { permanent: true }; // Assuming you have a global serverDeadList
-
-                // 2. Broadcast the death to ALL OTHER connected clients
-                // using socket.broadcast.emit ensures the player who killed it doesn't receive 
-                // the event back (since they already processed it locally).
-                socket.broadcast.emit("npc_died", {
-                    mapID: data.mapID,
-                    index: data.index,
-                    type: data.type
-                });
                 });
             socket.on("suncat_revive_npc", (data) => {
                 if (typeof Dungeon !== 'undefined') {
@@ -33348,6 +33413,7 @@ function applyExtraCardDefinition(card){
                 } catch(error) {if(typeof ack==='function') ack({ok:false,error:error.message});}
             });
             
+            socket.on('scenario_state',data=>BMScenario.receive(data));
             socket.on('load_custom_map', (data) => {
                 // Assuming your Explore instance is saved to a variable named 'Dungeon'
                 if(typeof Dungeon==='undefined') window.latestCustomMapData=data;
@@ -33377,7 +33443,8 @@ function applyExtraCardDefinition(card){
             });
              socket.on('remote_spawn_npc',(data)=>{
                 if(typeof Dungeon==='undefined') return;
-                try {SUNCAT_CLIENT.spawn(Dungeon,data,false);}
+                if(data.mapID===999&&data.instanceId&&Dungeon.customMapInstance!==data.instanceId)return;
+                try {SUNCAT_CLIENT.spawn(Dungeon,data,false);BMScenario.remember(data);}
                 catch(error) {console.error('[Suncat spawn]',error);}
             });
             socket.on("force_teleport", (data) => {
@@ -33440,48 +33507,9 @@ function applyExtraCardDefinition(card){
               const fullDate =
                   data.timestamp || new Date().toLocaleString();
           
-              function appendOnce(entries, storageKey, text) {
-        if (typeof text !== "string" || !text.trim()) return;
+                appendJournalEntry(playerChronicle, "runestones_chronicle", data, data.playerChronicle);
+                appendJournalEntry(suncatChronicle, "suncat_chronicle", data, data.suncatThoughts);
 
-        const id = data.entryId || null;
-
-        if (id && entries.some(entry => entry.id === id)) return;
-
-        const isCore =
-            data.entryType === "chapter" ||
-            data.entryType === "retrospective";
-
-        entries.push({
-            id,
-            timestamp: fullDate,
-            text,
-            title: data.title || "",
-            entryType: data.entryType || "record",
-            isCore
-        });
-
-        try {
-            localStorage.setItem(storageKey, JSON.stringify(entries));
-        } catch (error) {
-            console.error(
-                "Journal remains in memory, but local saving failed:",
-                error
-            );
-        }
-        }
-
-                appendOnce(
-                    playerChronicle,
-                    "runestones_chronicle",
-                    data.playerChronicle
-                );
-            
-                appendOnce(
-                    suncatChronicle,
-                    "suncat_chronicle",
-                    data.suncatThoughts
-                );
-            
                 // Keep your existing perception-update block below this.
                 
                 // Instantly update the UI Card if Suncat changed his opinion!
@@ -34862,10 +34890,11 @@ const BMMastery=(()=>{
                     data.isBoss ?? false,data.alignment ?? 'foe',data.level ?? data.mastery ?? 0);
                 n.customDialogue=Array.isArray(data.dialogue)?data.dialogue:null;
                 for (const key of ['options','rewardCard','yesActions','noActions','endActions','deathActions',
-                    'isCinematic','instanceId','summonTag','isAquatic','isFlying','isFloating']) {
+                    'isCinematic','instanceId','summonTag','isAquatic','isFlying','isFloating','classification','scenarioWave','marchRoute','service','serviceStock','objectiveKind','cardId','homeX','homeY']) {
                     if (data[key] !== undefined) n[key]=data[key];
                 }
                 if (data.name) n.name=data.name;
+                if(data.instanceId)BMRealm.restoreActor(n,data);
                 return n;
             },
             safePosition(world, x, y, type, occupied=true) {
@@ -34895,7 +34924,7 @@ const BMMastery=(()=>{
                 const record=world.memory[key]?.find(n=>n.index===data.index);
                 if (record) Object.assign(record,data);
                 const n=data.mapID===world.mapID?world.npcs.find(n=>n.index===data.index):null;
-                if (n) for (const key of ['name','summonTag','instanceId','isAquatic','isFlying','isFloating']) {
+                if (n) for (const key of ['name','summonTag','instanceId','isAquatic','isFlying','isFloating','classification','scenarioWave','marchRoute','service','serviceStock','objectiveKind','cardId','homeX','homeY']) {
                     if (data[key]!==undefined) n[key]=data[key];
                 }
                 world.requestSave();
@@ -35226,6 +35255,10 @@ const BMMastery=(()=>{
             }
             }
         triggerInteraction(dungeon, index = 0) {
+            // Camp landmarks act immediately on walking into them or targeting them.
+            if(dungeon.mapID===999&&(this.service||this.objectiveKind)){BMRealm.interact(this);return;}
+            if(dungeon.mapID===700&&this.index===70001){BMCamp.openAtFire();return;}
+            if(dungeon.mapID===700&&this.index===70002){BMCamp.leave();return;}
             // ==========================================
             // 1. DIALOGUE & INTERACTIVE ROLES
             // ==========================================
@@ -35540,6 +35573,7 @@ const BMMastery=(()=>{
             }
         }
         startDialogue(dungeon) {
+            if(this.type===-205||this.type===-206||dungeon.mapID===999&&(this.service||this.objectiveKind))return; // Camp props have direct interactions.
 
             if (this.role === 'portal' || this.role === 'internal_portal') return;
             Dungeon.savedViewMode = window.gameViewMode  ;
@@ -35833,7 +35867,7 @@ const BMMastery=(()=>{
                  if (!this._suncatMetadataApplied) {
                     this._suncatMetadataApplied=true;
                     const saved=dungeon.memory?.['spawned_'+dungeon.mapID]?.find(n=>n.index===this.index);
-                    if(saved) for(const key of ['name','summonTag','instanceId','isAquatic','isFlying','isFloating']) {
+                    if(saved) for(const key of ['name','summonTag','instanceId','isAquatic','isFlying','isFloating','classification','scenarioWave','marchRoute','service','serviceStock','objectiveKind','cardId','homeX','homeY']) {
                         if(saved[key]!==undefined) this[key]=saved[key];
                     }
                 }
@@ -35946,7 +35980,7 @@ const BMMastery=(()=>{
                 }
                 // --- APPLY CACHED TARGET ---
                 if (currentPrey) {
-                    if (this.alignment.startsWith('ally') || this.alignment.startsWith('defender')) {
+                    if (this.alignment.startsWith('ally') || this.alignment.startsWith('defender') || this.alignment==='escort_combat') {
                         let leash = this.state === 'chasing' ? 13.0 : 6.0; 
                 
                         if (distToActualPlayer < leash || this.alignment.startsWith('defender')) {
@@ -35969,8 +36003,8 @@ const BMMastery=(()=>{
                     } else if (this.alignment.startsWith('defender')) {
                         targetX = this.originx; targetY = this.originy; isChasingNPC = false;
                         let distToHome = Math.sqrt(Math.pow(targetX - this.x, 2) + Math.pow(targetY - this.y, 2));
-                        if (distToHome > 2.0) { this.state = 'following'; this.speed = 1.5; } 
-                        else { this.state = 'wandering'; this.speed = 1; }
+                        if (distToHome > (this.service?.35:2.0)) { this.state = 'following'; this.speed = 1.5; }
+                        else { this.state = this.service?'stationary':'wandering'; this.speed = this.service?0:1; }
                     } else if (this.alignment.startsWith('friendly')) {
                         targetX = (this.alignment === 'friendly_messenger') ? playerX : (this.originx || this.x); 
                         targetY = (this.alignment === 'friendly_messenger') ? playerY : (this.originy || this.y);
@@ -35983,6 +36017,14 @@ const BMMastery=(()=>{
                     }
                 }
 
+                let marching=false;
+                if(this.scenarioWave&&Array.isArray(this.marchRoute)&&!currentPrey&&
+                    !(distToActualPlayer<6*Math.sqrt(agiMultiplier)&&this.hasLineOfSight(maze,playerX,playerY))){
+                    this.marchStep ||= 0;
+                    while(this.marchStep<this.marchRoute.length-1&&Math.hypot(this.x-this.marchRoute[this.marchStep].x,this.y-this.marchRoute[this.marchStep].y)<.65)this.marchStep++;
+                    const goal=this.marchRoute[this.marchStep];
+                    if(goal){targetX=goal.x;targetY=goal.y;marching=true;this.state='chasing';}
+                }
                 this.chasing = isChasingNPC;
                 const diffPlayerX = targetX - this.x;
                 const diffPlayerY = targetY - this.y;
@@ -36028,7 +36070,7 @@ const BMMastery=(()=>{
                         }
                     }
                 }
-                else if (this.state === 'chasing' && typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
+                else if (!marching && this.state === 'chasing' && typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                     if (!isChasingNPC) {
                         let hasLOS = this.hasLineOfSight(dungeon.maze, playerX, playerY);
                         
@@ -36130,6 +36172,7 @@ const BMMastery=(()=>{
                         this.speed = 2.5;
                     }
                 }
+                else if (marching) {this.state='chasing';this.speed=2;}
                 else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                     if (isChasingNPC) {
                         this.state = 'chasing'; this.speed = 3;
@@ -38083,7 +38126,8 @@ const BMMastery=(()=>{
 
                 this.defaultSpawns = {
                     "-2": { x: 44.5, y: 73.5, dir: 0 },
-                    0:  { x: 53.5, y: 26.5, dir: 0 }, 
+                    0:  { x: 53.5, y: 26.5, dir: 0 },
+                    700: { x: 5.5, y: 7.5, dir: 0 }, 
                     1:  { x: 6.5,  y: 1.5,  dir: 0 }, 
                     2:  { x: 6.5,  y: 13.5, dir: 2 }, 
                     3:  { x: 30.5, y: 45.5, dir: 0 }, 
@@ -38209,19 +38253,22 @@ const BMMastery=(()=>{
                 this.card[3] = new Card(8, 0);  // str
                 this.card[4] = new Card(13, 0); // death
 
-                // --- LOAD INITIAL GAME ---
-                // Attempt to load the game. If it fails (no save exists), start a new game.
-                if (!this.loadGame()) {
-                    this.x = 53.5;
-                    this.y = 26.5;
-                    this.dir = 0; 
-                    this.mapID = 0;
+                // Restore only after all game modules and the Dungeon singleton
+                // exist. Saved summons/maps depend on helpers declared below.
+                this._gameInitialized = false;
+        }
+        initializeGame() {
+            if(this._gameInitialized)return;
+            this.isLoading=true;
+            try {
+                if(!this.loadGame({strict:true})) {
+                    this.x=53.5;this.y=26.5;this.dir=0;this.mapID=0;
                     this.loadMap(0);
                 }
-                
-                this.isLoading = false; 
+                this._gameInitialized=true;
+            } finally { this.isLoading=false; }
         }
-        
+
         //ONLINE
             get players() {
                 // Convert remotePlayers object to an Array
@@ -38265,6 +38312,8 @@ const BMMastery=(()=>{
             }  
         //MEMORY
             saveGame() {
+                // Never overwrite a save with a half-restored startup state.
+                if(this.isLoading||this._gameInitialized===false)return;
                 if(this.mapID===888&&BMTacticsSession.practice(this.tacticsReturn?.config||{}))return;
                 if (this.isTestingMap || (typeof startGame !== 'undefined' && startGame === 'mapmaker')) {
                     console.log("Save blocked: Editor active.");
@@ -38337,7 +38386,7 @@ const BMMastery=(()=>{
                     this.saveDebounceTimer = null;
                 }, 2000); // 2000ms = 2 seconds
             }
-            loadGame() {
+            loadGame({strict=false}={}) {
                 const json = localStorage.getItem('battlemage_save');
                 if (!json) {
                     console.log("No save file found.");
@@ -38519,6 +38568,8 @@ const BMMastery=(()=>{
 
                 } catch (e) {
                     console.error("Failed to load save:", e);
+                    // A startup failure must never quietly become a fresh game.
+                    if(strict)throw e;
                     return false;
                 }
             }
@@ -38719,6 +38770,8 @@ const BMMastery=(()=>{
             }
         //MAP DATA
             loadMap(id) {
+                if(this.mapID===999&&id===700){chatLog.push('[SYSTEM]: Use the arrival outpost campfire in online realms.');return false;}
+                if(this.mapID===999&&id!==999&&id!==888&&!this.isLoading)BMRealm.finish('Left the realm.');
                 if (id===999 && !this._loadingCustomMap) {
                     let cached=window.latestCustomMapData;
                     if(!cached) {try {cached=JSON.parse(localStorage.getItem('suncat.lastCustomMap') || 'null');} catch(error) {}}
@@ -38734,7 +38787,7 @@ const BMMastery=(()=>{
                     this.projectiles = [];
                     this.spatialGrid = {};
                 // --- 1. OVERWORLD POSITION CACHE ---
-                    if (this.mapID !== undefined && this.mapID !== 888 && this.mapID !== 999 && this.mapID !== -1 && this.mapID !== -2) {
+                    if (this.mapID !== undefined && this.mapID !== 700 && this.mapID !== 888 && this.mapID !== 999 && this.mapID !== -1 && this.mapID !== -2) {
                         this.overworldX = this.x;
                         this.overworldY = this.y;
                         this.overworldDir = this.dir;
@@ -38898,12 +38951,14 @@ const BMMastery=(()=>{
 
                     if (this.activeEscorts && this.activeEscorts.length > 0) {
                         this.activeEscorts.forEach(escortData => {
+                            // Repair the original Fool recruitment payload in existing saves. Zero is his real sprite.
+                            if(escortData.index===100&&this.memory.fool_joined&&(escortData.type===158||escortData.storyId==='fool')){escortData.type=0;escortData.storyId='fool';}
                             let escortNPC = this.npcs.find(n => n.index === escortData.index);
                             if (!escortNPC) {
                                 escortNPC = new NPC(escortData.index, this.x, this.y, escortData.type, 'following', escortData.color || '#00ff00', escortData.deck || [], 'dialogue', false, 'escort');
                                 this.npcs.push(escortNPC);
-                            } else { escortNPC.x = this.x; escortNPC.y = this.y; }
-                            escortNPC.isDead = false; escortNPC.visible = true; escortNPC.alignment = 'escort'; escortNPC.role = 'dialogue';
+                            } else { escortNPC.x = this.x; escortNPC.y = this.y;if(escortData.storyId==='fool')escortNPC.type=0; }
+                            escortNPC.isDead = false; escortNPC.visible = true; escortNPC.alignment = escortData.alignment==='escort_combat'?'escort_combat':'escort'; escortNPC.role = 'dialogue';if(escortData.name)escortNPC.name=escortData.name;
                             escortNPC.state = 'following'; escortNPC.options = null; 
                             if (!escortNPC.dialogueFactory) escortNPC.customDialogue = ["Lead the way! I am right behind you."];
                         });
@@ -38928,6 +38983,8 @@ const BMMastery=(()=>{
                 if (!data || data.id!==999 || !Array.isArray(data.maze) || !data.maze[0]?.length || !Array.isArray(data.npcs)) {
                     throw new Error('Invalid generated map blueprint.');
                 }
+                const newVisit=BMRealm.begin(data);
+                if(this.mapID===999&&this.customMapInstance===data.instanceId&&this.customScenario){BMScenario.sync(data);if(newVisit){this.x=data.spawnX;this.y=data.spawnY;this.targetMapX=this.x;this.targetMapY=this.y;this.isSlidingToTile=false;BMActivity.record('realm_visit_started',`Accepted an invitation to ${data.name}. A fresh visit ledger has begun.`,{visitId:data.visit.id});this.requestSave();}return;}
                 const cachedReturn=data.instanceId && window.latestCustomMapData?.instanceId===data.instanceId?window.latestCustomMapData.returnTo:null;
                 const returnTo=data.returnTo || cachedReturn || (this.mapID!==999?{mapID:this.mapID,x:this.x,y:this.y}:null);
                 const loading=this.isLoading;
@@ -38937,7 +38994,7 @@ const BMMastery=(()=>{
                     this.maze=data.maze.map(row=>row.slice());
                     this.mapID=999;this.skyColor=data.skyColor;this.floorColor=data.floorColor;
                     this.scenarioType=data.scenarioType || 'bounty';this.biome=data.biome;
-                    this.customMapInstance=data.instanceId;
+                    this.customMapInstance=data.instanceId;this.customScenario=data.scenario||null;this.scenarioEnding=false;
                     this.explored=this.maze.map(row=>Array(row.length).fill(0));
                     this.flowField=[];this.flowCacheKey=null;
                     this.x=data.spawnX;this.y=data.spawnY;
@@ -38948,7 +39005,7 @@ const BMMastery=(()=>{
                         if(seen.has(record.index)) continue;
                         seen.add(record.index);
                         const saved=this.memory[`999_${record.index}`];
-                        if(saved?.permanent) continue;
+                        if(saved?.permanent||record.isDead) continue;
                         const n=SUNCAT_CLIENT.makeNPC({...record,instanceId:data.instanceId});
                         if(saved?.respawnAt>Date.now()) {
                             n.isDead=true;n.visible=false;n.respawnTime=saved.respawnAt;
@@ -38970,6 +39027,7 @@ const BMMastery=(()=>{
                     if(typeof MusicEngine!=='undefined') {MusicEngine.followScene();MusicEngine.followScene();}
                     const cache={...data,returnTo};
                     window.latestCustomMapData=cache;
+                    if(data.scenario)BMActivity.record('scenario_entered',`Entered ${data.name}. ${data.scenario.objective}`,{instanceId:data.instanceId,scenarioType:data.scenarioType,objective:data.scenario.objective});
                     try {localStorage.setItem('suncat.lastCustomMap',JSON.stringify(cache));} catch(error) {console.warn(error);}
                 } finally {this._loadingCustomMap=false;this.isLoading=loading;}
                 this.requestSave();
@@ -40985,7 +41043,7 @@ const BMMastery=(()=>{
                 // ==========================================
                 // 4. PROCEDURAL SKYBOX OR INDOOR CEILING
                 // ==========================================
-                    const outdoorMaps = [-2,0,2,3,4,5,6, 9,10, 14, 22,999]; 
+                    const outdoorMaps = [-2,0,2,3,4,5,6, 9,10, 14, 22,700,999]; 
 
                     if (outdoorMaps.includes(this.mapID) || this.biome === 'Sylvan') {
                         
@@ -41645,7 +41703,8 @@ const BMMastery=(()=>{
                     if (this.inputCooldown > 0) this.inputCooldown -= dt;
 
                     if (this.inputCooldown <= 0 && (startGame === 'explore' || startGame === 'mapmaker')) {
-                        if (typeof btnMove !== 'undefined' && btnMove.isPressed && btnMove.currentDir) btnMove.press();
+                        if(BMTouch.moving)BMTouch.step();
+                        else if (typeof btnMove !== 'undefined' && btnMove.isPressed && btnMove.currentDir) btnMove.press();
                         else if (typeof btnTurnL !== 'undefined' && btnTurnL.isPressed) btnTurnL.press();
                         else if (typeof btnTurnR !== 'undefined' && btnTurnR.isPressed) btnTurnR.press();
                         else if (typeof btnMove2 !== 'undefined' && btnMove2.isPressed && btnMove2.currentDir) btnMove2.press();
@@ -41703,8 +41762,8 @@ const BMMastery=(()=>{
                 // 2. SETUP THE 2D GRID
                 drawShape('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, '#000000', 1);
 
-                let range = 6; 
-                let totalTiles = 10; 
+                let totalTiles = startGame==='mapmaker'?10:12;
+                let range = Math.ceil(totalTiles/2)+1; 
                 let cellSize = 10 / totalTiles; 
                 let centerScreenX = 5;
                 let centerScreenY = 5;
@@ -42079,11 +42138,11 @@ const BMMastery=(()=>{
 
                 let mmOffsetY = 0;
                 if(startGame === 'mapmaker'){mmOffsetY= 3}
-                if (startGame !== 'dialogue') {
-                    btnMove.show(5, 5-mmOffsetY, 5, 1, 1, '', 'd_pad', 1, 0);
-                    btnTurnL.show(5.2, 5.3-mmOffsetY, 1.5, 1, 1, '', 'turn_l', 1, 0);
-                    btnTurnR.show(8.3, 5.3-mmOffsetY, 1.5, 1, 1, '', 'turn_r', 1, 0);
-                }
+                if (startGame !== 'dialogue'&&(startGame==='mapmaker'||window.settingsControlsMode==='dpad')) {
+                    btnMove.show(5,5-mmOffsetY,5,1,1,'','d_pad',1,0);
+                }else {btnMove.visible=false;btnMove.isPressed=false;}
+                for(const b of [btnTurnL,btnTurnR,btnMove2,btnLook]){b.visible=false;b.isPressed=false;}
+                BMTouch.draw();
                 drawText(0.25, 0, 10, 0.5, `${Math.floor(this.x)},${Math.floor(this.y)}`, 'yellow', 1, 'center');
 
                 if (startGame !== 'mapmaker') {
@@ -42103,7 +42162,7 @@ const BMMastery=(()=>{
                     btnDeck.show(7.875, 2.275, .5, 1, 1, 'Deck', 'jrpg_btn', 1, 0);
                     btnJournal.show(8.575, 2.275, .5, 1, 1, 'Journal', 'jrpg_btn', 1, 0);
                     btnPOV.show(9.3, 2.275, .5, 1, 1, 'POV', 'jrpg_btn', 1, 0);
-                    btnATK.show(0, 9, 1, 1, 1, 'ATK', 'jrpg_btn', 1, 0);
+                    btnATK.visible=false;
                     BMHotbar.refresh(this,{continuous:true});
                     if(startGame!=='mapmaker')drawSkillHUD(this.activeBtnsCache||[]);
 
@@ -44248,8 +44307,8 @@ const BMMastery=(()=>{
                                 if (sprite.isBoss) npcMax = Math.floor(npcMax * 1.5);
                             }
                             
-                            let diff = npcMax - playerMax;
-                            
+                                
+                            const diff = npcMax - playerMax;
                             let conSolid = '#00FF00'; // Default: Green (Trivial)
                             if (diff >= 15) conSolid = '#FF0000'; // Red (Certain Death)
                             else if (diff >= 5) conSolid = '#FFFF00'; // Yellow (Challenge)
@@ -44435,6 +44494,7 @@ const BMMastery=(()=>{
                 let spellData = SPELL_REGISTRY[spellId];
                 if (!spellData) return;
                 if(BMEquipment.isEquip(spellId)&&!BMEquipment.status(spellId,this).ready)return false;
+                if(Number(spellId)===53&&!BMCamp.check())return false;
 
                 // 1. PRE-CALCULATE EFFICACY (The Caster's Roll)
                     let statToCast = spellData.castStat !== undefined ? spellData.castStat : 2; // Default INT
@@ -45096,7 +45156,8 @@ const BMMastery=(()=>{
                 }
                 // --- BOOSTER PACKS & UTILITY ---
                 else if (spellData.type === 'item_booster') {
-                    this.openBoosterPack(spellId); 
+                    const opened=this.openBoosterPack(spellId);
+                    if(opened===false)return false;
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('chime'); 
                 }
                 else if (spellData.type === 'item_teleport') {
@@ -45333,8 +45394,9 @@ const BMMastery=(()=>{
                 });
             }
             openBoosterPack(spellId) {
+                if(Number(spellId)===53&&!BMCamp.check())return false;
                 let spellData = SPELL_REGISTRY[spellId];
-                let pulledCardIDs = [];
+                let pulledCardIDs = [],campWardRestored=0;
                 
                     // --- DJINN LAMP INTERCEPT ---
                     // If they use the Djinn Lamp, skip the RNG and open the Wish menu!
@@ -45350,7 +45412,9 @@ const BMMastery=(()=>{
                         if (this.maxWards !== undefined && this.timePerWard !== undefined) {
                             // Restore exactly 1 Ward of time!
                             let maxTotalTime = this.maxWards * this.timePerWard;
-                            this.currentWardTime = Math.min(maxTotalTime, (this.currentWardTime || 0) + this.timePerWard);
+                            const beforeCampWard=this.currentWardTime||0;
+                            this.currentWardTime = Math.min(maxTotalTime, beforeCampWard + this.timePerWard);
+                            campWardRestored=this.currentWardTime-beforeCampWard;
                             if (typeof globalParticles !== 'undefined') {
                                 for (let p = 0; p < 5; p++) spawnParticle(this.x + (Math.random() - 0.5), this.y + (Math.random() - 0.5), '#00ff00', 'sparkle');
                             }
@@ -45418,6 +45482,17 @@ const BMMastery=(()=>{
                     }
                 }
 
+                // Camp uses the same reward roll as before, then enters the campsite.
+                // Add the reward once here; no queued loot popup can grant it again.
+                if(Number(spellId)===53){
+                    this.extra??=[];
+                    for(const id of pulledCardIDs)this.extra.push(new Card(id,0));
+                    const names=pulledCardIDs.map(id=>CARD_MANIFEST_DB[id]?.name||new Card(id,0).name).join(', ');
+                    const recovery=campWardRestored>0?'recovered '+(campWardRestored/this.timePerWard).toFixed(1).replace(/\.0$/,'')+' ward':'wards already full';
+                    BMActivity.record('camp_reward',`Made camp: ${recovery}; drew ${names}.`,{cardIds:pulledCardIDs,wardRestored:campWardRestored});
+                    const entered=BMCamp.enter(`Camp · ${recovery} · Drew ${names}.`);
+                    this.requestSave();return entered;
+                }
                 // 4. Trigger Loot UI (Display what they got)
                 // The dialogue system will trigger 'give_card' for every ID in this deck!
                 this.currentSpeaker = {
@@ -45657,7 +45732,7 @@ const BMMastery=(()=>{
                 for(const unit of tactics.units||[])if(unit.isDead&&unit.alignment==='ally'&&unit.role==='summoned_minion')this.resolveSummonDefeat(unit);
             }
             killNPC(npc, respawnInput = false, reason = 'combat', alignment = null) {
-                if (!npc) return false; // Safety check
+                if (!npc || npc.type===-205 || npc.type===-206) return false; // Camp landmarks cannot be killed.
                 if (npc === this) {
                     this.killPlayer(reason);
                     return false;
@@ -45672,6 +45747,7 @@ const BMMastery=(()=>{
                 npc.isDying = true; 
                 npc.isDead = true; 
                 npc.visible = false;
+                if(!['dialogue','despawn','story_event'].includes(reason))BMRealm.retire(npc.index);
                 
                 // Wipe physics so projectiles pass through their falling body
                 npc.isSliding = false;
@@ -45729,17 +45805,13 @@ const BMMastery=(()=>{
                             playerMax += (pDice.numDice * pDice.diceSides) + pDice.flatMod;
                         }
 
-                        let diff = npcMax - playerMax;
                         let cardName = (typeof Card !== 'undefined') ? new Card(Math.floor(npc.type), 0).name : 'a monster';
                         let currentWeather = this.weather ? this.weather.mode : 'clear';
                         
-                        let combatReport = "";
-                        if (diff >= 15) combatReport = `Player miraculously survived and killed a terrifyingly deadly ${cardName}.`;
-                        else if (diff >= 5) combatReport = `Player struggled but managed to defeat a tough ${cardName}.`;
-                        else if (diff >= -5) combatReport = `Player fought an evenly-matched ${cardName} and won.`;
-                        else combatReport = `Player effortlessly crushed a pathetically weak ${cardName}.`;
+                        if(!(this.mapID===999&&this.customScenario))BMActivity.record('combat_victory',
+                            `Defeated ${npc.name||cardName}. Wards: ${Math.max(0,this.currentWardTime||0).toFixed(2)} seconds remaining.`,
+                            {npcIndex:npc.index,cardId:Math.floor(npc.type),reason,weather:currentWeather,playerPotential:playerMax,opponentPotential:npcMax,wardSeconds:Math.max(0,this.currentWardTime||0)});
 
-                        socket.emit('suncat_spectate', `[Weather: ${currentWeather}] ${combatReport}`);
                     }
                     
                     // A. PLAYER LEVEL UP 
@@ -45765,16 +45837,22 @@ const BMMastery=(()=>{
                     socket.emit("client_killed_npc", {
                         mapID: this.mapID,
                         index: npc.index,
-                        type: npc.type
+                        type: npc.type,instanceId:this.customMapInstance,reason
                     });
                 }
                 
+                if(this.mapID===999&&this.customScenario&&npc.instanceId===this.customMapInstance&&
+                    !['dialogue','despawn','story_event'].includes(reason)&&npc.role!=='dropped_card'){
+                    BMActivity.record('scenario_npc_defeated',`${npc.name||'A creature'} fell in ${window.latestCustomMapData?.name||'the generated region'}. ${reason==='suncat_combat'?'Suncat struck the final blow.':reason==='npc_infighting'?'Another creature struck the final blow.':reason==='smite'?'Suncat vanquished the creature.':'Defeated during player-led combat.'}`,
+                        {instanceId:this.customMapInstance,index:npc.index,type:npc.type,reason,alignment:npc.alignment,protectedNpc:npc.cachedPrey&&npc.cachedPrey!==this&&!String(npc.cachedPrey.alignment||'').startsWith('foe')?npc.cachedPrey.index:null});
+                    BMScenario.defeated(npc,reason);
+                }
                 // 3. VANQUISH NPC
                 const storyRule = STORY_COMBAT_RULES[`${this.mapID}:${npc.index}`];
                 const storyVictory = storyRule && npc.role === 'battle' &&
                     !['story_event','dialogue','despawn'].includes(reason);
                 let delay;
-                if (storyVictory || respawnInput === true) delay = Infinity;
+                if (storyVictory || respawnInput === true || (this.mapID===999&&this.customScenario&&npc.instanceId===this.customMapInstance)) delay = Infinity;
                 else if (respawnInput === false || respawnInput === null) delay = npc.respawnDelay;
                 else delay = Number(respawnInput);
                 let isPermanent = delay === Infinity;
@@ -45898,7 +45976,7 @@ const BMMastery=(()=>{
                 ];
 
                 if (
-                        reason !== 'suncat_combat' && aliveHostiles === 1 &&
+                        !(this.mapID===999&&this.customScenario) && reason !== 'suncat_combat' && aliveHostiles === 1 &&
                         lastFoe &&
                         !lastFoe.isBoss &&
                         !lastFoe.isTarget &&
@@ -45929,43 +46007,11 @@ const BMMastery=(()=>{
                         ];
                     }
 
-                // 7. CUSTOM MAP SCENARIO COMPLETE
-                if (this.mapID === 999 && !this.scenarioEnding) {
-                    let scenarioWon = false;
-                    let endMessage = "";
-
-                    let aliveBosses = this.npcs.filter(n => n.isBoss && !n.isDead && n.index !== npc.index && n.x !== -999).length;
-                    let objectivesLeft = this.npcs.filter(n => (n.role === 'escort_giver' || n.role === 'reward') && !n.isDead && n.index !== npc.index && n.x !== -999).length;
-
-                    if (this.mapScenario === 'Raid') {
-                        if (aliveBosses === 0) { scenarioWon = true; endMessage = 'The Boss has been slain! The instance is collapsing...'; }
-                    } else if (this.mapScenario === 'Invasion' || this.mapScenario === 'Arena Madness') {
-                        if (aliveHostiles === 0 && aliveBosses === 0) { scenarioWon = true; endMessage = 'All foes have been vanquished! The realm is safe...'; }
-                    } else if (this.mapScenario === 'Rescue/Fetch') {
-                        if (objectivesLeft === 0 && aliveBosses === 0) { scenarioWon = true; endMessage = 'All objectives secured and all threats eliminated! Returning to the Overworld...'; }
-                    } else {
-                        if (aliveBosses === 0 && npc.isBoss) { scenarioWon = true; endMessage = 'The realm has been cleared! The instance is collapsing...'; }
-                    }
-
-                    if (scenarioWon) {
-                        this.scenarioEnding = true; 
-                        let currentQuest = endMessage + ' Teleporting in 10 seconds...';
-                        
-                        if (typeof MusicEngine !== 'undefined') {
-                            MusicEngine.followScene(); MusicEngine.followScene(); 
-                        }
-
-                        setTimeout(() => {
-                            if (this.mapID === 999) {
-                                console.log(`Extraction Complete. Teleporting back to map ${this.prevMap}...`);
-                                this.mapID = this.prevMap;
-                                this.scenarioEnding = false;
-                                this.activeSummons = [];
-                                this.loadMap(this.prevMap); 
-                                if (typeof this.requestSave === 'function') this.requestSave();
-                            }
-                        }, 10000); 
-                    }
+                // Generated regions stay explorable. Their entrance portal is the
+                // explicit return route; victory never schedules a hidden teleport.
+                if(this.mapID===999&&npc.isBoss){
+                    this.scenarioEnding=false;
+                    chatLog.push({sender:'[SYSTEM]',text:'The commander has fallen. Explore further, or use the return portal when ready.',color:'#d9c384'});
                 }
 
                 // AFTER ALL CALCULATIONS, MOVE THE BODY
@@ -47818,7 +47864,7 @@ const BMMastery=(()=>{
                             
                         case 'open_shop':
                             isBlocking = true;
-                            window.isGuildShop=false;
+                            window.isGuildShop=false;window.isWildernessShop=false;
                             BMShop.configure(payload);
                             preGame = 'explore'; 
                             startGame = 'shop'; 
@@ -47925,7 +47971,7 @@ const BMMastery=(()=>{
                         case 'open_booster':
                             isBlocking = true;
                             // This natively shifts the game to 'dialogue' state and rolls the RNG
-                            this.openBoosterPack(payload); 
+                            if(this.openBoosterPack(payload)===false)isBlocking=false; 
                             break;
                         case 'cleanup_quest_npcs':
                             let activeQuest = payload || this.memory['guild_quest'];
@@ -49896,7 +49942,7 @@ const BMMastery=(()=>{
 
                     for (let npc of exploreRef.npcs) {
                         if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99 || npc === this.owner) continue;
-                        if (npc.role === 'dialogue' || npc.role === 'shop' || npc.role === 'quest_giver' || npc.isCinematic || (this.owner && this.owner.isCinematic)) continue;
+                        if (((npc.role === 'dialogue' || npc.role === 'shop' || npc.role === 'quest_giver') && !(exploreRef.mapID===999&&(String(npc.alignment).startsWith('defender')||npc.alignment==='escort_combat'))) || npc.isCinematic || (this.owner && this.owner.isCinematic)) continue;
                         
                         let isEnemy = false;
                         if (this.owner === null || isSuncat) isEnemy = (npc.alignment === 'foe'); 
@@ -50039,12 +50085,12 @@ const BMMastery=(()=>{
             }
 
             for (let npc of exploreRef.npcs) {
-                if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99 || npc === this.owner || npc.role === 'dialogue' || npc.role === 'shop' || npc.role === 'quest_giver' || npc.isCinematic || (this.owner && this.owner.isCinematic)) continue;
+                if (npc.isDead || !npc.visible || npc.type < 0 || npc.type === 99 || npc === this.owner || ((npc.role === 'dialogue' || npc.role === 'shop' || npc.role === 'quest_giver') && !(exploreRef.mapID===999&&(String(npc.alignment).startsWith('defender')||npc.alignment==='escort_combat'))) || npc.isCinematic || (this.owner && this.owner.isCinematic)) continue;
 
                 let isEnemy = false;
                 if (this.owner === null || isSuncat) isEnemy = (typeof npc.alignment === 'string' && npc.alignment.startsWith('foe')); 
-                else if (this.owner.alignment === 'ally' || this.owner.alignment === 'defender') isEnemy = (typeof npc.alignment === 'string' && npc.alignment.startsWith('foe')); 
-                else if (typeof this.owner.alignment === 'string' && this.owner.alignment.startsWith('foe')) isEnemy = (npc.alignment === 'ally' || npc.alignment === 'defender'); 
+                else if (this.owner.alignment === 'ally' || this.owner.alignment === 'defender' || this.owner.alignment==='escort_combat') isEnemy = (typeof npc.alignment === 'string' && npc.alignment.startsWith('foe'));
+                else if (typeof this.owner.alignment === 'string' && this.owner.alignment.startsWith('foe')) isEnemy = (npc.alignment === 'ally' || npc.alignment === 'defender' || npc.alignment==='escort_combat');
 
                 if (isEnemy) {
                     let dx = this.x - npc.x;
@@ -50172,7 +50218,7 @@ const BMMastery=(()=>{
                                 
                                 let isEnemyToCaster = false;
                                 if (this.owner === null || isSuncat) isEnemyToCaster = (typeof potentialTarget.alignment === 'string' && potentialTarget.alignment.startsWith('foe')); 
-                                else if (this.owner.alignment === 'ally' || this.owner.alignment === 'defender') isEnemyToCaster = (typeof potentialTarget.alignment === 'string' && potentialTarget.alignment.startsWith('foe')); 
+                                else if (this.owner.alignment === 'ally' || this.owner.alignment === 'defender' || this.owner.alignment==='escort_combat') isEnemyToCaster = (typeof potentialTarget.alignment === 'string' && potentialTarget.alignment.startsWith('foe'));
                                 else if (typeof this.owner.alignment === 'string' && this.owner.alignment.startsWith('foe')) isEnemyToCaster = (potentialTarget.alignment === 'ally' || potentialTarget.alignment === 'defender'); 
 
                                 if (isEnemyToCaster) {
@@ -50229,7 +50275,7 @@ const BMMastery=(()=>{
                         
                         let isEnemy = false;
                         if (this.owner === null) isEnemy = (typeof n.alignment === 'string' && n.alignment.startsWith('foe')); 
-                        else if (this.owner.alignment === 'ally' || this.owner.alignment === 'defender') isEnemy = (typeof n.alignment === 'string' && n.alignment.startsWith('foe')); 
+                        else if (this.owner.alignment === 'ally' || this.owner.alignment === 'defender' || this.owner.alignment==='escort_combat') isEnemy = (typeof n.alignment === 'string' && n.alignment.startsWith('foe'));
                         else if (typeof this.owner.alignment === 'string' && this.owner.alignment.startsWith('foe')) isEnemy = (n.alignment === 'ally' || n.alignment === 'defender'); 
 
                         if (isEnemy) {
@@ -50858,7 +50904,7 @@ const BMMastery=(()=>{
         show(x, y, z, l, h, text, type = 'frame', visible = 1, foe, originx = this.x, originy = this.y, originz = this.originz) {
             if (foe == 1 && typeof Player !== 'undefined' && Player[1] && Player[1].isCPU == 1) { return; }
             
-            ({x,y}=positionMovementControl(this,x,y,type));
+            ({x,y,z}=positionMovementControl(this,x,y,type,z));
             this.foe = foe;
             this.x = x; this.y = y; this.z = z;
             this.l = l; this.h = h;
@@ -51451,13 +51497,12 @@ const BMMastery=(()=>{
                 isPressed = this.isPressed;
                 break;
             case 'd_pad':
-                let transparency = .15;
-                if(window.gameViewMode === '3d'){transparency = .025}
+                let transparency = .20;
                 // 1. Determine which arrow gets the highlight color
-                let upCol    = (this.isPressed && this.currentDir === 'up')    ? `rgba(255, 255, 0,  ${transparency*4})` : `rgba(255, 255, 0, ${.3})`;
-                let downCol  = (this.isPressed && this.currentDir === 'down')  ? `rgba(255, 255, 0,  ${transparency*4})` : `rgba(255, 255, 0, ${.3})`;
-                let leftCol  = (this.isPressed && this.currentDir === 'left')  ? `rgba(255, 255, 0,  ${transparency*4})` : `rgba(255, 255, 0, ${.3})`;
-                let rightCol = (this.isPressed && this.currentDir === 'right') ? `rgba(255, 255, 0,  ${transparency*4})` : `rgba(255, 255, 0, ${.3})`;
+                let upCol    = (this.isPressed && this.currentDir === 'up')    ? `rgba(218, 197, 140,  ${transparency*4})` : `rgba(218, 197, 140, ${.3})`;
+                let downCol  = (this.isPressed && this.currentDir === 'down')  ? `rgba(218, 197, 140,  ${transparency*4})` : `rgba(218, 197, 140, ${.3})`;
+                let leftCol  = (this.isPressed && this.currentDir === 'left')  ? `rgba(218, 197, 140,  ${transparency*4})` : `rgba(218, 197, 140, ${.3})`;
+                let rightCol = (this.isPressed && this.currentDir === 'right') ? `rgba(218, 197, 140,  ${transparency*4})` : `rgba(218, 197, 140, ${.3})`;
 
                 // Center points based on the actual bounding box of the button
                 let cx = this.l / 2;
@@ -51467,11 +51512,13 @@ const BMMastery=(()=>{
                 let rad = Math.min(w, h);
                 
                 // 2. Translucent Background Circle
-                drawShape('arc', this.x, this.y, this.z, cx, cy, rad * 0.48, 0, 2, 0, 0, 0, `rgba(0, 0, 0,  ${.09})`, 1);
+                drawShape('arc', this.x, this.y, this.z, cx, cy, rad * 0.48, 0, 2, 0, 0, 0, `rgba(0, 0, 0,  ${.38})`, 1);
+
+                drawShape('arc',this.x,this.y,this.z,cx,cy,rad*.48,0,2,0,0,0,'rgba(201,184,87,.35)',0);
 
                 // 3. D-Pad Cross Base
-                drawShape('rec', this.x, this.y, this.z, cx - (w*0.15), cy - (h*0.4), w*0.3, h*0.8, 0, 0, 0, 0, `rgba(255, 255, 0,  ${.045})`, 1); // Vertical
-                drawShape('rec', this.x, this.y, this.z, cx - (w*0.4), cy - (h*0.15), w*0.8, h*0.3, 0, 0, 0, 0, `rgba(255, 255, 0, ${.045})`, 1); // Horizontal
+                drawShape('rec', this.x, this.y, this.z, cx - (w*0.15), cy - (h*0.4), w*0.3, h*0.8, 0, 0, 0, 0, `rgba(218, 197, 140,  ${.045})`, 1); // Vertical
+                drawShape('rec', this.x, this.y, this.z, cx - (w*0.4), cy - (h*0.15), w*0.8, h*0.3, 0, 0, 0, 0, `rgba(218, 197, 140, ${.045})`, 1); // Horizontal
                 
                 // 4. Center thumb grip
                 drawShape('arc', this.x, this.y, this.z, cx, cy, rad * 0.12, 0, 2, 0, 0, 0, `rgba(0, 0, 0,  ${transparency})`, 1);
@@ -51701,6 +51748,7 @@ const BMMastery=(()=>{
                     let relX = (tx - this.x) / (this.l * this.z * s);
                     let relY = (ty - this.y) / (this.h * this.z * s);
                     
+                    if(Math.hypot(relX-.5,relY-.5)<.13){this.currentDir=null;return true;}
                     // Check if the click is more horizontal or more vertical from center (0.5)
                     if (Math.abs(relX - 0.5) > Math.abs(relY - 0.5)) {
                         this.currentDir = (relX > 0.5) ? 'right' : 'left';
@@ -66099,7 +66147,7 @@ const BMMastery=(()=>{
                                             ];
                                             shopInventory = [...stapleCards, ...randomCards]; 
                                         }
-                                        window.isGuildShop = true;
+                                        window.isGuildShop = true;window.isWildernessShop=false;
                                         startGame = 'shop'; 
                                         activeShopTab = 'browse';
                                         shopSubState = 'grid'; 
@@ -86250,9 +86298,10 @@ const BMEquipment=(()=>{
         const remaining=Math.max(0,(t?.readyAt||0)-now);return {active:false,remaining,ready:!remaining};
     }
     function label(id,actor=Dungeon){const s=status(id,actor);return s?.active?'Equipped · '+Math.max(1,Math.ceil(s.remaining/3600000))+'h left':s?.remaining?Math.ceil(s.remaining/1000)+'s to re-equip':'Equip';}
-    function boots(){const item=BMInventory.entries()['equip:fur_boots'];if(!item?.count||Dungeon.isDead||Dungeon.isDying||!status(1008).ready)return false;
-        Dungeon.applySpell(1008,1);BMActivity.record('equipment_used','Equipped fur boots: +1 defence for up to one day.',{item:'equip:fur_boots',stat:'CON',amount:1,durationSeconds:DAY_MS/1000});Dungeon.requestSave();MusicEngine.play3DSFX('buff2');return true;
+    function useItem(key){const item=BMInventory.entries()[key],id=Number(item?.spellId??1008);if(item?.kind!=='equipment'||!item.count||!isEquip(id)||Dungeon.isDead||Dungeon.isDying||!status(id).ready)return false;
+        Dungeon.applySpell(id,1);BMActivity.record('equipment_used',`Equipped ${item.name} for up to one day.`,{item:key,spellId:id,durationSeconds:DAY_MS/1000});Dungeon.requestSave();MusicEngine.play3DSFX('buff2');return true;
     }
+    function boots(){return useItem('equip:fur_boots');}
 
     function active(actor){return [...new Set((actor?.activeBuffs||[]).filter(b=>auraEffectAlive(b)&&!(b.duration!==undefined&&b.duration<=0)).map(b=>Number(b.equipmentId)||Number(Object.keys(names).find(id=>names[id]===b.name))).filter(id=>names[id]))].sort((a,b)=>a-b);}
     function state(id,moving,attacking,upgrade=true){
@@ -86324,7 +86373,7 @@ const BMEquipment=(()=>{
         const old=p.crop||{left:0,top:0,side:1},next=equipped.meta,unit=p.w/old.side;
         return {...p,image:equipped.image,x:p.x+(next.left-old.left)*unit,y:p.y+(next.top-old.top)*unit,w:unit*next.side,h:unit*next.side,crop:next};
     }
-    return {active,state,append,frame,portrait,isEquip,prepare,sync,status,label,boots,DAY_MS,RECOVERY_MS};
+    return {active,state,append,frame,portrait,isEquip,prepare,sync,status,label,boots,useItem,DAY_MS,RECOVERY_MS};
 })();
 
 function spriteDefinition(id) {
@@ -93384,6 +93433,26 @@ const BMView=Object.freeze({
     }
 });
 
+// Chapters reference the exact records they cover. Keep the archive accessible,
+// including replayed records which arrive after their chapter on reconnect.
+function appendJournalEntry(entries,storageKey,data,text){
+    if(typeof text!=='string'||!text.trim())return;
+    const id=data.entryId||null;
+    let entry=id?entries.find(e=>e.id===id):null;
+    if(!entry){
+        entry={id,timestamp:data.timestamp||new Date().toISOString(),text,title:data.title||'',
+            entryType:data.entryType||'record',isCore:['chapter','retrospective'].includes(data.entryType)};
+        entries.push(entry);
+    }
+    if(Array.isArray(data.sourceEntryIds))entry.sourceEntryIds=data.sourceEntryIds.filter(id=>typeof id==='string');
+    const coverage=new Map();
+    for(const chapter of entries)if(chapter.isCore&&Array.isArray(chapter.sourceEntryIds))
+        for(const sourceId of chapter.sourceEntryIds)coverage.set(sourceId,chapter.id);
+    for(const source of entries)if(!source.isCore&&coverage.has(source.id))source.adaptedInChapter=coverage.get(source.id);
+    try{localStorage.setItem(storageKey,JSON.stringify(entries));}
+    catch(error){console.error('Journal remains in memory, but local saving failed:',error);}
+}
+
 // Durable, acknowledged records. UI actions call this once at their commit point.
 const BMActivity=(()=>{
     const key='runestones_activity_outbox';let pending=[],busy=false,next=0,lastError='',joinedSocket=null,joinedName='';
@@ -93394,13 +93463,13 @@ const BMActivity=(()=>{
     function record(kind,text,details={}){
         const actorId=identity();
         const npc=Dungeon.currentSpeaker;
-        const event={id:newStoryId(),kind,text:String(text).slice(0,10000),details,actorId,actorName:playerName||'Player',observedAt:new Date().toISOString(),mapID:Dungeon.mapID,mapName:MAP_DB[Dungeon.mapID]?.name||Dungeon.mapname||'',x:Dungeon.x,y:Dungeon.y,
+        const event={id:newStoryId(),kind,text:String(text).slice(0,10000),details,actorId,actorName:playerName||'Player',observedAt:new Date().toISOString(),mapID:Dungeon.mapID,mapName:(Dungeon.mapID===999?window.latestCustomMapData?.name:null)||MAP_DB[Dungeon.mapID]?.name||Dungeon.mapname||'',x:Dungeon.x,y:Dungeon.y,
             npc:npc instanceof NPC?{id:npc.storyIdentity,name:npc.name,type:npc.type,x:npc.x,y:npc.y}:null};
-        pending.push(event);persist();
+        BMRealm.tag(event);pending.push(event);persist();
         const id='activity:'+event.id;
         if(!playerChronicle.some(e=>e.id===id))playerChronicle.push({id,timestamp:event.observedAt,text:'[RECORD]\n\n'+event.text,title:'',entryType:'record',isCore:false});
         try{localStorage.setItem('runestones_chronicle',JSON.stringify(playerChronicle));}catch{lastError='The journal is in memory, but could not be saved on this device.';}
-        return event;
+        BMRealm.observe(event);return event;
     }
     function tick(now=Date.now(),transport=typeof socket==='undefined'?null:socket){
         if(busy||now<next||!transport?.connected||!pending.length)return;
@@ -93408,15 +93477,166 @@ const BMActivity=(()=>{
         const actorId=localStorage.getItem('runestones_player_id')||'local';
         const batch=pending.filter(e=>e.actorId===actorId||e.actorId==='local').slice(0,20);if(!batch.length)return;
         busy=true;next=now+5000;let ended=false;
-        const timer=setTimeout(()=>{if(!ended){ended=true;busy=false;next=Date.now()+10000;}},8000);
+        const timer=setTimeout(()=>{if(!ended){ended=true;busy=false;next=Date.now()+10000;lastError='Journal upload timed out; records are saved here and will retry.';}},8000);
         transport.emit('gameplay_events',{events:batch},reply=>{
             if(ended)return;ended=true;clearTimeout(timer);busy=false;
-            if(!reply?.ok||!Array.isArray(reply.accepted)){next=Date.now()+10000;return;}
+            if(!reply?.ok||!Array.isArray(reply.accepted)){next=Date.now()+10000;lastError='Server has not saved the journal batch yet; records remain queued.';return;}
             const sent=new Set(batch.map(e=>e.id)),ack=new Set(reply.accepted.filter(id=>sent.has(id)));
+            if(!ack.size){next=Date.now()+10000;lastError='Server accepted no records from this batch; records remain saved on this device.';return;}
             pending=pending.filter(e=>!ack.has(e.id));persist();next=0;
         });
     }
     return {record,tick,join,clear(){pending=[];persist();},get pending(){return pending.length;},get error(){return lastError;}};
+})();
+
+// A visit ledger belongs to one accepted invitation, not to a socket connection.
+// The activity outbox remains the journal's durable source of truth.
+const BMRealm=(()=>{
+    const labels={kills:'Enemy kills',hostages:'Hostages freed',artifacts:'Artifacts recovered',gathered:'Plants gathered',fish:'Fish caught',cooked:'Meals cooked',refined:'Alchemy batches',crafted:'Items sewn',spared:'Cowards spared',recruited:'Companions recruited',assisted:'People helped',conversations:'Conversations',blackjack:'Blackjack games'};
+    const achievements=[['first_rescue','A Road Back','hostages',1],['first_relic','A Fragment Recovered','artifacts',1],['field_cook','The Travelling Kitchen','cooked',1],['field_crafter','Made on the Road','crafted',1],['gatherer','Know the Land','gathered',10],['mercy','A Second Chance','spared',1],['aid','No One Left Alone','assisted',1],['defender','Hold the Road','kills',10]];
+    let target=null;
+    const mem=()=>Dungeon.memory??={},visit=()=>mem().realmVisit;
+    const current=()=>{const v=visit();return Dungeon.mapID===999&&v?.active&&v.instanceId===Dungeon.customMapInstance?v:null;};
+    function counts(){
+        const roster=new Map((window.latestCustomMapData?.npcs||[]).map(n=>[n.index,n]));
+        for(const n of Dungeon.npcs||[])if(n.instanceId===Dungeon.customMapInstance)roster.set(n.index,n);
+        let friendly=0,enemies=0;for(const n of roster.values())if(!n.isDead&&!n.isDying&&n.type>=0){
+            if(String(n.alignment).startsWith('foe'))enemies++;
+            else if(['defender','ally','escort','escort_combat'].some(a=>String(n.alignment).startsWith(a)))friendly++;
+        }
+        return {friendly,enemies};
+    }
+    function begin(data){
+        if(!data.visit?.id||visit()?.id===data.visit.id)return false;
+        if(visit()?.active)finish('Accepted a new invitation.');
+        if(visit()){mem().realmHistory??=[];mem().realmHistory.push(JSON.parse(JSON.stringify(visit())));mem().realmHistory=mem().realmHistory.slice(-20);}
+        const objectiveMetrics={hostages:'hostage',artifacts:'artifact',spared:'coward',assisted:'rescue'};
+        const available=n=>!n.isDead&&!mem()[`999_${n.index}`]?.permanent&&!mem().realmResolutions?.[data.instanceId+':'+n.index];
+        const contracts=(data.wilderness?.contracts||[]).filter(c=>c.metric==='commander'?data.scenario?.phase!=='aftermath':objectiveMetrics[c.metric]?data.npcs.some(n=>available(n)&&n.objectiveKind===objectiveMetrics[c.metric]):c.metric==='kills'?data.npcs.some(n=>available(n)&&String(n.alignment).startsWith('foe')&&n.alignment!=='foe_coward'):true);
+        mem().realmVisit={id:data.visit.id,instanceId:data.instanceId,name:data.name,active:true,startedAt:data.visit.acceptedAt||new Date().toISOString(),
+            stats:Object.fromEntries(Object.keys(labels).map(k=>[k,0])),seen:{},contracts,accepted:{},claimed:{},awards:[],objective:data.scenario?.objective||'',kind:data.scenarioType};
+        return true;
+    }
+    function snapshot(v=visit()){
+        if(!v)return '';const live=current()===v?counts():v.lastCounts;
+        return `${v.name} · ${v.active?'Visit in progress':'Visit ended'}\n${v.objective}\n${live?`Friendly alive: ${live.friendly} · Enemy alive: ${live.enemies}\n`:''}`+
+            Object.entries(labels).map(([k,label])=>`${label}: ${v.stats[k]||0}`).join('\n')+
+            (v.awards.length?'\nAccomplishments: '+v.awards.join(', '):'')+
+            '\n'+v.contracts.filter(c=>v.accepted[c.id]).map(c=>`${c.title}: ${v.claimed[c.id]?'Reported':`${progress(c,v)} / ${c.target}`}`).join('\n');
+    }
+    function finish(reason='Left the realm.'){
+        const v=visit();if(!v?.active)return;v.lastCounts=counts();v.endedAt=new Date().toISOString();
+        BMActivity.record('realm_visit_completed',`${reason}\n${snapshot(v).replace('Visit in progress','Visit ended')}`,{visitId:v.id,instanceId:v.instanceId,stats:{...v.stats},alive:v.lastCounts,accomplishments:v.awards.slice(),claimed:Object.keys(v.claimed),reason});
+        v.active=false;Dungeon.requestSave?.();
+    }
+    function tag(event){const v=current();if(v)event.details={...event.details,visitId:v.id,instanceId:v.instanceId};}
+    function observe(event){
+        const v=current();if(!v||event.details.visitId!==v.id)return;
+        const d=event.details,add=(key,unique=event.id)=>{const stamp=key+':'+unique;if(v.seen[stamp])return false;v.seen[stamp]=true;v.stats[key]=(v.stats[key]||0)+1;return true;};
+        if(event.kind==='scenario_npc_defeated'&&!['npc_infighting','suncat_combat','smite','dialogue','despawn','story_event'].includes(d.reason)&&String(d.alignment).startsWith('foe')){
+            if(add('kills',d.index)&&d.protectedNpc!=null)add('assisted',d.protectedNpc);
+        }
+        const simple={herb_gathered:'gathered',fish_caught:'fish',ally_hired:'recruited',blackjack_result:'blackjack'};
+        if(simple[event.kind])add(simple[event.kind]);
+        if(d.success&&['cooking_result','alchemy_result','sewing_result'].includes(event.kind))add({cooking_result:'cooked',alchemy_result:'refined',sewing_result:'crafted'}[event.kind]);
+        if(event.kind==='realm_encounter_met')add('conversations',d.index);
+        if(event.kind==='dialogue'&&d.dialogue?.kind==='npc_line')add('conversations',event.npc?.id||d.dialogue.npcId||event.npc?.name||event.id);
+        if(event.kind==='realm_objective_resolved'){
+            if(d.objectiveKind==='hostage')add('hostages',d.index);
+            if(d.objectiveKind==='artifact')add('artifacts',d.index);
+            if(d.objectiveKind==='coward'&&d.action!=='drive')add('spared',d.index);
+            if(d.objectiveKind==='rescue')add('assisted',d.index);
+            if(d.action==='recruit')add('recruited',d.index);
+        }
+        mem().realmAchievements??={};
+        for(const [id,name,metric,goal]of achievements)if(!mem().realmAchievements[id]&&v.stats[metric]>=goal){
+            const award={id,name,earnedAt:event.observedAt,visitId:v.id};mem().realmAchievements[id]=award;v.awards.push(name);
+            BMActivity.record('achievement_earned',`Accomplishment earned: ${name}.`,award);chatLog.push('[ACCOMPLISHMENT]: '+name);
+            window.dispatchEvent(new CustomEvent('bm:achievement',{detail:{...award}}));
+        }
+        v.lastCounts=counts();Dungeon.requestSave?.();
+    }
+    function progress(c,v=visit()){return c.metric==='commander'?(v?.active&&Dungeon.customScenario?.phase==='aftermath'?1:v?.commanderDefeated?1:0):(v?.stats[c.metric]||0);}
+    function accept(id){const v=current(),c=v?.contracts.find(c=>c.id===id);if(!c||v.accepted[id])return false;v.accepted[id]=true;BMActivity.record('wilderness_contract_accepted',`Accepted ${c.title}: ${c.text}`,{contractId:id});Dungeon.requestSave();return true;}
+    function claim(id){const v=current(),c=v?.contracts.find(c=>c.id===id);if(!c||!v.accepted[id]||v.claimed[id]||progress(c)<c.target)return false;
+        v.claimed[id]=true;if(c.metric==='commander')v.commanderDefeated=true;mem().wildernessRenown=(mem().wildernessRenown||0)+c.renown;mem().wildernessCredits=(mem().wildernessCredits||0)+c.credits;
+        BMActivity.record('wilderness_contract_completed',`Reported ${c.title}. Earned ${c.renown} Wilderness renown and ${c.credits} supply credits.`,{contractId:id,renown:c.renown,credits:c.credits,rank:rank()});Dungeon.requestSave();return true;
+    }
+    function rank(){const r=mem().wildernessRenown||0;return r>=160?'Pathwarden':r>=80?'Trailkeeper':r>=30?'Wayfarer':'Traveller';}
+    function guildShop(){if(!current())return false;const n=Dungeon.currentSpeaker;if(n?.service!=='guild'||n.isDead)return false;
+        window.isGuildShop=true;window.isWildernessShop=true;BMShop.configure(n.serviceStock||{});preGame='explore';startGame='shop';return true;}
+    function interact(n){
+        if(Dungeon.mapID!==999||n.isDead)return false;
+        if(n.service==='campfire'){Dungeon.currentSpeaker=n;return BMCamp.openAtFire();}
+        if(n.cachedPrey&&!n.cachedPrey.isDead&&n.service){chatLog.push('[SYSTEM]: '+n.name+' is defending the outpost.');return false;}
+        Dungeon.currentSpeaker=n;preGame='explore';BMTouch.cancel();
+        if(n.objectiveKind){target=n.index;startGame='wilderness_encounter';BMActivity.record('realm_encounter_met',`Met ${n.name}. ${(n.customDialogue||[]).join(' ')}`,{index:n.index,objectiveKind:n.objectiveKind,dialogueLines:(n.customDialogue||[]).slice()});return true;}
+        if(n.service==='guild'){startGame='wilderness_guild';BMActivity.record('wilderness_guild_visit','Visited the Travelers of the Wilderness Guild.',{rank:rank(),renown:mem().wildernessRenown||0});return true;}
+        if(n.service==='tarot'){window.realmTarot=true;tarotCards=[];startGame='tarot';BMActivity.record('tarot_visit','Consulted the outpost tarot reader.');return true;}
+        if(n.service==='blackjack')return BMCamp.open('blackjack');
+        window.isGuildShop=false;window.isWildernessShop=false;BMShop.configure(n.serviceStock||{});startGame='shop';return true;
+    }
+    function enemyNear(n){return Dungeon.npcs.some(e=>!e.isDead&&!e.isDying&&String(e.alignment).startsWith('foe')&&e.alignment!=='foe_coward'&&Math.hypot(e.x-n.x,e.y-n.y)<6);}
+    function encounter(){return Dungeon.npcs.find(n=>n.index===target&&!n.isDead);}
+    function resolve(action){
+        const n=encounter(),v=current();if(!v||!n?.objectiveKind||Math.hypot(n.x-Dungeon.x,n.y-Dungeon.y)>3)return false;
+        const kind=n.objectiveKind,allowed={hostage:['free','recruit'],artifact:['collect'],coward:['spare','recruit','drive'],rescue:['aid','recruit']}[kind]||[];
+        if(!allowed.includes(action)||kind!=='coward'&&enemyNear(n))return false;
+        if(action==='recruit'&&(Dungeon.activeSummons||[]).length+(Dungeon.activeEscorts||[]).length>=3)return false;
+        const key=String(v.instanceId)+':'+n.index;mem().realmResolutions??={};if(mem().realmResolutions[key])return false;
+        const resolution={index:n.index,instanceId:v.instanceId,objectiveKind:kind,action,actorId:localStorage.getItem('runestones_player_id')};mem().realmResolutions[key]=resolution;
+        applyResolution(n,resolution,true);
+        BMActivity.record('realm_objective_resolved',`${kind==='hostage'?'Freed':kind==='artifact'?'Recovered':kind==='coward'?(action==='drive'?'Drove away':'Spared'):'Aided'} ${n.name}${action==='recruit'?' and welcomed them into the party':''}.`,resolution);
+        Dungeon.currentSpeaker=null;startGame='explore';Dungeon.requestSave();return true;
+    }
+    function applyResolution(n,r,local=false){
+        if(r.dead){n.isDead=true;n.visible=false;return;}
+        n.objectiveKind=null;n.isCinematic=false;
+        if(r.action==='collect'||r.action==='drive'||r.action==='spare'){n.isDead=true;n.visible=false;}
+        else if(r.action==='recruit'&&(local||r.actorId===localStorage.getItem('runestones_player_id'))){
+            n.alignment='escort_combat';n.state='following';n.cachedPrey=null;
+            Dungeon.activeEscorts??=[];if(!Dungeon.activeEscorts.some(e=>e.index===n.index))Dungeon.activeEscorts.push({index:n.index,type:n.type,name:n.name,deck:n.deck,alignment:'escort_combat',color:n.color,realmInstanceId:r.instanceId});
+        }else{n.alignment='defender';n.state='wandering';n.cachedPrey=null;}
+    }
+    function retire(index){const escort=(Dungeon.activeEscorts||[]).find(e=>e.index===index&&e.realmInstanceId);if(!escort)return;
+        Dungeon.activeEscorts=Dungeon.activeEscorts.filter(e=>e!==escort);mem()[`999_${index}`]={permanent:true};const r=mem().realmResolutions?.[escort.realmInstanceId+':'+index];if(r)r.dead=true;Dungeon.requestSave?.();
+    }
+    function restoreActor(n,data){const r=data.realmResolution||mem().realmResolutions?.[String(data.instanceId)+':'+n.index];if(r)applyResolution(n,r);}
+    function receive(state){for(const r of state?.resolvedActors||[]){const n=Dungeon.npcs.find(n=>n.index===r.index);if(n)applyResolution(n,r);}}
+    function entries(){const v=visit(),entries=[];if(v)entries.push({title:'TRAVELERS OF THE WILDERNESS · '+v.name,text:snapshot(v),completed:!v.active,failed:false});
+        const awards=Object.values(mem().realmAchievements||{});if(awards.length)entries.push({title:'WILDERNESS ACCOMPLISHMENTS',text:awards.map(a=>a.name+' · '+new Date(a.earnedAt).toLocaleDateString()).join('\n'),completed:true,failed:false});return entries;}
+    return {begin,finish,tag,observe,current,visit,counts,snapshot,progress,accept,claim,rank,guildShop,interact,encounter,enemyNear,resolve,retire,restoreActor,receive,entries,labels};
+})();
+
+const BMScenario=(()=>{
+    let sentAt=0,lastInstance=null;
+    function cache(){const m=window.latestCustomMapData;if(m?.instanceId===Dungeon.customMapInstance){m.scenario=Dungeon.customScenario;try{localStorage.setItem('suncat.lastCustomMap',JSON.stringify(m));}catch(_){}}}
+    function remember(n){const m=window.latestCustomMapData;if(n.mapID===999&&n.instanceId===m?.instanceId&&!m.npcs.some(a=>a.index===n.index)){m.npcs.push(n);cache();}}
+    function defeated(n,reason){const m=window.latestCustomMapData;if(m?.instanceId!==Dungeon.customMapInstance)return;const saved=m.npcs.find(a=>a.index===n.index);if(saved){saved.isDead=true;saved.defeatReason=reason;}
+        if(n.index===Dungeon.customScenario?.bossIndex)Dungeon.customScenario.phase='aftermath';cache();}
+    function receive(data){if(Dungeon.mapID!==999||data?.instanceId!==Dungeon.customMapInstance)return;
+        Dungeon.customScenario={...Dungeon.customScenario,...data.state};BMRealm.receive(data.state);cache();
+        if(data.text){chatLog.push({sender:'[REGION]',text:data.text,color:'#d9c384'});if(chatLog.length>100)chatLog.shift();}
+    }
+    function sync(data){
+        // Reconnection updates the shared roster without resetting position, view,
+        // personal encounter choices or already confirmed local deaths.
+        for(const record of data.npcs){
+            const n=Dungeon.npcs.find(n=>n.index===record.index);
+            if(record.isDead){if(n){n.isDead=true;n.visible=false;}Dungeon.memory[`999_${record.index}`]={permanent:true};}
+            else if(!n&&!Dungeon.memory[`999_${record.index}`]?.permanent)Dungeon.npcs.push(SUNCAT_CLIENT.makeNPC({...record,instanceId:data.instanceId}));
+        }
+        const localDefeats=new Map((window.latestCustomMapData?.npcs||[]).filter(n=>n.isDead&&n.defeatReason).map(n=>[n.index,n.defeatReason]));
+        window.latestCustomMapData={...data,npcs:data.npcs.map(n=>localDefeats.has(n.index)?{...n,isDead:true,defeatReason:localDefeats.get(n.index)}:n),returnTo:window.latestCustomMapData?.returnTo||data.returnTo};
+        receive({instanceId:data.instanceId,state:data.scenario});
+    }
+    function tick(){if(typeof Dungeon==='undefined'||Dungeon.mapID!==999||!Dungeon.customScenario||!socket?.connected)return;
+        const now=Date.now();if(now-sentAt<1500&&lastInstance===Dungeon.customMapInstance)return;
+        lastInstance=Dungeon.customMapInstance;sentAt=now;
+        socket.emit('scenario_presence',{instanceId:lastInstance,playing:BMTouch.live()&&!BMShell.active(),defeats:(window.latestCustomMapData?.npcs||[]).filter(n=>n.isDead&&n.defeatReason).slice(-64).map(n=>({index:n.index,reason:n.defeatReason}))});
+    }
+    setInterval(tick,1000);
+    return {remember,defeated,receive,sync,tick};
 })();
 
 const BM_TRAINER_CATALOGS = {
@@ -93623,6 +93843,7 @@ const BM_TRAINER_CATALOGS = {
     ],
 
     'hunter_trainer': [
+        {id:53,name:'Camp',reqs:{all:{lvl:0,stats:{}}}},
         // The Ultimate Beastmaster progression. Starts with small game, moves to literal monsters.
         { id: 234, name: "Tame Squirrel", reqs: { 'hunter': { lvl: 1, stats: { 3: 4 } } }},
         { id: 225, name: "Tame Bunny", reqs: { 'hunter': { lvl: 2, stats: { 3: 4 } } }},
@@ -93638,6 +93859,9 @@ const BM_TRAINER_CATALOGS = {
         { id: 206, name: "Tame Wyvern", reqs: { 'druid': { lvl: 9, stats: { 2: 10 } }, 'hunter': { lvl: 12, stats: { 3: 12, 2: 8 } } }},
     ]
 };
+
+// Compatibility for hunters stored in older saves under the previous catalog name.
+BM_TRAINER_CATALOGS.beastmaster_trainer=BM_TRAINER_CATALOGS.hunter_trainer;
 
 BM_TRAINER_CATALOGS.mage_trainer.push({id:1001,name:'Drain',reqs:{mage:{lvl:6,stats:{2:8}},priest:{lvl:7,stats:{2:8}},druid:{lvl:8,stats:{2:8}},all:{lvl:10,stats:{2:12}}}});
 BM_TRAINER_CATALOGS.warrior_trainer.push({id:28,name:'Defence',reqs:{warrior:{lvl:3,stats:{1:6}},knight:{lvl:3,stats:{1:6}},all:{lvl:6,stats:{1:8}}}});
@@ -93757,7 +93981,7 @@ const BMGuild=(()=>{
     function openShop(recruit=false){
         const cards=window.isAvalonBoard?[21,66,71,94,83,46,999]:[10,11,12,38,43,69,Math.floor(Math.random()*20)+10,Math.floor(Math.random()*20)+50];
         BMShop.configure({cards,items:[{kind:'skillbook',spellId:1001,name:'Spell: Drain',price:8},{kind:'skillbook',spellId:28,name:'Skill: Defence',price:3}],hires:hireList()});
-        window.isGuildShop=true;window.shopOpenRecruit=recruit;startGame='shop';
+        window.isGuildShop=true;window.isWildernessShop=false;window.shopOpenRecruit=recruit;startGame='shop';
     }
     function leave(){startGame=preGame==='explore'?'explore':3;Dungeon.requestSave();if(startGame==='explore'){Dungeon.isProcessingActions=false;Dungeon.processNextAction();}}
     return {ranks,tiers,rankValue,classList,classStatus,promote,completeLesson,selectRank,accept,deploy,turnIn,abandon,hireList,openShop,leave,get note(){return note;}};
@@ -93796,7 +94020,8 @@ const BMHotbar=(()=>{
         for(const g of groups.values()){
             g.equipment=BMEquipment.status(g.id,d);
             g.playable=playable(g.id,g.cards[0]);g.hidden=!!d.memory?.disabledSkills?.[g.id];
-            g.cooldown=g.equipment?0:Math.max(0,(d.skillCooldowns?.[g.id]||0)-now);
+            if(g.id===53&&d.skillCooldowns)delete d.skillCooldowns[53];
+            g.cooldown=g.equipment||g.id===53?0:Math.max(0,(d.skillCooldowns?.[g.id]||0)-now);
             g.active=(d.activeSummons||[]).find(s=>s&&typeof s==='object'&&s.sourceKind!=='ally'&&summonId(s)===g.id&&
                 (s.sourceKind==='skill'?g.learned:g.cards.some(c=>c.uid===s.uid)||(!s.sourceKind&&g.learned)));
             if(g.active){
@@ -93820,7 +94045,7 @@ const BMHotbar=(()=>{
             const invalid=(d.activeSummons||[]).filter(a=>a.sourceKind==='card'||(!a.sourceKind&&owned.has(a.uid)));
             if(invalid.length){const ids=new Set(invalid.map(a=>a.npcId));d.npcs=(d.npcs||[]).filter(n=>!ids.has(n.index));d.activeSummons=d.activeSummons.filter(a=>!invalid.includes(a));}
         }
-        const {groups,cards}=catalog(d),eligible=[...groups.values()].filter(g=>g.source&&!g.hidden),max=capacity(d);
+        const {groups,cards}=catalog(d),eligible=[...groups.values()].filter(g=>g.source&&!g.hidden&&(g.id!==53||BMCamp.safety(d).ok)),max=capacity(d);
         const signature=[d.playerClass,max,...eligible.map(g=>[g.id,g.source,g.card.uid,g.active?.uid||''].join(':'))].join('|');
         const overflow=eligible.length>max;
         if(s.signature===signature&&!(rotate&&overflow))return;
@@ -93865,7 +94090,7 @@ const BMHotbar=(()=>{
             }else{
                 if(d.castSpell(g.id)===false)return false;
                 if(g.source==='card')removeCard(d,g.card.uid);
-                else if(!BMEquipment.isEquip(g.id))d.skillCooldowns[g.id]=Math.max(d.skillCooldowns[g.id]||0,Date.now()+(SPELL_REGISTRY[g.id]?.cooldown||5000));
+                else if(g.id!==53&&!BMEquipment.isEquip(g.id))d.skillCooldowns[g.id]=Math.max(d.skillCooldowns[g.id]||0,Date.now()+(SPELL_REGISTRY[g.id]?.cooldown||5000));
                 if(startGame==='tutorial'&&d.option===3){d.option=4;d.dCounter=0;}
             }
             d.requestSave?.();return true;
@@ -93903,11 +94128,12 @@ const BMInventory=(()=>{
         if(!Number.isFinite(n)||n<1||!key||['__proto__','constructor','prototype'].includes(key))return false;
         const book=item.kind==='skillbook',id=Number(item.spellId);
         if(book&&(!Number.isFinite(id)||(!SPELL_REGISTRY[id]&&!CARD_MANIFEST_DB[id])))return false;
+        if(item.kind==='equipment'&&!BMEquipment.isEquip(Number.isFinite(id)?id:1008))return false;
         const stacks=entries(),old=Object.hasOwn(stacks,key)?stacks[key]:null;
         const kind=book?'skillbook':['fish','herb','powder','consumable','equipment'].includes(item.kind)?item.kind:'material';
         stacks[key]={key,name:String(item.name||key),kind,
             category:kind==='equipment'?'equip':book||kind==='consumable'?'use':'misc',count:Math.min(999999,(Number(old?.count)||0)+n),
-            ...(book?{spellId:id}:{}),...((kind==='fish'||item.fishIndex!==undefined)?{fishIndex:Math.max(0,Math.min(2,Number(item.fishIndex)||0))}:{}),
+            ...(book?{spellId:id}:kind==='equipment'?{spellId:Number.isFinite(id)?id:1008}:{}),...((kind==='fish'||item.fishIndex!==undefined)?{fishIndex:Math.max(0,Math.min(2,Number(item.fishIndex)||0))}:{}),
             ...(['herb','powder'].includes(kind)?{herbId:String(item.herbId||'')}:{}),
             ...(kind==='consumable'?{effect:consumableEffect(item)}:{}),
             ...(Number.isFinite(item.quality)?{quality:((old?.quality??item.quality)*(Number(old?.count)||0)+item.quality*n)/((Number(old?.count)||0)+n),grade:item.grade||'Good'}:{})};
@@ -93936,6 +94162,7 @@ const BMInventory=(()=>{
     }
     function use(id){
         if(!SPELL_REGISTRY[id]||!BMHotbar.source(Dungeon,id,true)||Dungeon.isDead||Dungeon.isDying)return false;
+        if(Number(id)===53&&!BMCamp.check())return false;
         // Execute in the same world context as a hotbar skill; preserve any dialogue opened by it.
         startGame='explore';preGame='explore';BMTouch.cancel();
         return BMHotbar.cast(Dungeon,id,{fromMenu:true});
@@ -94182,6 +94409,30 @@ const BMCamp=(()=>{
     const button=(parent,text,fn,cls)=>{const b=el('button',parent,text,cls);b.type='button';b.onclick=fn;return b;};
     const active=()=>startGame==='camp';
     function say(message){chatLog.push('[SYSTEM]: '+message);if(chatLog.length>100)chatLog.shift();}
+    const safetyStates=new WeakMap(),SAFE_MS=13000,RADAR_SQ=63;
+    function safety(d=Dungeon,now=performance.now(),inPlace=false){
+        let s=safetyStates.get(d);if(!s){s={mapID:d.mapID,lastUnsafe:now,ward:d.currentWardTime};safetyStates.set(d,s);}
+        if(s.mapID!==d.mapID){s.mapID=d.mapID;s.lastUnsafe=now;}
+        const inWorld=['explore','dialogue','deck_menu','trainer','pause','camp'].includes(startGame)&&d.mapID!==888&&d.mapID!==700;
+        let enemy=false;
+        // Same range and terrain raycast as the aggro radar. Camera visibility
+        // must not make an enemy behind the player disappear from this check.
+        if(inWorld)enemy=(d.npcs||[]).some(n=>{
+            if(!n||n.isDead||n.isDying||!String(n.alignment||'').startsWith('foe'))return false;
+            const distance=(n.x-d.x)**2+(n.y-d.y)**2;
+            if(!Number.isFinite(distance)||distance>=RADAR_SQ)return false;
+            return typeof d.checkLineOfSight!=='function'||d.checkLineOfSight(n.x,n.y);
+        });
+        const hurt=Number.isFinite(s.ward)&&Number.isFinite(d.currentWardTime)&&d.currentWardTime<s.ward-.0001;
+        s.ward=d.currentWardTime;
+        const unsafe=!inWorld||d.isLoading||d.isDead||d.isDying||d.inCombat||d.isThreatNearby||d.isAggroDashing||d.status==='dueling'||enemy||hurt;
+        if(unsafe)s.lastUnsafe=now;
+        const wait=Math.max(0,SAFE_MS-(now-s.lastUnsafe));
+        const online=d.mapID===999&&!inPlace;
+        return {ok:!online&&!unsafe&&wait===0,wait,enemy,reason:online?'Use the arrival outpost campfire. Camp travel is unavailable in online realms.':!inWorld?(d.mapID===700?'You are already at camp. Visit the fire or tent.':'Camp is available in the world or from your inventory.'):d.isDead||d.isDying?'You cannot make camp while dying.':enemy||d.inCombat||d.isThreatNearby||d.isAggroDashing||d.status==='dueling'?'Enemies or combat are too close. Clear the aggro radar before making camp.':wait?`Wait ${Math.ceil(wait/1000)} more seconds of safety before making camp.`:''};
+    }
+    function check(){const result=safety();if(!result.ok)say(result.reason);return result.ok;}
+
     function create(){
         const css=el('style',document.head);css.textContent=`
         #bm-camp{position:fixed;inset:0;z-index:1100;background:#080b0b;color:#e6e1d3;font:15px/1.5 system-ui,sans-serif;touch-action:pan-y;overflow:auto;overscroll-behavior:contain}
@@ -94197,13 +94448,63 @@ const BMCamp=(()=>{
         exitButton=button(head,'Return to game',close);nav=el('nav',wrap);body=el('main',wrap);
         for(const [key,label]of [['cook','Cooking'],['alchemy','Alchemy'],['sewing','Sewing'],['blackjack','Blackjack']]){const b=button(nav,label,()=>{mode=key;stamp='';render();});b.dataset.mode=key;}
     }
-    function open(next='cook'){
-        if(Dungeon.isDead||Dungeon.isDying||Dungeon.inCombat||Dungeon.isThreatNearby){say('Find a safe moment outside combat before opening camp.');return false;}
+    function open(next='cook',reward=''){
+        if(!(Dungeon.mapID===700&&Dungeon.memory?.campReturn)){const safe=safety(Dungeon,performance.now(),true);if(!safe.ok){say(safe.reason);return false;}}
+        notice=reward;
         if(!root)create();if(!active())returnTo=startGame;mode=next;BMActivity.record('camp_visit','Opened camp for '+next+'.');startGame='camp';BMTouch.settleCamera();BMTouch.cancel();BMFishing.cancel();
         Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;window.activeMoveKey=null;window.activeTouchZone=null;
         isChatActive=false;chatInput.blur();root.hidden=false;stamp='';lastTime=performance.now();render();root.focus({preventScroll:true});return true;
     }
-    function close(){BMCrafting.abandon();BMBlackjack.leave();startGame=returnTo;root.hidden=true;BMTouch.cancel();Dungeon.requestSave();}
+    function close(){BMCrafting.abandon();BMBlackjack.leave();startGame=returnTo;root.hidden=true;notice='';BMTouch.cancel();Dungeon.requestSave();if(Dungeon.isProcessingActions&&Dungeon.mapID!==700){startGame='explore';Dungeon.isProcessingActions=false;Dungeon.processNextAction();}}
+    function snap(point){
+        const d=Dungeon;BMTouch.cancel();BMFishing.cancel();
+        d.x=point.x;d.y=point.y;d.dir=point.dir;
+        d.currentAngle=Number.isFinite(point.currentAngle)?point.currentAngle:point.dir*Math.PI/2;
+        d.lookPan=point.lookPan||0;d.lookPitch=point.lookPitch||0;
+        d.currentPitch=d.lookPitch;d._cinePan=d._cinePitch=undefined;
+        d.targetMapX=d.x;d.targetMapY=d.y;d.isSlidingToTile=false;d.moving=false;
+        d.currentSpeaker=null;d.currentEnemy=null;d.clickInput=null;d.status='normal';
+        d.pendingJumpTrigger=null;BMPlayerMotion.reset();
+        window.activeMoveKey=null;window.activeCtrlKey=false;window.activeTouchZone=null;
+        if(typeof socket!=='undefined')socket.emit('move',{x:d.x,y:d.y,dir:d.dir,mapID:d.mapID});
+    }
+    function enter(reward=''){
+        if(!check())return false;
+        const d=Dungeon,context={};
+        for(const key of ['prevMap','prevX','prevY','prevDir','overworldX','overworldY','overworldDir','lastOverworldMap'])context[key]=d[key]??null;
+        d.memory.campReturn={mapID:d.mapID,x:d.x,y:d.y,dir:d.dir,currentAngle:d.currentAngle,
+            lookPan:d.lookPan||0,lookPitch:d.lookPitch||0,context,
+            actions:d.isProcessingActions?d.cloneEventActions(d.actionQueue):[]};
+        if(d.isProcessingActions){d.actionQueue=[];d.isProcessingActions=false;}
+        d.memory.campReward=reward;
+        d.loadMap(700);startGame='explore';
+        snap({x:5.5,y:7.5,dir:0});d.requestSave();
+        chatLog.push('[SYSTEM]: '+reward+' Approach the fire for activities or the tent to rest and leave.');
+        BMActivity.record('camp_entered','Entered a quiet camp.',{returnMap:d.memory.campReturn.mapID});
+        return true;
+    }
+    function openAtFire(){
+        if(Dungeon.mapID===999)return open('cook');
+        if(Dungeon.mapID!==700||!Dungeon.memory?.campReturn)return false;
+        const reward=Dungeon.memory.campReward||'';Dungeon.memory.campReward='';
+        return open('cook',reward);
+    }
+    function leave(){
+        const d=Dungeon,point=d.memory?.campReturn;
+        if(d.mapID!==700||!point||point.mapID===700||point.mapID===888||!MAP_DB[point.mapID]||!Number.isFinite(point.x)||!Number.isFinite(point.y)){
+            say('No return point is recorded for this camp.');return false;
+        }
+        // Keep the return point until after map loading; a reload in camp must retain it.
+        d.prevX=d.prevY=d.prevDir=undefined;
+        d.loadMap(point.mapID);startGame='explore';snap(point);
+        for(const [key,value]of Object.entries(point.context||{}))d[key]=value??undefined;
+        d.currentWardTime=(d.maxWards||0)*(d.timePerWard||0);
+        delete d.memory.campReturn;delete d.memory.campReward;
+        BMActivity.record('camp_departed','Rested at the tent and left camp.',{mapID:d.mapID,x:d.x,y:d.y});
+        d.requestSave();
+        if(point.actions?.length){d.actionQueue.unshift(...point.actions);d.isProcessingActions=false;d.processNextAction();}
+        return true;
+    }
     function command(msg){const match=msg.trim().match(/^\.hack(?:\/\/|\s+)(camp|cook|cooking|blackjack|alchemy|sew|sewing|craft|gather)\s*$/i);if(!match)return false;
         const cmd=match[1].toLowerCase();if(cmd==='gather'){if(!BMHerbs.gather())say('Stand beside an unpicked herb to gather it.');}else open(cmd==='blackjack'?'blackjack':cmd==='alchemy'?'alchemy':['sew','sewing','craft'].includes(cmd)?'sewing':'cook');return true;
     }
@@ -94284,9 +94585,9 @@ const BMCamp=(()=>{
         el('p',rules,'Closest to 21 wins. Going over loses; ties push. The dealer stands on all 17s. Minor-suit aces count as 1 or 11, 2–10 use their number, and Page, Knight, Queen and King each count as 10.');
         el('p',rules,'Major arcana use their printed value: Fool 0, Winged Boots 7, Treasure Chest 10, Crown 21. A two-card 21 is resolved at the deal. All 78 cards are unique; the shoe reshuffles between hands when fewer than 40 remain. Leaving an unfinished hand counts as a loss.');
     }
-    function render(){if(!root)return;body.replaceChildren();surface=null;for(const b of nav.children){b.setAttribute('aria-pressed',String(b.dataset.mode===mode));b.disabled=BMCrafting.game?.status==='playing'||BMBlackjack.round?.status==='playing';}
+    function render(){if(!root)return;body.replaceChildren();surface=null;if(notice){const reward=el('p',body,notice,'panel status');reward.setAttribute('role','status');}for(const b of nav.children){b.setAttribute('aria-pressed',String(b.dataset.mode===mode));b.disabled=BMCrafting.game?.status==='playing'||BMBlackjack.round?.status==='playing';}
         if(mode==='cook')cooking();else if(mode==='alchemy')alchemy();else if(mode==='sewing')sewing();else blackjack();
-        exitButton.textContent=BMCrafting.game?.status==='playing'?'Abandon & return':BMBlackjack.round?.status==='playing'?'Leave table':'Return to game';
+        exitButton.textContent=BMCrafting.game?.status==='playing'?'Abandon & return':BMBlackjack.round?.status==='playing'?'Leave table':Dungeon.mapID===700?'Return to camp':'Return to game';
         stamp=mode+':'+(BMCrafting.game?.status||'')+':'+(BMBlackjack.round?.status||'');
     }
     function drawFood(c,g,now){
@@ -94331,7 +94632,7 @@ const BMCamp=(()=>{
         }
     }
     function tick(now=performance.now()){
-        BMEquipment.sync();BMTacticsView.tick();BMHerbs.tick();if(!active()){if(root)root.hidden=true;lastTime=now;return;}
+        safety();BMEquipment.sync();BMTacticsView.tick();BMHerbs.tick();if(!active()){if(root)root.hidden=true;lastTime=now;return;}
         if(!root)create();root.hidden=false;const dt=document.hidden?0:Math.min(.15,Math.max(0,(now-lastTime)/1000));lastTime=now;BMCrafting.step(dt);
         const next=mode+':'+(BMCrafting.game?.status||'')+':'+(BMBlackjack.round?.status||'');if(next!==stamp)render();
         const g=BMCrafting.game;if(g){const caption=root.querySelector('[data-heat-caption]');if(caption)caption.textContent=`Heat: ${g.heat}% · ${g.kind==='fish'?(g.method==='roast'?'Fire':g.method==='soup'?'Soup':'Pan'):'Cauldron'}: ${Math.round(g.temp)}°`;
@@ -94341,7 +94642,50 @@ const BMCamp=(()=>{
         }
         if(now-lastArt>33){lastArt=now;draw(now);}
     }
-    return {active,open,close,command,tick};
+    return {active,open,close,command,tick,safety,check,enter,openAtFire,leave};
+})();
+
+// Camp props share the world billboard renderer and need no external image files.
+const BMCampSprites=(()=>{
+    function surface(){const c=document.createElement('canvas');c.width=c.height=256;return [c,c.getContext('2d')];}
+    function polygon(g,points,color){g.fillStyle=color;g.beginPath();g.moveTo(...points[0]);for(const p of points.slice(1))g.lineTo(...p);g.closePath();g.fill();}
+    function stroke(g,points,color,width=3){g.strokeStyle=color;g.lineWidth=width;g.lineJoin='round';g.lineCap='round';g.beginPath();g.moveTo(...points[0]);for(const p of points.slice(1))g.lineTo(...p);g.stroke();}
+    function fire(frame){const [c,g]=surface();g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(128,216,88,17,0,0,7);g.fill();
+        for(let i=0;i<13;i++){const a=i*6.28/13,x=128+67*Math.cos(a),y=203+13*Math.sin(a);g.fillStyle=i%3?'#53534a':'#807864';g.beginPath();g.ellipse(x,y,13,6,a,0,7);g.fill();}
+        for(let i=0;i<2;i++){g.save();g.translate(128,199);g.rotate((i?1:-1)*.35);g.fillStyle='#392518';g.fillRect(-54,-9,108,18);g.fillStyle='#765035';g.fillRect(-52,-8,104,7);for(let j=-35;j<40;j+=23)stroke(g,[[j,-4],[j+13,-2]],'#a06d41',2);g.restore();}
+        const flick=frame===0?-6:frame===1?5:frame===2?-2:7;
+        let glow=g.createRadialGradient(128,153,8,128,153,72);glow.addColorStop(0,'rgba(255,193,69,.42)');glow.addColorStop(1,'rgba(255,108,29,0)');g.fillStyle=glow;g.beginPath();g.arc(128,153,72,0,7);g.fill();
+        polygon(g,[[93,190],[86,159],[103,135],[103,158],[120,128],[123,151],[141,96+flick],[151,145],[169,133],[158,168],[171,186],[147,201],[113,202]],'#b34520');
+        polygon(g,[[106,190],[102,167],[119,148],[120,165],[138,116+flick],[148,158],[156,151],[151,184],[139,197]],'#f09836');
+        polygon(g,[[118,190],[122,174],[133,152+flick/2],[141,177],[145,190],[132,200]],'#ffe29b');
+        for(let i=0;i<5;i++){g.fillStyle=i%2?'#eeaa54':'#f8cf83';g.fillRect(101+i*14+(frame%2)*3,105-i*9+(frame*11+i*3)%16,3,3);}
+        return c;
+    }
+    function tent(){const [c,g]=surface();g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(128,219,112,18,0,0,7);g.fill();
+        // Pegged, golden leather ridge tent with a dark, open front.
+        stroke(g,[[35,205],[18,222]],'#b1a188',3);stroke(g,[[218,205],[238,222]],'#b1a188',3);
+        polygon(g,[[33,205],[100,51],[163,60],[226,204]],'#97713d');
+        polygon(g,[[33,205],[100,51],[128,69],[128,208]],'#d7ac59');
+        polygon(g,[[128,69],[163,60],[226,204],[128,208]],'#b98743');
+        polygon(g,[[33,205],[128,208],[226,204],[211,216],[52,217]],'#765131');
+        stroke(g,[[100,51],[127,68],[163,60]],'#e6c781',5);stroke(g,[[100,51],[34,205]],'#73502e',4);stroke(g,[[163,60],[226,204]],'#76502a',4);
+        stroke(g,[[128,70],[128,210]],'#e8cb81',3);
+        polygon(g,[[128,89],[89,204],[159,207]],'#382b20');
+        polygon(g,[[128,89],[159,207],[177,205]],'#493523');
+        polygon(g,[[128,90],[85,200],[117,183]],'#f0ca75');
+        polygon(g,[[128,90],[183,202],[162,184]],'#b0793b');
+        stroke(g,[[128,89],[117,183]],'#ecce84',3);stroke(g,[[128,89],[162,184]],'#e2bb6d',3);
+        for(const x of [40,218]){g.fillStyle='#8f8b73';g.fillRect(x-2,207,5,17);}
+        // Leather patches and stitching give the canvas a used, handmade finish.
+        polygon(g,[[52,180],[73,137],[90,145],[67,193]],'rgba(113,73,39,.35)');
+        for(let i=0;i<8;i++)stroke(g,[[75+i*3,151+i*5],[79+i*3,153+i*5]],'#f3d38a',1.3);
+        return c;
+    }
+    spriteCache[-205]=[fire(0),fire(1),fire(2),fire(3)];
+    spriteCache[-206]=tent();
+    SPRITE_CONFIGS[-205]={scale:.78,hover:-.20,faceZ:.5,facePan:0};
+    SPRITE_CONFIGS[-206]={scale:1.30,hover:-.16,faceZ:.6,facePan:0};
+    return {fire:-205,tent:-206};
 })();
 
 for(let i=0;i<3;i++)SPRITE_CONFIGS[-201-i]={scale:.43,hover:0,faceZ:.3,facePan:0};
@@ -94382,7 +94726,11 @@ const BMShop=(()=>{
     const labels={cards:'Cards',items:'Items',recruit:'Recruit'};
     let selected=null,offers=new Set(),ingredients=[],message='',category='',hireStock=[],merchantKey='',stockSignature='';
     const cleanName=id=>new Card(id,0).name;
+    const currencyKey=()=>window.isWildernessShop?'wildernessCredits':'guild_rep';
+    const balance=()=>Dungeon.memory?.[currencyKey()]||0;
+    const currency=()=>window.isWildernessShop?'Wilderness supply credits':'guild reputation';
     function configure(payload){
+        if(!window.isGuildShop)window.isWildernessShop=false;
         const data=Array.isArray(payload)?{cards:payload}:payload||{};
         shopInventory=[...(data.cards||[]),...(data.items||[])];hireStock=(data.hires||[]).map(h=>({...h}));
     }
@@ -94392,15 +94740,16 @@ const BMShop=(()=>{
             return {index,id,kind:'card',name:cleanName(id),category:'cards',price:typeof value==='object'?value.price:undefined};
         }
         const item=value?.item||value;
-        if(!item||!['skillbook','consumable','fish','herb','powder','material'].includes(item.kind))return null;
+        if(!item||!['skillbook','consumable','fish','herb','powder','material','equipment'].includes(item.kind))return null;
         if(item.kind==='skillbook'&&!BMHotbar.playable(Number(item.spellId)))return null;
+        if(item.kind==='equipment'&&!BMEquipment.isEquip(Number(item.spellId??1008)))return null;
         return {index,id:item.spellId,kind:'item',name:item.name||(item.kind==='skillbook'?'Spell: '+BMLearning.name(item.spellId):item.key),category:'items',item,price:value.price??item.price};
     }).filter(Boolean);}
     function hires(){return hireStock.map((h,index)=>({...h,index,name:h.name||cleanName(h.cardId)})).filter(h=>CARD_MANIFEST_DB[h.cardId]?.type==='monster'&&(h.count===undefined||h.count>0));}
     function enter(){
         selected=null;offers.clear();ingredients=[];message='';category=window.shopOpenRecruit?'recruit':'';window.shopOpenRecruit=false;activeShopTab='browse';
         for(const c of [...offeredCards,comboSlot1,comboSlot2])if(c)Dungeon.extra.push(c);offeredCards=[];comboSlot1=comboSlot2=null;BMMastery.sync(Dungeon);
-        merchantKey=!window.isGuildShop&&Dungeon.currentSpeaker?.index!=null?`${Dungeon.mapID}:${Dungeon.currentSpeaker.index}`:'';
+        merchantKey=(!window.isGuildShop||window.isWildernessShop)&&Dungeon.currentSpeaker?.index!=null?`${Dungeon.mapID}:${Dungeon.customMapInstance||''}:${Dungeon.currentSpeaker.index}`:'';
         stockSignature=JSON.stringify({stock:shopInventory,hires:hireStock});
         const saved=merchantKey&&Dungeon.memory?.merchantStock?.[merchantKey];
         if((saved?.signature===stockSignature||saved?.signature===JSON.stringify(shopInventory))&&Array.isArray(saved.stock)){shopInventory=saved.stock.slice();if(Array.isArray(saved.hires))hireStock=saved.hires.map(h=>({...h}));}
@@ -94412,22 +94761,22 @@ const BMShop=(()=>{
     function offer(id,add){const c=available().find(c=>c.index===id&&(add?!offers.has(c.uid):offers.has(c.uid)));if(c){if(add)offers.add(c.uid);else offers.delete(c.uid);}return !!c;}
     function price(entry=selected){
         if(!entry)return 0;if(Number.isFinite(entry.price))return Math.max(0,Math.floor(entry.price));
-        const c=entry.id!==undefined?new Card(entry.id,0):null,power=c?getPower(c):5;
+        const c=entry.id!==undefined&&CARD_MANIFEST_DB[entry.id]?new Card(entry.id,0):null,power=c?getPower(c):5;
         return window.isGuildShop?Math.max(1,power||5):Math.max(1,power)*9;
     }
     function purchase(){
         const entry=selected,current=entry&&stock().find(s=>s.index===entry.index&&s.kind===entry.kind&&s.name===entry.name);
         if(!current){message='That stock is no longer available.';return false;}
         const cost=price(entry),offerCards=offered();
-        if(window.isGuildShop){if((Dungeon.memory?.guild_rep||0)<cost){message='Not enough guild reputation.';return false;}}
+        if(window.isGuildShop){if(balance()<cost){message='Not enough '+currency()+'.';return false;}}
         else if(getPower(null,offerCards)<cost){message='Choose enough cards to meet the trade value.';return false;}
         // Validate item definitions before spending anything.
         if(entry.kind==='item'&&!entry.item.key&&entry.item.kind!=='skillbook'){message='This item has no inventory identity.';return false;}
-        if(window.isGuildShop)Dungeon.memory.guild_rep=(Dungeon.memory.guild_rep||0)-cost;
+        if(window.isGuildShop)Dungeon.memory[currencyKey()]=balance()-cost;
         else if(!BMMastery.consume(Dungeon,offerCards.map(c=>c.uid)))return false;
         if(entry.kind==='card')Dungeon.extra.push(BMMastery.card(Dungeon,entry.id));
         else BMInventory.add({...entry.item,name:entry.name,key:entry.item.key||'skillbook:'+entry.item.spellId},1);
-        shopInventory.splice(entry.index,1);rememberStock();BMActivity.record('shop_purchase',`Received ${entry.name} for ${cost} ${window.isGuildShop?'guild reputation':'trade value'}.`,{kind:entry.kind,id:entry.id,spentCards:offerCards.map(c=>c.index),price:cost});
+        shopInventory.splice(entry.index,1);rememberStock();BMActivity.record('shop_purchase',`Received ${entry.name} for ${cost} ${window.isGuildShop?currency():'trade value'}.`,{kind:entry.kind,id:entry.id,spentCards:offerCards.map(c=>c.index),price:cost});
         message=`Received ${entry.name}.`;selected=null;offers.clear();finish();return true;
     }
     function hireStatus(h){if(BMGuild.rankValue(Dungeon.memory.guild_rank)<BMGuild.rankValue(h.reqRank||'F'))return 'Requires guild rank '+h.reqRank;if((Dungeon.activeSummons||[]).length>=3)return 'Party full · 3 allies';if((Dungeon.memory.guild_rep||0)<(h.cost||0))return 'Not enough guild reputation';return '';}
@@ -94448,8 +94797,8 @@ const BMShop=(()=>{
         message=`${first?'Recipe discovered! ':''}Created ${cleanName(recipe.result)}.`;BMActivity.record('combination_success',`Combined ${pair} into ${cleanName(recipe.result)}${first?' and discovered its recipe':''}.`,{recipe,first});finish();return true;
     }
     function absorb(id){const c=available().find(c=>c.index===id);if(!c)return false;const xp=getPower(new Card(id,0))*10;if(xp<=0||!BMMastery.consume(Dungeon,[c.uid]))return false;Dungeon.xp+=xp;Dungeon.levelUpPlayer();message=`Channeled ${cleanName(id)} into ${xp} character XP.`;BMActivity.record('card_channeled',message,{cardId:id,xp});finish();return true;}
-    function leave(){offers.clear();ingredients=[];selected=null;Dungeon.requestSave();if(Dungeon.savedViewMode)window.gameViewMode=Dungeon.savedViewMode;if(Dungeon.savedCameraMode)Dungeon.cameraMode=Dungeon.savedCameraMode;const guild=window.isGuildShop;window.isGuildShop=false;startGame=guild?'guild_menu':preGame==='explore'?'explore':3;if(guild){window.activeGuildTab='bounties';window.guildSubState='rank_select';}else{Dungeon.isProcessingActions=false;Dungeon.processNextAction();}BMTouch.cancel();}
-    return {labels,configure,stock,hires,hire,hireStatus,enter,available,grouped,offered,pick,offer,price,purchase,feed,chooseIngredient,ingredientCards,recipeFor,knownPair,discovered,combine,absorb,leave,get selected(){return selected;},get message(){return message;},get category(){return category;},set category(v){category=v;},cancel(){selected=null;offers.clear();},clearIngredients(){ingredients=[];},removeIngredient(i){ingredients.splice(i,1);}};
+    function leave(){offers.clear();ingredients=[];selected=null;Dungeon.requestSave();if(Dungeon.savedViewMode)window.gameViewMode=Dungeon.savedViewMode;if(Dungeon.savedCameraMode)Dungeon.cameraMode=Dungeon.savedCameraMode;const wilderness=window.isWildernessShop,guild=window.isGuildShop;window.isGuildShop=false;window.isWildernessShop=false;startGame=wilderness?'wilderness_guild':guild?'guild_menu':preGame==='explore'?'explore':3;if(guild){window.activeGuildTab='bounties';window.guildSubState='rank_select';}else{Dungeon.isProcessingActions=false;Dungeon.processNextAction();}BMTouch.cancel();}
+    return {labels,configure,stock,hires,hire,hireStatus,enter,balance,currency,available,grouped,offered,pick,offer,price,purchase,feed,chooseIngredient,ingredientCards,recipeFor,knownPair,discovered,combine,absorb,leave,get selected(){return selected;},get message(){return message;},get category(){return category;},set category(v){category=v;},cancel(){selected=null;offers.clear();},clearIngredients(){ingredients=[];},removeIngredient(i){ingredients.splice(i,1);}};
 })();
 
 const BMShopModels=(()=>{
@@ -94494,7 +94843,7 @@ const BMShell=(()=>{
     const art=[],cards=new Map(),scenes=new Set([1,2,3,'options','options2']);
     const el=(tag,parent,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;parent?.append(e);return e;};
     function button(parent,text,fn,cls){const b=el('button',parent,text,cls);b.type='button';b.onclick=fn;return b;}
-    function active(){return scenes.has(startGame)||startGame==='shop'||['journal','tarot','grimoire','guild_menu','trainer'].includes(startGame)||startGame==='deck_menu';}
+    function active(){return scenes.has(startGame)||startGame==='shop'||['journal','tarot','grimoire','guild_menu','trainer','wilderness_guild','wilderness_encounter'].includes(startGame)||startGame==='deck_menu';}
     function sound(){MusicEngine.play3DSFX('click');}
     function invalidate(){key='';}
     function exit(){selected=null;startGame=preGame==='explore'?'explore':3;BMTouch.cancel();invalidate();}
@@ -94612,7 +94961,7 @@ const BMShell=(()=>{
         for(const [value,label]of [['auto','Automatic'],['0','Detailed'],['1','Balanced'],['2','Light']]){const option=el('option',quality,label);option.value=value;}quality.value=BMPerformance.mode;quality.onchange=()=>BMPerformance.setMode(quality.value);
         button(soundPanel,'Advanced music settings',()=>BattleMusic.openSettings());
         const volume=el('label',soundPanel,null,'setting');el('span',volume,'Master volume');const v=el('input',volume);v.type='range';v.min=0;v.max=1;v.step=.01;v.value=MusicEngine.outputVolume;v.oninput=()=>MusicEngine.setVolume(v.value);
-        el('p',controlsPanel,'Left thumb: move and strafe. Right thumb: drag to look, tap to attack. A short final step finishes when you lift your thumb.','muted');
+        el('p',controlsPanel,'Left thumb: D-pad or touch movement. Right: Attack and Jump. In 3D, drag the right side to look. In 2D, movement follows the screen. Keyboard: WASD / arrows, Space to attack, 1–0 for skills. A committed tile step finishes on release.','muted');
         el('p',storyPanel,'Activity records are kept for your journal while narration is off. They sync when the game server is connected.','muted');const queue=el('p',storyPanel,'','status');queue.dataset.activityStatus='';
         const row=el('div',body,null,'row');button(row,'Save game',()=>{Dungeon.requestSave();note.textContent='Save requested.';});button(row,'Start menu',()=>{Dungeon.requestSave();menuPage='home';startGame=3;invalidate();});
         const note=el('p',body,'','status');note.setAttribute('role','status');
@@ -94624,12 +94973,12 @@ const BMShell=(()=>{
     }
     function portrait(parent,id){const c=surface(parent,'portrait',id);c.className='thumb';}
     function shop(){
-        heading.textContent=window.isGuildShop?'Guild stores':'Merchant & workshop';
+        heading.textContent=window.isWildernessShop?'Wilderness supplies':window.isGuildShop?'Guild stores':Dungeon.currentSpeaker?.service?Dungeon.currentSpeaker.name:'Merchant & workshop';
         tabs([['browse','Stock'],['refine','Refine'],['combo','Combine'],['absorb','Channel']],activeShopTab,id=>{activeShopTab=id;BMShop.cancel();});
         const note=el('p',body,BMShop.message,'status');note.setAttribute('role','status');note.setAttribute('aria-live','polite');
         const act=fn=>()=>{fn();sound();listScroll=body.scrollTop;invalidate();};
         if(activeShopTab==='browse'){
-            el('p',body,window.isGuildShop?`Guild reputation: ${Dungeon.memory?.guild_rep||0}. Purchases spend reputation.`:'Trade extra cards for cards and supplies. Recruitment uses guild reputation.','muted');
+            el('p',body,window.isGuildShop?`Available: ${BMShop.balance()} ${BMShop.currency()}.`:'Trade extra cards for cards and supplies. Recruitment uses guild reputation.','muted');
             const stock=BMShop.stock(),cats=Object.keys(BMShop.labels).filter(cat=>cat==='recruit'?BMShop.hires().length:stock.some(s=>s.category===cat));
             if(!cats.includes(BMShop.category))BMShop.category=cats[0]||'';
             const categoryRow=el('div',body,null,'shop-categories');
@@ -94643,7 +94992,7 @@ const BMShell=(()=>{
             }else if(entry){
                 const panel=el('section',body,null,'card');if(entry.id!==undefined)portrait(panel,entry.id);el('h2',panel,entry.name);
                 el('p',panel,entry.kind==='card'?new Card(entry.id,0).desc:entry.item.kind==='skillbook'?'Read to learn '+BMLearning.name(entry.item.spellId)+'. Consumed only after successful learning.':BMInventory.description(entry.item),'muted');if(entry.item?.kind==='skillbook')el('p',panel,BMLearning.eligibility(entry.item.spellId).text,'status');
-                el('p',panel,`Cost: ${BMShop.price()} ${window.isGuildShop?'reputation':'trade value'}.`);
+                el('p',panel,`Cost: ${BMShop.price()} ${window.isGuildShop?BMShop.currency():'trade value'}.`);
                 if(!window.isGuildShop){
                     const offered=BMShop.offered(),value=getPower(null,offered);
                     el('p',panel,`Your offer: ${value} / ${BMShop.price()} · ${offered.length} cards`,'status');
@@ -94656,8 +95005,8 @@ const BMShell=(()=>{
                     }
                 }
                 const actions=el('div',panel,null,'row');
-                const buy=button(actions,window.isGuildShop?'Buy with reputation':'Confirm trade',act(()=>BMShop.purchase()),'primary');
-                buy.disabled=window.isGuildShop?(Dungeon.memory?.guild_rep||0)<BMShop.price():!BMShop.offered().length||getPower(null,BMShop.offered())<BMShop.price();
+                const buy=button(actions,window.isGuildShop?'Buy with '+BMShop.currency():'Confirm trade',act(()=>BMShop.purchase()),'primary');
+                buy.disabled=window.isGuildShop?BMShop.balance()<BMShop.price():!BMShop.offered().length||getPower(null,BMShop.offered())<BMShop.price();
                 button(actions,'Back to stock',act(()=>BMShop.cancel()));
             }else{
                 const grid=el('div',body,null,'grid');
@@ -94759,7 +95108,7 @@ const BMShell=(()=>{
         }
         if(!embedded)foot('Start menu',toMenu);
     }
-    function drawTarot(index){tarotIndex=index;window.tarotRequestId=null;spread=index+1;const pool=getFullLibrary();for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}tarotCards=pool.slice(0,spreads[index].positions.length);tarotMeanings=tarotCards.map(getOracleText);Interpretation='';window.loadingInterpretation=false;}
+    function drawTarot(index){tarotIndex=index;window.tarotRequestId=null;spread=index+1;const pool=getFullLibrary();for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}tarotCards=pool.slice(0,spreads[index].positions.length);tarotMeanings=tarotCards.map(getOracleText);Interpretation='';window.loadingInterpretation=false;if(window.realmTarot)BMActivity.record('tarot_draw',`Drew ${spreads[index].name}: ${tarotCards.map(c=>c.name).join(', ')}.`,{cards:tarotCards.map(c=>c.index)});}
     function tarot(){
         heading.textContent='Tarot';
         if(!tarotCards.length){el('h2',body,'Select a spread');const grid=el('div',body,null,'grid');spreads.forEach((s,i)=>{const panel=el('article',grid,null,'card');const c=surface(panel,'mesh',BMMenuModels.mesh(s.model));c.className='thumb';el('h3',panel,s.name);el('p',panel,s.prompt);button(panel,'Draw '+s.positions.length+(s.positions.length===1?' card':' cards'),action(()=>drawTarot(i)),'primary');});}
@@ -94774,13 +95123,36 @@ const BMShell=(()=>{
             }));ask.disabled=!!window.loadingInterpretation;
             if(Interpretation){const panel=el('article',body,null,'card');el('h3',panel,'Interpretation');el('div',panel,Interpretation,'prose');}
         }
-        foot('Start menu',()=>{window.tarotRequestId=null;window.loadingInterpretation=false;tarotCards=[];toMenu();});
+        foot(window.realmTarot?'Return to the outpost':'Start menu',()=>{window.tarotRequestId=null;window.loadingInterpretation=false;tarotCards=[];if(window.realmTarot){window.realmTarot=false;startGame='explore';Dungeon.currentSpeaker=null;invalidate();}else toMenu();});
     }
     function trainer(){
         heading.textContent='Lessons & insights';el('h2',body,Dungeon.currentSpeaker?.name||'Trainer');el('p',body,'Ask about a technique to study it. Each lesson uses its own level, class and base stat requirements.','muted');
         if(BMLearning.message){const note=el('div',body,BMLearning.message,'card prose status');note.setAttribute('role','status');}
-        const grid=el('div',body,null,'grid');for(const lesson of BMLearning.catalog){const panel=el('article',grid,null,'card'),status=BMLearning.eligibility(lesson.id);portrait(panel,lesson.id);el('h3',panel,BMLearning.name(lesson.id));el('p',panel,status.text,'muted');if(status.known)el('p',panel,BMLearning.insight(lesson.id),'prose');button(panel,status.known?'Review this insight':'Ask about '+BMLearning.name(lesson.id),action(()=>BMLearning.learn(lesson.id,'trainer')));}
+        const grid=el('div',body,null,'grid');for(const lesson of BMLearning.catalog){const panel=el('article',grid,null,'card'),status=BMLearning.eligibility(lesson.id);portrait(panel,lesson.id);el('h3',panel,lesson.name||BMLearning.name(lesson.id));el('p',panel,status.text,'muted');if(lesson.id===53)el('p',panel,'No prerequisites. After 13 seconds free of combat and nearby enemies, enter camp, recover 1 ward and draw a magic card. The fire opens activities; the tent rests and returns you.','muted');if(status.known)el('p',panel,BMLearning.insight(lesson.id),'prose');button(panel,status.known?'Review this insight':'Ask about '+(lesson.name||BMLearning.name(lesson.id)),action(()=>BMLearning.learn(lesson.id,'trainer')));}
         if(!BMLearning.catalog.length)el('p',body,'This trainer has no lessons available.','card');foot('End lesson',()=>{BMLearning.close();invalidate();});
+    }
+    function wildernessGuild(){
+        heading.textContent='Travelers of the Wilderness';const v=BMRealm.current();
+        el('p',body,`${BMRealm.rank()} · ${Dungeon.memory.wildernessRenown||0} renown · ${Dungeon.memory.wildernessCredits||0} supply credits`,'status');
+        el('p',body,'An independent guild of the open road. Its rank and stores are separate from the Adventurers’ Guild. Every assignment stays within this realm.','muted');
+        if(!v)el('p',body,'Accept an imp’s invitation to begin a new visit ledger.','card');
+        else{
+            const live=BMRealm.counts();el('p',body,`Friendly alive: ${live.friendly} · Enemies alive: ${live.enemies} · Your kills: ${v.stats.kills}`,'status');
+            for(const c of v.contracts){const card=el('article',body,null,'card');el('h3',card,c.title);el('p',card,c.text);el('p',card,`${BMRealm.progress(c)} / ${c.target} · ${c.renown} renown · ${c.credits} supply credits`,'muted');
+                const accepted=v.accepted[c.id],claimed=v.claimed[c.id],b=button(card,claimed?'Reported':accepted?'Report completion':'Accept assignment',action(()=>accepted?BMRealm.claim(c.id):BMRealm.accept(c.id)),'primary');b.disabled=!!claimed||accepted&&BMRealm.progress(c)<c.target;
+            }
+            button(body,'Guild supplies',action(()=>BMRealm.guildShop()));
+        }
+        foot('Return to the outpost',()=>{startGame='explore';Dungeon.currentSpeaker=null;invalidate();});
+    }
+    function wildernessEncounter(){
+        const n=BMRealm.encounter();heading.textContent=n?.name||'A meeting on the road';
+        if(n){for(const line of n.customDialogue||[])el('p',body,line,'prose');
+            const blocked=n.objectiveKind!=='coward'&&BMRealm.enemyNear(n);el('p',body,blocked?'Nearby enemies still threaten this place. Clear the area first.':n.objectiveKind==='artifact'?'A waystone lost in the conflict. Recover it for the guild.':n.objectiveKind==='coward'?'The deserter has lowered their weapon. You may offer mercy, company or a warning.':'The immediate danger has passed. You can help them continue their journey.','muted');
+            const choices={hostage:[['free','Free the prisoner'],['recruit','Free and invite to party']],artifact:[['collect','Recover artifact']],coward:[['spare','Let them go'],['recruit','Offer a place in the party'],['drive','Send them away']],rescue:[['aid','Help them to safety'],['recruit','Join forces']]}[n.objectiveKind]||[];
+            for(const [id,label]of choices){const b=button(body,label,action(()=>BMRealm.resolve(id)),'primary');b.disabled=blocked||id==='recruit'&&(Dungeon.activeSummons||[]).length+(Dungeon.activeEscorts||[]).length>=3;}
+        }
+        foot('Leave',()=>{startGame='explore';Dungeon.currentSpeaker=null;invalidate();});
     }
     function guild(){
         heading.textContent=window.isAvalonBoard?'Avalon Guild':'Adventurers’ Guild';const mem=Dungeon.memory,q=mem.guild_quest||{state:0};
@@ -94897,6 +95269,7 @@ const BMShell=(()=>{
             const ability=abilities.get(id);
             el('p',card,[ability?.learned?(summoning?'Learned summon':'Learned skill'):null,ability?.cards.length?`${ability.cards.length} extra card${ability.cards.length===1?'':'s'}`:null,category==='equip'&&ability?.learned?'Reusable buff':null].filter(Boolean).join(' · '),'muted');
             const effect=SPELL_REGISTRY[id],statNames=['STR','CON','INT','AGI'];
+            if(id===53)el('p',card,'Make camp after 13 seconds free of combat and nearby enemies. No cooldown. Restore 1 ward and draw one magic card when entering camp. In online realms, use the arrival outpost campfire instead.','muted');
             if(category==='equip'&&effect){
                 const modifiers=effect.multiStat||((effect.buffStat!==undefined)?[{stat:effect.buffStat,amount:effect.amount}]:[]);
                 const detail=modifiers.map(m=>(m.stat==='all'?'All stats':statNames[m.stat])+' '+(m.amount>=0?'+':'')+m.amount).join(' · ');
@@ -94920,8 +95293,8 @@ const BMShell=(()=>{
                     const learned=!!Dungeon.spellsLearned?.[item.spellId];el('p',card,BMLearning.eligibility(item.spellId).text,'muted');el('p',card,'A successful reading consumes one book. Unmet prerequisites leave it intact.','muted');
                     const b=button(card,learned?'Learned':'Read skillbook',()=>{BMInventory.readBook(item.key);invalidate();});b.disabled=learned;
                 }else if(item.kind==='equipment'){
-                    el('p',card,'+1 DEF (CON) · up to 24 hours. Reusable; ready 60 seconds after removal or expiry.','muted');
-                    const b=button(card,BMEquipment.label(1008),()=>{BMEquipment.boots();invalidate();},'primary');b.dataset.equipBoots='';b.disabled=!BMEquipment.status(1008).ready;
+                    const equipmentId=Number(item.spellId??1008);el('p',card,(item.description||(equipmentId===1008?'+1 DEF (CON). ':'Equipment buff. '))+' Up to 24 hours. Reusable; ready 60 seconds after removal or expiry.','muted');
+                    const b=button(card,BMEquipment.label(equipmentId),()=>{BMEquipment.useItem(item.key);invalidate();},'primary');b.dataset.equipItem=equipmentId;b.disabled=!BMEquipment.status(equipmentId).ready;
                 }else if(item.kind==='consumable'){
                     el('p',card,BMInventory.description(item),'muted');
                     button(card,'Consume one',()=>{BMInventory.consume(item.key);invalidate();},'primary');
@@ -94936,7 +95309,10 @@ const BMShell=(()=>{
         if(journalTab===' quest ')return BMQuestEntries();
         if(journalTab===' story ')return storyViewMode==='main'?playerStoryBeats:playerGuildBeats;
         let list=journalTab==='suncat'?suncatChronicle:playerChronicle;
-        if(journalTab==='record'&&filter!=='ALL')list=list.filter(e=>filter==='CHAPTERS'?['chapter','condensed','retrospective'].includes(e.entryType):!e.entryType||e.entryType==='record');
+        if(journalTab==='record'){
+            if(filter==='ALL')list=list.filter(e=>!e.adaptedInChapter||e.isCore);
+            else list=list.filter(e=>filter==='CHAPTERS'?['chapter','condensed','retrospective','epic'].includes(e.entryType):!e.entryType||e.entryType==='record');
+        }
         return [...list].reverse();
     }
     const entryText=e=>String(e.playerChronicle||e.text||'');
@@ -94956,6 +95332,7 @@ const BMShell=(()=>{
             }
             if(journalTab===' story '){const row=el('div',body,null,'row');for(const [value,label]of [['main',"The Fool’s Journey"],['guild','Guild history']]){const b=button(row,label,()=>{storyViewMode=value;invalidate();});b.setAttribute('aria-pressed',String(storyViewMode===value));}}
             const entries=journalEntries();el('p',body,entries.length+' entries · Tap any block to read.','muted');
+            if(journalTab==='record'&&filter==='ALL')el('p',body,'Chapters replace covered entries in this view. The Records tab keeps every original entry.','muted');
             for(const entry of entries.slice(0,limit)){
                 const b=button(body,'',()=>{listScroll=body.scrollTop;selected=entry;entry.isRead=true;try{if(journalTab==='record')localStorage.setItem('runestones_chronicle',JSON.stringify(playerChronicle));if(journalTab==='suncat')localStorage.setItem('suncat_chronicle',JSON.stringify(suncatChronicle));}catch(_){}invalidate();},'entry'+(entry.isRead===false?' unread':''));
                 el('small',b,entry.failed?'Failed':entry.completed?'Completed':entry.entryType||'Entry');el('strong',b,entryTitle(entry));el('span',b,entryText(entry).replace(/\s+/g,' ').slice(0,150)+(entryText(entry).length>150?'…':''));
@@ -94997,9 +95374,9 @@ const BMShell=(()=>{
         if(!on){if(mode){mode='';key='';art.length=0;body.replaceChildren();}previousState=startGame;return;}
         BMTouch.cancel();
         if(previousState!==startGame){if(startGame==='deck_menu')BMLearning.clear();if(startGame==='shop')BMShop.enter();if(startGame==='guild_menu')BMActivity.record('guild_visit',`Visited the ${window.isAvalonBoard?'Avalon':'adventurers’'} guild.`);selected=null;limit=100;listScroll=0;if(startGame===3)menuPage='home';else if(startGame==='options'||startGame==='options2')menuPage='options';previousState=startGame;key='';}
-        mode=startGame===1?'studio':scenes.has(startGame)?'menu':startGame==='shop'?'shop':startGame==='journal'?'journal':['tarot','grimoire','guild_menu','trainer'].includes(startGame)?startGame:'inventory';
+        mode=startGame===1?'studio':scenes.has(startGame)?'menu':startGame==='shop'?'shop':startGame==='journal'?'journal':['tarot','grimoire','guild_menu','trainer','wilderness_guild','wilderness_encounter'].includes(startGame)?startGame:'inventory';
         const next=[mode,mode==='menu'?menuPage:'',mode==='inventory'?activeDeckTab+itemTab:'',mode==='journal'?journalTab+filter+storyViewMode:'',selected?'detail':'list'].join('|');
-        if(next!==key){const detail=!!selected;clear();key=next;if(mode==='studio')studio();else if(mode==='menu')menu();else if(mode==='journal')journal();else if(mode==='shop')shop();else if(mode==='tarot')tarot();else if(mode==='grimoire')gallery();else if(mode==='guild_menu')guild();else if(mode==='trainer')trainer();else inventory();body.scrollTop=detail?0:listScroll;}
+        if(next!==key){const detail=!!selected;clear();key=next;if(mode==='studio')studio();else if(mode==='menu')menu();else if(mode==='journal')journal();else if(mode==='shop')shop();else if(mode==='tarot')tarot();else if(mode==='grimoire')gallery();else if(mode==='guild_menu')guild();else if(mode==='wilderness_guild')wildernessGuild();else if(mode==='wilderness_encounter')wildernessEncounter();else if(mode==='trainer')trainer();else inventory();body.scrollTop=detail?0:listScroll;}
         const now=performance.now();
         if(now-lastRefresh>400){lastRefresh=now;
             if(mode==='journal'&&journalTab!=='settings'&&!selected){
@@ -95010,16 +95387,17 @@ const BMShell=(()=>{
             for(const b of root.querySelectorAll('[data-use-skill]')){
             const id=Number(b.dataset.useSkill),ready=BMHotbar.source(Dungeon,id,true),ms=(Dungeon.skillCooldowns?.[id]||0)-Date.now();b.disabled=!ready;
             if(BMEquipment.isEquip(id)){b.textContent=BMEquipment.label(id);continue;}
+            if(id===53){const camp=BMCamp.safety();b.disabled=!ready||!camp.ok;b.textContent=camp.ok?'Make camp':Dungeon.mapID===999?'Use outpost campfire':camp.enemy||Dungeon.inCombat||Dungeon.isThreatNearby?'Enemies nearby':'Camp · '+Math.ceil(camp.wait/1000)+'s to safety';b.title=camp.reason;continue;}
             b.textContent=ready?b.dataset.readyLabel+(ready.source==='card'?' · card ×'+ready.cards.length:' · learned'):ms>0?Math.ceil(ms/1000)+'s cooldown':'Unavailable';
         }}
-        for(const b of root.querySelectorAll('[data-equip-boots]')){b.textContent=BMEquipment.label(1008);b.disabled=!BMEquipment.status(1008).ready;}
+        for(const b of root.querySelectorAll('[data-equip-item]')){const id=Number(b.dataset.equipItem);b.textContent=BMEquipment.label(id);b.disabled=!BMEquipment.status(id).ready;}
         drawArt(now);
     }
     return {sync,active,invalidate};
 })();
 
 function BMQuestEntries(){
-                    let allQuests = [];
+                    let allQuests = BMRealm.entries();
                     
                     // --- NEW: THE ATLAS HELPER ---
                     const getMapName = id =>
@@ -97928,6 +98306,8 @@ const BMIntro = (() => {
         }
     }//END FUNCTION
   async function bootGame() {
+    window.BattleMageStartup.progress('Restoring your adventure');
+    Dungeon.initializeGame();
     const loader = document.getElementById('loading-screen');
     const progressBar = document.getElementById('loading-bar-progress');
     const statusText = document.getElementById('loading-text-sub'); 
