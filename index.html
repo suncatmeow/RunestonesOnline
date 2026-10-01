@@ -29020,7 +29020,7 @@ const BMFishing=(()=>{
             const record=Dungeon.memory.fishingRecord||{catches:0,bestCm:0};
             record.catches++;record.bestCm=Math.max(record.bestCm,cm);record.lastSpecies=species;
             BMActivity.record('fish_caught',`Caught a ${cm} cm ${species}.`,{fish:species,fishIndex,cm});Dungeon.memory.fishingRecord=record;BMInventory.add({key:'fish:'+fishIndex,name:species,kind:'fish',fishIndex,category:'misc'},1);BMCraftMastery.finish(cast,true);Dungeon.requestSave();cancel();
-            say(`${species} · ${cm} cm!  Total: ${record.catches} · Best: ${record.bestCm} cm`,now);
+            notice='';noticeUntil=0;reveal.text=`${species} · ${cm} cm!  Total: ${record.catches} · Best: ${record.bestCm} cm`;
             return;
         }
         checked=-Infinity;
@@ -29033,16 +29033,19 @@ const BMFishing=(()=>{
     function draw(){
         if(!BMTouch.live())return;
         const now=performance.now(),bite=cast&&now>=cast.bite;
-        if(reveal&&now<reveal.until&&reveal.map===Dungeon.mapID){
+        const catchVisible=reveal&&now<reveal.until&&reveal.map===Dungeon.mapID&&safe();
+        // One fade controls the fish, its caption, and the caption background.
+        const catchAlpha=catchVisible?Math.max(0,Math.min(1,(now-reveal.at)/140,(reveal.until-now)/400)):0;
+        if(catchVisible){
             const age=(now-reveal.at)/1000,u=tL/10;
-            ctx.save();ctx.globalAlpha=Math.min(1,age/.14,(reveal.until-now)/400);
+            ctx.save();ctx.globalAlpha*=catchAlpha;
             BMFishSprites.draw(reveal.index,tX+tL*.5,tY+tH*.26-Math.sin(Math.min(1,age/.5)*Math.PI*.5)*u*.22,
                 Math.min(190,tL*.34),age);ctx.restore();
         }
-        const text=cast?(bite?(cast.message||'Bite! Tap Reel now!'):'Fishing… wait for a bite. Tap Reel to cancel.'):(now<noticeUntil?notice:'');
+        const text=cast?(bite?(cast.message||'Bite! Tap Reel now!'):'Fishing… wait for a bite. Tap Reel to cancel.'):catchVisible?reveal.text:(now<noticeUntil?notice:'');
         if(!text)return;
         const u=tL/10,x=tX+u*.35,y=tY+3.7*u,width=tL*.75;
-        ctx.save();ctx.fillStyle='rgba(0,0,0,.78)';ctx.fillRect(x,y,width,u*.85);
+        ctx.save();if(!cast&&catchVisible)ctx.globalAlpha*=catchAlpha;ctx.fillStyle='rgba(0,0,0,.78)';ctx.fillRect(x,y,width,u*.85);
         ctx.fillStyle=bite?'#a9f4ec':'#e9ddb0';ctx.font=`${Math.max(11,Math.min(16,u*.27))}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,x+width/2,y+u*.34,width-u*.2);
         if(cast){const phase=bite?Math.max(0,1-(now-cast.bite)/1900):.5+.3*Math.sin(now/450);ctx.fillStyle=bite?'#a9f4ec':'#827c48';ctx.fillRect(x+u*.15,y+u*.65,(width-u*.3)*phase,3);}
         ctx.restore();
@@ -95518,7 +95521,6 @@ const BMShell=(()=>{
         el('figcaption',frame,'Your player card · current stats');const hero=el('div',overview);
         const cls=String(Dungeon.playerClass||'none');
         el('h2',hero,playerName||'Adventurer');el('p',hero,'','status').dataset.playerClass='';el('p',hero,'Guild rank '+(Dungeon.memory?.guild_rank||'F'),'muted');
-        const bio=el('details',hero);bio.hidden=false;el('summary',bio,'Character description');el('p',bio,myLivePerception,'prose muted').dataset.playerFlavor='';
         const current=Math.max(0,Dungeon.currentWardTime||0),max=(Dungeon.maxWards||3)*(Dungeon.timePerWard||3);
         el('p',hero,`Wards: ${current.toFixed(1)} / ${max.toFixed(1)} seconds · ${Dungeon.maxWards||3} wards`);
         const wards=el('progress',hero);wards.max=max;wards.value=current;wards.setAttribute('aria-label','Remaining ward time');
@@ -99198,9 +99200,6 @@ const BMPlayerStats=(()=>{
     set(list,text||'No active effects.');
     const cls=String(Dungeon.playerClass||'none');
     set(root.querySelector('[data-player-class]'),`${cls.toLowerCase()==='none'?'Unclassed':cls} · Level ${Dungeon.level||0}${typeof Logres==='undefined'?' · '+suit(cls):''}`);
-    const flavor=root.querySelector('[data-player-flavor]');
-    set(flavor,typeof myLivePerception!=='undefined'?myLivePerception:'');
-    if(flavor)flavor.parentElement.hidden=!flavor.textContent;
   }
   function makeCard(){
     const card=new Card(91,0);
@@ -99809,7 +99808,7 @@ const BMFieldwork=(()=>{
   function open(kind,options){if(session||Dungeon.isDead||Dungeon.isDying||!['explore','camp','logres_dialogue'].includes(startGame))return false;create();
     session={kind,options,actor:Dungeon,map:Dungeon.mapID,previous:startGame,focus:document.activeElement};resetInput();startGame='fieldwork';root.hidden=false;armed=performance.now()+200;
     game={kind,status:'playing',elapsed:0,mistakes:0,cleared:[],placed:[],selected:0,flash:null,message:kind==='gather'?'Dig the eight loose soil pockets. Leave the pale roots intact and wait for the spider to move.':'Select a leather piece, then tap its matching outline. You can also drag pieces into place.'};
-    if(kind==='gather'){const cached=Dungeon.memory.craftGatherChecks??={};const key=String(options.resource||options.name)+':'+Dungeon.mapID,prior=cached[key];if(prior&&prior.until>Date.now()){game.craftAttempt=prior.id;}else{BMCraftMastery.begin(game,key);cached[key]={id:game.craftAttempt,until:Date.now()+600000};Dungeon.requestSave();}}render();body.focus({preventScroll:true});last=performance.now();raf=requestAnimationFrame(tick);return true;
+    if(kind==='gather'){game.spiderPocket=Math.floor(Math.random()*pockets.length);game.spiderMoveAt=2.4;const cached=Dungeon.memory.craftGatherChecks??={};const key=String(options.resource||options.name)+':'+Dungeon.mapID,prior=cached[key];if(prior&&prior.until>Date.now()){game.craftAttempt=prior.id;}else{BMCraftMastery.begin(game,key);cached[key]={id:game.craftAttempt,until:Date.now()+600000};Dungeon.requestSave();}}render();body.focus({preventScroll:true});last=performance.now();raf=requestAnimationFrame(tick);return true;
   }
   function gather(options){if(!options?.valid?.()||!['explore','logres_dialogue'].includes(startGame))return false;return open('gather',options);}
   function leather(recipe,complete){if(startGame!=='camp')return false;return open('leather',{recipe,name:BMFieldCraft.recipes[recipe]?.name||'Fur Boots',complete});}
@@ -99818,7 +99817,7 @@ const BMFieldwork=(()=>{
     BMShell.invalidate();if(old.focus?.isConnected)old.focus.focus({preventScroll:true});
   }
   function valid(){return session&&Dungeon===session.actor&&Dungeon.mapID===session.map&&!Dungeon.isDead&&!Dungeon.isDying;}
-  const spider=()=>Math.floor(game.elapsed/2.4)%pockets.length;
+  const spider=()=>game.spiderPocket;
   function finish(ok){if(!valid()||game.status!=='playing')return false;
     if(ok&&game.kind==='gather'&&!session.options.valid()){game.message='This plant is no longer within reach.';game.status='cancelled';render();return false;}
     game.status=ok?'success':'failed';if(game.kind==='gather'){BMCraftMastery.finish(game,ok);const cached=Dungeon.memory.craftGatherChecks||{};for(const [k,v]of Object.entries(cached))if(v.id===game.craftAttempt)delete cached[k];}BMCraftAudio.result(ok);
@@ -99904,7 +99903,13 @@ const BMFieldwork=(()=>{
     if(game.flash&&performance.now()<game.flash.until){c.fillStyle=game.flash.color+'44';c.strokeStyle=game.flash.color;c.lineWidth=3;c.beginPath();c.arc(...game.flash.point,46,0,7);c.fill();c.stroke();}
     if(status.textContent!==game.message)status.textContent=game.message;
   }
-  function tick(now){if(!session)return;raf=requestAnimationFrame(tick);if(!valid()){close();return;}const dt=document.hidden?0:Math.max(0,Math.min(.1,(now-last)/1000));last=now;if(document.hidden)return;if(game.status==='playing')game.elapsed+=dt;draw();}
+  function tick(now){if(!session)return;raf=requestAnimationFrame(tick);if(!valid()){close();return;}const dt=document.hidden?0:Math.max(0,Math.min(.1,(now-last)/1000));last=now;if(document.hidden)return;if(game.status==='playing'){
+      game.elapsed+=dt;
+      if(game.kind==='gather'&&game.elapsed>=game.spiderMoveAt){
+        game.spiderPocket=(game.spiderPocket+1+Math.floor(Math.random()*(pockets.length-1)))%pockets.length;
+        game.spiderMoveAt=game.elapsed+2.4;
+      }
+    }draw();}
   return {gather,leather,dig,digAt,select,place,startStitching,close,get game(){return game;},get active(){return !!session;}};
 })();
 
