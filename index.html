@@ -32707,7 +32707,7 @@ function applyExtraCardDefinition(card){
         ioScript.src = "https://cdn.socket.io/4.7.2/socket.io.min.js";
         ioScript.onload = function() {
         if (navigator.onLine) {
-                socket = io('https://battlemage.onrender.com', {
+                socket = io(window.BM_SERVER_URL || 'https://battlemage.onrender.com', {
                     // Stop trying after 3 failed attempts so it doesn't spam your console
                     reconnectionAttempts: 3, 
                     reconnectionDelay: 2000
@@ -32758,6 +32758,7 @@ function applyExtraCardDefinition(card){
 
                         window.remotePlayers[id].dir = data.dir;
                         window.remotePlayers[id].status = data.status;
+                        for(const k of ["isDead","onlineMode","onlineRole","partyId","notoriety","bounty","protectedUntil","combatUntil","level","wardSeconds"])if(data[k]!==undefined)window.remotePlayers[id][k]=data[k];
                         if (data.type !== undefined) window.remotePlayers[id].type = data.type;
                         if (data.mapID !== undefined) window.remotePlayers[id].mapID = data.mapID;
                         if (data.name) window.remotePlayers[id].name = data.name;
@@ -32936,17 +32937,13 @@ function applyExtraCardDefinition(card){
                     data.actionType.startsWith('OVERWORLD_') &&
                     (
                         Dungeon.isDying ||
-                        Dungeon.isDead ||
-                        (
-                            typeof startGame !== 'undefined' &&
-                            (startGame === 'battle' || startGame === 'tactics')
-                        )
+                        Dungeon.isDead
                     )
                 ) {
                     return;
                 }
                 // Trigger Aggro automatically if someone hits us first!
-                if (data.senderId && !Dungeon.hostilePlayers.has(data.senderId)) {
+                if (data.senderId && !Dungeon.hostilePlayers.has(data.senderId) && !(data.actionType==='OVERWORLD_SPELL'&&['heal','buff'].includes(SPELL_REGISTRY[payload?.spellId]?.type))) {
                     Dungeon.hostilePlayers.add(data.senderId);
                     socket.emit("set_pvp_aggro", { targetId: data.senderId });
                 }
@@ -33003,7 +33000,7 @@ function applyExtraCardDefinition(card){
                         break;
 
                     case 'OVERWORLD_SPELL':
-                        Dungeon.applySpell(payload.spellId, payload.magnitude);
+                        if(SPELL_REGISTRY[payload.spellId]?.type==='heal'){Dungeon.currentWardTime=Math.min(Dungeon.maxWards*Dungeon.timePerWard,Math.max(0,Dungeon.currentWardTime)+Math.max(0,payload.magnitude||0));Dungeon.wardShatterCooldown=0;}else if(Number(payload.spellId)===19){Dungeon.activeBuffs=[];Dungeon.currentWardTime=Dungeon.maxWards*Dungeon.timePerWard;Dungeon.wardShatterCooldown=0;}else Dungeon.applySpell(payload.spellId, payload.magnitude);
                         
                         if (payload.knockX || payload.knockY) {
                             let nextX = Dungeon.x + payload.knockX;
@@ -33430,6 +33427,7 @@ function applyExtraCardDefinition(card){
                 }
             });
             socket.on("load_dead_npcs", (serverDeadList) => {
+                return; // Personal saves and authoritative expedition snapshots own NPC deaths. 
                 if (typeof Dungeon !== 'undefined') {
                     for (let uniqueID in serverDeadList) {
                         // Write to our local memory so loadMap will hide them
@@ -33469,6 +33467,7 @@ function applyExtraCardDefinition(card){
                 }
             });
             socket.on("npc_died", (data) => {
+                if(BMOnline.publicState()?.self.mode==='Solo'||BMOnline.shared(Dungeon.npcs.find(n=>n.index===data.index)))return;
                 console.log(">>> NETWORK EVENT: NPC Died!", data);
 
                 if (typeof Dungeon !== 'undefined') {
@@ -35187,6 +35186,7 @@ const BMMastery=(()=>{
             },
             install(sock) {
                 SUNCAT_FIELD.install(sock);
+                BMOnline.install(sock);
                 sock.on('suncat_command',(packet,ack)=>{
                     if (typeof ack!=='function') return;
                     if (this.results.has(packet?.id)) return ack(this.results.get(packet.id));
@@ -44313,14 +44313,14 @@ const BMMastery=(()=>{
                             lensFade = Math.max(0, (transformY - 0.05) * 2.85); 
                         }
 
-                        const spriteAlpha=(sprite.isPlayer?.7*(1-spriteFogFactor):1-spriteFogFactor)*lensFade;
+                        const spriteAlpha=(sprite.isPlayer?.7*(1-spriteFogFactor):1-spriteFogFactor)*lensFade*(BMOnline.ghost(sprite)?.45:1);
                         if(auraClip) {
                             ctx.save();ctx.globalAlpha=spriteAlpha;ctx.filter='none';ctx.clip(auraClip);
                             drawActorAuraLayer(ctx,auraBox,auraState,frameNow,false);ctx.restore();
                         }
                         const drawImg=tintedAuraFrame(srcImg,auraState,frameNow);
                         ctx.globalAlpha=spriteAlpha;
-                        ctx.filter = (sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : 'none';
+                        ctx.filter = (sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : sprite.notoriety>0 ? 'sepia('+Math.min(1,.25+sprite.notoriety*.12)+') saturate(3) hue-rotate(310deg)' : 'none';
 
                         let previousBlend = ctx.globalCompositeOperation;
                         if (imageIndex === 99) ctx.globalCompositeOperation = 'lighter';
@@ -44356,6 +44356,7 @@ const BMMastery=(()=>{
                                 srcX, srcY, srcW, srcH,
                                 viewX + s_destX, drawY1, s_width, drawH
                             );
+                            if(sprite.notoriety>0){const eyeY=drawStartY+spriteSize*.19,eyeSize=Math.max(1,spriteSize*.018);ctx.save();ctx.filter="none";ctx.fillStyle="#ff1638";for(const f of [.46,.54]){const eyeX=drawStartX+spriteSize*f,l=Math.max(eyeX-eyeSize,viewX+s_destX),r=Math.min(eyeX+eyeSize,viewX+s_destX+s_width);if(r>l&&eyeY>=drawY1&&eyeY+eyeSize<=drawY2)ctx.fillRect(l,eyeY,r-l,eyeSize);}ctx.restore();}
                         };
 
                         // Integer z-buffer columns; exact fractional texture edges.
@@ -45936,7 +45937,7 @@ const BMMastery=(()=>{
                 let isValidXPTarget = npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && baseAlignment !== 'ally';
                 let isPlayerKill = !['suncat_combat','npc_infighting','story_event','despawn','dialogue'].includes(reason);
 
-                if (isValidXPTarget && isPlayerKill) {
+                if (isValidXPTarget && isPlayerKill && !this._onlineApplyingKill) {
 
                     // --- DYNAMIC SCALING XP ---
                     let baseXP = npc.xp || 10;
@@ -46020,7 +46021,7 @@ const BMMastery=(()=>{
                 }
 
                 // LOOT DROP
-                if (typeof startGame !== 'undefined' && startGame === 'explore' && npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && npc.alignment !== 'ally' && npc.role !== 'summoned_minion') {                                
+                if (!this._onlineApplyingKill && typeof startGame !== 'undefined' && startGame === 'explore' && npc.role !== 'dropped_card' && !(npc.role && String(npc.role).includes('portal')) && npc.alignment !== 'ally' && npc.role !== 'summoned_minion') {                                
                     if (Math.random() < ((BMHotbar.isBattleMage(this)||reason==='suncat_combat')?1:(isPlayerKill?.20:0))) { 
                         let loot = rnd(1, (npc.deck||[]).length-1);
                         let droppedCardID = (npc.deck && npc.deck.length > 0) ? npc.deck[loot] : Math.floor(npc.type);
@@ -46038,7 +46039,7 @@ const BMMastery=(()=>{
                     }
                 }
 
-                if(isPlayerKill&&isValidXPTarget&&npc.role!=='summoned_minion'&&baseAlignment!=='ally')BMMonsterLoot.collect(this,npc);
+                if(!this._onlineApplyingKill&&isPlayerKill&&isValidXPTarget&&npc.role!=='summoned_minion'&&baseAlignment!=='ally')BMMonsterLoot.collect(this,npc);
 
                 // NPC MINION
                 this.npcs.forEach(minion => {
@@ -46133,7 +46134,7 @@ const BMMastery=(()=>{
                 ];
 
                 if (
-                        !(this.mapID===999&&this.customScenario) && reason !== 'suncat_combat' && aliveHostiles === 1 &&
+                        !this._onlineApplyingKill && !(this.mapID===999&&this.customScenario) && reason !== 'suncat_combat' && aliveHostiles === 1 &&
                         lastFoe &&
                         !lastFoe.isBoss &&
                         !lastFoe.isTarget &&
@@ -48020,6 +48021,7 @@ const BMMastery=(()=>{
                             break;
                             
                         case 'open_shop':
+                            if(BMOnline.outlaw()){chatLog.push('[SHOP]: Outlaws are refused service.');break;}
                             isBlocking = true;
                             window.isGuildShop=false;window.isWildernessShop=false;
                             BMShop.configure(payload);
@@ -89344,7 +89346,9 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
                             let p = window.remotePlayers[id];
                             if (p.mapID !== Dungeon.mapID) continue;
                             
-                            if (Math.floor(p.x) === targetX && Math.floor(p.y) === targetY) {                       
+                            if (Math.floor(p.x) === targetX && Math.floor(p.y) === targetY) {
+                                if(id!=='NPC_SUNCAT'&&!BMOnline.canAttack(p)){BMOnline.target(id);continue;}
+                       
                                 if (movingForward) {
                                     // 1. SUNCAT COLLISION
                                     if (id === "NPC_SUNCAT") {
@@ -93659,7 +93663,7 @@ const BMActivity=(()=>{
     try{pending=JSON.parse(BMStorage.getItem(key)||'[]');if(!Array.isArray(pending))pending=[];}catch{pending=[];}
     function persist(){try{BMStorage.setItem(key,JSON.stringify(pending));lastError='';}catch{lastError='Activity records could not be saved on this device.';}}
     function identity(){let id=BMStorage.getItem('runestones_player_id');if(!id){id='player_'+newStoryId();BMStorage.setItem('runestones_player_id',id);}return id;}
-    function join(){if(!socket?.connected)return;let name=playerName||'Player';if([0,1,2,3,'options','options2'].includes(startGame))try{name=JSON.parse(BMStorage.getItem('battlemage_save')||'null')?.name||name;}catch{}if(joinedSocket===socket.id){if(joinedName!==name){joinedName=name;socket.emit('setIdentity',{name,sprite:playerSprite});}return;}if(joiningSocket===socket.id)return;const transport=socket,id=transport.id;joiningSocket=id;BMOnlineAuth.join(transport,{name,persistentId:identity(),perception:BMStorage.getItem('runestones_perception')||undefined},result=>{joiningSocket=null;if(socket!==transport||!transport.connected||transport.id!==id)return;if(!result.ok){lastError=result.error||'Online journal sign-in failed.';return;}joinedSocket=id;joinedName=name;lastError='';Dungeon.saveGame();transport.emit('setIdentity',{name,sprite:playerSprite});transport.emit('toggle_narration',window.settingsNarration!==false);});}
+    function join(){if(!socket?.connected)return;let name=playerName||'Player';if([0,1,2,3,'options','options2'].includes(startGame))try{name=JSON.parse(BMStorage.getItem('battlemage_save')||'null')?.name||name;}catch{}if(joinedSocket===socket.id){if(joinedName!==name){joinedName=name;socket.emit('setIdentity',{name,sprite:playerSprite});}return;}if(joiningSocket===socket.id)return;const transport=socket,id=transport.id;joiningSocket=id;BMOnlineAuth.join(transport,{name,onlineVersion:1,persistentId:identity(),perception:BMStorage.getItem('runestones_perception')||undefined},result=>{joiningSocket=null;if(socket!==transport||!transport.connected||transport.id!==id)return;if(!result.ok){lastError=result.error||'Online journal sign-in failed.';return;}joinedSocket=id;joinedName=name;lastError='';Dungeon.saveGame();transport.emit('setIdentity',{name,sprite:playerSprite});transport.emit('toggle_narration',window.settingsNarration!==false);});}
 
     function record(kind,text,details={}){
         const actorId=identity();
@@ -95482,8 +95486,10 @@ const BMShell=(()=>{
         if(window.guildSubState==='quest_rewards'){
             el('h2',body,'Commission complete');el('p',body,`Earned ${window.earnedRep||0} reputation. Your rewards have been added to your collection.`,'status');const grid=el('div',body,null,'grid');for(const g of groupCards((window.lastQuestRewards||[]).map(id=>new Card(id,0)))){const card=el('article',grid,null,'card');portrait(card,g.viewCard.index);el('h3',card,`${g.viewCard.name} × ${g.count}`);}button(body,'Continue',act(()=>{window.guildSubState='rank_select';window.activeGuildTab='bounties';}),'primary');return;
         }
-        tabs([['bounties','Commissions'],['active_quest','Current commission'],['classes','Classes'],['shop','Stores'],['hire','Recruit'],['help','Guild guide']],tab,id=>{if(id==='shop'||id==='hire'){BMGuild.openShop(id==='hire');return;}window.activeGuildTab=id;window.guildSubState='rank_select';window.selectedQuestInfo=null;});
-        if(tab==='classes'){
+        tabs([['bounties','Commissions'],['active_quest','Current commission'],['classes','Classes'],['shop','Stores'],['hire','Recruit'],['online','LFG / LFP'],['help','Guild guide']],tab,id=>{if(id==='shop'||id==='hire'){BMGuild.openShop(id==='hire');return;}window.activeGuildTab=id;window.guildSubState='rank_select';window.selectedQuestInfo=null;});
+        if(tab==='online'){
+            el('h2',body,'Travellers’ board');el('p',body,'Find a party, recruit by role, or review outlaw bounties. Online parties support up to nine players. Your three summoned companions remain separate.');button(body,'Open LFG / LFP board',()=>BMOnline.open(),'primary');
+        }else if(tab==='classes'){
             el('h2',body,'Choose your path');el('p',body,'Advancing a class is permanent. Your current branch determines the promotions offered here.','muted');if(BMGuild.note)el('p',body,BMGuild.note,'status');
             const choices=BMGuild.classList(),grid=el('div',body,null,'grid');for(const c of choices){const panel=el('article',grid,null,'card');portrait(panel,c.sprite);el('h3',panel,c.name);el('p',panel,c.desc);el('p',panel,`Requires ${c.from==='none'?'an unclassed adventurer':c.from} · Rank ${c.rank}${c.tier!==undefined?' · Avalon '+BMGuild.tiers[c.tier]:''}`,'muted');const status=BMGuild.classStatus(c);el('p',panel,status||'Promotion available','status');const b=button(panel,status==='Current class'?status:'Review promotion',()=>{const confirmation=el('div',panel,null,'card');el('p',confirmation,'Advance permanently to '+c.name+'?');button(confirmation,'Cancel',()=>confirmation.remove());button(confirmation,'Accept '+c.name,act(()=>BMGuild.promote(c.name)),'primary');});b.disabled=!!status;}
             if(!choices.length)el('p',body,'No further promotions are offered on this board for your current class.','card');
@@ -100394,6 +100400,950 @@ const BMFrontierItems=(()=>{
     return value;
   };
   return {ULTIMATE,ultimateBook,ultimateEligibility};
+})();
+
+/* Battle Mage multiplayer controls and shared expedition adapter, inline by design. */
+const BMOnline = (() => {
+  const roles = ["Any", "Tank", "Healer", "Damage", "Support", "Explorer"];
+  let transport = null,
+    ready = false,
+    state = null,
+    room = null,
+    roomMap = null,
+    roomRevision = 0,
+    roomRows = new Map(),
+    localNPCs = new Map(),
+    selected = null,
+    lastMap = null,
+    lastParty = null,
+    lastJoin = 0,
+    applying = false,
+    openPanel = false;
+  let serverOffset = 0,
+    lastNotice = "",
+    noticeAt = 0,
+    renderVersion = "",
+    lastGuard = 0,
+    lastRoster = 0,
+    lastMeleeAt = 0,
+    nativeActor = null;
+  const now = () => Date.now() + serverOffset;
+  const self = () => state?.self;
+  const inParty = () => !!self()?.partyId;
+  const sameParty = (p) => !!p?.partyId && p.partyId === self()?.partyId;
+  function notice(text) {
+    lastNotice = String(text);
+    noticeAt = Date.now();
+    chatLog.push("[ONLINE]: " + text);
+    lastChatTime = Date.now();
+    renderVersion = "";
+  }
+  function emit(name, data, ack) {
+    if (ready && transport?.connected) transport.emit(name, data, ack);
+  }
+  function command(data) {
+    emit("online_command", data, (result) => {
+      if (!result?.ok)
+        notice(result?.error || "The request could not be completed.");
+    });
+  }
+  function canAttack(p) {
+    return (
+      ready &&
+      p &&
+      !p.isDead &&
+      !sameParty(p) &&
+      !(p.protectedUntil > now()) &&
+      !(self()?.protectedUntil > now()) &&
+      (self()?.mode === "PvP" ||
+        Dungeon.hostilePlayers?.has(p.socketId) ||
+        p.notoriety > 0)
+    );
+  }
+  function target(id) {
+    selected = id;
+    const p = window.remotePlayers?.[id];
+    if (p)
+      notice(
+        p.name +
+          " · " +
+          (p.onlineMode || "Solo") +
+          " · " +
+          (p.onlineRole || "Any"),
+      );
+    openPanel = true;
+    renderVersion = "";
+    drawPanel();
+  }
+  function snapshot() {
+    return {
+      stat: [0, 1, 2, 3].map((i) => {
+        const d = Dungeon.getEffectiveDice(i);
+        return [d.numDice, d.diceSides, d.flatMod];
+      }),
+      wards: Math.max(0, Dungeon.currentWardTime || 0),
+      maxWards: (Dungeon.maxWards || 1) * (Dungeon.timePerWard || 3),
+      damage: Dungeon.damage || 0,
+      level: Dungeon.level,
+      className: Dungeon.playerClass,
+      dead: !!(Dungeon.isDead || Dungeon.isDying),
+      active: startGame === "explore" && !Dungeon.isDead && !Dungeon.isDying,
+      summons: Dungeon.npcs
+        .filter(
+          (n) =>
+            !n.isDead &&
+            ["ally", "escort_combat"].includes(n.alignment) &&
+            Math.hypot(n.x - Dungeon.x, n.y - Dungeon.y) < 30,
+        )
+        .slice(0, 6)
+        .map((n) => ({
+          index: n.index,
+          type: n.type,
+          x: n.x,
+          y: n.y,
+          stat: [0, 1, 2, 3].map((i) => {
+            const d = n.getEffectiveDice(i);
+            return [d.numDice, d.diceSides, d.flatMod];
+          }),
+          spells: n.innateSpells || [],
+          damage: n.damage || 0,
+        })),
+      spells: [
+        ...new Set([
+          9999,
+          ...(BMHotbar.isBattleMage(Dungeon)
+            ? BMHotbar.ownedCards(Dungeon).map((c) => c.index)
+            : []),
+          ...Object.keys(Dungeon.spellsLearned || {})
+            .filter((k) => Dungeon.spellsLearned[k])
+            .map(Number),
+          ...(Dungeon.innateSpells || []),
+          ...(Dungeon.availableSpells || [])
+            .map((s) => (typeof s === "number" ? s : s.id))
+            .filter(Number.isInteger),
+        ]),
+      ],
+    };
+  }
+  function releaseRoom() {
+    for (const [index, saved] of localNPCs) {
+      const n = Dungeon.npcs.find((n) => n.index === index);
+      if (n && n._onlineRoom) {
+        delete n._onlineRoom;
+        Object.assign(n, saved);
+      }
+    }
+    localNPCs.clear();
+    roomRows.clear();
+    room = null;
+    roomMap = null;
+    roomRevision = 0;
+  }
+  function receiveRoom(data) {
+    if (!inParty() || data.mapID !== Dungeon.mapID) {
+      if (!data.room) releaseRoom();
+      return;
+    }
+    if (!data.room) return releaseRoom();
+    if (room && room !== data.room) releaseRoom();
+    if (room === data.room && data.revision < roomRevision) return;
+    room = data.room;
+    roomMap = data.mapID;
+    roomRevision = data.revision;
+    for (const incoming of data.npcs || []) {
+      const row = { ...roomRows.get(incoming.index), ...incoming };
+      let n = Dungeon.npcs.find(
+        (n) => n.index === row.index && n.type === row.type,
+      );
+      if (!n) {
+        n = new NPC(
+          row.index,
+          row.x,
+          row.y,
+          row.type,
+          "wandering",
+          "#ff0000",
+          row.deck || [],
+          "battle",
+          row.isBoss,
+          row.alignment || "foe",
+          row.level,
+        );
+        Dungeon.npcs.push(n);
+      }
+      if (!localNPCs.has(n.index))
+        localNPCs.set(n.index, {
+          x: n.x,
+          y: n.y,
+          isDead: n.isDead,
+          isDying: n.isDying,
+          visible: n.visible,
+          currentWardTime: n.currentWardTime,
+          maxWards: n.maxWards,
+          respawnTime: n.respawnTime,
+        });
+      roomRows.set(n.index, row);
+      n._onlineRoom = room;
+      n._onlineSpawn = row.spawn;
+      Object.assign(n, {
+        x: row.x,
+        y: row.y,
+        currentWardTime: row.wards,
+        maxWards: row.maxWards,
+        isDead: row.dead,
+        isDying: false,
+        visible: !row.dead,
+        respawnTime: Infinity,
+        isSliding: false,
+        isAggroDashing: false,
+        stat: row.stat,
+      });
+      if (row.attackAt > now() - 350) n.attackAnimTimer = 8;
+    }
+  }
+  function shared(n) {
+    return (
+      !!room && n?._onlineRoom === room && roomMap === Dungeon.mapID && ready
+    );
+  }
+  function hit(n, attacker, spellId) {
+    if (!shared(n) || applying) return false;
+    if (
+      attacker === Dungeon ||
+      attacker?.isPlayer ||
+      attacker?.alignment === "ally" ||
+      attacker?.alignment === "escort_combat"
+    )
+      emit("expedition_hit", {
+        room,
+        index: n.index,
+        spawn: n._onlineSpawn,
+        spellId: spellId ?? null,
+        attackerIndex: attacker !== Dungeon ? attacker?.index : undefined,
+      });
+    return true;
+  }
+  function reward(data) {
+    if (!data?.id) return;
+    const memory = Dungeon.memory;
+    memory.onlineRewards ??= {};
+    if (memory.onlineRewards[data.id]) {
+      Promise.resolve(BMStorage.flush())
+        .then(() => emit("online_reward_ack", { id: data.id }))
+        .catch(() => {});
+      return;
+    }
+    memory.onlineRewards[data.id] = Date.now();
+    Dungeon.xp += Math.max(0, Number(data.xp) || 0);
+    Dungeon.levelUpPlayer();
+    if (data.xp > 0)
+      BMMastery.award(Dungeon, BMMastery.worldIds(Dungeon), data.xp);
+    if (data.silver > 0) BMCurrency.add(data.silver);
+    if (Number.isFinite(data.lootType))
+      BMMonsterLoot.collect(Dungeon, {
+        type: data.lootType,
+        index: data.lootIndex,
+        name: CARD_MANIFEST_DB[Math.floor(data.lootType)]?.name,
+        role: "battle",
+      });
+    const card = typeof data.card === "object" ? data.card?.index : data.card;
+    if (Number.isInteger(card)) {
+      Dungeon.extra.push(new Card(card, 0));
+    }
+    BMActivity.record("party_reward", data.label || "Online reward", {
+      rewardId: data.id,
+      xp: data.xp,
+      silver: data.silver,
+      card,
+    });
+    Dungeon.saveGame();
+    // Acknowledge only after the durable browser transaction is committed.
+    Promise.resolve(BMStorage.flush?.())
+      .then(() => emit("online_reward_ack", { id: data.id }))
+      .catch(() => notice("Your online reward is awaiting a successful save."));
+    notice(
+      (data.label || "Reward") +
+        " · " +
+        (data.xp || 0) +
+        " XP" +
+        (data.silver ? " · " + data.silver + " silver" : "") +
+        (Number.isInteger(card) ? " · card received" : ""),
+    );
+  }
+  function install(sock) {
+    if (sock._bmOnlineInstalled) return;
+    sock._bmOnlineInstalled = true;
+    transport = sock;
+    sock.on("online_state", (data) => {
+      ready = true;
+      serverOffset = data.serverTime - Date.now();
+      state = data;
+      for (const id of Object.keys(window.remotePlayers || {}))
+        if (id !== "NPC_SUNCAT" && !data.hostileIds?.includes(id))
+          Dungeon.hostilePlayers?.delete(id);
+      for (const id of data.hostileIds || []) Dungeon.hostilePlayers?.add(id);
+      const changed = lastParty !== self()?.partyId;
+      if (changed) {
+        releaseRoom();
+        lastParty = self()?.partyId;
+        lastJoin = 0;
+      }
+      renderVersion = "";
+      syncRemotes();
+    });
+    sock.on("online_notice", (d) => notice(d.text));
+    sock.on("online_reward", reward);
+    sock.on("expedition_state", receiveRoom);
+    sock.on("expedition_defeated", (d) => {
+      if (d.room !== room || d.mapID !== Dungeon.mapID) return;
+      const n = Dungeon.npcs.find((n) => n.index === d.index);
+      if (n && n._onlineSettledSpawn !== d.spawn) {
+        n._onlineSettledSpawn = d.spawn;
+        applying = true;
+        Dungeon._onlineApplyingKill = true;
+        try {
+          n.isDead = n.isDying = false;
+          Dungeon.killNPC(n, n.isBoss, "party_combat");
+          localNPCs.set(n.index, {
+            x: n.x,
+            y: n.y,
+            isDead: true,
+            isDying: true,
+            visible: false,
+            currentWardTime: 0,
+            maxWards: n.maxWards,
+            respawnTime: n.respawnTime,
+          });
+        } finally {
+          applying = false;
+          Dungeon._onlineApplyingKill = false;
+        }
+      }
+      BMActivity.record(
+        "party_victory",
+        (d.killer || "A party member") +
+          " defeated " +
+          (n?.name || "a creature") +
+          ".",
+        { mapID: d.mapID, index: d.index, spawn: d.spawn },
+      );
+    });
+    sock.on("expedition_attack", (d) => {
+      if (
+        d.room !== room ||
+        d.mapID !== Dungeon.mapID ||
+        startGame !== "explore"
+      )
+        return;
+      const n = Dungeon.npcs.find((n) => n.index === d.index);
+      if (!n || n.isDead || n._onlineSpawn !== d.spawn) return;
+      applying = true;
+      try {
+        Dungeon.absorbHit(d.actor, d.spellId);
+      } finally {
+        applying = false;
+      }
+    });
+    sock.on("online_return", (d) => {
+      if (Dungeon.mapID !== d.mapID) Dungeon.loadMap(d.mapID);
+      Dungeon.x = Dungeon.targetMapX = d.x;
+      Dungeon.y = Dungeon.targetMapY = d.y;
+      Dungeon.isSlidingToTile = false;
+      notice(d.text);
+    });
+    sock.on("online_defeat", (d) => {
+      Dungeon.killPlayer("combat", d.reason);
+    });
+    sock.on("disconnect", () => {
+      ready = false;
+      releaseRoom();
+      state = null;
+      renderVersion = "";
+    });
+    sock.on("updatePlayers", () => syncRemotes());
+    sock.on("playerMoved", () => syncRemotes());
+    const nativeEmit = sock.emit.bind(sock);
+    sock.emit = (event, data, ...args) => {
+      if (
+        !ready &&
+        !["join_game", "admin_auth", "online_hello"].includes(event)
+      )
+        return sock;
+      if (event === "move" && data && ready) {
+        const p = self();
+        if (
+          p?.combatUntil > now() &&
+          Number.isInteger(lastMap) &&
+          data.mapID !== lastMap
+        )
+          return sock;
+      }
+      if (
+        ready &&
+        event === "battle_action" &&
+        data?.actionType?.startsWith("OVERWORLD_")
+      ) {
+        if (nativeActor) {
+          if (!["ally", "escort_combat"].includes(nativeActor.alignment))
+            return sock;
+          data = {
+            ...data,
+            payload: { ...data.payload, summonerIndex: nativeActor.index },
+          };
+        }
+        const p = window.remotePlayers?.[data.targetId],
+          beneficial =
+            data.actionType === "OVERWORLD_SPELL" &&
+            ["heal", "buff"].includes(
+              SPELL_REGISTRY[data.payload?.spellId]?.type,
+            );
+        if (beneficial) {
+          if (!sameParty(p)) return sock;
+        } else if (data.targetId !== "NPC_SUNCAT" && !canAttack(p)) {
+          if (data.actionType === "OVERWORLD_HIT") target(data.targetId);
+          return sock;
+        }
+      }
+      if (event === "set_pvp_aggro" && ready) return sock; // The server creates hostility from accepted attacks.
+      if (
+        room &&
+        ["npc_died", "client_killed_npc", "engage_npc"].includes(event) &&
+        roomRows.has(data?.index ?? data?.npcIndex)
+      )
+        return sock;
+      return nativeEmit(event, data, ...args);
+    };
+  }
+  function syncRemotes() {
+    if (!state) return;
+    const roster = [
+      ...(state.party?.members || []),
+      ...(state.board?.players || []),
+      ...(state.board?.outlaws || []),
+      ...(state.board?.parties || []).flatMap((p) => p.members),
+    ];
+    for (const row of roster) {
+      const p = window.remotePlayers?.[row.socketId];
+      if (p)
+        Object.assign(p, {
+          onlineMode: row.mode,
+          onlineRole: row.role,
+          partyId: row.partyId,
+          notoriety: row.notoriety,
+          bounty: row.bounty,
+          protectedUntil: row.protectedUntil,
+        });
+    }
+    for (const p of Object.values(window.remotePlayers || {})) {
+      p._onlineGhost =
+        p.socketId !== "NPC_SUNCAT" &&
+        (p.onlineMode || "Solo") === "Solo" &&
+        !Dungeon.hostilePlayers?.has(p.socketId);
+      if (sameParty(p)) Dungeon.hostilePlayers?.delete(p.socketId);
+    }
+  }
+  function projectiles(p, d, dt) {
+    if (!ready || p.owner === "network" || p.suncatCommand) return false;
+    const local =
+      p.owner === null ||
+      p.owner === d ||
+      p.owner?.isPlayer ||
+      p.owner?.alignment === "ally";
+    if (!local) return false;
+    const ax = p.x,
+      ay = p.y,
+      bx = ax + (p.vx || 0) * dt,
+      by = ay + (p.vy || 0) * dt,
+      dx = bx - ax,
+      dy = by - ay,
+      len = dx * dx + dy * dy;
+    for (const [id, t] of Object.entries(window.remotePlayers || {})) {
+      if (id === "NPC_SUNCAT" || t.mapID !== d.mapID || !canAttack(t)) continue;
+      if (
+        self()?.mode === "PvP" &&
+        !Dungeon.hostilePlayers?.has(id) &&
+        selected !== id
+      )
+        continue;
+      const u = len
+        ? Math.max(0, Math.min(1, ((t.x - ax) * dx + (t.y - ay) * dy) / len))
+        : 0;
+      if (Math.hypot(ax + dx * u - t.x, ay + dy * u - t.y) > 0.4) continue;
+      if (!d.checkLineOfSight(t.x, t.y)) continue;
+      emit("battle_action", {
+        targetId: id,
+        actionType: "OVERWORLD_HIT",
+        payload: {
+          spellId: p.spellId ?? 9999,
+          summonerIndex: p.owner && p.owner !== d ? p.owner.index : undefined,
+        },
+      });
+      p.active = false;
+      return true;
+    }
+    return false;
+  }
+  const style = document.createElement("style");
+  style.textContent = `
+    #bm-online-toggle{position:fixed;top:env(safe-area-inset-top,0px);right:8px;z-index:1600;padding:6px 10px;background:#111a27e8;color:#f5dea3;border:1px solid #aa8b4a;border-radius:6px;font:12px system-ui}
+    #bm-online-panel{position:fixed;right:8px;top:40px;width:min(360px,calc(100vw - 32px));max-height:65vh;overflow:auto;z-index:1601;background:#101923f5;color:#eee3c7;padding:14px;border:1px solid #b09353;border-radius:10px;font:14px/1.4 system-ui;box-shadow:0 6px 30px #0008;box-sizing:border-box;touch-action:pan-y}
+    #bm-online-panel[hidden],#bm-online-toggle[hidden]{display:none}#bm-online-panel h2{margin:0 0 10px;font-size:18px}#bm-online-panel h3{font-size:15px;margin:12px 0 4px}#bm-online-panel p{margin:6px 0}#bm-online-panel button,#bm-online-panel select,#bm-online-panel input{font:inherit;background:#213145;color:#fff3d4;border:1px solid #667080;border-radius:4px;padding:7px;margin:3px;max-width:95%}#bm-online-panel button:disabled{opacity:.45}#bm-online-panel article{border-top:1px solid #475263;margin-top:10px;padding-top:6px}#bm-online-panel small{color:#b6c8d8}#bm-online-panel .warning{color:#ff9393}`;
+  document.head.append(style);
+  const toggle = document.createElement("button");
+  toggle.id = "bm-online-toggle";
+  toggle.type = "button";
+  toggle.textContent = "Online · Solo";
+  document.body.append(toggle);
+  const panel = document.createElement("section");
+  panel.id = "bm-online-panel";
+  panel.setAttribute("aria-label", "Online party and player controls");
+  panel.hidden = true;
+  document.body.append(panel);
+  toggle.onclick = () => {
+    openPanel = !openPanel;
+    renderVersion = "";
+    if (openPanel) command({ action: "refresh" });
+    drawPanel();
+  };
+  for (const event of ["pointerdown", "pointerup", "keydown", "keyup", "wheel"])
+    panel.addEventListener(event, (e) => e.stopPropagation());
+  function el(tag, parent, text, cls) {
+    const n = document.createElement(tag);
+    if (text !== undefined) n.textContent = text;
+    if (cls) n.className = cls;
+    parent.append(n);
+    return n;
+  }
+  function button(parent, label, fn, disabled = false) {
+    const b = el("button", parent, label);
+    b.type = "button";
+    b.disabled = disabled;
+    b.onclick = fn;
+    return b;
+  }
+  function select(parent, label, values, value, fn) {
+    const l = el("label", parent, label + " "),
+      s = el("select", l);
+    for (const v of values) {
+      const o = el("option", s, v);
+      o.value = v;
+    }
+    s.value = value;
+    s.onchange = () => fn(s.value);
+    return s;
+  }
+  function playerRow(parent, row, group) {
+    const a = el("article", parent);
+    el("strong", a, row.name || "Adventurer");
+    el(
+      "p",
+      a,
+      `${row.role || "Any"} · ${row.mode || "Solo"} · ${row.online === false ? "Offline" : MAP_DB[row.mapID]?.name || "Travelling"}`,
+    );
+    if (row.socketId && row.id !== self()?.id)
+      button(a, "Select", () => target(row.socketId));
+    if (row.id && row.id !== self()?.id) {
+      if (group && state.party?.leader === self()?.id) {
+        button(a, "Lead", () => command({ action: "promote", target: row.id }));
+        button(a, "Remove", () => command({ action: "kick", target: row.id }));
+      } else if (!group && (!state.party || state.party.leader === self()?.id))
+        button(
+          a,
+          state.party ? "Invite / merge" : "Invite",
+          () =>
+            command({
+              action: "offer",
+              target: row.id,
+              kind: "invite",
+              role: self().role,
+            }),
+          self()?.mode === "Solo",
+        );
+    }
+    return a;
+  }
+  function drawPanel() {
+    const live =
+      typeof startGame !== "undefined" &&
+      ["explore", "guild_menu", "player_menu", "dialogue"].includes(startGame);
+    toggle.hidden = !live;
+    panel.hidden = !live || !openPanel;
+    if (!live) return;
+    toggle.textContent = ready
+      ? `${self()?.mode || "Solo"}${state.party ? " · " + state.party.members.length + "/9" : ""}${self()?.notoriety ? " · Outlaw" : ""}`
+      : "Online · Offline";
+    if (panel.hidden) return;
+    const version = JSON.stringify([state, selected, lastNotice, ready]);
+    if (version === renderVersion) return;
+    if (
+      panel.contains(document.activeElement) &&
+      ["INPUT", "SELECT"].includes(document.activeElement.tagName)
+    )
+      return;
+    renderVersion = version;
+    panel.replaceChildren();
+    button(panel, "Close", () => {
+      openPanel = false;
+      drawPanel();
+    });
+    el("h2", panel, "Travellers & parties");
+    if (lastNotice && Date.now() - noticeAt < 30000)
+      el("p", panel, lastNotice, "warning");
+    if (!ready) {
+      el("p", panel, "Playing offline. Your adventure continues locally.");
+      el(
+        "p",
+        panel,
+        "Connect to the updated Battle Mage server to find other players and form parties.",
+      );
+      button(panel, "Reconnect", () => {
+        transport?.connect?.();
+        BMActivity.join();
+      });
+      return;
+    }
+    select(panel, "Mode", ["Solo", "LFG", "PvP"], self().mode, (v) =>
+      command({ action: "mode", mode: v }),
+    );
+    select(panel, "Role", roles, self().role, (v) =>
+      command({ action: "role", role: v }),
+    );
+    el(
+      "p",
+      panel,
+      "Solo: travel independently. LFG: find companions. PvP: initiate fights. PvP attackers can threaten Solo/LFG travellers and become outlaws.",
+    );
+    if (self().protectedUntil > now())
+      el(
+        "p",
+        panel,
+        "Arrival protection is active. You cannot attack or be attacked.",
+      );
+    if (self().combatUntil > now())
+      el(
+        "p",
+        panel,
+        "In player combat: mode, party and map changes are locked briefly.",
+        "warning",
+      );
+    if (self().notoriety)
+      el(
+        "p",
+        panel,
+        `Outlaw mark ${self().notoriety} · Bounty ${self().bounty} silver. Shops refuse trade; guards may attack.`,
+        "warning",
+      );
+    const selectedPlayer = window.remotePlayers?.[selected];
+    if (selectedPlayer) {
+      const a = el("article", panel);
+      el("h3", a, "Selected: " + selectedPlayer.name);
+      el(
+        "p",
+        a,
+        (selectedPlayer.onlineMode || "Solo") +
+          " · " +
+          (selectedPlayer.onlineRole || "Any"),
+      );
+      button(
+        a,
+        "Attack",
+        () => {
+          if (!canAttack(selectedPlayer)) return;
+          Dungeon.hostilePlayers.add(selected);
+          openPanel = false;
+          drawPanel();
+          Dungeon.castSpell(9999);
+        },
+        !canAttack(selectedPlayer),
+      );
+    }
+    for (const o of state.offers || []) {
+      const a = el("article", panel);
+      el(
+        "p",
+        a,
+        `${o.fromName}: ${o.kind === "request" ? "requests to join" : "invites you"} (${o.members} player${o.members === 1 ? "" : "s"}, ${o.role}).`,
+      );
+      button(a, "Accept", () =>
+        command({ action: "answer", offerId: o.id, accept: true }),
+      );
+      button(a, "Decline", () =>
+        command({ action: "answer", offerId: o.id, accept: false }),
+      );
+    }
+    el("h3", panel, "Your party");
+    if (!state.party)
+      button(
+        panel,
+        "Form a party",
+        () => command({ action: "create" }),
+        self().mode === "Solo",
+      );
+    else {
+      el(
+        "p",
+        panel,
+        `${state.party.members.length}/9 players · Shared encounters on adventure maps`,
+      );
+      el(
+        "small",
+        panel,
+        "Nearby living members split monster XP. Each card drop goes to one randomly chosen member. Personal crafting and gathered resources remain yours.",
+      );
+      for (const r of state.party.members) playerRow(panel, r, true);
+      button(panel, "Leave party", () => command({ action: "leave" }));
+      if (state.party.leader === self().id) {
+        const form = el("div", panel);
+        const note = el("input", form);
+        note.placeholder = "Guild listing: destination or purpose";
+        note.value = state.party.note || "";
+        note.maxLength = 160;
+        note.setAttribute("aria-label", "Party listing");
+        const need = select(
+          form,
+          "Looking for",
+          roles,
+          state.party.wanted[0] || "Any",
+          () => {},
+        );
+        button(form, "Post / update LFP", () =>
+          command({
+            action: "listing",
+            note: note.value,
+            wanted: [need.value],
+          }),
+        );
+      }
+    }
+    const details = el("details", panel);
+    details.open = true;
+    el("summary", details, "Guild board · LFG / LFP");
+    for (const g of state.board?.parties || []) {
+      if (g.id === self().partyId) continue;
+      const a = el("article", details);
+      el(
+        "strong",
+        a,
+        (g.members.find((m) => m.id === g.leader)?.name || "Adventurer") +
+          "’s party",
+      );
+      el(
+        "p",
+        a,
+        `${g.members.length}/9 · Wanted: ${g.wanted.join(", ")}\n${g.note}`,
+      );
+      button(
+        a,
+        state.party ? "Request party merge" : "Request to join",
+        () =>
+          command({
+            action: "offer",
+            kind: "request",
+            target: g.leader,
+            role: self().role,
+          }),
+        self().mode === "Solo" ||
+          g.members.length + (state.party?.members.length || 1) > 9,
+      );
+    }
+    for (const r of state.board?.players || []) playerRow(details, r, false);
+    if (!state.board?.players.length && !state.board?.parties.length)
+      el(
+        "p",
+        details,
+        "No listings yet. Choose LFG or form a party to appear here.",
+      );
+    el("h3", panel, "Nearby travellers");
+    for (const [id, p] of Object.entries(window.remotePlayers || {}))
+      if (id !== "NPC_SUNCAT" && p.mapID === Dungeon.mapID)
+        button(panel, p.name || "Traveller", () => target(id));
+    if (state.board?.outlaws.length) {
+      el("h3", panel, "Outlaw bounties");
+      for (const r of state.board.outlaws)
+        el("p", panel, r.name + " · " + r.bounty + " silver");
+    }
+  }
+  function tick() {
+    if (typeof Dungeon === "undefined") return;
+    drawPanel();
+    if (!ready) return;
+    emit("online_vitals", snapshot());
+    const changed = lastMap !== Dungeon.mapID;
+    if (changed) {
+      releaseRoom();
+      lastMap = Dungeon.mapID;
+      lastJoin = 0;
+    }
+    if (inParty() && (changed || !room) && Date.now() - lastJoin > 2500) {
+      lastJoin = Date.now();
+      emit("expedition_join", {});
+    }
+    if (
+      room &&
+      state.party?.leader === self()?.id &&
+      Date.now() - lastRoster > 2000
+    ) {
+      lastRoster = Date.now();
+      emit("expedition_roster", {
+        room,
+        npcs: Dungeon.npcs
+          .filter(
+            (n) =>
+              !n.isDead &&
+              !n._onlineRoom &&
+              n.role === "battle" &&
+              String(n.alignment).startsWith("foe"),
+          )
+          .map((n) => ({
+            index: n.index,
+            x: n.x,
+            y: n.y,
+            type: n.type,
+            role: n.role,
+            alignment: n.alignment,
+            level: n.level,
+            isBoss: n.isBoss,
+          })),
+      });
+    }
+    if (self()?.notoriety && startGame === "shop") {
+      startGame = "explore";
+      BMShell.invalidate();
+      notice("The shopkeeper refuses to trade while you carry an outlaw mark.");
+    }
+    if (
+      self()?.notoriety &&
+      !(self()?.protectedUntil > now()) &&
+      Date.now() - lastGuard > 1600 &&
+      startGame === "explore"
+    ) {
+      const guard = Dungeon.npcs.find(
+        (n) =>
+          !n.isDead &&
+          n.alignment === "defender" &&
+          n.role === "battle" &&
+          Math.hypot(n.x - Dungeon.x, n.y - Dungeon.y) < 2 &&
+          Dungeon.checkLineOfSight(n.x, n.y),
+      );
+      if (guard) {
+        lastGuard = Date.now();
+        Dungeon.absorbHit(guard);
+      }
+    }
+  }
+  setInterval(tick, 500);
+  const absorb = NPC.prototype.absorbHit;
+  NPC.prototype.absorbHit = function (a, s, ...args) {
+    if (hit(this, a, s)) return true;
+    return absorb.call(this, a, s, ...args);
+  };
+  const update = NPC.prototype.update;
+  NPC.prototype.update = function (...args) {
+    if (shared(this)) {
+      const row = roomRows.get(this.index);
+      if (row) {
+        this.x = row.x;
+        this.y = row.y;
+        this.isSliding = false;
+        this.currentWardTime = row.wards;
+      }
+      return;
+    }
+    const previous = nativeActor;
+    nativeActor = this;
+    try {
+      return update.apply(this, args);
+    } finally {
+      nativeActor = previous;
+    }
+  };
+  const kill = Explore.prototype.killNPC;
+  Explore.prototype.killNPC = function (n, ...args) {
+    if (shared(n) && !applying) {
+      hit(n, this, null);
+      return false;
+    }
+    return kill.call(this, n, ...args);
+  };
+  const projectile = Projectile.prototype.update;
+  Projectile.prototype.update = function (d, dt, ...args) {
+    if (projectiles(this, d, dt)) return;
+    return projectile.call(this, d, dt, ...args);
+  };
+  const load = Explore.prototype.loadMap;
+  Explore.prototype.loadMap = function (id, ...args) {
+    if (
+      ready &&
+      self()?.combatUntil > now() &&
+      id !== this.mapID &&
+      !this.isDead &&
+      !this.isDying
+    ) {
+      notice("Finish player combat before leaving this map.");
+      return;
+    }
+    releaseRoom();
+    return load.call(this, id, ...args);
+  };
+  const cast = Explore.prototype.castSpell;
+  Explore.prototype.castSpell = function (id, ...args) {
+    if (ready && id === 9999 && selected && window.remotePlayers?.[selected]) {
+      const p = window.remotePlayers[selected];
+      if (
+        p.mapID === this.mapID &&
+        Math.hypot(p.x - this.x, p.y - this.y) < 2 &&
+        canAttack(p)
+      ) {
+        if (Date.now() - lastMeleeAt < 300) return;
+        lastMeleeAt = Date.now();
+        emit("battle_action", {
+          targetId: selected,
+          actionType: "OVERWORLD_HIT",
+          payload: { spellId: 9999 },
+        });
+        return;
+      }
+    }
+    return cast.call(this, id, ...args);
+  };
+  for (const name of ["purchase", "sell", "hire"]) {
+    const original = BMShop[name];
+    BMShop[name] = function (...args) {
+      if (ready && self()?.notoriety) {
+        notice("The shopkeeper refuses to trade with an outlaw.");
+        return false;
+      }
+      return original.apply(this, args);
+    };
+  }
+  return {
+    install,
+    canAttack,
+    target,
+    shared,
+    hit,
+    projectiles,
+    publicState: () => state,
+    open() {
+      openPanel = true;
+      renderVersion = "";
+      command({ action: "refresh" });
+      drawPanel();
+    },
+    ghost: (p) => !!p?._onlineGhost,
+    outlaw: () => ready && (self()?.notoriety || 0) > 0,
+    _test: {
+      command,
+      snapshot,
+      receiveRoom,
+      reward,
+      tick,
+      releaseRoom,
+      get room() {
+        return room;
+      },
+    },
+  };
 })();
 
 </script>
