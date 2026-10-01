@@ -30,6 +30,38 @@
             console.error(error);
             });
     const port = process.env.PORT || 3000;
+/* Account secrets are separate from public player IDs and narrative memory. */
+const SuncatIdentity=(()=>{
+  const crypto=require('crypto');
+  const file=process.env.SUNCAT_AUTH_FILE?path.resolve(process.env.SUNCAT_AUTH_FILE):(process.env.SUNCAT_MEMORY_FILE?path.resolve(process.env.SUNCAT_MEMORY_FILE):path.join(__dirname,'suncat_memory.json'))+'.auth.json';
+  let accounts=Object.create(null),writes=Promise.resolve();const locks=new Set(),attempts=new Map();
+  if(fs.existsSync(file)){const data=JSON.parse(fs.readFileSync(file,'utf8'));if(data.version!==1||!data.accounts||typeof data.accounts!=='object')throw Error('Invalid identity store; refusing to replace account credentials.');accounts=Object.assign(Object.create(null),data.accounts);}
+  const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
+  const equal=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.length===b.length&&crypto.timingSafeEqual(Buffer.from(a),Buffer.from(b));
+  function save(){const contents=JSON.stringify({version:1,accounts});const run=writes.catch(()=>{}).then(async()=>{await fs.promises.mkdir(path.dirname(file),{recursive:true});await fs.promises.writeFile(file+'.tmp',contents,{mode:0o600});await fs.promises.rename(file+'.tmp',file);});writes=run;return run;}
+  function rate(socket){const key=socket.handshake?.address||socket.id,now=Date.now();let row=attempts.get(key);if(!row||now-row.at>60000){row={at:now,count:0};attempts.set(key,row);}if(attempts.size>5000)for(const [k,r]of attempts)if(now-r.at>60000)attempts.delete(k);return ++row.count<=12;}
+  async function authenticate(socket,data,legacy){
+    if(!rate(socket))return {ok:false,code:'RATE_LIMIT',error:'Too many sign-in attempts. Try again in a minute.'};
+    const id=data?.persistentId,secret=data?.identitySecret;
+    if(typeof id!=='string'||!/^[\w.:-]{3,120}$/.test(id)||['__proto__','constructor','prototype'].includes(id)||typeof secret!=='string'||!/^[a-f0-9]{64}$/.test(secret))return {ok:false,code:'UPDATE_REQUIRED',error:'Update the game client to reconnect to your online journal.'};
+    if(socket.data.identityId&&socket.data.identityId!==id)return {ok:false,code:'IDENTITY_CHANGED',error:'Reconnect before changing characters.'};
+    if(locks.has(id))return {ok:false,code:'BUSY',error:'Character sign-in is already in progress.'};
+    const digest=hash(secret),record=accounts[id];
+    if(record){if(!equal(record.hash,digest))return {ok:false,code:'RECOVERY_REQUIRED',error:'This character needs its online recovery code.'};return {ok:true};}
+    if(legacy)return {ok:false,code:'RECOVERY_REQUIRED',error:'This older character needs an online recovery code from the server owner.'};
+    if(locks.has(id))return {ok:false,code:'BUSY',error:'Character sign-in is already in progress.'};
+    locks.add(id);accounts[id]={hash:digest,createdAt:new Date().toISOString()};
+    try{await save();return {ok:true};}catch(error){delete accounts[id];return {ok:false,code:'SAVE_FAILED',error:'The server could not save your identity. Please retry.'};}finally{locks.delete(id);}
+  }
+  function admin(socket,token){const expected=process.env.SUNCAT_ADMIN_TOKEN;return typeof expected==='string'&&expected.length>=24&&typeof token==='string'&&token.length<=512&&equal(hash(token),hash(expected));}
+  function guard(socket,packet,next){const event=packet[0];if(['join_game','admin_auth'].includes(event))return next();if(event==='chat_message'&&/^\s*\.hack\/\/login\s/i.test(String(packet[1]||'')))return next();
+    const denied=!socket.data.identityId||event.startsWith('admin_')&&!socket.data.isAdmin;
+    if(!denied)return next();const ack=packet[packet.length-1],error=socket.data.identityId?'Administrator permission required.':'Join with your character credentials first.';
+    if(typeof ack==='function')ack({ok:false,error});if(Date.now()-(socket.data.lastDeniedAt||0)>3000){socket.data.lastDeniedAt=Date.now();socket.emit('chat_message',{sender:'[SYSTEM]',text:error});}
+  }
+  return {authenticate,admin,guard};
+})();
+
     //AI CONFIG ---
         const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
 
@@ -6146,6 +6178,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                         }
                         
                         else if (['kickPlayer','banishPlayer','vanquishPlayer'].includes(call.name)) {
+                            if(!socket?.data?.isAdmin)throw Error('Administrator permission is required for player moderation.');
                             const targetID=findSocketID(call.args.targetName);
                             if(!targetID || targetID===SUNCAT_ID) throw new Error('Online player not found.');
                             const type=call.name.replace('Player','').toLowerCase();
@@ -8122,6 +8155,8 @@ function getPublicPlayers() {
 }
 //CONNECTION
 io.on("connection", (socket) => {
+    socket.data ||= {};socket.use((packet,next)=>SuncatIdentity.guard(socket,packet,next));
+    socket.on('admin_auth',(data,ack)=>{socket.data.isAdmin=SuncatIdentity.admin(socket,data?.token);if(typeof ack==='function')ack({ok:socket.data.isAdmin});});
         SUNCAT_MEMORY.bind(socket);
     //INITIALIZE CONNECTION
         console.log("New player joined:", socket.id);
@@ -8144,6 +8179,7 @@ io.on("connection", (socket) => {
     //SESSION LIFECYCLE
         socket.on('setIdentity', (data) => {
             if (players[socket.id]) {
+                if(!data||typeof data.name!=='string'||!data.name.trim()||data.name.length>80||!Number.isFinite(data.sprite))return;
                 players[socket.id].name = data.name; 
                 players[socket.id].type = data.sprite; 
                 io.emit("updatePlayers", getPublicPlayers()); 
@@ -8158,14 +8194,21 @@ io.on("connection", (socket) => {
             // Raw acknowledged activities continue to be saved while narration is off.
             if(enabled&&player.persistentId)void runJournalMaintenance(socket.id);
         });
-        socket.on("join_game", (data) => {
+        socket.on("join_game", async (data,acknowledge) => {
+            const reply=value=>{if(typeof acknowledge==='function')acknowledge(value);};
+            if(!data||typeof data!=='object'||typeof data.name!=='string'||!data.name.trim()||data.name.length>80){reply({ok:false,error:'Invalid character name.'});return;}
+            if(socket.data.joining){reply({ok:false,error:'Sign-in already in progress.'});return;}socket.data.joining=true;
+            let auth;try{auth=await SuncatIdentity.authenticate(socket,data,Object.hasOwn(suncatPersistentMemory,data.persistentId));}finally{socket.data.joining=false;}
+            if(!auth.ok){reply(auth);return;}if(!socket.connected||!players[socket.id])return;
+            socket.data.identityId=data.persistentId;
+
             let name = (typeof data === 'object') ? data.name : data;
             const nameKey = name.toLowerCase(); 
             // 1. Extract the persistent ID (fallback to nameKey for older saves/clients)
             let persistentId = (typeof data === 'object' && data.persistentId) 
                 ? data.persistentId 
                 : nameKey;
-            if(players[socket.id]?.persistentId===persistentId)return;
+            if(players[socket.id]?.persistentId===persistentId){reply({ok:true});return;}
 
             // ==========================================
             // GHOST EVICTION: Kill lingering duplicate sessions by ID
@@ -8373,6 +8416,7 @@ io.on("connection", (socket) => {
                     });
                 }
             }
+            reply({ok:true,persistentId});
             });
         
         socket.on("disconnect", async () => {
@@ -8920,6 +8964,8 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
         });
     //SUNCAT AI & SOCIAL
         socket.on('chat_message', async (msgText) => {
+            if(typeof msgText==='string'&&/^\s*\.hack\/\/login(?:\s|$)/i.test(msgText)){const token=msgText.trim().slice(13).trim();socket.data.isAdmin=SuncatIdentity.admin(socket,token);socket.emit('chat_message',{sender:'[SYSTEM]',text:socket.data.isAdmin?'Administrator access enabled for this connection.':'Administrator sign-in failed.'});return;}
+
             if (!msgText) return; 
             let safeText = String(msgText);
             
@@ -9717,7 +9763,10 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
             });
         });
 
-        socket.on('admin_map',async()=>{
+        const requestCustomMap=async()=>{
+            if(Date.now()-(socket.data.lastMapRequestAt||0)<180000){socket.emit('chat_message',{sender:'[Map generator]',text:'Please wait before requesting another realm.'});return;}
+            socket.data.lastMapRequestAt=Date.now();
+
             const player=players[socket.id];
             if(!player) return;
             const request={functionCalls:()=>[{name:'createCustomMap',args:{targetName:player.name}}]};
@@ -9728,7 +9777,9 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
             }};
             try {await executeAITools(request,reply,socket);}
             catch(error) {socket.emit('chat_message',{sender:'[Map generator]',text:error.message});}
-        });
+        };
+        socket.on('request_custom_map',requestCustomMap);
+        socket.on('admin_map',requestCustomMap);
         socket.on("force_ai_action", async (instruction) => {
             const player = players[socket.id];
 
