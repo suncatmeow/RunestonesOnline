@@ -1,12 +1,21 @@
 {
-  "name": "battle-mage-server",
-  "version": "1.0.0",
+  "name": "battlemage-server",
+  "version": "1.6.0",
+  "private": true,
+  "description": "Battle Mage online party and PvP server",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node tests/multiplayer.cjs"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
-    "socket.io": "^4.0.0",
-    "dotenv": "^16.3.1",
-    "@google/generative-ai": "^0.21.0"
+    "@google/generative-ai": "0.24.1",
+    "dotenv": "18.0.5",
+    "socket.io": "4.7.2"
+  },
+  "devDependencies": {
+    "socket.io-client": "4.7.2"
   }
 }
