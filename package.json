@@ -1,19 +1,17 @@
 {
-  "name": "battlemage-architecture-verification",
+  "name": "battlemage-server",
+  "version": "1.6.0",
   "private": true,
-  "version": "1.0.0",
+  "description": "Battle Mage online party and PvP server",
   "scripts": {
-    "build": "node refactor/build.cjs && node refactor/build-server.cjs && node refactor/build-lab.cjs",
-    "test": "node refactor/tests/kernel.cjs && node refactor/tests/server-tests.js && node refactor/tests/server-kernel.cjs && node refactor/tests/regressions.js BMmap && node refactor/tests/logres-regressions.js Logres && node refactor/tests/portable-play.cjs && node refactor/tests/integrated-modes.cjs",
-    "test:ui": "node refactor/tests/ui-regressions.js BMmap && node refactor/tests/ui-regressions.js Logres"
+    "start": "node server.js"
   },
-  "devDependencies": {
-    "acorn": "8.19.0",
-    "acorn-walk": "8.3.5",
-    "eslint-scope": "9.1.2",
-    "playwright": "1.62.1",
-    "socket.io": "4.8.4",
-    "socket.io-client": "4.8.4",
-    "@sparticuz/chromium": "153.0.0"
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google/generative-ai": "0.24.1",
+    "dotenv": "18.0.5",
+    "socket.io": "4.7.2"
   }
 }
