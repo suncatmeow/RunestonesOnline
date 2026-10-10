@@ -1,10 +1,11 @@
 {
   "name": "battlemage-server",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
-  "description": "Battle Mage online party and PvP server",
+  "description": "Battle Mage server: combat receipts, metered AI and persistent Suncat intentions",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node tests/server-regression.cjs && node tests/client-regression.cjs"
   },
   "engines": {
     "node": ">=20"
