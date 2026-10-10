@@ -53387,14 +53387,73 @@ const BMActivityView=(()=>{
 
 /* The server checks combat against a bounded, latest position/stat snapshot. */
 const BMCombatNet=(()=>{
-  const hostile=(kind,id)=>kind==='OVERWORLD_HIT'||kind==='OVERWORLD_HIT_SUMMON'||kind==='OVERWORLD_SPELL'&&SPELL_REGISTRY[id]?.type==='debuff';
+  let sequence=0,active=null,patched=false,deathToken=null,respawnBusy=false,needsRespawn=false;
+  const seen=new Map();
+  const hostile=(kind,id)=>kind==='OVERWORLD_HIT'||kind==='OVERWORLD_HIT_SUMMON'||kind==='OVERWORLD_SPELL'&&['debuff','cone'].includes(SPELL_REGISTRY[id]?.type);
+  const uid=()=>String(socket?.id||'offline')+':'+Date.now()+':'+(++sequence);
   function profile(a){return {level:a.level||0,damage:Math.max(0,Number(a.damage)||0),stat:[0,1,2,3].map(i=>{const s=a.getEffectiveDice(i);return [s.numDice,s.diceSides,s.flatMod];})};}
-  function install(s){if(!s||s._combatPass)return;s._combatPass=true;s.on('online_capabilities',v=>{s._bmCombatLegacy=v?.legacyCombat===true;});s.on('disconnect',()=>{s._bmCombatLegacy=false;});const emit=s.emit;s.emit=function(event,data,...args){
-    if(event==='move'&&data&&typeof Dungeon!=='undefined'&&Dungeon._gameInitialized){data={...data,combatProfile:profile(Dungeon),combatZ:BMTerrainPhysics.feet(Dungeon,Dungeon)};if(Array.isArray(data.summons))data.summons=data.summons.map(row=>{const n=Dungeon.npcs.find(n=>n.index===row.id);return n?{...row,combatProfile:profile(n),combatZ:BMTerrainPhysics.feet(Dungeon,n)}:row;});}
-    if(event==='player_fires_projectile'&&data)data={...data,worldZ:BMTerrainPhysics.eye(Dungeon,Dungeon)};
-    if(event==='battle_action'&&data?.actionType?.startsWith('OVERWORLD_'))emit.call(this,'combat_profile',{...profile(Dungeon),mapID:Dungeon.mapID,z:BMTerrainPhysics.feet(Dungeon,Dungeon),summons:Dungeon.npcs.filter(n=>!n.isDead&&['ally','escort_combat'].includes(n.alignment)).slice(0,32).map(n=>({id:n.index,x:n.x,y:n.y,combatZ:BMTerrainPhysics.feet(Dungeon,n),combatProfile:profile(n)}))});
-    return emit.call(this,event,data,...args);
-  };}
+  function withCast(c,fn){const previous=active;active=c;try{return fn();}finally{active=previous;}}
+  function patchActors(){
+    if(patched||typeof Dungeon==='undefined'||!Dungeon?._gameInitialized)return;patched=true;
+    for(const [proto,index]of [[Explore.prototype,0],[NPC.prototype,3]]){
+      const cast=proto.castSpell;proto.castSpell=function(...args){
+        const spellId=Number(args[index]);
+        const context={id:uid(),spellId,actor:this,resource:this===Dungeon?(this._bmCastResource||'skill'):'skill',at:Date.now()};
+        this._bmLastCasts??={};this._bmLastCasts[spellId]=context;
+        if(socket?._bmCombatV2)announceCast(socket,context);
+        return withCast(context,()=>cast.apply(this,args));
+      };
+    }
+    for(const proto of [Projectile.prototype,GravityWell.prototype]){
+      const update=proto.update;if(typeof update!=='function')continue;
+      proto.update=function(...args){return withCast(this._bmCast||null,()=>update.apply(this,args));};
+    }
+    const update=NPC.prototype.update;
+    NPC.prototype.update=function(...args){return withCast({actor:this},()=>update.apply(this,args));};
+  }
+  function sendProfile(s){s.emit('combat_profile',{...profile(Dungeon),mapID:Dungeon.mapID,z:BMTerrainPhysics.feet(Dungeon,Dungeon),summons:Dungeon.npcs.filter(n=>!n.isDead&&['ally','escort_combat'].includes(n.alignment)).slice(0,32).map(n=>({id:n.index,x:n.x,y:n.y,combatZ:BMTerrainPhysics.feet(Dungeon,n),combatProfile:profile(n)}))});}
+  function announceCast(s,c){
+    if(c.actor!==Dungeon&&!['ally','escort_combat'].includes(c.actor?.alignment))return;
+    sendProfile(s);s.emit('combat_cast',{castId:c.id,spellId:c.spellId,resource:c.resource,...(c.actor!==Dungeon?{summonerIndex:c.actor.index}:{})});
+  }
+  function requestRespawn(s){
+    if(!s._bmCombatV2||!s.connected||respawnBusy||!deathToken||!needsRespawn)return;
+    respawnBusy=true;
+    // Socket.IO's acknowledgement timeout lets a lost reply retry the same token.
+    s.timeout(5000).emit('player_respawn',{token:deathToken},(error,result)=>{
+      respawnBusy=false;
+      if(!error&&result?.ok){deathToken=null;needsRespawn=false;Dungeon.hostilePlayers?.clear();}
+      else if(needsRespawn)setTimeout(()=>requestRespawn(s),Math.max(500,Number(result?.retryAfterMs)||1000));
+    });
+  }
+  function install(s){if(!s||s._combatPass)return;s._combatPass=true;
+    s.on('online_capabilities',v=>{s._bmCombatLegacy=v?.legacyCombat===true;s._bmCombatV2=v?.combatReceipts===2;if(s._bmCombatV2)s.emit('combat_protocol',{version:2});});
+    s.on('disconnect',()=>{s._bmCombatLegacy=false;s._bmCombatV2=false;deathToken=null;needsRespawn=false;respawnBusy=false;seen.clear();});
+    s.on('respawn_available',v=>{deathToken=v.token;if(!Dungeon.isDead&&!Dungeon.isDying)needsRespawn=true;requestRespawn(s);});
+    s.on('pvp_aggro_clear',v=>{Dungeon.hostilePlayers?.delete(v.enemyId);});
+    s.on('duel_ended',v=>{for(const p of Player||[])if(p?.battleOpponentId===v.opponentId)p.battleOpponentId=null;if(v.reason!=='complete'){Dungeon.status='normal';Dungeon.isChallenger=false;if(startGame!=='dialogue')startGame='explore';}});
+    const emit=s.emit;s.emit=function(event,data,...args){
+      patchActors();
+      if(event==='move'&&data&&typeof Dungeon!=='undefined'&&Dungeon._gameInitialized){
+        if(this._bmCombatV2&&deathToken&&!Dungeon.isDead&&!Dungeon.isDying){needsRespawn=true;requestRespawn(this);}
+        data={...data,combatProfile:profile(Dungeon),combatZ:BMTerrainPhysics.feet(Dungeon,Dungeon)};
+        if(Array.isArray(data.summons))data.summons=data.summons.map(row=>{const n=Dungeon.npcs.find(n=>n.index===row.id);return n?{...row,combatProfile:profile(n),combatZ:BMTerrainPhysics.feet(Dungeon,n)}:row;});
+      }
+      if(event==='player_fires_projectile'&&data)data={...data,worldZ:BMTerrainPhysics.eye(Dungeon,Dungeon)};
+      if(event==='battle_action'&&data?.actionType?.startsWith('OVERWORLD_')){
+        const actor=active?.actor||Dungeon;
+        if(actor!==Dungeon&&!['ally','escort_combat'].includes(actor.alignment))return this;
+        const id=data.payload?.spellId??9999;
+        let cast=active?.id?active:null;
+        if(!cast&&Number(id)===95&&Date.now()-(actor._bmLastCasts?.[id]?.at||0)<12000)cast=actor._bmLastCasts[id];
+        if(!cast){cast={id:uid(),spellId:id,actor,resource:actor._bmCastResource||'skill',at:Date.now()};if(this._bmCombatV2)announceCast(this,cast);}
+        data={...data,payload:{...data.payload,eventId:data.payload?.eventId||uid(),castId:cast.id,resource:cast.resource,
+          ...(actor!==Dungeon?{summonerIndex:actor.index}:{})}};
+        emit.call(this,'combat_profile',{...profile(Dungeon),mapID:Dungeon.mapID,z:BMTerrainPhysics.feet(Dungeon,Dungeon),summons:Dungeon.npcs.filter(n=>!n.isDead&&['ally','escort_combat'].includes(n.alignment)).slice(0,32).map(n=>({id:n.index,x:n.x,y:n.y,combatZ:BMTerrainPhysics.feet(Dungeon,n),combatProfile:profile(n)}))});
+      }
+      return emit.call(this,event,data,...args);
+    };
+  }
   function accept(data){if(!data||typeof data.actionType!=='string'||!data.payload||typeof data.payload!=='object')return false;
     if(!data.actionType.startsWith('OVERWORLD_'))return true;
     if(data.mapID!==undefined&&data.mapID!==Dungeon.mapID)return false;
@@ -53402,10 +53461,12 @@ const BMCombatNet=(()=>{
     if(p.spellId!=null&&!SPELL_REGISTRY[p.spellId])return false;
     if(data.actionType==='OVERWORLD_SPELL'&&!Number.isFinite(p.magnitude))return false;
     const remote=window.remotePlayers?.[data.senderId];if(remote&&remote.mapID!==Dungeon.mapID)return false;
+    if(p.receiptId){if(seen.has(p.receiptId))return false;seen.set(p.receiptId,Date.now());if(seen.size>512)seen.delete(seen.keys().next().value);}
     return true;
   }
-  return {hostile,install,accept};
+  return {hostile,install,accept,currentCast:()=>active,finishedDeath(){needsRespawn=true;requestRespawn(socket);}};
 })();
+
 
     class NPC extends BMKernel.Actor {
         constructor(index, x, y, type, state = 'wandering', minimapColor = '#ff0000', deck = [], role = 'battle', isBoss = null, alignment = 'foe', level = 0) {
@@ -58855,7 +58916,8 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                     if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('air3');
                     this.playerAttackTimer = strikes * 10; // Keep the player in the attack animation
 
-                    // 3. Fire them sequentially!
+                    // 3. Fire them sequentially, retaining the original network cast.
+                    const flurryCast=BMCombatNet.currentCast();
                     for (let i = 0; i < strikes; i++) {
                         setTimeout(() => {
                             if (this.isDead || this.mapID === -1) return; // Safety check if map changed
@@ -58864,6 +58926,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                             let p = new Projectile(this.x + (baseDirX * 0.25), this.y + (baseDirY * 0.25), baseDirX, baseDirY, 12.0, this.damage || 1, null, true, 9999);
                             
                             // Custom Flurry Flags
+                            p._bmCast=flurryCast;
                             p.isFlurry = true;
                             p.flurryIndex = i;
                             p.flurryMax = strikes;
@@ -63001,6 +63064,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                     this.isDead = false;
                     this.status = 'normal';
                     this._deathSequence = null;
+                    BMCombatNet.finishedDeath();
 
                     if (this.weather) {
                         this.weather.deathOverlayLocked = false;
@@ -63585,6 +63649,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
         
     class Projectile {
         constructor(x, y, dirX, dirY, speed, damage = 1, owner = null, isHoming = false, spellId = 26) {
+            this._bmCast=BMCombatNet.currentCast();
             const spellData = SPELL_REGISTRY[spellId] || SPELL_REGISTRY[26];
             
             this.x = x;
@@ -64465,6 +64530,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
     }
     class GravityWell {
         constructor(x, y, duration, owner, spellId, exploreRef) {
+            this._bmCast=BMCombatNet.currentCast();
             this.active = true;
             this.duration = duration;
             this.maxDuration = duration;
@@ -69475,6 +69541,7 @@ const BMChatComposer=(()=>{
                     if (typeof Dungeon !== 'undefined') {
                         if (Dungeon.savedViewMode) window.gameViewMode = Dungeon.savedViewMode;
                         if (Dungeon.savedCameraMode) Dungeon.cameraMode = Dungeon.savedCameraMode;
+                        if(Player.some(p=>p?.battleOpponentId)&&socket?._bmCombatV2)socket.emit('duel_end');
                         Dungeon.status = 'normal'; // Reset PVP status
                     }
 
@@ -95905,7 +95972,8 @@ const BMHotbar=(()=>{
                     summoned.hotbarSlot=summonSlot;
                 }
             }else{
-                if(d.castSpell(g.id)===false)return false;
+                d._bmCastResource=g.source;
+                try {if(d.castSpell(g.id)===false)return false;} finally {delete d._bmCastResource;}
                 if(g.source==='card')removeCard(d,g.card.uid);
                 else if(g.id!==53&&!BMEquipment.isEquip(g.id))d.skillCooldowns[g.id]=Math.max(d.skillCooldowns[g.id]||0,Date.now()+(SPELL_REGISTRY[g.id]?.cooldown||5000));
                 release(d,g.id);
