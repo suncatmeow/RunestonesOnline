@@ -33,40 +33,122 @@
 /* Legacy combat transport: bounded snapshots, map/range checks, explicit hostility. */
 const BMCombatTransport=(()=>{
   const rules={"6":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"The Lovers"},"7":{"type":"item_chariot","cooldown":450000,"castStat":2,"name":"Winged Boots"},"8":{"type":"buff","cooldown":450000,"castStat":2,"name":"Strength"},"10":{"type":"item_booster","cooldown":450000,"castStat":2,"name":"Treasure Chest"},"12":{"type":"debuff","cooldown":90000,"castStat":2,"name":"Bind"},"13":{"type":"projectile","cooldown":9000,"castStat":2,"name":"Death"},"15":{"type":"debuff","cooldown":90000,"castStat":2,"name":"Curse"},"18":{"type":"debuff","cooldown":90000,"castStat":0,"name":"Lunacy"},"19":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Solar Rite"},"20":{"type":"aoe_judgement","range":8,"cooldown":86400000,"castStat":2,"name":"Horn of Judgement"},"22":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Wand"},"23":{"type":"summon","cooldown":15000,"castStat":2,"name":"Call Wisp"},"24":{"type":"item_booster","cooldown":900000,"castStat":2,"name":"Scry"},"25":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Elixer"},"26":{"type":"projectile","cooldown":6000,"castStat":2,"name":"Fireball"},"27":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Amulet"},"28":{"type":"buff","cooldown":450000,"castStat":2,"name":"Defense"},"29":{"type":"buff","cooldown":450000,"castStat":2,"name":"Haste"},"30":{"type":"item_ward","cooldown":450000,"castStat":2,"name":"Protect Orb"},"31":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Tome"},"36":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Hourglass"},"38":{"type":"item_booster","cooldown":450000,"castStat":2,"name":"Quest Reward"},"39":{"type":"aoe_knockback","range":8,"cooldown":30000,"castStat":2,"name":"Dragon Wing"},"40":{"type":"assassination","range":3,"cooldown":90000,"castStat":3,"name":"Steal"},"41":{"type":"item_booster","cooldown":450000,"castStat":2,"name":"Loot"},"42":{"type":"summon","cooldown":25000,"castStat":2,"name":"Summon Shade"},"43":{"type":"item_teleport","cooldown":450000,"castStat":2,"name":"Teleportation Crystal"},"44":{"type":"item_booster","cooldown":86400000,"castStat":2,"name":"Djinn Lamp"},"50":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Sword"},"51":{"type":"assassination","range":3,"cooldown":9000,"castStat":0,"name":"Overpower"},"52":{"type":"assassination","range":9,"cooldown":6000,"castStat":3,"name":"Backstab"},"53":{"type":"item_booster","cooldown":0,"castStat":2,"name":"Camp"},"54":{"type":"summon","cooldown":15000,"castStat":3,"name":"Call Goblin"},"56":{"type":"summon","cooldown":15000,"castStat":2,"name":"Summon Imp"},"58":{"type":"debuff","cooldown":90000,"castStat":0,"name":"Intimidate"},"59":{"type":"assassination","range":6,"cooldown":9000,"castStat":0,"name":"Critical Strike"},"60":{"type":"summon","cooldown":20000,"castStat":2,"name":"Summon Pixie"},"63":{"type":"summon","cooldown":120000,"castStat":2,"name":"Summon Dragon"},"64":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Shield"},"65":{"type":"assassination","range":3,"cooldown":9000,"castStat":1,"name":"Shield Bash"},"66":{"type":"item_ward","cooldown":450000,"castStat":2,"name":"Armor"},"67":{"type":"item_booster","cooldown":86400000,"castStat":2,"name":"Dragon Hoard"},"68":{"type":"debuff","cooldown":450000,"castStat":3,"name":"Bad Luck Charm"},"69":{"type":"item_booster","cooldown":86400000,"castStat":2,"name":"Charity"},"70":{"type":"cultivate","cooldown":86400000,"castStat":2,"name":"Cultivate"},"71":{"type":"item_booster","cooldown":900000,"castStat":2,"name":"Forge"},"72":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Magic Ring"},"73":{"type":"item_booster","cooldown":86400000,"castStat":2,"name":"Inheritance"},"82":{"type":"summon","cooldown":30000,"castStat":2,"name":"Raise Dead"},"84":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Excalibur"},"92":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Fire Sword"},"93":{"type":"projectile","cooldown":7000,"castStat":2,"name":"Lightning"},"94":{"type":"summon","cooldown":90000,"castStat":2,"name":"Lich Form"},"95":{"type":"flurry","range":3,"cooldown":3000,"castStat":3,"name":"Flurry"},"96":{"type":"projectile","cooldown":9000,"castStat":1,"name":"Outlast"},"97":{"type":"gravity","range":6,"cooldown":15000,"castStat":2,"name":"Gravity"},"188":{"type":"summon","cooldown":30000,"castStat":3,"name":"Tame Bear"},"191":{"type":"summon","cooldown":20000,"castStat":3,"name":"Tame Wolf"},"194":{"type":"summon","cooldown":20000,"castStat":3,"name":"Tame Boar"},"203":{"type":"summon","cooldown":60000,"castStat":2,"name":"Call Dullahan"},"206":{"type":"summon","cooldown":60000,"castStat":3,"name":"Tame Wyvern"},"210":{"type":"summon","cooldown":15000,"castStat":3,"name":"Tame Scorpion"},"213":{"type":"summon","cooldown":15000,"castStat":2,"name":"Tame Wasp"},"216":{"type":"summon","cooldown":10000,"castStat":2,"name":"Tame Ant"},"219":{"type":"summon","cooldown":10000,"castStat":3,"name":"Tame Rat"},"225":{"type":"summon","cooldown":10000,"castStat":3,"name":"Tame Bunny"},"234":{"type":"summon","cooldown":10000,"castStat":3,"name":"Tame Squirrel"},"240":{"type":"summon","cooldown":15000,"castStat":3,"name":"Tame Fox"},"512":{"type":"cone","range":4,"cooldown":90000,"castStat":2,"name":"Bind"},"515":{"type":"cone","range":4,"cooldown":90000,"castStat":2,"name":"Curse"},"518":{"type":"cone","range":4,"cooldown":90000,"castStat":0,"name":"Lunacy"},"558":{"type":"cone","range":4,"cooldown":90000,"castStat":0,"name":"Intimidate"},"600":{"type":"debuff","cooldown":10000,"castStat":2,"name":"Poison"},"601":{"type":"buff","cooldown":10000,"castStat":2,"name":"Rampage"},"602":{"type":"buff","cooldown":10000,"castStat":2,"name":"Regen"},"603":{"type":"debuff","cooldown":10000,"castStat":2,"name":"Electrocute"},"604":{"type":"debuff","cooldown":10000,"castStat":2,"name":"Burn"},"1000":{"type":"heal","range":6,"cooldown":10000,"castStat":2,"name":"Heal"},"1001":{"type":"projectile","cooldown":9000,"castStat":2,"name":"Drain"},"1005":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Venom Blade"},"1006":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Cursed Dagger"},"1007":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Mace of Terror"},"1008":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Fur Boots"},"1100":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Boar Tusk Dagger"},"1101":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Wolf Tooth Necklace"},"1102":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Fur Tunic"},"1103":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Kite Shield"},"1104":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Steel Helmet"},"1105":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Steel Boots"},"1106":{"type":"item_ward","cooldown":450000,"castStat":2,"name":"Ice Armor"},"1107":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Blood Sword"},"1108":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Gold Ring"},"1109":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Ruby Ring"},"1120":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Pixie Staff"},"1121":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Excalibur\u2019s Sheath"},"1122":{"type":"item_buff","cooldown":450000,"castStat":2,"name":"Flaming Sword"},"1123":{"type":"wish_joke","cooldown":0,"castStat":2,"name":"Ultimate Spell"},"9998":{"type":"projectile","cooldown":0,"castStat":0,"name":"Imbued Attack"},"9999":{"type":"projectile","range":1.3,"cooldown":0,"castStat":0,"name":"Attack"}};
-  const profiles=new Map(),rates=new Map();
+  const profiles=new Map(),rates=new Map(),casts=new Map(),receipts=new Map(),deaths=new Map(),registered=new Map();
+  let sequence=0;
   function profile(v){if(!v||!Array.isArray(v.stat)||v.stat.length!==4)return null;const stat=[];for(const r of v.stat){if(!Array.isArray(r)||r.length<3||!r.slice(0,3).every(Number.isFinite)||!Number.isInteger(r[0])||r[0]<1||r[0]>10000||!Number.isInteger(r[1])||r[1]<2||r[1]>1000||Math.abs(r[2])>1000000)return null;stat.push(r.slice(0,3));}
     return {stat,level:Number.isFinite(v.level)?Math.max(0,Math.min(100000,v.level)):0,damage:Number.isFinite(v.damage)?Math.max(0,Math.min(1000000,v.damage)):0};}
   function update(id,data){const p=players[id],v=profile(data);if(!p||!v||data.mapID!==undefined&&data.mapID!==p.mapID)return false;const summons=[];for(const s of Array.isArray(data.summons)?data.summons.slice(0,32):[]){const stat=profile(s.combatProfile);if(stat&&Number.isFinite(s.x)&&Number.isFinite(s.y)&&Number.isFinite(s.id))summons.push({id:s.id,x:s.x,y:s.y,z:Number.isFinite(s.combatZ)?s.combatZ:0,...stat});}
     profiles.set(id,{...v,mapID:p.mapID,z:Number.isFinite(data.z)?data.z:0,at:Date.now(),summons});return true;}
   function near(a,b,max){return a&&b&&a.mapID===b.mapID&&[a.x,a.y,b.x,b.y].every(Number.isFinite)&&Math.hypot(a.x-b.x,a.y-b.y)<=max;}
-  function hostile(kind,id){return kind==='OVERWORLD_HIT'||kind==='OVERWORLD_HIT_SUMMON'||kind==='OVERWORLD_SPELL'&&rules[id]?.type==='debuff';}
+  function hostile(kind,id){return kind==='OVERWORLD_HIT'||kind==='OVERWORLD_HIT_SUMMON'||kind==='OVERWORLD_SPELL'&&['debuff','cone'].includes(rules[id]?.type);}
   function aggro(a,b){for(const [id,other]of [[a,b],[b,a]])io.to(id).emit('pvp_aggro_update',{enemyId:other});}
+  function clearDuel(id,reason='ended'){
+    const p=players[id],opponent=p?.battleOpponent;if(p){p.battleOpponent=null;delete p.pendingChallenge;}
+    if(opponent&&players[opponent]?.battleOpponent===id){players[opponent].battleOpponent=null;io.to(opponent).emit('duel_ended',{opponentId:id,reason});}
+    for(const q of Object.values(players))if(q.pendingChallenge?.id===id)delete q.pendingChallenge;
+  }
+  function lineClear(source,target){
+    const grid=suncatGrid(source.mapID);if(!grid)return true; // Unobserved client maps remain explicitly unverified.
+    const count=Math.ceil(Math.hypot(target.x-source.x,target.y-source.y)*8);
+    for(let i=1;i<count;i++){
+      const x=Math.floor(source.x+(target.x-source.x)*i/count),y=Math.floor(source.y+(target.y-source.y)*i/count),tile=grid[y]?.[x];
+      // Water/lava floors do not become solid walls. Elevated terrain needs client geometry.
+      if(tile===undefined||!(tile===0||tile<0&&Math.abs(tile)%2===0||[92,94,96].includes(tile)))return false;
+    }return true;
+  }
+  function prune(now){for(const [key,c]of registered)if(now-c.at>15000)registered.delete(key);for(const [key,r]of receipts)if(now-r.at>120000)receipts.delete(key);for(const [key,c]of casts)if(now>c.until&&now-c.at>15000)casts.delete(key);}
+  function beginCast(socket,data){
+    const p=players[socket.id],own=profiles.get(socket.id),now=Date.now();
+    if(!p||p.isDead||!own||own.mapID!==p.mapID||now-own.at>15000||!data||typeof data.castId!=='string'||data.castId.length>160)return false;
+    const id=Number(data.spellId),spell=rules[id];if(!spell)return false;
+    let source=own;if(data.summonerIndex!=null){source=own.summons.find(n=>n.id===data.summonerIndex);if(!source)return false;}
+    const registrationKey=socket.id+':'+data.castId;
+    if(registered.has(registrationKey))return false;
+    prune(now);
+    if(registered.size>4096)return false;
+    const key=socket.id+':'+(data.summonerIndex??'body')+':'+id;
+    const agi=source.stat[3],speed=Math.max(1,agi[0]*agi[1]+agi[2]),basic=Math.max(110,Math.min(500,350/(1+.045*(speed-4))));
+    const resource=data.resource==='card'?'card':'skill',cooldown=resource==='card'?110:Math.max(basic,Number(spell.cooldown)||0);
+    const old=casts.get(key);if(old&&now<old.until&&resource!=='card')return false;
+    if(resource==='card'&&old&&now-old.at<110)return false;
+    const cast={id:data.castId,at:now,until:now+cooldown,targets:new Map(),spellId:id,mapID:p.mapID,summonerIndex:data.summonerIndex??null,resource};
+    // Preserve an existing learned cooldown when a consumable card bypasses it.
+    casts.set(key,resource==='card'&&old?{...cast,until:Math.max(old.until,cast.until)}:cast);
+    registered.set(registrationKey,cast);return true;
+  }
   function relay(socket,data){const a=players[socket.id],b=players[data?.targetId];if(!a||!b||a===b||typeof data?.actionType!=='string'||!data.payload||typeof data.payload!=='object'||Array.isArray(data.payload))return false;
     let bytes;try{bytes=Buffer.byteLength(JSON.stringify(data));}catch{return false;}if(bytes>131072)return false;
-    const now=Date.now(),rate=rates.get(socket.id)||{at:now,n:0};if(now-rate.at>=1000){rate.at=now;rate.n=0;}if(++rate.n>40)return false;rates.set(socket.id,rate);
+    const now=Date.now(),rate=rates.get(socket.id)||{at:now,n:0};if(now-rate.at>=1000){rate.at=now;rate.n=0;}rates.set(socket.id,rate);if(++rate.n>40)return false;
     const kind=data.actionType,payload={...data.payload};
-    if(!kind.startsWith('OVERWORLD_')){if(a.battleOpponent!==data.targetId||b.battleOpponent!==socket.id)return false;io.to(data.targetId).emit('battle_action',{senderId:socket.id,actionType:kind,payload});return true;}
+    if(!kind.startsWith('OVERWORLD_')){
+      if(kind==='CHALLENGE_REJECTED'&&a.pendingChallenge?.id===data.targetId){delete a.pendingChallenge;io.to(data.targetId).emit('battle_action',{senderId:socket.id,actionType:kind,payload});return true;}
+      if(kind==='CHALLENGE_CANCEL'&&b.pendingChallenge?.id===socket.id){delete b.pendingChallenge;io.to(data.targetId).emit('battle_action',{senderId:socket.id,actionType:kind,payload});return true;}
+      if(a.battleOpponent!==data.targetId||b.battleOpponent!==socket.id)return false;
+      io.to(data.targetId).emit('battle_action',{senderId:socket.id,actionType:kind,payload});
+      if(kind==='CHALLENGE_CANCEL')clearDuel(socket.id,'cancelled');return true;
+    }
     if(!['OVERWORLD_HIT','OVERWORLD_HIT_SUMMON','OVERWORLD_SPELL'].includes(kind)||a.isDead||b.isDead)return false;
     const own=profiles.get(socket.id);if(!own||own.mapID!==a.mapID||now-own.at>15000)return false;
     let source={...a,...own};if(payload.summonerIndex!=null){const n=own.summons.find(n=>n.id===payload.summonerIndex);if(!n)return false;source={...source,...n};}
     const id=payload.spellId==null?null:Number(payload.spellId),spell=id===null?null:rules[id];if(id!==null&&!spell)return false;
-    let victim=b;if(kind==='OVERWORLD_HIT_SUMMON'){const n=(b.summons||[]).find(n=>n.id===payload.summonId);if(!n)return false;victim={...b,...n};}
+    let victim=b;if(kind==='OVERWORLD_HIT_SUMMON'){const n=profiles.get(data.targetId)?.summons.find(n=>n.id===payload.summonId);if(!n)return false;victim={...b,...n};}
     const range=id===null?2.25:Math.min(40,Math.max(2.25,Number(spell.range)||20));if(!near(source,victim,range))return false;
-    const other=profiles.get(data.targetId);if(id===null&&other&&Math.abs(source.z-(Number(victim.combatZ)||other.z))>1)return false;
-    payload.spellId=id;payload.attackerStats={stat:source.stat,level:source.level,damage:source.damage};payload.x=source.x;payload.y=source.y;payload.z=source.z;
+    const other=profiles.get(data.targetId);if((id===null||id===9999)&&other&&Math.abs(source.z-(victim.z??other.z))>1)return false;
+    if(hostile(kind,id)&&!lineClear(source,victim))return false;
     if(kind==='OVERWORLD_SPELL'){
-      if(!['heal','buff','ward','item_buff','item_ward','debuff'].includes(spell.type))return false;
-      const potential=source.stat[spell.castStat??2],cap=Math.max(1,potential[0]*potential[1]+potential[2]+source.damage);
+      if(!spell||!['heal','buff','ward','item_buff','item_ward','debuff','cone'].includes(spell.type))return false;
+      const maximum=i=>Math.max(1,source.stat[i][0]*source.stat[i][1]+source.stat[i][2]+source.damage);
+      const cap=spell.type==='heal'?(maximum(2)+maximum(3))*.25:maximum(spell.castStat??2);
       if(!Number.isFinite(payload.magnitude)||payload.magnitude<0||payload.magnitude>cap)return false;
     }
     for(const key of ['knockX','knockY'])if(payload[key]!==undefined){if(!Number.isFinite(payload[key]))return false;payload[key]=Math.max(-2,Math.min(2,payload[key]));}
-    if(hostile(kind,id))aggro(socket.id,data.targetId);
-    io.to(data.targetId).emit('battle_action',{senderId:socket.id,actionType:kind,payload,mapID:a.mapID});return true;
+    prune(now);
+    const eventId=typeof payload.eventId==='string'&&payload.eventId.length<=160?payload.eventId:null;
+    const castId=typeof payload.castId==='string'&&payload.castId.length<=160?payload.castId:null;
+    const key=socket.id+':'+(payload.summonerIndex??'body')+':'+(id??9999);
+    const targetKey=data.targetId+':'+(payload.summonId??'body')+':'+id+':'+kind;
+    const eventKey=eventId&&socket.id+':'+eventId+':'+targetKey;
+    if(eventKey&&receipts.has(eventKey))return false;
+    const registration=castId&&registered.get(socket.id+':'+castId);
+    const parent=registration&&SUNCAT_SPELLS[registration.spellId];
+    const matches=registration&&(registration.spellId===(id??9999)||registration.spellId===95&&id===9999||parent?.procs?.some(p=>p.id===id));
+    if(socket.data?.combatProtocol===2&&(!matches||registration.mapID!==a.mapID||registration.summonerIndex!==(payload.summonerIndex??null)))return false;
+    const old=registration||casts.get(key),same=!!registration||castId&&old?.id===castId;
+    const agi=source.stat[3],speed=Math.max(1,agi[0]*agi[1]+agi[2]);
+    const basic=Math.max(110,Math.min(500,350/(1+.045*(speed-4))));
+    // Consumable cards can legitimately bypass learned-skill cooldowns. They remain
+    // client-reported until inventory authority is migrated; never call this anti-cheat.
+    const cooldown=payload.resource==='card'?110:Math.max(basic,Number(spell?.cooldown)||0);
+    let cast=old;
+    if(!same){if(old&&now<old.until)return false;cast={id:castId||'legacy:'+now,at:now,until:now+cooldown,targets:new Map()};}
+    else if(now-cast.at>12000)return false;
+    const hit=cast.targets.get(targetKey)||{count:0,at:0};
+    const castType=registration?rules[registration.spellId]?.type:spell?.type;
+    const multi=castType==='flurry'?9:castType==='gravity'?24:1;
+    if(hit.count>=multi||castType==='gravity'&&hit.count>Math.floor((now-cast.at)/400))return false;
+    hit.count++;hit.at=now;cast.targets.set(targetKey,hit);if(!registration)casts.set(key,cast);
+    const receipt={id:'pvp:'+now+':'+(++sequence),at:now,attackerId:socket.id,targetId:data.targetId,mapID:a.mapID,spellId:id};
+    if(eventKey)receipts.set(eventKey,receipt);
+    a.lastCombatAt=b.lastCombatAt=now;if(hostile(kind,id)){b.lastIncomingCombat=receipt;aggro(socket.id,data.targetId);}
+    payload.spellId=id;payload.attackerStats={stat:source.stat,level:source.level,damage:source.damage};payload.x=source.x;payload.y=source.y;payload.z=source.z;
+    payload.receiptId=receipt.id;
+    io.to(data.targetId).emit('battle_action',{senderId:socket.id,actionType:kind,payload,mapID:a.mapID});
+    socket.emit('combat_action_accepted',receipt);return true;
   }
-  function request(socket,data){const a=players[socket.id],b=players[data?.targetId];if(!near(a,b,4)||a===b||!Array.isArray(data.deck)||data.deck.length>200)return false;b.pendingChallenge={id:socket.id,until:Date.now()+60000};io.to(data.targetId).emit('challenge_received',{id:socket.id,deck:data.deck});return true;}
-  function accept(socket,data){const a=players[socket.id],b=players[data?.targetId];if(!near(a,b,4)||a.pendingChallenge?.id!==data.targetId||a.pendingChallenge.until<Date.now()||!Array.isArray(data.receiverDeck)||data.receiverDeck.length>200)return false;delete a.pendingChallenge;a.battleOpponent=data.targetId;b.battleOpponent=socket.id;io.to(data.targetId).emit('challenge_accepted',{opponentId:socket.id,opponentDeck:data.receiverDeck});return true;}
-  function forget(id){profiles.delete(id);rates.delete(id);}
-  return {profile,update,near,relay,request,accept,forget};
+  function request(socket,data){const a=players[socket.id],b=players[data?.targetId];if(!near(a,b,4)||a===b||a.isDead||b.isDead||a.battleOpponent||b.battleOpponent||!Array.isArray(data.deck)||data.deck.length>200)return false;b.pendingChallenge={id:socket.id,until:Date.now()+60000};io.to(data.targetId).emit('challenge_received',{id:socket.id,deck:data.deck});return true;}
+  function accept(socket,data){const a=players[socket.id],b=players[data?.targetId];if(!near(a,b,4)||a.isDead||b.isDead||a.battleOpponent||b.battleOpponent||a.pendingChallenge?.id!==data.targetId||a.pendingChallenge.until<Date.now()||!Array.isArray(data.receiverDeck)||data.receiverDeck.length>200)return false;delete a.pendingChallenge;delete b.pendingChallenge;a.battleOpponent=data.targetId;b.battleOpponent=socket.id;io.to(data.targetId).emit('challenge_accepted',{opponentId:socket.id,opponentDeck:data.receiverDeck});return true;}
+  function died(socket){const p=players[socket.id];if(!p)return;clearDuel(socket.id,'death');p.isDead=true;
+    const row={token:require('crypto').randomBytes(18).toString('hex'),at:Date.now(),mapID:p.mapID};deaths.set(socket.id,row);
+    socket.emit('respawn_available',{token:row.token,notBefore:row.at+1000});}
+  function respawn(socket,data){const p=players[socket.id],row=deaths.get(socket.id);if(!p||!row||data?.token!==row.token)return {ok:false,error:'No matching death.'};
+    if(row.respawned)return {ok:true};
+    if(Date.now()<row.at+1000)return {ok:false,error:'Recovery is not ready.',retryAfterMs:row.at+1000-Date.now()};
+    // The client reports the end of its existing death sequence, not an arbitrary move.
+    p.isDead=false;p.status='normal';p.summons=[];delete p.lastIncomingCombat;row.respawned=true;profiles.delete(socket.id);
+    clearDuel(socket.id,'respawn');for(const id of Object.keys(players))io.to(id).emit('pvp_aggro_clear',{enemyId:socket.id});
+    io.emit('updatePlayers',getPublicPlayers());return {ok:true};}
+  function forget(id){for(const key of registered.keys())if(key.startsWith(id+':'))registered.delete(key);clearDuel(id,'disconnect');profiles.delete(id);rates.delete(id);deaths.delete(id);for(const key of casts.keys())if(key.startsWith(id+':'))casts.delete(key);for(const key of receipts.keys())if(key.startsWith(id+':'))receipts.delete(key);}
+  return {profile,update,near,relay,request,accept,forget,clearDuel,died,respawn,beginCast};
 })();
 
 /* Account secrets are separate from public player IDs and narrative memory. */
@@ -93,7 +175,7 @@ const SuncatIdentity=(()=>{
     try{await save();return {ok:true};}catch(error){delete accounts[id];return {ok:false,code:'SAVE_FAILED',error:'The server could not save your identity. Please retry.'};}finally{locks.delete(id);}
   }
   function admin(socket,token){const expected=process.env.SUNCAT_ADMIN_TOKEN;return typeof expected==='string'&&expected.length>=24&&typeof token==='string'&&token.length<=512&&equal(hash(token),hash(expected));}
-  function guard(socket,packet,next){const event=packet[0];if(['join_game','admin_auth'].includes(event))return next();if(event==='chat_message'&&/^\s*\.hack\/\/login\s/i.test(String(packet[1]||'')))return next();
+  function guard(socket,packet,next){const event=packet[0];if(['join_game','admin_auth','online_hello','combat_protocol'].includes(event))return next();if(event==='chat_message'&&/^\s*\.hack\/\/login\s/i.test(String(packet[1]||'')))return next();
     const denied=!socket.data.identityId||event.startsWith('admin_')&&!socket.data.isAdmin;
     if(!denied)return next();const ack=packet[packet.length-1],error=socket.data.identityId?'Administrator permission required.':'Join with your character credentials first.';
     if(typeof ack==='function')ack({ok:false,error});if(Date.now()-(socket.data.lastDeniedAt||0)>3000){socket.data.lastDeniedAt=Date.now();socket.emit('chat_message',{sender:'[SYSTEM]',text:error});}
@@ -104,7 +186,105 @@ const SuncatIdentity=(()=>{
     //AI CONFIG ---
         const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
 
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Every SDK call, including embeddings and background workers, passes this gate.
+// Dollar amounts are configurable estimates, not a provider-side spending cap.
+const SUNCAT_AI = (() => {
+    const {AsyncLocalStorage} = require('node:async_hooks');
+    const context = new AsyncLocalStorage(), accounted = new WeakSet();
+    const cache = new Map(), embeddingJobs = new Map();
+    const number = (key, fallback) => Number.isFinite(Number(process.env[key])) && Number(process.env[key]) > 0 ? Number(process.env[key]) : fallback;
+    const prices = {input:number('SUNCAT_AI_INPUT_PER_MILLION', .25), output:number('SUNCAT_AI_OUTPUT_PER_MILLION', 1.5), embedding:number('SUNCAT_AI_EMBED_PER_MILLION', .15)};
+    const timeoutMs = number('SUNCAT_AI_TIMEOUT_MS', 90000), maxOutput = number('SUNCAT_AI_MAX_OUTPUT_TOKENS', 8192);
+    let reserved = 0, inFlight = 0;
+    const metrics = {calls:0, promptTokens:0, outputTokens:0, embeddingTokens:0, cacheHits:0, timeouts:0, estimates:0};
+    function charge(usage, owner, embedding = false, fallback = 0) {
+        if (usage && typeof usage === 'object') {
+            if (accounted.has(usage)) return;
+            accounted.add(usage);
+        }
+        const input = Math.max(0, Number(usage?.promptTokenCount ?? usage?.totalTokenCount) || 0);
+        const output = embedding ? 0 : Math.max(0, Number(usage?.candidatesTokenCount) || 0);
+        const cost = usage ? (input * (embedding ? prices.embedding : prices.input) + output * prices.output) / 1e6 : fallback;
+        if (!usage) metrics.estimates++;
+        metrics[embedding ? 'embeddingTokens' : 'promptTokens'] += input;
+        metrics.outputTokens += output;
+        totalSessionCost += cost;
+        if (owner && players[owner]) players[owner].sessionCost = (players[owner].sessionCost || 0) + cost;
+    }
+    function scope(meta, fn) { return context.run({...context.getStore(), ...meta}, fn); }
+    async function call(fn, input, config, embedding = false) {
+        const meta = context.getStore() || {}, owner = meta.socketId || 'NPC_SUNCAT';
+        const chars = typeof input === 'string' ? input.length : JSON.stringify(input || {}).length;
+        if (chars > 800000) throw Error('AI input is too large; original sources remain queued.');
+        const output = embedding ? 0 : Math.min(maxOutput, config?.maxOutputTokens || 2048);
+        const estimate = (Math.ceil(chars / 3) * (embedding ? prices.embedding : prices.input) + output * prices.output) / 1e6;
+        const limit = MAX_SESSION_COST * (meta.priority === 'essential' ? 1 : .85);
+        if (inFlight >= 8 || totalSessionCost + reserved + estimate > limit) {
+            const error = Error('AI budget or concurrency is paused; retry later.'); error.code = 'AI_PAUSED'; throw error;
+        }
+        reserved += estimate; inFlight++; metrics.calls++;
+        let timer;
+        // Keep the reservation until the SDK actually settles, even after our timeout.
+        // Late responses are metered but cannot mutate the caller's world state.
+        const work = Promise.resolve().then(fn).then(result => {
+            charge(result?.response?.usageMetadata || result?.usageMetadata, owner, embedding, estimate);
+            return result;
+        }).finally(() => { reserved = Math.max(0, reserved - estimate); inFlight--; });
+        try {
+            return await Promise.race([work, new Promise((_, reject) => {
+                timer = setTimeout(() => { metrics.timeouts++; reject(Error('AI request timed out; outcome was not applied.')); }, timeoutMs);
+            })]);
+        } finally { clearTimeout(timer); }
+    }
+    function wrapClient(client) {
+        return {getGenerativeModel(options, ...rest) {
+            const generationConfig = {...options.generationConfig};
+            generationConfig.maxOutputTokens = Math.min(maxOutput, generationConfig.maxOutputTokens || 2048);
+            const settings = {...options, generationConfig};
+            const raw = client.getGenerativeModel(settings, ...rest);
+            return new Proxy(raw, {get(target, key) {
+                if (key === 'generateContent') return (input, ...args) => {
+                    const request = typeof input === 'object' && !Array.isArray(input) ? {...input, generationConfig:{...generationConfig, ...input.generationConfig,
+                        maxOutputTokens:Math.min(maxOutput, input.generationConfig?.maxOutputTokens || generationConfig.maxOutputTokens)}} : input;
+                    return call(() => target.generateContent(request, ...args), {system:settings.systemInstruction, request}, request?.generationConfig || generationConfig);
+                };
+                if (key === 'embedContent') return (input, ...args) => {
+                    const hash = require('crypto').createHash('sha256').update(JSON.stringify(input)).digest('hex');
+                    if (cache.has(hash)) { metrics.cacheHits++; return Promise.resolve(structuredClone(cache.get(hash))); }
+                    if (!embeddingJobs.has(hash)) {
+                        const job = call(() => target.embedContent(input, ...args), input, {}, true).then(result => {
+                            cache.set(hash, result); if (cache.size > 512) cache.delete(cache.keys().next().value); return result;
+                        }).finally(() => embeddingJobs.delete(hash));
+                        embeddingJobs.set(hash, job);
+                    }
+                    return embeddingJobs.get(hash).then(result => structuredClone(result));
+                };
+                if (key === 'startChat') return (params = {}) => {
+                    const chatConfig = {...generationConfig, ...params.generationConfig};
+                    chatConfig.maxOutputTokens = Math.min(maxOutput, chatConfig.maxOutputTokens || 2048);
+                    let session = target.startChat({...params, generationConfig:chatConfig});
+                    let sessionTools = settings.tools;
+                    return new Proxy(session, {get(chat, property) {
+                        if (property === 'expandTools') return async declarations => {
+                            const history=await session.getHistory();
+                            sessionTools=[{functionDeclarations:declarations}];
+                            session=client.getGenerativeModel({...settings,tools:sessionTools}).startChat({...params,history,generationConfig:chatConfig});
+                        };
+                        if (property === 'sendMessage') return async (input, ...args) => {
+                            const history = typeof session.getHistory === 'function' ? await session.getHistory() : params.history;
+                            return call(() => session.sendMessage(input, ...args), {system:settings.systemInstruction, tools:sessionTools, history, input}, chatConfig);
+                        };
+                        const value = session[property]; return typeof value === 'function' ? value.bind(session) : value;
+                    }});
+                };
+                const value = target[key]; return typeof value === 'function' ? value.bind(target) : value;
+            }});
+        }};
+    }
+    return {wrapClient, scope, charge, status:() => ({...metrics, estimatedCost:totalSessionCost, reserved, inFlight, prices})};
+})();
+
+        const genAI = SUNCAT_AI.wrapClient(new GoogleGenerativeAI(process.env.GEMINI_API_KEY));
         const embedder = genAI.getGenerativeModel({ model: "gemini-embedding-001" });// --- COGNITIVE AXES (Behavioral) ---
         // --- Model setup ---
         const voiceModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
@@ -133,7 +313,7 @@ const SuncatIdentity=(()=>{
         const MAX_AI_CALLS = 6; // Maximum burst of allowed interactions
         const REFILL_TIME = 13000; // Regain 1 interaction token every 15 seconds
         const playerAITokens = {};
-        const MAX_SESSION_COST = 2.00; // Hard limit: $1.00
+        const MAX_SESSION_COST = Math.max(.01, Number(process.env.SUNCAT_AI_HOURLY_BUDGET) || 2.00); // Estimated hourly budget.
         let totalSessionCost = 0.00;   // Starts at zero when the server boots
     //SUNCAT PERSONA VARIABLES
         let suncatCultivationStage = 0; // 0 = Mortal, 1 = Qi Condensation, 2 = Foundation, 3 = Core Formation
@@ -1264,7 +1444,7 @@ const SuncatIdentity=(()=>{
                     tribe: "human",
                     rarity:"rare",
                     classes: ["rogue","mage","warrior","guardian"],
-                    lore: "Seeks security in love and family.",
+                    lore: "Visit Suncat on IG @suncat.meow. This card is distinct from the Giant's Daughter (card 90).",
                     stats: "1d12 + 1 STR/CON/INT/AGI"
                 },
         };
@@ -3012,25 +3192,21 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
             
             // Gemini 001 embeddings are pre-normalized. 
             // We can skip the expensive square root math and just return the array!
-            return Array.from(result.embedding.values); 
+            const values=Array.from(result.embedding.values);
+            if(!values.every(Number.isFinite))return null;
+            const norm=Math.hypot(...values);return norm?values.map(v=>v/norm):null; 
             
         } catch (err) {
             console.error("[Memory] Vector embedding failed:", err.message);
             return null; // Prevents the server from passing undefined variables
         }
         }
-    function cosineSimilarity(vecA, vecB) {
-        // 1. SHIELD: If either vector is missing or corrupted, abort safely!
-        if (!vecA || !vecB || !vecA.length || !vecB.length) return 0;
-
-        // Because our vectors are pre-normalized, Cosine Similarity is just the Dot Product!
-        let dotProduct = 0;
-        const minLength = Math.min(vecA.length, vecB.length); // Double safety
-        for (let i = 0; i < minLength; i++) {
-            dotProduct += vecA[i] * vecB[i];
-        }
-        return dotProduct;
-        }
+    function cosineSimilarity(a,b) {
+        if(!a?.length||a.length!==b?.length)return 0;
+        let dot=0,aa=0,bb=0;
+        for(let i=0;i<a.length;i++){if(!Number.isFinite(a[i])||!Number.isFinite(b[i]))return 0;dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i];}
+        return aa&&bb?Math.max(-1,Math.min(1,dot/Math.sqrt(aa*bb))):0;
+    }
     function calculateCentroid(memoryArray) {
         const firstValid = memoryArray.find(mem => mem.vector && mem.vector.length > 0);
         const dimensions = firstValid ? firstValid.vector.length : 3072; 
@@ -3163,12 +3339,21 @@ CARD_MANIFEST_DB[1001]={lore:'A projectile returning 0.01 seconds of ward time p
 
 
 
+    const SUNCAT_TOOL_GROUPS = {
+        combat:['inspectCombatTarget','chooseCombatAction'],
+        travel:['travelToLocation','teleportToPlayer','teleportPlayer','activate_protection','deactivate_protection'],
+        companions:['spawnNPC','interactWithNPC'],
+        world:['createCustomMap','launchTacticalSkirmish','alterTerrain','changeEnvironment','assignQuest'],
+        rewards:['givePlayerCard','smiteOrReviveEntity'],music:['playMusic'],
+        development:['generateDevReport'],journals:['exportChronicles'],moderation:['kickPlayer','banishPlayer','vanquishPlayer']
+    };
     function getActiveTools(chatText,triggerType,playerFavor) {
         const text=String(chatText || '').toLowerCase();
-        const moderation=/\b(kick|banish|ban|vanquish|delete player)\b/.test(text);
-        return toolsDef[0].functionDeclarations.filter(t=>
-            t.name!=='createCustomCard' &&
-            (moderation || !['kickPlayer','banishPlayer','vanquishPlayer'].includes(t.name)));
+        const names=new Set(['consultGameManual','searchPlayerMemories','recallSuncatMemories','setSuncatIntention','discoverSuncatTools']);
+        const routes={combat:/combat|fight|attack|defend|ward|spell/,travel:/travel|visit|follow|protect|teleport|come here/,companions:/summon|companion|spawn|talk to|speak to/,world:/map|scenario|adventure|terrain|weather|quest|tactic|skirmish/,rewards:/give|reward|card|revive|smite/,music:/music|song|play|sing/,development:/code|bug|report|debug|refactor/,journals:/journal|chronicle|export|novel/,moderation:/\b(kick|banish|ban|vanquish|delete player)\b/};
+        for(const [group,pattern]of Object.entries(routes))if(pattern.test(text))for(const name of SUNCAT_TOOL_GROUPS[group])names.add(name);
+        if(triggerType!=='chat'&&!text)for(const name of SUNCAT_TOOL_GROUPS.combat)names.add(name);
+        return toolsDef[0].functionDeclarations.filter(t=>names.has(t.name));
     }
     // Recognize direct requests, not descriptions of bugs, refusals or questions
     // about the rules. The world writer still chooses the scenario and opponents.
@@ -3527,6 +3712,7 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
     status:()=>({pending:pending.length,recovered:accounts.size,busy,lastError,counter})};
 })();
 
+    let memoryWriteBlocked=false;
     function loadSuncatMemory() {
         if (fs.existsSync(MEMORY_FILE)) {
             try {
@@ -3534,7 +3720,7 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
                 
                 // Shield: Prevent parsing entirely empty files
                 if (!rawData || rawData.trim() === "") {
-                    console.warn("[System] Memory file is empty. Starting fresh.");
+                    memoryWriteBlocked=true;console.error("[System] Existing memory is empty; writes disabled until it is recovered.");
                     return; 
                 }
 
@@ -3546,6 +3732,9 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
                 suncatHeartDemon = data.worldState?.suncatHeartDemon || null;
                 heartDemonDecay = data.worldState?.heartDemonDecay || 0;
                 suncatLongTermGoal = data.worldState?.suncatLongTermGoal || null;
+                SUNCAT_AGENCY.restore(data.worldState?.suncatAgency);
+                suncatState=data.worldState?.suncatState==='seclusion'?'seclusion':'active';
+                seclusionCycles=Math.max(0,Number(data.worldState?.seclusionCycles)||0);
                 const runtime=data.worldState?.suncatRuntime;
                 if(runtime) {
                     SUNCAT_RUNTIME.companions=Array.isArray(runtime.companions)?runtime.companions.slice(0,SUNCAT_RUNTIME.maxCompanions):[];
@@ -3617,13 +3806,14 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
                 
             } catch (err) {
                 console.error("[CRITICAL] Failed to parse suncat_memory.json. It may be corrupted.", err.message);
-                console.warn("[System] Booting with default empty memory to prevent a fatal crash. A new save will be generated.");
+                memoryWriteBlocked=true;console.error("[System] Memory writes disabled to preserve the unreadable original. Restore a valid backup before restarting.");
             }
         } else {
             console.log("[System] No existing memory file found. Starting fresh.");
         }
         }
     async function saveSuncatMemory() {
+        if(memoryWriteBlocked)return false;
         // If we are already saving, flip the flag to queue up another save for later.
         if (isSavingMemory) {
             memoryNeedsSave = true;
@@ -3645,6 +3835,7 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
                 suncatEgoMatrix: suncatEgoMatrix,
                 suncatLongTermGoal: suncatLongTermGoal,
                 suncatMemoryRecovery:SUNCAT_MEMORY.snapshot(),
+                suncatAgency:SUNCAT_AGENCY.snapshot(),suncatState,seclusionCycles,
                 suncatRuntime:{companions:SUNCAT_RUNTIME.companions,recent:SUNCAT_RUNTIME.recent,lastSummon:SUNCAT_RUNTIME.lastSummon},
                 suncatDaoLedger:suncatDaoLedger,
                 suncatStorySoFar:suncatStorySoFar,
@@ -3685,22 +3876,8 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
         return saved;
         }
     function updateBudget(usage, socketId) {
-        if (!usage) return;
-        
-        // THE FIX: Add fallbacks in case the SDK omits the token counts
-        const promptTokens = usage.promptTokenCount || 0;
-        const candidateTokens = usage.candidatesTokenCount || 0;
-        
-        const callCost = (promptTokens * 0.00000025) + (candidateTokens * 0.0000015);    
-        totalSessionCost += callCost;
-        
-        // Add to the specific player's fatigue tracker safely
-        if (socketId && players[socketId]) {
-            players[socketId].sessionCost = (players[socketId].sessionCost || 0) + callCost;
-        }
-        
-        console.log(`[Budget] Server Total: $${totalSessionCost.toFixed(5)} | Player Drain: $${players[socketId]?.sessionCost?.toFixed(5)}`);
-        }
+        if (usage) SUNCAT_AI.charge(usage, socketId);
+    }
     function isBankrupt() {
         return totalSessionCost >= MAX_SESSION_COST;
         }
@@ -3836,15 +4013,16 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
         const map = WORLD_ATLAS_DB[mapID];
         return map ? `Map ${mapID}: ${map.name} (${map.biome}) - ${map.description} ${map.lore}` : "An unmapped region.";
         }
+    function canonicalCardID(value){const id=Number(value);return id===77.2?90:id===61391?999:Math.floor(id);}
     function getCardLore(entityID) {
         if (entityID === undefined || entityID === null) return "An unknown entity";
-        const baseID = Math.floor(parseFloat(entityID));
+        const baseID = canonicalCardID(entityID);
         const card = CARD_MANIFEST_DB[baseID];
         return card ? `${card.name} (${card.type} - ${card.suit} ${card.rank}): ${card.lore}` : "An unknown entity...";
         }
     function getCardName(entityID) {
         if (entityID === undefined || entityID === null) return "Unknown Entity";
-        const baseID = Math.floor(parseFloat(entityID));
+        const baseID = canonicalCardID(entityID);
         return CARD_MANIFEST_DB[baseID] ? CARD_MANIFEST_DB[baseID].name : "Unknown Entity";
         }
 
@@ -4780,7 +4958,7 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
             const scriptModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
             const result = await journalDeadline(scriptModel.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.85 } 
+                generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.85, maxOutputTokens:8192 } 
             }));
             
             let rawText = result.response.text().trim();
@@ -4944,13 +5122,13 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
             `Suncat pending: ${suncatAdventureEvents.filter(e => !e.chapterId).length}; ` +
             `Suncat error: ${suncatJournalError || 'none'}.`;
     }
-    function recordSuncatAdventure(kind, detail, sourceKey = null) {
+    function recordSuncatAdventure(kind, detail, sourceKey = null, location = null) {
         const suncat = players[SUNCAT_ID];
         if (!suncat) return;
         if (sourceKey && suncatAdventureEvents.some(e => e.sourceKey === sourceKey)) return;
         suncatAdventureEvents.push({
             id: journalId('suncat-event'), timestamp: new Date().toISOString(),
-            mapID: suncat.mapID, x: suncat.x, y: suncat.y,
+            mapID: location?.mapID ?? suncat.mapID, x: location?.x ?? suncat.x, y: location?.y ?? suncat.y,
             kind, detail, sourceKey, subjectId:SUNCAT_ID, selfAtEvent:SUNCAT_COMBAT.actor()
         });
         void saveSuncatMemory();
@@ -5344,8 +5522,8 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
         busy:false, lastThink:0, protectedID:null, sequence:0, observations:new Map(),
         recent:[], companions:[], lastSummon:0, mapBusy:false, motion:null,
         customCards:{}, // Persisted below with the existing world state.
-        autoTools:new Set(['inspectCombatTarget','chooseCombatAction','consultGameManual','searchPlayerMemories','travelToLocation','spawnNPC','interactWithNPC']),
-        handled:new Set(['inspectCombatTarget','chooseCombatAction','interactWithNPC','consultGameManual','searchPlayerMemories','givePlayerCard','spawnNPC',
+        autoTools:new Set(['setSuncatIntention','recallSuncatMemories','inspectCombatTarget','chooseCombatAction','consultGameManual','searchPlayerMemories','travelToLocation','spawnNPC','interactWithNPC']),
+        handled:new Set(['setSuncatIntention','recallSuncatMemories','discoverSuncatTools','inspectCombatTarget','chooseCombatAction','interactWithNPC','consultGameManual','searchPlayerMemories','givePlayerCard','spawnNPC',
             'activate_protection','deactivate_protection','travelToLocation','teleportToPlayer',
             'teleportPlayer','assignQuest','changeEnvironment','alterTerrain','playMusic',
             'smiteOrReviveEntity','launchTacticalSkirmish','createCustomCard']),
@@ -5355,7 +5533,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                 result:JSON.stringify(result || {}).slice(0,1600)});
             this.recent=this.recent.slice(-8);
             // Player-memory searches are not Suncat's eyewitness experiences.
-            if (name !== 'searchPlayerMemories' && !['tool_budget','duplicate_call'].includes(result?.code)) {
+            if (!['searchPlayerMemories','recallSuncatMemories','inspectCombatTarget','discoverSuncatTools'].includes(name) && !['tool_budget','duplicate_call'].includes(result?.code)) {
                 const text = JSON.stringify(result || {});
                 recordSuncatAdventure('tool_result', {
                     tool: name, args, invocation, actorId:SUNCAT_ID,
@@ -5368,6 +5546,105 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             saveSuncatMemory();
         }
     };
+// Concise declared intentions and receipts; archived prose is never execution authority.
+const SUNCAT_AGENCY = (() => {
+    let current = null, history = [], pending = null, revision = 0, tail = Promise.resolve();
+    let wakeReason = 'A new day', wakeAt = 0;
+    const clean = (v, n = 400) => String(v ?? '').slice(0, n);
+    const readOnly = new Set(['consultGameManual','searchPlayerMemories','recallSuncatMemories','inspectCombatTarget','discoverSuncatTools']);
+    const bodyTools = new Set(['travelToLocation','teleportToPlayer','activate_protection','deactivate_protection','chooseCombatAction','interactWithNPC']);
+    function snapshot() { return {version:1, current, history:history.slice(-12), pending, revision}; }
+    function restore(data = {}) {
+        current = data.current && typeof data.current.goal === 'string' ? {...data.current, goal:clean(data.current.goal)} : null;
+        history = Array.isArray(data.history) ? data.history.slice(-12) : [];
+        revision = Number.isSafeInteger(data.revision) ? data.revision : 0;
+        pending = data.pending ? {...data.pending, status:'unknown', note:'Server restarted before a confirmed result. Inspect the world before retrying.'} : null;
+        if (current?.status === 'acting') current.status = 'interrupted';
+    }
+    function wake(reason) { wakeReason = clean(reason, 180); wakeAt = Date.now(); }
+    function set(args) {
+        const goal = clean(args.goal), evidence = (Array.isArray(args.sourceEventIds) ? args.sourceEventIds : []).filter(id => suncatAdventureEvents.some(e => e.id === id)).slice(-6);
+        if (!goal.trim()) throw Error('An intention needs a goal.');
+        if(args.status==='complete'&&pending)throw Error('An unresolved action remains; obtain a confirmed result before completing this intention.');
+        const proof=current?.lastOutcome?.ok===true?current.lastOutcome:current?.lastObservation;
+        if (args.status === 'complete' && (!proof || proof.ok !== true || ['unknown','pending','walking'].includes(proof.status))) {
+            throw Error('Completion requires a confirmed result.');
+        }
+        if (pending?.status === 'pending') throw Error('An action is still pending; wait for its result.');
+        if (current && current.goal !== goal) history.push({...current});
+        current = {id:current?.goal === goal ? current.id : journalId('intention'), goal,
+            reason:clean(args.reason), nextStep:clean(args.nextStep), expected:clean(args.expected),
+            sourceEventIds:evidence, status:args.status === 'complete' ? 'complete' : 'planned',
+            lastOutcome:current?.goal === goal ? current.lastOutcome : null, updatedAt:new Date().toISOString()};
+        history = history.slice(-12); revision++;
+        recordSuncatAdventure('intention_declared', {...current, note:'A declared plan, not evidence that its goal happened.'});
+        return {ok:true, intention:current};
+    }
+    function contextFor(player) {
+        const relationship = player?.persistentId ? suncatAdventureEvents.filter(e =>
+            [e.detail?.speakerId,e.detail?.recipientId,e.detail?.otherId].includes(player.persistentId)).slice(-4).map(e => ({id:e.id,kind:e.kind,detail:e.detail})) : [];
+        return JSON.stringify({current, pending, wakeReason, bodyBusy:!!SUNCAT_RUNTIME.motion || !!SUNCAT_COMBAT.target,
+            liveWards:SUNCAT_COMBAT.wards(), relationship});
+    }
+    function recall(query) {
+        const terms = clean(query, 300).toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+        const rank = (rows, text) => rows.map((e, i) => ({e,i,score:terms.filter(t => text(e).toLowerCase().includes(t)).length}))
+            .filter(r => !terms.length || r.score).sort((a,b) => b.score-a.score || b.i-a.i).slice(0,4).map(r => r.e);
+        return {ok:true, provenance:'Events are recorded attempts and receipts; chapters are generated interpretations, not independent confirmation.',
+            events:rank(suncatAdventureEvents,e => JSON.stringify(e.detail)).map(e => ({id:e.id,timestamp:e.timestamp,mapID:e.mapID,kind:e.kind,detail:JSON.stringify(e.detail).slice(0,1800)})),
+            chapters:rank(suncatAdventureChapters,e => e.text || '').map(e => ({id:e.id,timestamp:e.timestamp,text:clean(e.text,1400)}))};
+    }
+    function begin(name,args) {
+        if (readOnly.has(name) || name === 'setSuncatIntention') return null;
+        const id = journalId('action');
+        pending = {id, tool:name, args, status:'pending', startedAt:Date.now(), location:{mapID:players[SUNCAT_ID].mapID,x:players[SUNCAT_ID].x,y:players[SUNCAT_ID].y}};
+        if (!current || current.status === 'complete') current = {id:journalId('intention'),goal:`Carry out ${name}`,reason:'Chosen action',nextStep:name,expected:'Await the tool receipt',status:'acting'};
+        else current.status = 'acting';
+        void saveSuncatMemory(); return id;
+    }
+    function outcome(name,args,result,id) {
+        const receipt = {tool:name,ok:result?.ok === true,status:result?.status || result?.outcome || (result?.ok === false ? 'failed' : 'confirmed'),
+            result:clean(JSON.stringify(result || {}),1000), at:new Date().toISOString()};
+        if (/walking/i.test(result?.result || '')) receipt.status = 'walking';
+        if (id && pending?.id === id) pending = ['unknown','pending','walking'].includes(receipt.status) ? {...pending,status:receipt.status,lastReceipt:receipt} : null;
+        if (current && !readOnly.has(name)) {
+            current.lastOutcome = receipt;
+            current.status = ['walking','pending'].includes(receipt.status) ? 'acting' : receipt.ok ? 'review' : 'blocked';
+        }
+        if (bodyTools.has(name)) revision++;
+        wake(`Result of ${name}: ${receipt.status}`); void saveSuncatMemory();
+    }
+    async function run(name,args,fn) {
+        if (readOnly.has(name)) {
+            const result=await fn();
+            if(current)current.lastObservation={tool:name,ok:result?.ok!==false,at:new Date().toISOString(),note:'Reading or observing is not proof of a physical change.'};
+            return result;
+        }
+        const requestedRevision = revision;
+        const work = tail.catch(() => {}).then(async () => {
+            if (bodyTools.has(name) && requestedRevision !== revision) throw Error('Suncat changed actions while waiting. Observe her current state before choosing again.');
+            if (bodyTools.has(name) && name !== 'chooseCombatAction' && (SUNCAT_COMBAT.target || players[SUNCAT_ID].respawnAt || suncatState === 'seclusion')) throw Error('Suncat is occupied by combat, recovery, or seclusion. The intention remains unfinished.');
+            if(name==='setSuncatIntention')return fn();
+            const id = begin(name,args);
+            try { const result = await fn(); outcome(name,args,result,id); return result; }
+            catch(error) { outcome(name,args,{ok:false,status:error.outcome || 'failed',error:error.message},id); throw error; }
+        });
+        tail = work.catch(() => {}); return work;
+    }
+    function navigation(result) {
+        if (pending?.tool === 'travelToLocation') outcome('travelToLocation',pending.args,result,pending.id);
+    }
+    return {snapshot,restore,set,contextFor,recall,run,navigation,wake,readOnly,version:()=>revision,mutatesBody:name=>bodyTools.has(name),
+        needsAttention:() => wakeAt > SUNCAT_RUNTIME.lastThink,
+        interrupt(reason) { if (current && current.status !== 'complete') {current.status='interrupted';current.interruption=clean(reason);} revision++;wake(reason);void saveSuncatMemory(); }};
+})();
+
+toolsDef[0].functionDeclarations.push(
+    {name:'setSuncatIntention',description:'Remember a concise goal, its reason, next step and expected observable result. Resume unfinished intentions after interruptions. This declares a plan; it does not execute actions.',parameters:{type:SchemaType.OBJECT,properties:{goal:{type:SchemaType.STRING},reason:{type:SchemaType.STRING},nextStep:{type:SchemaType.STRING},expected:{type:SchemaType.STRING},status:{type:SchemaType.STRING,enum:['planned','complete']},sourceEventIds:{type:SchemaType.ARRAY,items:{type:SchemaType.STRING}}},required:['goal','reason','nextStep','expected']}},
+    {name:'recallSuncatMemories',description:'Retrieve relevant events and journal excerpts from Suncat’s own past. Original errors stay historical facts even after a capability improves.',parameters:{type:SchemaType.OBJECT,properties:{query:{type:SchemaType.STRING}},required:['query']}},
+    {name:'discoverSuncatTools',description:'Load tools for a task when they are absent from the current list. Categories: combat, travel, companions, world, rewards, music, journals, development, moderation. Discovery is not an action.',parameters:{type:SchemaType.OBJECT,properties:{category:{type:SchemaType.STRING}},required:['category']}}
+);
+
     const SUNCAT_SPELLS = {"6":{"type":"item_buff","name":"The Lovers","cooldown":450000,"multiStat":[{"stat":0,"amount":1},{"stat":1,"amount":1}],"duration":1800,"visual":"arc","auraColor":"rgba(220,160,200,.6)","sfx":"heal"},"7":{"type":"item_chariot","name":"Winged Boots","cooldown":450000,"sfx":"teleport"},"8":{"type":"buff","name":"Strength","cooldown":450000,"castStat":2,"buffStat":0,"amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 0, 0.6)","sfx":"buff"},"10":{"type":"item_booster","name":"Treasure Chest","drawUntil":"monster","cooldown":450000,"sfx":"chime"},"12":{"type":"debuff","name":"Bind","cooldown":90000,"castStat":2,"defStat":3,"bind":true,"duration":600,"visual":"chains","auraColor":"rgba(100, 100, 100, 0.8)","color":[1,1,1],"glow":"#888888","sprite2D":-43,"isHoming":true,"sfx":"debuff"},"13":{"type":"projectile","name":"Death","cooldown":9000,"castStat":2,"defStat":2,"color":[0,0,0],"glow":"#00ffff","sprite2D":-47,"isHoming":true,"sfx":"arcane3"},"15":{"type":"debuff","name":"Curse","cooldown":90000,"castStat":2,"defStat":0,"debuffStat":"all","duration":3600,"visual":"aura","auraColor":"rgba(128, 0, 128, 0.7)","color":[1,0,1],"glow":"#800080","sprite2D":-46,"isHoming":true,"sfx":"debuff3"},"18":{"type":"debuff","name":"Lunacy","cooldown":90000,"castStat":0,"defStat":2,"debuffStat":2,"bind":true,"duration":450,"visual":"chains","auraColor":"rgba(100, 100, 0, 0.8)","color":[1,1,0],"glow":"#888888","sprite2D":-46,"isHoming":true,"sfx":"debuff2"},"19":{"type":"item_buff","name":"Solar Rite","cooldown":450000,"amount":0,"duration":0,"visual":"arc","auraColor":"rgba(255,220,130,.6)","sfx":"heal"},"20":{"type":"aoe_judgement","name":"Horn of Judgement","range":8,"cooldown":86400000,"sfx":"buff3"},"22":{"type":"item_buff","name":"Wand","cooldown":450000,"buffStat":2,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(255, 0, 0, 0.6)","sfx":"heal"},"23":{"type":"summon","name":"Call Wisp","summonType":23,"count":1,"maxMinions":2,"cooldown":15000,"castStat":2,"sfx":"arcane"},"24":{"type":"item_booster","name":"Scry","boosterSize":1,"lootPool":"spell","cooldown":900000,"sfx":"chime"},"25":{"type":"item_buff","name":"Elixer","cooldown":450000,"buffStat":"all","amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 255, 0.6)","sfx":"heal"},"26":{"type":"projectile","name":"Fireball","cooldown":6000,"castStat":2,"defStat":1,"color":[1,0.5,0],"glow":"#ff0000","sprite2D":-37,"knockback":1.5,"sfx":"fire2","procs":[{"id":604,"saveStat":1,"dcStat":2}]},"27":{"type":"item_buff","name":"Amulet","cooldown":450000,"buffStat":2,"amount":3,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 255, 0.6)","sfx":"heal"},"28":{"type":"buff","name":"Defense","cooldown":450000,"castStat":2,"buffStat":1,"amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(0, 255, 0, 0.6)","sfx":"buff"},"29":{"type":"buff","name":"Haste","cooldown":450000,"castStat":2,"buffStat":3,"amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(0, 0, 255, 0.6)","sfx":"buff"},"30":{"type":"item_ward","name":"Protect Orb","cooldown":450000,"hits":3,"visual":"shield","auraColor":"rgba(255, 0, 0, 0.8)","sfx":"buff2"},"31":{"type":"item_buff","name":"Tome","cooldown":450000,"multiStat":[{"stat":2,"amount":6},{"stat":0,"amount":-1},{"stat":3,"amount":-3}],"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 255, 0.6)","sfx":"heal"},"36":{"type":"item_buff","name":"Hourglass","cooldown":450000,"buffStat":3,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(0, 0, 255, 0.6)","sfx":"heal"},"38":{"type":"item_booster","name":"Quest Reward","boosterSize":1,"lootPool":"any","cooldown":450000,"sfx":"chime"},"39":{"type":"aoe_knockback","name":"Dragon Wing","range":8,"cooldown":30000,"sfx":"air2"},"40":{"type":"assassination","name":"Steal","cooldown":90000,"castStat":3,"defStat":3,"range":3,"isSteal":true,"sfx":"chime"},"41":{"type":"item_booster","name":"Loot","boosterSize":1,"lootPool":"magic","cooldown":450000,"sfx":"chime"},"42":{"type":"summon","name":"Summon Shade","summonType":42,"count":1,"maxMinions":1,"cooldown":25000,"castStat":2,"sfx":"arcane"},"43":{"type":"item_teleport","name":"Teleportation Crystal","cooldown":450000,"sfx":"warp"},"44":{"type":"item_booster","name":"Djinn Lamp","cooldown":86400000,"sfx":"chime"},"50":{"type":"item_buff","name":"Sword","cooldown":450000,"buffStat":0,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 0, 0.6)","sfx":"heal"},"51":{"type":"assassination","name":"Overpower","cooldown":9000,"castStat":0,"defStat":0,"range":3,"sfx":"earth3"},"52":{"type":"assassination","name":"Backstab","cooldown":6000,"castStat":3,"defStat":3,"range":9,"sfx":"slash"},"53":{"type":"item_booster","name":"Camp","boosterSize":1,"lootPool":"magic","cooldown":86400000,"sfx":"chime"},"54":{"type":"summon","name":"Call Goblin","summonType":54,"count":1,"maxMinions":3,"cooldown":15000,"castStat":3,"sfx":"arcane"},"56":{"type":"summon","name":"Summon Imp","summonType":56,"count":1,"maxMinions":2,"cooldown":15000,"castStat":2,"sfx":"arcane"},"58":{"type":"debuff","name":"Intimidate","cooldown":90000,"castStat":0,"defStat":2,"debuffStat":0,"bind":true,"duration":450,"visual":"chains","auraColor":"rgba(100, 100, 0, 0.8)","color":[1,1,0],"glow":"#888888","sprite2D":-44,"isHoming":true,"sfx":"debuff"},"59":{"type":"assassination","name":"Critical Strike","cooldown":9000,"castStat":0,"defStat":3,"range":6,"sfx":"slash"},"60":{"type":"summon","name":"Summon Pixie","summonType":60,"count":1,"maxMinions":2,"cooldown":20000,"castStat":2,"sfx":"arcane"},"63":{"type":"summon","name":"Summon Dragon","summonType":63,"count":1,"maxMinions":1,"cooldown":120000,"castStat":2,"sfx":"arcane2"},"64":{"type":"item_buff","name":"Shield","cooldown":450000,"buffStat":1,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(0, 255, 0, 0.6)","sfx":"heal"},"65":{"type":"assassination","name":"Shield Bash","cooldown":9000,"castStat":1,"defStat":0,"range":3,"sfx":"block"},"66":{"type":"item_ward","name":"Armor","cooldown":450000,"hits":3,"duration":1800,"visual":"shield","auraColor":"rgba(0, 255, 0, 0.8)","sfx":"buff2"},"67":{"type":"item_booster","name":"Dragon Hoard","drawUntil":"monster","cooldown":86400000,"sfx":"chime"},"68":{"type":"debuff","name":"Bad Luck Charm","cooldown":450000,"castStat":3,"defStat":2,"debuffStat":0,"duration":3600,"visual":"aura","auraColor":"rgba(128, 0, 128, 0.7)","color":[1,0,1],"glow":"#800080","sprite2D":-46,"isHoming":true,"sfx":"debuff2"},"69":{"type":"item_booster","name":"Charity","boosterSize":1,"lootPool":"magic","cooldown":86400000,"sfx":"chime"},"70":{"type":"cultivate","name":"Cultivate","cooldown":86400000,"castStat":2,"sfx":"heal"},"71":{"type":"item_booster","name":"Forge","boosterSize":1,"lootPool":"item","cooldown":900000,"sfx":"chime"},"72":{"type":"item_buff","name":"Magic Ring","cooldown":450000,"buffStat":"all","amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(255, 255, 255, 0.6)","sfx":"heal"},"73":{"type":"item_booster","name":"Inheritance","drawUntil":"monster","cooldown":86400000,"sfx":"chime"},"82":{"type":"summon","name":"Raise Dead","summonType":82,"count":2,"maxMinions":3,"cooldown":30000,"castStat":2,"sfx":"arcane"},"84":{"type":"item_buff","name":"Excalibur","cooldown":450000,"buffStat":0,"amount":3,"duration":1800,"visual":"arc","auraColor":"#e8d99b","sfx":"buff2"},"92":{"type":"item_buff","name":"Fire Sword","cooldown":450000,"buffStat":0,"amount":2,"duration":1800,"visual":"arc","auraColor":"rgba(255, 69, 0, 0.6)","sfx":"fire2","weaponProc":{"id":604,"saveStat":1,"dcStat":0}},"93":{"type":"projectile","name":"Lightning","cooldown":7000,"castStat":2,"defStat":3,"color":[1,1,0],"glow":"#ffff00","sprite2D":-44,"isHoming":true,"chains":1,"sfx":"lightning","procs":[{"id":603,"saveStat":1,"dcStat":2}]},"94":{"type":"summon","name":"Lich Form","summonType":94,"count":1,"maxMinions":1,"cooldown":90000,"castStat":2,"sfx":"arcane3"},"95":{"type":"flurry","name":"Flurry","cooldown":3000,"castStat":3,"defStat":1,"range":3,"knockback":2,"sfx":"air3"},"96":{"type":"projectile","name":"Outlast","cooldown":9000,"castStat":1,"defStat":1,"color":[0.5,0.75,1],"glow":"#accfff","sprite2D":-47,"isHoming":true,"sfx":"arcane3"},"97":{"type":"gravity","name":"Gravity","cooldown":15000,"castStat":2,"range":6,"sfx":"arcane3"},"188":{"type":"summon","name":"Tame Bear","summonType":188,"count":1,"maxMinions":1,"cooldown":30000,"castStat":3,"sfx":"arcane"},"191":{"type":"summon","name":"Tame Wolf","summonType":191,"count":1,"maxMinions":2,"cooldown":20000,"castStat":3,"sfx":"arcane"},"194":{"type":"summon","name":"Tame Boar","summonType":194,"count":1,"maxMinions":2,"cooldown":20000,"castStat":3,"sfx":"arcane"},"203":{"type":"summon","name":"Call Dullahan","summonType":203,"count":1,"maxMinions":1,"cooldown":60000,"castStat":2,"sfx":"arcane2"},"206":{"type":"summon","name":"Tame Wyvern","summonType":206,"count":1,"maxMinions":1,"cooldown":60000,"castStat":3,"sfx":"arcane"},"210":{"type":"summon","name":"Tame Scorpion","summonType":210,"count":1,"maxMinions":2,"cooldown":15000,"castStat":3,"sfx":"arcane"},"213":{"type":"summon","name":"Tame Wasp","summonType":213,"count":2,"maxMinions":4,"cooldown":15000,"castStat":2,"sfx":"arcane"},"216":{"type":"summon","name":"Tame Ant","summonType":216,"count":2,"maxMinions":5,"cooldown":10000,"castStat":2,"sfx":"arcane"},"219":{"type":"summon","name":"Tame Rat","summonType":219,"count":2,"maxMinions":4,"cooldown":10000,"castStat":3,"sfx":"arcane"},"225":{"type":"summon","name":"Tame Bunny","summonType":225,"count":1,"maxMinions":3,"cooldown":10000,"castStat":3,"sfx":"arcane"},"234":{"type":"summon","name":"Tame Squirrel","summonType":234,"count":1,"maxMinions":3,"cooldown":10000,"castStat":3,"sfx":"arcane"},"240":{"type":"summon","name":"Tame Fox","summonType":240,"count":1,"maxMinions":2,"cooldown":15000,"castStat":3,"sfx":"arcane"},"512":{"type":"cone","name":"Bind","cooldown":90000,"castStat":2,"defStat":3,"bind":true,"duration":600,"visual":"chains","auraColor":"rgba(100, 100, 100, 0.8)","range":4,"angle":0.5,"sfx":"debuff"},"515":{"type":"cone","name":"Curse","cooldown":90000,"castStat":2,"defStat":0,"debuffStat":"all","duration":3600,"visual":"aura","auraColor":"rgba(128, 0, 128, 0.7)","range":4,"angle":0.5,"sfx":"debuff3"},"518":{"type":"cone","name":"Lunacy","cooldown":90000,"castStat":0,"defStat":2,"debuffStat":2,"bind":true,"duration":450,"visual":"chains","auraColor":"rgba(100, 100, 0, 0.8)","range":4,"angle":0.5,"sfx":"debuff2"},"558":{"type":"cone","name":"Intimidate","cooldown":90000,"castStat":0,"defStat":2,"debuffStat":0,"bind":true,"duration":450,"visual":"chains","auraColor":"rgba(100, 100, 0, 0.8)","range":4,"angle":0.5,"sfx":"debuff"},"600":{"type":"debuff","name":"Poison","cooldown":10000,"castStat":2,"defStat":1,"duration":300,"tickRate":30,"votType":"dot","votAmount":1,"visual":"aura","auraColor":"rgba(0,255,0,0.7)","sfx":"debuff"},"601":{"type":"buff","name":"Rampage","cooldown":10000,"castStat":2,"buffStat":0,"amount":0,"duration":150,"tickRate":30,"votType":"bot","votAmount":1,"visual":"aura","auraColor":"rgba(255,0,0,0.7)","sfx":"buff2"},"602":{"type":"buff","name":"Regen","cooldown":10000,"castStat":2,"duration":300,"tickRate":30,"votType":"hot","votAmount":1,"visual":"sparkle","auraColor":"rgba(0,255,255,0.7)","sfx":"heal"},"603":{"type":"debuff","name":"Electrocute","cooldown":10000,"castStat":2,"defStat":1,"duration":300,"tickRate":60,"votType":"stun","visual":"chains","auraColor":"rgba(255,255,0,0.7)","sfx":"lightning"},"604":{"type":"debuff","name":"Burn","cooldown":10000,"castStat":2,"defStat":1,"duration":150,"tickRate":30,"votType":"dot","votAmount":1.5,"visual":"aura","auraColor":"rgba(255,69,0,0.8)","sfx":"fire2"},"1000":{"type":"heal","name":"Heal","cooldown":10000,"range":6,"auraColor":"rgba(0, 255, 150, 0.8)","sfx":"heal"},"1001":{"type":"projectile","name":"Drain","cooldown":9000,"castStat":2,"defStat":1,"color":[0.5,0.08,0.6],"glow":"#d778b4","sprite2D":-47,"isHoming":true,"sfx":"arcane3","drain":true},"1005":{"type":"item_buff","name":"Venom Blade","cooldown":450000,"buffStat":3,"amount":1,"duration":1800,"visual":"arc","auraColor":"rgba(0, 255, 0, 0.6)","sfx":"buff","weaponProc":{"id":600,"saveStat":1,"dcStat":3}},"1006":{"type":"item_buff","name":"Cursed Dagger","cooldown":450000,"buffStat":3,"amount":2,"duration":1800,"visual":"arc","auraColor":"purple","sfx":"buff","weaponProc":{"id":15,"saveStat":2,"dcStat":3}},"1007":{"type":"item_buff","name":"Mace of Terror","cooldown":450000,"buffStat":0,"amount":3,"duration":1800,"visual":"arc","auraColor":"gray","sfx":"buff","weaponProc":{"id":58,"saveStat":2,"dcStat":0}},"9998":{"type":"projectile","name":"Imbued Attack","castStat":0,"defStat":1,"color":[1,0.5,0],"glow":"#ff0000","sprite2D":-37,"isHoming":false,"knockback":1.5,"sfx":"fire3"},"9999":{"type":"projectile","name":"Attack","castStat":0,"defStat":1,"color":[1,1,1],"glow":"#ffff00","sprite2D":316,"isHoming":true,"range":1.3,"knockback":1.3,"sfx":"attack"}};
     // SUNCAT_COMBAT_BEGIN: server-owned body; one client observes its local monsters.
     const SUNCAT_COMBAT = {
@@ -5389,10 +5666,11 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             s.skillCooldowns=saved.skillCooldowns&&typeof saved.skillCooldowns==='object'?saved.skillCooldowns:{};
             s.inventory=saved.inventory&&typeof saved.inventory==='object'?saved.inventory:{};
             s.combatDeaths=Math.max(0,Number(saved.combatDeaths)||0);
+            s.pendingLevelUps=Array.isArray(saved.pendingLevelUps)?saved.pendingLevelUps.filter(Number.isInteger):[];
             if(Number.isInteger(saved.mapID)&&WORLD_ATLAS_DB[saved.mapID]&&saved.mapID!==999&&Number.isFinite(saved.x+saved.y))Object.assign(s,{mapID:saved.mapID,x:saved.x,y:saved.y});
             s.alignment='defender';s.state='wandering';delete s.hp;
         },
-        save() {const s=players[SUNCAT_ID];return Object.fromEntries(['level','xp','suncatClass','stat','learnedSpells','maxWards','currentWardTime','wardShatterUntil','respawnAt','activeBuffs','skillCooldowns','inventory','combatDeaths','mapID','x','y'].map(k=>[k,s[k]]).concat([['version',1]]));},
+        save() {const s=players[SUNCAT_ID];return Object.fromEntries(['level','xp','suncatClass','stat','learnedSpells','maxWards','currentWardTime','wardShatterUntil','respawnAt','activeBuffs','skillCooldowns','inventory','combatDeaths','pendingLevelUps','mapID','x','y'].map(k=>[k,s[k]]).concat([['version',1]]));},
         stats(value) {return Array.from({length:4},(_,i)=>{const d=value?.[i]||[1,4,0];return [Math.max(0,Math.min(100,Math.floor(Number(d[0])||0))),Math.max(0,Math.min(1000,Math.floor(Number(d[1])||0))),Math.max(-10000,Math.min(10000,Number(d[2])||0))];});},
         dice(i) {
             const s=players[SUNCAT_ID];let [n,d,m]=s.stat[i];
@@ -5409,8 +5687,8 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
         roll(stat){let [n,d,m]=stat||[1,4,0];for(let i=0;i<n&&d>0;i++)m+=1+Math.floor(Math.random()*d);return m;},
         score(i){const [n,d,m]=this.dice(i);return Math.max(1,n*d+m);},
         actor(){const s=players[SUNCAT_ID];return {id:SUNCAT_ID,name:'Suncat',type:s.type,mapID:s.mapID,x:s.x,y:s.y,stat:[0,1,2,3].map(i=>this.dice(i)),level:s.level,damage:0,alignment:'defender'};},
-        wards(){const s=players[SUNCAT_ID];return {remainingSeconds:s.currentWardTime,remainingWards:Math.ceil(s.currentWardTime/3),maxWards:s.maxWards,secondsPerWard:3,recoverySeconds:Math.max(0,(s.wardShatterUntil-Date.now())/1000)};},
-        event(kind,detail){const e={...detail,body:'black fairy',selfWards:this.wards()};this.encounter.push({kind,...e});this.encounter=this.encounter.slice(-24);recordSuncatAdventure(kind,e);},
+        wards(){const s=players[SUNCAT_ID];return {remainingSeconds:s.currentWardTime,fraction:s.currentWardTime/(s.maxWards*3),percent:Math.round(100*s.currentWardTime/(s.maxWards*3)),remainingWards:Math.ceil(s.currentWardTime/3),maxWards:s.maxWards,secondsPerWard:3,recoverySeconds:Math.max(0,(s.wardShatterUntil-Date.now())/1000)};},
+        event(kind,detail,location=null){if(['final_hit','combat_movement'].includes(kind))SUNCAT_AGENCY.interrupt(kind==='final_hit'?'Defeated in combat':'Responding to a combat threat');const e={...detail,body:'black fairy',selfWards:this.wards()};this.encounter.push({kind,...e});this.encounter=this.encounter.slice(-24);recordSuncatAdventure(kind,e,null,location);},
         sync(){const s=players[SUNCAT_ID];io.emit('playerMoved',{id:SUNCAT_ID,mapID:s.mapID,x:s.x,y:s.y,dir:s.dir,name:s.name,type:s.type,isDead:!!s.respawnAt,state:s.state,alignment:s.alignment,currentWardTime:s.currentWardTime,maxWards:s.maxWards,timePerWard:3});},
         available(){const s=players[SUNCAT_ID];return [...new Set([...s.learnedSpells,...Object.keys(s.inventory).filter(k=>s.inventory[k]>0).map(Number)])].filter(id=>this.supported(id)).map(id=>({id,name:SUNCAT_SPELLS[id].name,type:SUNCAT_SPELLS[id].type,learned:s.learnedSpells.includes(id),cards:s.inventory[id]||0,cooldownSeconds:Math.max(0,((s.skillCooldowns[id]||0)-Date.now())/1000)}));},
         supported(id){return ['projectile','debuff','buff','item_buff','item_ward','ward','heal','assassination','cone'].includes(SUNCAT_SPELLS[id]?.type)&&!SUNCAT_SPELLS[id]?.isSteal;},
@@ -5533,7 +5811,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             const id=String(SUNCAT_RUNTIME.id()),peer=target?.kind==='player'?target.playerId:this.peer;
             const packet={id,epoch:this.epoch,mapID:s.mapID,actor:this.actor(),target,spellId,action};
             if(action!=='collect')emitMapEvent(s.mapID,'suncat_combat_visual',{...packet,observerID:peer});
-            const pending={...packet,peer,until:now+12000};this.pending.set(id,pending);this.nextAction=Math.max(this.nextAction,now+600);
+            const pending={...packet,peer,origin:{mapID:s.mapID,x:s.x,y:s.y},until:now+12000};this.pending.set(id,pending);this.nextAction=Math.max(this.nextAction,now+600);
             this.event(action==='collect'?'collection_attempt':'spell_fired',{commandId:id,spellId,spell:SUNCAT_SPELLS[spellId]?.name,target,note:'Attempt issued; await the confirmed result.'});
             try{const reply=await suncatAck(peer,'suncat_command',{id,mapID:s.mapID,kind:'combat',args:packet});
                 if(reply.outcome)this.result(peer,{...reply,commandId:id,mapID:packet.mapID});
@@ -5544,14 +5822,14 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             if(!['hit','held','dodged','killed','applied','resisted','missed','collected'].includes(data.outcome))return;this.pending.delete(data.commandId);
             if(data.outcome==='collected'&&p.action==='collect'&&data.cardId===p.target.cardId){s.inventory[data.cardId]=(Number(s.inventory[data.cardId])||0)+1;this.entities.delete(p.target.id);}
             this.event('combat_result',{commandId:data.commandId,spellId:p.spellId,spell:SUNCAT_SPELLS[p.spellId]?.name,target:p.target,outcome:data.outcome,
-                rolls:data.rolls,wardsBefore:data.wardsBefore,wardsAfter:data.wardsAfter,wardsBroken:data.wardsBroken,effects:data.effects,cardId:data.cardId,cardName:Number.isInteger(data.cardId)?getCardName(data.cardId):undefined,error:data.error});
+                rolls:data.rolls,wardsBefore:data.wardsBefore,wardsAfter:data.wardsAfter,wardsBroken:data.wardsBroken,effects:data.effects,cardId:data.cardId,cardName:Number.isInteger(data.cardId)?getCardName(data.cardId):undefined,error:data.error},p.origin||{mapID:p.mapID});
             if(data.outcome==='killed'){this.entities.delete(p.target.id);if(this.target===p.target.id)this.target=null;
                 if(p.target.kind==='player'){
                     s.aggroList.delete(p.target.playerId);
                     for(const n of this.entities.values())if(n.playerId===p.target.playerId){n.hostile=false;n.aggressor=false;n.targetingSuncat=false;}
                     this.event('retaliation_settled',{target:p.target,note:'Confirmed defeat ended automatic retaliation. The relationship and memory remain; future pursuit requires a fresh attack or a deliberate new choice.'});
                 }
-                if(p.target.kind==='npc'){s.xp+=p.target.isBoss?150:25;const needed=Math.floor(100*Math.pow(s.level+1,1.8));if(s.xp>=needed){s.xp-=needed;s.level++;void processSuncatLevelUp();}}}
+                if(p.target.kind==='npc'){s.xp+=p.target.isBoss?150:25;const needed=Math.floor(100*Math.pow(s.level+1,1.8));if(s.xp>=needed){s.xp-=needed;s.level++;s.pendingLevelUps??=[];s.pendingLevelUps.push(s.level);void saveSuncatMemory();void processSuncatLevelUp();}}}
             if(SUNCAT_SPELLS[p.spellId]?.drain&&Number.isFinite(data.wardsBefore)&&Number.isFinite(data.wardsAfter))s.currentWardTime=Math.min(s.maxWards*3,s.currentWardTime+Math.min(3,Math.max(0,data.wardsBefore-data.wardsAfter)/.75*.01));
         },
         tick(){const s=players[SUNCAT_ID],now=Date.now(),dt=this.lastTick?Math.min(.5,(now-this.lastTick)/1000):.25;this.lastTick=now;if(!s)return;
@@ -5686,10 +5964,15 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             'UNOBSERVED: no client has supplied this map. Unknown does not mean empty.';
     }
     async function suncatTool(name,args,socket) {
+        return SUNCAT_AGENCY.run(name,args,()=>suncatToolUnlocked(name,args,socket));
+    }
+    async function suncatToolUnlocked(name,args,socket) {
         const autonomous=!socket, s=players[SUNCAT_ID];
         const ownName=players[socket?.id]?.name;
         const targetID=autonomous?(name==='searchPlayerMemories'&&args.targetName?findSocketID(args.targetName):SUNCAT_ID):(!args.targetName||String(args.targetName).toLowerCase()===String(ownName).toLowerCase()?socket.id:findSocketID(args.targetName));
         if (autonomous && !SUNCAT_RUNTIME.autoTools.has(name)) throw new Error('This tool requires a player request.');
+        if(name==='setSuncatIntention') return SUNCAT_AGENCY.set(args);
+        if(name==='recallSuncatMemories') return SUNCAT_AGENCY.recall(args.query);
         if(name==='inspectCombatTarget') return SUNCAT_COMBAT.inspect(args.targetId);
         if(name==='chooseCombatAction') return SUNCAT_COMBAT.act(args.action,args.targetId,args.spellId,args.reason);
         if (name==='consultGameManual') {
@@ -5698,8 +5981,12 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
             const records=[...Object.entries(CARD_MANIFEST_DB).map(([id,v])=>({kind:'card',id:Number(id),...v})),
                 ...Object.entries(WORLD_ATLAS_DB).map(([id,v])=>({kind:'map',id:Number(id),...v,
                     spawns:{...v.spawns,uniques:undefined,uniqueNpcIndices:v.spawns?.uniques||[]}})),...SUNCAT_STORY_NPCS];
-            const ranked=records.map(v=>({v,score:terms.filter(t=>JSON.stringify(v).toLowerCase().includes(t)).length}))
-                .filter(x=>x.score).sort((a,b)=>b.score-a.score).slice(0,8).map(x=>x.v);
+            const requestedKind=/\b(map|card|npc)\b/i.exec(String(args.query))?.[1]?.toLowerCase();
+            const requestedId=terms.find(t=>/^\d+$/.test(t));
+            const ranked=records.filter(v=>!requestedKind||v.kind===requestedKind).map(v=>{
+                const name=String(v.name||'').toLowerCase(),body=JSON.stringify(v).toLowerCase();
+                const score=terms.filter(t=>!['map','card','npc','the','a','of'].includes(t)).reduce((sum,t)=>sum+(name.includes(t)?5:body.includes(t)?1:0),0)+(requestedId&&Number(requestedId)===Number(v.id??v.npcIndex)?100:0);
+                return {v,score};}).filter(x=>x.score).sort((a,b)=>b.score-a.score).slice(0,6).map(x=>x.v);
             return {ok:true,idGuide:'kind:card id is for spawnNPC. kind:npc npcIndex identifies an existing map inhabitant for interactWithNPC. spriteId is only appearance. Map uniqueNpcIndices are NPC instances, never summon IDs.',matches:ranked};
         }
         if (name==='interactWithNPC') return suncatInteract(args);
@@ -5718,7 +6005,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
         if (name==='travelToLocation') {
             if(SUNCAT_COMBAT.target)throw Error('In combat: choose defend or flee before travelling.');
             const mapID=Number(args.mapID),x=Number(args.x),y=Number(args.y);
-            if(!Number.isInteger(mapID)||(!WORLD_ATLAS_DB[mapID]&&mapID!==999&&mapID!==100)||!Number.isFinite(x+y)) throw new Error('Invalid map or coordinates.');
+            if(!Number.isInteger(mapID)||(!WORLD_ATLAS_DB[mapID]&&mapID!==999&&mapID!==100&&!SUNCAT_RUNTIME.observations.has(mapID)&&!Object.values(players).some(p=>p.mapID===mapID))||!Number.isFinite(x+y)) throw new Error('Invalid map or coordinates.');
             await suncatObserve(mapID);const grid=suncatGrid(mapID);
             if(!grid)throw new Error(`Map ${mapID} has no observed geometry. Visit a map with an online observer or wait for a client report; atlas lore alone cannot establish a safe landing tile.`);
             const p=suncatNearestFloor(grid,x,y);
@@ -5754,7 +6041,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                 // Never infer a death from a truncated report or another map's view.
                 if(observed)for(const n of rt.companions)if(n.mapID===target.mapID&&observed.npcs.some(x=>x.index===n.index))n.status='confirmed';
                 if(observed?.complete){
-                    rt.companions=rt.companions.filter(n=>n.mapID!==target.mapID||n.status!=='confirmed'||observed.npcs.some(x=>x.index===n.index));
+                    rt.companions=rt.companions.filter(n=>n.mapID!==target.mapID||n.status==='pending'||(n.createdAt&&observed.at<n.createdAt)||observed.npcs.some(x=>x.index===n.index));
                 }
                 const existing=rt.companions.find(n=>n.tag===tag);
                 if(existing)return {ok:existing.status==='confirmed',status:existing.status,index:existing.index,result:'This purpose already has a summon or a pending/unknown result. Reuse it; do not duplicate it.'};
@@ -5787,7 +6074,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                 isBoss:false,isCinematic:args.isCinematic===true,instanceId:target.mapID===999?activeCustomMap?.instanceId:undefined,summonTag:autonomous?tag:undefined,...actions};
             // Reserve BEFORE sending: a lost acknowledgement must not create an army on retry.
             if(autonomous) {
-                SUNCAT_RUNTIME.companions.push({tag,index:data.index,mapID:data.mapID,status:'pending'});
+                SUNCAT_RUNTIME.companions.push({tag,index:data.index,mapID:data.mapID,status:'pending',createdAt:Date.now()});
                 SUNCAT_RUNTIME.lastSummon=Date.now();saveSuncatMemory();
             }
             let result;
@@ -6135,7 +6422,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
         return script;
     }
 
-    async function executeAITools(currentResponse, activeSession, socket, allowedTools=null) {
+    async function executeAITools(currentResponse, activeSession, socket, allowedTools=null,expectedBodyVersion=SUNCAT_AGENCY.version()) {
         let chainCount = 0;
         const MAX_CHAIN = 3;
         const seenCalls=new Set();
@@ -6151,13 +6438,23 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                 
                 try {
                         if(allowedTools&&!allowedTools.has(call.name))throw Error('This tool is not available for this interaction.');
+                        if(SUNCAT_AGENCY.mutatesBody(call.name)&&expectedBodyVersion!==SUNCAT_AGENCY.version())throw Error('The body state changed after this decision began. Re-observe before acting.');
                         // DEV AGENT DISPATCHER
                         const callKey=call.name+JSON.stringify(call.args || {});
                         if(seenCalls.has(callKey)) throw Object.assign(new Error('Identical call already attempted this turn; inspect its previous result.'),{code:'duplicate_call'});
                         if(callsRun>=maxCalls) throw Object.assign(new Error('No tool calls remain this turn. Wait for the next turn.'),{code:'tool_budget'});
                         if(!socket && !SUNCAT_RUNTIME.autoTools.has(call.name)) throw new Error('Tool requires a player request.');
                         seenCalls.add(callKey);callsRun++;
-                        if(SUNCAT_RUNTIME.handled.has(call.name)) {
+                        if(call.name==='discoverSuncatTools') {
+                            const group=String(call.args?.category||'');
+                            const names=SUNCAT_TOOL_GROUPS[group];
+                            if(!names || group==='moderation'&&!socket?.data?.isAdmin)throw Error('Tool category unavailable to this request.');
+                            for(const name of names)allowedTools?.add(name);
+                            const declared=toolsDef[0].functionDeclarations.filter(t=>allowedTools?.has(t.name));
+                            await activeSession.expandTools(declared);
+                            functionResult={ok:true,available:names,note:'Tools loaded. No action has been performed.'};
+                        }
+                        else if(SUNCAT_RUNTIME.handled.has(call.name)) {
                             functionResult=await suncatTool(call.name,call.args || {},socket);
                         }
                         else if (call.name === "generateDevReport") {
@@ -6503,6 +6800,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                         functionResult = {ok:false,status:toolError.outcome||'failed',code:toolError.code||'tool_error',error:toolError.message};
                     }
 
+                    expectedBodyVersion=SUNCAT_AGENCY.version();
                     functionResult.toolsRemaining=Math.max(0,maxCalls-callsRun);
                     SUNCAT_RUNTIME.record(call.name,call.args,functionResult,{mode:socket?'player-request':'autonomous',requester:socket?{id:players[socket.id]?.persistentId,name:players[socket.id]?.name}:null,recipientName:call.args?.targetName||null});
                     toolResponsesBatch.push({functionResponse:{name:call.name,response:functionResult}});
@@ -6516,6 +6814,7 @@ without a speaker label, tool names, code, internal IDs, or markup.`),12000);
                     turnComplete:true,
                     nextStep:'Do not request more tools. Summarize only confirmed results; failed or unknown actions did not prove a world event. Wait for a later turn to continue.'
                 });
+                if(!socket&&finished)return {text:()=>'',functionCalls:()=>[]};
                 const completion = await journalDeadline(activeSession.sendMessage(toolResponsesBatch));
                 currentResponse = completion.response; 
 
@@ -6750,12 +7049,20 @@ End at the last recorded event. Return only the prose, without a title.`;
                 timestamp: new Date().toISOString(), title, text: `${title}\n\n${body}`, number, entryType:'chapter', subjectId:SUNCAT_ID, sourceEntryIds:batch.map(e=>e.id)};
             // Only the captured batch is consumed; later events remain pending.
             for (const event of batch) event.chapterId = chapter.id;
+            const previousContext={summary:suncatContinuitySummary,journal:suncatJournal};
             suncatAdventureChapters.push(chapter);
             suncatStorySoFar += '\n\n' + chapter.text;
             suncatContinuitySummary = body;
             suncatJournal = body; // A bounded recent context; full history is archived above.
             suncatRawJournalArchive.push({...chapter, journalKind: 'chapter'});
-            void saveSuncatMemory();
+            if(!await saveSuncatMemory()) {
+                for(const event of batch)if(event.chapterId===chapter.id)delete event.chapterId;
+                suncatAdventureChapters=suncatAdventureChapters.filter(c=>c.id!==chapter.id);
+                suncatRawJournalArchive=suncatRawJournalArchive.filter(c=>c.id!==chapter.id);
+                suncatStorySoFar=suncatStorySoFar.replace('\n\n'+chapter.text,'');
+                suncatContinuitySummary=previousContext.summary;suncatJournal=previousContext.journal;
+                throw Error('Chapter save failed; original source events remain queued.');
+            }
             io.emit('journal_updated', SUNCAT_MEMORY.packet(chapter));
             suncatJournalNextAt = Date.now() + JOURNAL_POLICY.chapterMs;
             suncatJournalError = '';
@@ -7005,6 +7312,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             
             suncatState = 'active';
             seclusionCycles = 0;
+            meditationEpoch++;SUNCAT_AGENCY.wake('Emerged from seclusion; review unfinished intentions.');
             
             console.log(`[Seclusion Ended] Suncat has emerged. Reason: ${reason || "Interrupted"}`);
         
@@ -7020,9 +7328,10 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             let isMindFull = karmaLevel >= 9;
             let isBottleneck = suncatDaoLedger.length >= 6;
 
-            if (suncatState === 'active' && (isMindFull || isBottleneck)) {
+            if (suncatState === 'active' && !SUNCAT_COMBAT.target && !players[SUNCAT_ID].respawnAt && (isMindFull || isBottleneck)) {
                 suncatState = 'seclusion';
-                seclusionCycles = 0;
+                seclusionCycles = 0;meditationEpoch++;
+                SUNCAT_AGENCY.interrupt('Entered seclusion to reflect on recent experience.');
                 console.log(`[Cultivation] Suncat's Karma is full or he hit a bottleneck. Entering closed-door meditation.`);
                 
                 saveSuncatMemory(); 
@@ -7039,11 +7348,14 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             }
         }
         // The core background worker task
+    let meditationBusy=false,meditationEpoch=0;
     async function meditateOnTheDao() {
-            if (suncatState !== 'seclusion' && Math.random() > 0.15) return; 
+            if(meditationBusy||isBankrupt())return;
+            if (suncatState !== 'seclusion' && Math.random() > 0.15) return;
+            meditationBusy=true;const epoch=meditationEpoch,wasSecluded=suncatState==='seclusion'; 
             
             console.log(`[Cultivation] Suncat is meditating on the Dao... (Cycle ${seclusionCycles})`);
-            seclusionCycles++;
+            // Count this cycle only after a valid insight and embedding return.
 
             // 1. DRAFT THE THESIS
             let dynamicMeditationPrompt = `You have entered seclusion.
@@ -7079,6 +7391,9 @@ Do not write Suncat's personal journal. It has a separate first-person source le
 
                 const insightVector = await createMemoryVector(insightText);
                 if (!insightVector) return;
+                if(epoch!==meditationEpoch)return;
+                if(wasSecluded)seclusionCycles++;
+                recordSuncatAdventure('meditation_reflection',{text:insightText,source:'present reflection',note:'A philosophical thought, not a confirmed world event.'});
 
                 // 2. ESTABLISH THE FOUNDATION (The Seed)
                 if (!suncatTargetDaoVector) {
@@ -7095,6 +7410,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                     
                     // The seed is the first entry in his ledger!
                     suncatDaoLedger.push({ text: insightText, vector: insightVector });
+                    recordSuncatAdventure('insight_accepted',{text:insightText,dao:suncatDaoName,stage:suncatCultivationStage});
                     
                     return;
                 }
@@ -7130,6 +7446,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                     // CONDENSATION: The Qi is hot and valid. Add it to the Cauldron (Ledger).
                     console.log("[Condensation] Thesis Accepted! Gathering Qi into the Dantian...");
                     suncatDaoLedger.push({ text: insightText, vector: insightVector });
+                    recordSuncatAdventure('insight_accepted',{text:insightText,dao:suncatDaoName,stage:suncatCultivationStage});
 
                     // 4. CALCULATE THE GOLDEN CORE DENSITY
                     let totalCorrelation = 0;
@@ -7169,7 +7486,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                 }
             } catch (e) {
                 console.error("[Cultivation] Meditation failed:", e);
-            }
+            } finally {meditationBusy=false;void saveSuncatMemory();}
         }
     async function prayToTheCreator() {
         if (suncatState !== 'seclusion' && Math.random() > 0.15) return; 
@@ -7221,9 +7538,11 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             console.error("[Faith] Prayer generation failed:", e);
         }
     }
+    let levelUpgradeBusy=false;
     async function processSuncatLevelUp() {
         let s = players[SUNCAT_ID];
-        if (!s) return;
+        if (!s||levelUpgradeBusy||!s.pendingLevelUps?.length) return;
+        levelUpgradeBusy=true;const earnedLevel=s.pendingLevelUps[0];
 
         // Filter available spells from the database that Suncat doesn't already know
         const availableSpells = [
@@ -7239,7 +7558,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
 
         const spellListString = availableSpells.map(sp => `ID ${sp.id}: ${sp.name}`).join("\n");
 
-        const prompt = `[SYSTEM CRITICAL]: Suncat, you reached Level ${s.level}!
+        const prompt = `[SYSTEM CRITICAL]: Suncat, you reached Level ${earnedLevel}!
         Class: "${s.suncatClass}"
         Dao: "${suncatDaoName || 'Wanderer'}"
         Current Spells: [${s.learnedSpells.join(', ')}]
@@ -7265,7 +7584,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
 
         try {
             const levelModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-            const result = await levelModel.generateContent(prompt);
+            const result = await SUNCAT_AI.scope({priority:'essential',socketId:SUNCAT_ID},()=>levelModel.generateContent(prompt));
             let rawText = result.response.text().trim();
             if (rawText.startsWith("```")) rawText = rawText.replace(/^```(json)?|```$/g, "").trim();
             
@@ -7274,11 +7593,14 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             // Allocate stats
             let statBudget=3;
             for(const k of ['add_STR','add_CON','add_INT','add_AGI']){upgrade[k]=Math.max(0,Math.min(statBudget,Math.floor(Number(upgrade[k])||0)));statBudget-=upgrade[k];}
+            upgrade.add_INT+=statBudget;
             s.stat[0][2] += (upgrade.add_STR || 0);
             s.stat[1][2] += (upgrade.add_CON || 0);
             s.stat[2][2] += (upgrade.add_INT || 0);
             s.stat[3][2] += (upgrade.add_AGI || 0);
-            s.suncatClass = upgrade.newClassTitle || s.suncatClass;
+            s.suncatClass = typeof upgrade.newClassTitle==='string'?upgrade.newClassTitle.slice(0,100):s.suncatClass;
+            s.pendingLevelUps.shift();
+            recordSuncatAdventure('level_upgrade',{level:earnedLevel,upgrade});SUNCAT_AGENCY.wake('A new capability is available; reconsider blocked intentions.');
             // Level growth changes stats, not a separate HP pool.
 
             // Learn the selected spell
@@ -7288,16 +7610,17 @@ Do not write Suncat's personal journal. It has a separate first-person source le
 
             io.emit("chat_message", { 
                 sender: "[SYSTEM]", 
-                text: `Suncat reached Level ${s.level} [${s.suncatClass}] and mastered Spell ID ${upgrade.learnSpellId || 'Enhancement'}!`, 
+                text: `Suncat reached Level ${earnedLevel} [${s.suncatClass}] and mastered Spell ID ${upgrade.learnSpellId || 'Enhancement'}!`, 
                 color: "#FFD700" 
             });
             io.emit("chat_message", { sender: "Suncat", text: upgrade.levelUpQuote, color: "#ffffff" });
             
             saveSuncatMemory();
         } catch (e) {
-            console.error("Suncat level-up error:", e);
-        }
+            console.error("Suncat level-up error; earned upgrade remains queued:", e);
+        } finally {levelUpgradeBusy=false;}
     }
+    setInterval(()=>{if(players[SUNCAT_ID]?.pendingLevelUps?.length)void processSuncatLevelUp();},60000);
     async function condenseSessionOnLogin(socketId) {
         for (const chapter of suncatAdventureChapters) {
             io.to(socketId).emit('journal_updated', SUNCAT_MEMORY.packet(chapter));
@@ -7306,7 +7629,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
     }
     async function executeAutonomousOODA() {
         const rt=SUNCAT_RUNTIME,s=players[SUNCAT_ID],now=Date.now();
-        if(!s || rt.busy || now-rt.lastThink<60000 || ['seclusion','enraged','protecting'].includes(suncatState) || isBankrupt()) return;
+        if(!s || rt.busy || now-rt.lastThink<(SUNCAT_AGENCY.needsAttention()?20000:60000) || ['seclusion','enraged','protecting'].includes(suncatState) || isBankrupt()) return;
         if(rt.motion?.path.length && !SUNCAT_COMBAT.target) return; // Let the body finish moving before choosing another destination.
         rt.busy=true;rt.lastThink=now;
         try {
@@ -7319,7 +7642,10 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                 systemInstruction:PERSONA_RULES_DB.core+'\n'+getCultivationAura(suncatCultivationStage,suncatDaoName),
                 tools:[{functionDeclarations:declarations}]});
             const session=model.startChat({history:[]});
+            const expectedBodyVersion=SUNCAT_AGENCY.version();
             const response=await journalDeadline(session.sendMessage(`You are Suncat taking one autonomous turn.
+            Saved intention and actual results: ${SUNCAT_AGENCY.contextFor()}
+            Resume an unfinished concern when circumstances allow. Use setSuncatIntention to record a meaningful goal before starting it, including the expected observable result. Review actual results and revise plans; do not treat hopes as facts.
             Long-term interest: ${suncatLongTermGoal || 'Explore observed places and learn about their inhabitants.'}
             Location: ${JSON.stringify({mapID:s.mapID,x:s.x,y:s.y})}
             Body: a black fairy; the cat-form Suncat NPC is a different entity. AGI governs perception and reactions.
@@ -7346,7 +7672,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             Never claim GOAL COMPLETE based only on your own prose. Describe progress only from tool results or current observations.
             CRITICAL: You may ONLY use functions explicitly defined in your tools list. DO NOT hallucinate tools like 'arrival' or 'system_navigation'.`));
             if(response.response.usageMetadata) updateBudget(response.response.usageMetadata,SUNCAT_ID);
-            if(response.response.functionCalls()?.length) await executeAITools(response.response,session,null);
+            if(response.response.functionCalls()?.length) await executeAITools(response.response,session,null,null,expectedBodyVersion);
         } catch(error) { console.error('[Suncat autonomous turn]',error.message); }
         finally { rt.busy=false; }
     }
@@ -7366,43 +7692,41 @@ Do not write Suncat's personal journal. It has a separate first-person source le
         const motion=rt.motion;
         if(!motion || motion.mapID!==s.mapID || !motion.path.length) return;
         const next=motion.path[0],grid=suncatGrid(s.mapID);
-        if(!suncatFloor(grid,next.x,next.y)) {rt.motion=null;return;}
+        if(!suncatFloor(grid,next.x,next.y)) {rt.motion=null;SUNCAT_AGENCY.navigation({ok:false,status:'blocked',error:'The route changed before arrival.'});return;}
         const dx=next.x-s.x,dy=next.y-s.y,dist=Math.hypot(dx,dy),step=Math.min(0.3,dist);
         if(dist>0){s.x+=dx/dist*step;s.y+=dy/dist*step;s.dir=Math.atan2(dy,dx);}
         if(dist<=step+0.001) motion.path.shift();
         if(!motion.path.length) {
             rt.motion=null;
+            SUNCAT_AGENCY.navigation({ok:true,status:'confirmed',result:'Arrived',mapID:s.mapID,x:s.x,y:s.y});
             rt.record('system_navigation',{mapID:s.mapID},{ok:true,x:s.x,y:s.y});
         }
         io.emit('playerMoved',{id:SUNCAT_ID,mapID:s.mapID,x:s.x,y:s.y,dir:s.dir,name:s.name,type:s.type,level:s.level});
     },250);
-    const activeThoughts = new Set();
-
-    async function processSuncatThought(socketId, triggerType, data) {
-        if (!players[socketId]) return;
-
-        if (activeThoughts.has(socketId)) {
-            if (triggerType === "chat") {
-                io.to(socketId).emit("chat_message", {
-                    sender: NPC_NAME,
-                    text: "*One moment—I'm still answering.*",
-                    color: "#aaaaaa"
-                });
+    const activeThoughts = new Set(), thoughtQueues=new Map();
+    async function processSuncatThought(socketId, triggerType, data={}) {
+        const player=players[socketId];if(!player)return;
+        if(triggerType==='chat'&&data.text&&suncatCanHear(player)) {
+            recordSuncatAdventure('received_speech',{speakerId:player.persistentId||socketId,speaker:player.name,recipientId:SUNCAT_ID,text:String(data.text).slice(0,4000)});
+            SUNCAT_AGENCY.wake('Direct conversation with '+player.name);
+        }
+        if(activeThoughts.has(socketId)) {
+            if(triggerType==='chat') {
+                const queue=thoughtQueues.get(socketId)||[];
+                if(queue.length<4){queue.push({triggerType,data});thoughtQueues.set(socketId,queue);}
+                io.to(socketId).emit('chat_message',{sender:NPC_NAME,text:queue.length<4?'*One moment—I have your next question.*':'*I have several questions waiting; give me a moment before sending more.*',color:'#aaaaaa'});
             }
             return;
         }
-
         activeThoughts.add(socketId);
-
+        let next={triggerType,data};
         try {
-            await processSuncatThoughtUnlocked(
-                socketId,
-                triggerType,
-                data || {}
-            );
-        } finally {
-            activeThoughts.delete(socketId);
-        }
+            while(next&&players[socketId]===player) {
+                const item=next;
+                await SUNCAT_AI.scope({socketId,priority:item.triggerType==='chat'||item.data?.isBoss?'essential':'background'},()=>processSuncatThoughtUnlocked(socketId,item.triggerType,item.data||{}));
+                next=thoughtQueues.get(socketId)?.shift();
+            }
+        } finally {activeThoughts.delete(socketId);thoughtQueues.delete(socketId);}
     }
     async function processSuncatThoughtUnlocked(socketId, triggerType, data) {
         const player = players[socketId];
@@ -7427,7 +7751,8 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                 player.lastSpokenNarration = now;
             }
         //END SECLUSION
-            if (suncatState === 'seclusion') {
+            if (suncatState === 'seclusion' && triggerType!=='chat') return;
+            if (suncatState === 'seclusion' && suncatCanHear(player)) {
                 emergeFromSeclusion(); // Kick down the doors!
                 
                 // If a player abruptly woke him up, he suffers a massive system shock
@@ -7618,7 +7943,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
 
                         if (highestScore > 0.20) {
                             useBigBrain = true;
-                            systemOverride += `\n[ESOTERIC PROFILE]: Based on mathematical analysis, this player is ${magickalSchool}. Behaviorally, they are currently ${behavioralProfile.length > 0 ? behavioralProfile.join(", and ") : "unreadable"}. Evaluate their words strictly through this philosophical lens.`;
+                            systemOverride += `\n[ESOTERIC PROFILE]: Based on mathematical analysis, this player is ${magickalSchool}. Behaviorally, they are currently ${behavioralProfile.length > 0 ? behavioralProfile.join(", and ") : "unreadable"}. Treat these similarity-based impressions as tentative, and give their actual words and actions priority.`;
                         }
 
                         // 3. Out-Of-Distribution (OOD) & Contradiction Detection
@@ -7626,10 +7951,10 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                         if (queryVector) {
                             let distanceFromCenter = cosineSimilarity(queryVector, playerCentroid);
                             
-                            // If the score drops below 0.20, the new action contradicts their established history!
+                            // Low similarity indicates a new topic, never proof of contradiction.
                             if (distanceFromCenter < 0.20) {
                                 useBigBrain = true;
-                                systemOverride += `\n[PSYCHOLOGICAL ANOMALY]: The player's current words or actions mathematically contradict their established historical profile. They are acting entirely out of character. Call them out on this sudden shift or hypocrisy!`;
+                                systemOverride += `\n[UNFAMILIAR TOPIC]: This message differs from previously discussed topics. Similarity is not evidence of dishonesty, hypocrisy, or personality change. Consider what the player actually said; revise impressions only with specific evidence.`;
                             }
                         }
                     }
@@ -7812,7 +8137,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
         let dynamicCore = PERSONA_RULES_DB.core + `
         
         [YOUR SELF-WRITTEN PROFILE]: "${suncatProfile}"
-        [YOUR STORY SO FAR]: "${suncatStorySoFar}"`;
+        [RECENT CONTINUITY, NOT THE COMPLETE ARCHIVE]: "${String(suncatContinuitySummary || suncatJournal || '').slice(-5000)}"`;
         
         let dynamicPersona = dynamicCore + "\n" + PERSONA_RULES_DB.commands + "\n";        
         // 2. Inject specific modules based on what the player is doing!
@@ -7842,7 +8167,8 @@ Do not write Suncat's personal journal. It has a separate first-person source le
         // ---> NEW: INJECT STATE DIRECTLY INTO THE SYSTEM BRAIN <---
         dynamicPersona += `
         [CURRENT STATE]
-        Location: Map ${suncat.mapID} (${myAtlas ? myAtlas.name : "Unknown"})
+        ${suncatStatus.slice(0,5000)}
+        Saved intentions and encounter history: ${SUNCAT_AGENCY.contextFor(player)}
         Target: ${player.name} (Map ${player.mapID})
         ${favorContext}
         ${factsContext}
@@ -7852,11 +8178,9 @@ Do not write Suncat's personal journal. It has a separate first-person source le
         dynamicPersona += "\n[PRESENT SELF / RECOVERED MEMORY CONTEXT]\n"+SUNCAT_MEMORY.context();
         dynamicPersona += "\n" + getCultivationAura(suncatCultivationStage, suncatDaoName) + "\n";
 
-        // 4. THE SELF-ACTUALIZED EGO (The heaviest weight, placed last)
-        if (suncatCultivationStage > 0 && suncatEgoMatrix) {
-             dynamicPersona += `\n[YOUR SELF-WRITTEN CORE IDENTITY]:\n`;
-             if (triggerType === 'chat') dynamicPersona += suncatEgoMatrix.chatPrompt;
-             else dynamicPersona += suncatEgoMatrix.dmPrompt;
+        // Routine one-sentence narration needs only the local event and scene.
+        if(triggerType!=='chat'&&!useBigBrain&&!data.isBoss&&!data.isTarot) {
+            dynamicPersona=PERSONA_RULES_DB.core+'\n'+suncatEgoMatrix.dmPrompt+'\n'+suncatStatus.slice(0,4000)+'\n'+storyContext+'\n'+systemOverride;
         }
         // --- 4. BUILD THE CLEAN PROMPT ---
         // Notice we do NOT put the persona here! It goes into the System Instruction!
@@ -7911,11 +8235,12 @@ Do not write Suncat's personal journal. It has a separate first-person source le
         }
 
         // 1. Send the prompt!
+        const expectedBodyVersion=SUNCAT_AGENCY.version();
         let result = await journalDeadline(activeSession.sendMessage(prompt));
         updateBudget(result.response.usageMetadata, socketId);
        // 2. If he decided to use a tool, run it through the executor! 
         if (!requestedAction && modelConfig.tools && result.response.functionCalls()?.length) {
-            const toolOutput = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId), new Set(modelConfig.tools.flatMap(t=>t.functionDeclarations.map(f=>f.name))));
+            const toolOutput = await executeAITools(result.response, activeSession, io.sockets.sockets.get(socketId), new Set(modelConfig.tools.flatMap(t=>t.functionDeclarations.map(f=>f.name))),expectedBodyVersion);
             result = { response: toolOutput }; // <-- Re-wrap it to prevent the crash!
         }
 
@@ -7947,9 +8272,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
             }
         }
 
-        if (soulThought !== "") {
-            console.log(`[Inner Council] Suncat's Soul decided: ${soulThought}`);
-        }
+        // Ephemeral planning text is not saved as an event or evidence of an action.
 
         // --- Standard Post-Processing (Saving Facts/Favor/Journaling) ---
         if (finalSpeech !== "") {
@@ -8008,7 +8331,7 @@ Do not write Suncat's personal journal. It has a separate first-person source le
                     // Suncat actually spoke to the player
                     player.undigestedInfo.push(`[SUNCAT SAID]: ${finalSpeech}`);
                     if (suncatCanHear(player)) recordSuncatAdventure('spoken_reply', {
-                        to: player.name, text: finalSpeech
+                        to: player.name,recipientId:player.persistentId||socketId,speakerId:SUNCAT_ID,text:finalSpeech
                     });
                 } 
                 else {
@@ -8186,6 +8509,7 @@ function getPublicPlayers() {
                 type: p.type,
                 dir: p.dir,
                 status: p.status,
+                isDead: !!p.isDead,
                 summons: p.summons || [],
                 ...(id===SUNCAT_ID?{isDead:!!p.respawnAt,alignment:p.alignment,state:p.state,currentWardTime:p.currentWardTime,maxWards:p.maxWards,timePerWard:3}:{})
             }
@@ -8269,9 +8593,10 @@ if (typeof module === 'object' && module.exports) module.exports = GameServerKer
 function createBattleMageServer(host) {
 'use strict';
 function connect(socket, context) {
+    const register=context.on.bind(context);context={...context,on:(name,fn)=>register(name,(...args)=>SUNCAT_AI.scope({socketId:socket.id,priority:['chat_message','suncat_force_epic_novel','sage_reading','taliesin_request'].includes(name)?'essential':'background'},()=>fn(...args)))};
 const routes = {
 "identity": {
-"online_hello": ()=>socket.emit("online_capabilities",{legacyCombat:true,parties:false}),
+"online_hello": ()=>socket.emit("online_capabilities",{legacyCombat:true,parties:false,combatReceipts:2,respawnAck:true}),
 "admin_auth": (data,ack)=>{socket.data.isAdmin=host.SuncatIdentity.admin(socket,data?.token);if(typeof ack==='function')ack({ok:socket.data.isAdmin});},
 "setIdentity": (data) => {
             if (host.players[socket.id]) {
@@ -8523,7 +8848,7 @@ const routes = {
             if (me && me.battleOpponent) {
                 const opponentId = me.battleOpponent;
                 host.io.to(opponentId).emit("battle_opponent_disconnected", { id: oldSocketId });
-                if (host.players[opponentId]) host.players[opponentId].battleOpponent = null;
+                if (host.players[opponentId]?.battleOpponent===socket.id) host.players[opponentId].battleOpponent = null;
             }
             host.io.emit("player_disconnected", { id: oldSocketId }); 
 
@@ -8628,6 +8953,7 @@ const routes = {
                         returnTo:{mapID:player.mapID,x:player.x,y:player.y}});
                 }
 
+                if(player.mapID!==data.mapID)host.BMCombatTransport.clearDuel(socket.id,'map change');
                 player.x = data.x;
                 player.y = data.y;
                 player.mapID = data.mapID;
@@ -8796,7 +9122,7 @@ const routes = {
             if (!data.isBoss && player.lastKillReaction && (now - player.lastKillReaction < 45000)) return; 
             player.lastKillReaction = now;
 
-            let baseID = Math.floor(parseFloat(data.type));
+            let baseID = (0, host.canonicalCardID)(data.type);
             let isPickup = false, isDialogue = false; let isBoss = data.isBoss;let prevMap = data.prevMap;
             
             if (data.reason && data.reason.startsWith('pickup_')) {
@@ -8860,13 +9186,15 @@ const routes = {
                     });
             },
 "player_died": (data) => {
+            if(!data||typeof data!=='object')return;
             const victim = host.players[socket.id];
             
             // Check if it was PvP (killerId) or PvE (killer string)
-            const killerPlayer = data.killerId ? host.players[data.killerId] : null;
+            const incoming=victim?.lastIncomingCombat;
+            const killerPlayer = data?.killerId&&incoming?.attackerId===data.killerId&&incoming.mapID===victim.mapID&&Date.now()-incoming.at<15000 ? host.players[data.killerId] : null;
 
             if (victim && !victim.isDead) {
-                victim.isDead = true; 
+                host.BMCombatTransport.died(socket); 
                 
                 // THE FIX: Prioritize the PvP name, then fallback to the PvE string you sent!
                 let killerName = killerPlayer ? killerPlayer.name : (data.killer || "an unknown force");
@@ -8887,6 +9215,9 @@ const routes = {
                 host.io.emit("updatePlayers", (0, host.getPublicPlayers)());
             }
         },
+"combat_cast": data=>host.BMCombatTransport.beginCast(socket,data),
+"player_respawn": (data,ack)=>{const result=host.BMCombatTransport.respawn(socket,data);if(typeof ack==='function')ack(result);},
+"duel_end": ()=>host.BMCombatTransport.clearDuel(socket.id,'complete'),
 "combat_profile": data=>host.BMCombatTransport.update(socket.id,data),
 "challenge_request": data=>host.BMCombatTransport.request(socket,data),
 "challenge_accepted": data=>host.BMCombatTransport.accept(socket,data),
@@ -9831,7 +10162,7 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
 }
 };
 
-    socket.emit("online_capabilities",{legacyCombat:true,parties:false});
+    socket.emit("online_capabilities",{legacyCombat:true,parties:false,combatReceipts:2,respawnAck:true});
     context.on("online_hello", routes.identity["online_hello"]);
     socket.data ||= {};socket.use((packet,next)=>host.SuncatIdentity.guard(socket,packet,next));
     context.on("admin_auth", routes.identity["admin_auth"]);
@@ -9876,6 +10207,10 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
         context.on("engage_npc", routes.combat["engage_npc"]);
         context.on("npc_died", routes.combat["npc_died"]);
         context.on("player_died", routes.combat["player_died"]);
+        context.on("combat_cast", routes.combat["combat_cast"]);
+        context.on("combat_protocol", data=>{if(data?.version===2)socket.data.combatProtocol=2;});
+        context.on("player_respawn", routes.combat["player_respawn"]);
+        context.on("duel_end", routes.combat["duel_end"]);
         context.on("combat_profile", routes.combat["combat_profile"]);
         context.on("challenge_request", routes.combat["challenge_request"]);
         context.on("challenge_accepted", routes.combat["challenge_accepted"]);
@@ -9962,6 +10297,7 @@ get defaultModel() { return typeof defaultModel === 'undefined' ? undefined : de
 get emitMapEvent() { return typeof emitMapEvent === 'undefined' ? undefined : emitMapEvent; },
 get executeAITools() { return typeof executeAITools === 'undefined' ? undefined : executeAITools; },
 get genAI() { return typeof genAI === 'undefined' ? undefined : genAI; },
+get canonicalCardID() { return canonicalCardID; },
 get getCardLore() { return typeof getCardLore === 'undefined' ? undefined : getCardLore; },
 get getCardName() { return typeof getCardName === 'undefined' ? undefined : getCardName; },
 get getChapterSourceText() { return typeof getChapterSourceText === 'undefined' ? undefined : getChapterSourceText; },
