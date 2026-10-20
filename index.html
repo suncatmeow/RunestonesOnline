@@ -395,7 +395,7 @@ globalThis.BMMusicSamples=BMMusicSamples;
 
 // Original Battle Mage synthesis and composition code, scoped for standalone use.
 const SourceLibrary = (() => {
-const socket = undefined; // Offline score generation; live Taliesin uses its owned runtime transport.
+const socket = undefined; // Offline scores have no network; live singers use owned runtime transports.
 let runtime = null;
 const nativeMath=globalThis.Math;
 const Math=Object.create(nativeMath);
@@ -24160,6 +24160,9 @@ MusicModuleRuntime.install(CrownModule, {
 
         this.lyricQueue = [];
         this.isFetchingLyrics = false;
+        this.requestLyrics = runtime?.requestLastLight || null;
+        this.lyricMemory = [];
+        this.lyricsRetryAt = 0;
 
         // Multiple diverse fallback pools to guarantee variety instantly
         this.lyricPools = [
@@ -24236,13 +24239,15 @@ MusicModuleRuntime.install(CrownModule, {
     }
 
     fetchAndQueueLyrics(token) {
-        if (typeof socket === 'undefined' || !socket.connected || this.isFetchingLyrics) return;
+        if (!this.requestLyrics || !this.isPlaying || token !== this.session ||
+            this.isFetchingLyrics || this.lyricQueue.length || this.ctx.currentTime < this.lyricsRetryAt) return;
 
         this.isFetchingLyrics = true;
+        this.lyricsRetryAt = this.ctx.currentTime + 30;
 
-        socket.emit('suncat_compose_last_light', {}, result => {
-            this.isFetchingLyrics = false;
+        this.requestLyrics({lyricMemory: this.lyricMemory.join('\n')}, result => {
             if (token !== this.session || !this.isPlaying) return;
+            this.isFetchingLyrics = false;
 
             if (result && Array.isArray(result.lines) && result.lines.length === 24) {
                 const lines = result.lines.map(line =>
@@ -24264,6 +24269,8 @@ MusicModuleRuntime.install(CrownModule, {
 
         const now = this.ctx.currentTime;
         this.cleanPhrases(now);
+        // Retry after a disconnect or timeout without stopping the accompaniment.
+        this.fetchAndQueueLyrics(this.session);
 
         if (this.nextTime < now - .2) {
             this.nextTime = now + .06;
@@ -24291,6 +24298,7 @@ MusicModuleRuntime.install(CrownModule, {
 
         // When a new play cycle begins, rotate in fresh AI lyrics or fallback pool
         if (bar === 0 && step === 0) {
+            if (cycle > 0) this.lyricMemory = [...this.lyricMemory, ...this.currentLyrics].slice(-48);
             if (this.lyricQueue.length > 0) {
                 this.currentLyrics = this.lyricQueue.shift();
             } else {
@@ -28256,15 +28264,19 @@ class ClassicMusicPlayer {
   rt.clearTimeout=id=>{globalThis.clearTimeout(id);globalThis.clearInterval(id);rt.timers.delete(id);rt.intervals.delete(id);};rt.clearInterval=rt.clearTimeout;
   // An acknowledgement or timeout belongs to this player and its audio scope.
   // Worker previews and generated compositions receive no network transport.
-  if(lyricTransport)rt.requestVocal=(payload,callback)=>{
+  const requestLyrics=(id,event,payload,callback)=>{
    if(host.disposed)return;
    const transport=typeof lyricTransport==='function'?lyricTransport():lyricTransport;
-   if(host.entry?.id!==46||!transport?.connected){callback({ok:false});return;}
+   if(host.entry?.id!==id||!transport?.connected){callback({ok:false});return;}
    let settled=false;
    const finish=result=>{if(settled)return;settled=true;rt.clearTimeout(timeout);if(!host.disposed)host.run(()=>callback(result));};
    const timeout=rt.setTimeout(()=>finish({ok:false,error:'Lyrics timed out.'}),22000);
-   try{transport.emit('suncat_compose_vocal',payload,finish);}catch(_){finish({ok:false});}
+   try{transport.emit(event,payload,finish);}catch(_){finish({ok:false});}
   };
+  if(lyricTransport){
+   rt.requestVocal=(payload,callback)=>requestLyrics(46,'suncat_compose_vocal',payload,callback);
+   rt.requestLastLight=(payload,callback)=>requestLyrics(55,'suncat_compose_last_light',payload,callback);
+  }
   rt.queueLyric=(text,at)=>{host.pendingLyric={text,start:at};};
   rt.allowVocal=(at,duration)=>{
    if(host.combat)return false;
@@ -28316,10 +28328,10 @@ class ClassicMusicPlayer {
    this.entry=entry;this.playing=true;
    if(entry.workshopProject){
     // Use the real shared context: Workshop owns its notes and cancellation.
-    this.native=new entry.Module(this.ctx,this.output,{loop:entry.workshopProject.loop&&!this.listening});
+    this.native=new entry.Module(this.ctx,this.output,{loop:entry.workshopProject.loop||this.listening});
     if(this.beforeStart)await this.beforeStart();if(this.disposed)return;
     await this.native.start();if(this.disposed){this.native.stop();return;}
-    this.playing=this.native.isPlaying;this.started=this.native.audio.started;this.rangeEnd=this.native.project.seconds;
+    this.playing=this.native.isPlaying;this.started=this.native.audio.started;this.rangeEnd=this.listening?Infinity:this.native.project.seconds;
     this.project=this.native.project;this.persistent=false;this.lyricCues=null;return;
    }
   await BMAudioBuffers.prepare(this.ctx,entry.Module.name,()=>this.disposed);if(this.disposed)return;
@@ -28332,13 +28344,20 @@ class ClassicMusicPlayer {
   this.native.onError=error=>{this.errors.push(error.message);this.dispose();};
   if(entry.id===53){
    const Cat=SourceLibrary.classes.CathedralModule,keys=new Set(this.native.score(seconds+8).events.map(e=>e.key));
+   // Later movements use new pitches. Prepare the finite instrument palette,
+   // never an infinite score or just the opening 150 seconds.
+   if(this.listening){
+    for(const [kind,p]of Object.entries(Cat.profiles))for(let n=Math.round(p.range[0]/3)*3;n<=Math.round(p.range[1]/3)*3;n+=3)keys.add(kind+':'+n);
+    for(const kind of ['kick','snare','cymbal','crash'])keys.add(kind+':48');
+    for(let n=36;n<=48;n+=3)keys.add('timpani:'+n);
+   }
    if(!await BMMusicSamples.prepare(this.ctx,Cat,this.native,keys,()=>this.disposed))return;
    this.sampleBytes=[...this.native.contextBuffers.values()].reduce((n,b)=>n+b.length*b.numberOfChannels*4,0);
   }
   // Taliesin starts its offline score in its constructor; do not start twice.
   if(!this.native.isPlaying)await this.enter(()=>this.native.start());
   if(this.disposed)return;
-  this.playing=true;this.persistent=false;this.started=this.ctx.currentTime;this.rangeEnd=seconds;
+  this.playing=true;this.persistent=false;this.started=this.ctx.currentTime;this.rangeEnd=this.listening?Infinity:seconds;
   const tempo=this.native.tempo||this.native.bpm||90;
   this.project={title:entry.name,seconds,music:{tempo},sections:[{time:0,tempo}],tracks:[],events:[],songRecipe:{styleName:entry.name,source:'classic',classicId:entry.id}};
  }
@@ -91698,6 +91717,9 @@ const BattleMusic = (() => {
   let encounter=null,encounterMap=null;
   // Tune repertoire policy here. Counts change only after a piece starts.
   const repertoirePolicy={decay:.8,floor:.1,mapSeconds:150,battleSeconds:112,menuSeconds:90};
+  const jukeboxShuffleSeconds=180;
+  function jukeboxRotates(scene){return scene.kind==='jukebox'&&(scene.jukeboxMode==='mixed'||scene.jukeboxMode==='classic'&&scene.classicId==='shuffle'||scene.jukeboxMode==='serenade'&&scene.profile==='shuffle');}
+  function playbackDuration(scene,player){return jukeboxRotates(scene)?jukeboxShuffleSeconds:player.rangeEnd;}
   const catalog=C.SourceLibrary.engine.songLookup;
   let visit={owner:null,stamp:null,epoch:0,count:0,mapStarted:false,last:null,recent:[]},menuCount=0;
   function syncVisit(s){
@@ -92057,11 +92079,12 @@ const BattleMusic = (() => {
       if(choice.source==='classic'){
         player=new C.ClassicMusicPlayer(engine.ctx,engine.musicGain,{seed:hash(sessionSeed+'|'+scene.key+'|'+revision),combat:['combat','boss'].includes(scene.kind),listening:scene.kind==='jukebox',sfx:(...args)=>engine.play3DSFX(...args),lyricTransport:()=>typeof socket!=='undefined'?socket:null,beforeStart:()=>handoff(scene,token)});
         incoming.player=player;
-        try{await player.play(choice.classicId,['combat','boss'].includes(scene.kind)?repertoirePolicy.battleSeconds:scene.kind==='menu'?repertoirePolicy.menuSeconds:repertoirePolicy.mapSeconds);if(!player.playing)throw Error(player.errors[0]||'Classic score interrupted');p=player.project;}
+        try{await player.play(choice.classicId,scene.kind==='jukebox'?jukeboxShuffleSeconds:['combat','boss'].includes(scene.kind)?repertoirePolicy.battleSeconds:scene.kind==='menu'?repertoirePolicy.menuSeconds:repertoirePolicy.mapSeconds);if(!player.playing)throw Error(player.errors[0]||'Classic score interrupted');p=player.project;}
         catch(error){player.dispose();if(token!==generation)return;choice={...choice,source:'generated',classicId:null};lastStatus='Preparing a replacement for '+scene.profile;}
       }
       if(choice.source==='generated'){
         p=await prepare(scene,revision,scene.urgent?-10:0,voiceDemo);if(token!==generation||paused||hold)return;
+        if(jukeboxRotates(scene))p={...p,loop:true}; // Keep the music running until the rotation timer, even for a short take.
         player=new GamePlayer();incoming.player=player;player.beforeStart=()=>handoff(scene,token);player.requestedStart=boundary(scene);
         await player.play(p,'take',0,p.seconds);
       }
@@ -92100,11 +92123,12 @@ const BattleMusic = (() => {
     if(scene.key!==current.scene.key){
       if(!incoming)transition(scene);
     }else{candidate=null;
-      const p=current.player,remaining=p.started+p.rangeEnd-engine.ctx.currentTime;
+      const p=current.player,remaining=p.started+playbackDuration(scene,p)-engine.ctx.currentTime;
       // A repeating authored score keeps its own audio clock until the scene changes.
       if(scene.kind!=='jukebox'&&p.entry?.workshopProject&&p.project.loop&&p.native?.audio?.playing)return;
       if(remaining<6&&!incoming&&choosePiece(scene,revisions.get(scene.key)||0,true).source==='generated')prepare(scene,revisions.get(scene.key)||0,10).catch(()=>{});
-      if(!incoming&&(!p.playing||remaining<(p.entry?.workshopProject?-.2:.8)))transition(scene,{renew:true});
+      const ended=!p.playing||p.entry?.workshopProject&&!p.native?.audio?.playing;
+      if(!incoming&&(ended||remaining<(jukeboxRotates(scene)?0:p.entry?.workshopProject?-.2:.8)))transition(scene,{renew:true});
     }
     updatePanel();
   }
@@ -92258,7 +92282,7 @@ const BattleMusic = (() => {
     if(!player?.playing||hold){box.hidden=true;line.textContent=next.textContent='';return;}
     let cues,at;
     if(player.lyricCues){cues=player.lyricCues;at=player.ctx.currentTime;}
-    else{player._lyricLines??=vocalLines(player.project.events);cues=player._lyricLines;at=player.ctx.currentTime-player.started;}
+    else{player._lyricLines??=vocalLines(player.project.events);cues=player._lyricLines;at=Math.max(0,player.ctx.currentTime-player.started);if(player.project.loop)at%=player.project.seconds;}
     const active=cues.findLast(c=>c.start<=at&&c.end+1.2>=at),upcoming=cues.find(c=>c.start>at);
     const hasVocals=cues.length||[46,55].includes(player.entry?.id);
     box.hidden=!hasVocals;
@@ -92302,10 +92326,11 @@ const BattleMusic = (() => {
     jukebox.querySelector('[data-jtitle]').textContent=p?.title||(classic?'Original songbook':'Finding your next journey…');
     jukebox.querySelector('[data-jstatus]').textContent=incoming?(classic?'Opening the next song…':'Composing the next piece…'):hold?'Paused':lastStatus;
     jukebox.querySelector('[data-jdetail]').textContent=p?`${current.choice?.source==='classic'?'Original · ':''}${p.songRecipe.styleName} · ${Math.round(p.music.tempo)} BPM`:'';
-    const elapsed=p?Math.max(0,Math.min(p.seconds,engine.ctx.currentTime-current.player.started)):0;
+    const duration=p?playbackDuration(current.scene,current.player):0,infinite=duration===Infinity;
+    const elapsed=p?Math.max(0,Math.min(duration,engine.ctx.currentTime-current.player.started)):0;
     const fmt=n=>Math.floor(n/60)+':'+String(Math.floor(n%60)).padStart(2,'0');
-    jukebox.querySelector('[data-jtime]').textContent=p?fmt(elapsed)+' / '+fmt(p.seconds):'';
-    const progress=jukebox.querySelector('progress');progress.max=p?.seconds||1;progress.value=elapsed;
+    jukebox.querySelector('[data-jtime]').textContent=p?fmt(elapsed)+(infinite?' · ∞ Continuous play':' / '+fmt(duration)+(jukeboxRotates(current.scene)?' · Shuffle':'')):'';
+    const progress=jukebox.querySelector('progress');progress.hidden=infinite;progress.max=Number.isFinite(duration)&&duration>0?duration:1;progress.value=infinite?0:elapsed;
     const rateable=!classic&&current?.choice?.source==='generated',rating=rateable?C.SongPreferences.rating(p):0;
     for(const [attr,vote]of [['data-jlike',1],['data-jdislike',-1]]){const b=jukebox.querySelector('['+attr+']');b.disabled=!p||!!incoming||!rateable;b.setAttribute('aria-pressed',String(rating===vote));}
     if(current?.token!==jukeboxLastToken){jukeboxLastToken=current?.token;jukeboxMessage='';}
@@ -92401,7 +92426,7 @@ const BattleMusic = (() => {
     spriteDisplay:Object.freeze({name:displaySpriteName,families:displayFamilies,model:makeDisplayModel}),
     get status(){return lastStatus;},get scene(){return desired;},get current(){return current;},
     get diagnostics(){return {pacing:pacing.state,danger:{active:suspense.active,score:suspense.score},repertoire:{visit:visit.epoch,selections:visit.count,nextClassicChance:Math.max(repertoirePolicy.floor,repertoirePolicy.decay**visit.count),source:current?.choice?.source,classicId:current?.choice?.classicId},generation,queued:jobs.length,cache:cache.size,building:building.size,failures,preparing:!!incoming,partsPending:current?.player?.preparingParts||0,partsReady:current?.player?.readyParts?.size||0,retiring:!!retiring,worker:!!worker,pickup:!!pickup,ambience:ambience?.kind||null};},
-    _test:{vocalLines,updateLyrics,makeDisplayModel,displayFamilies,coinPose,visualState:()=>({readingMode,readingKind,readingClock,readingChanged,coinGone,coinFlight,coinHit,model:displayModel?.id}),setReader(fn){readScene=fn;},setClock(fn){now=fn;},reset(){stopPlayers();clearSuspense();visit={owner:null,stamp:null,epoch:0,count:0,mapStarted:false,last:null,recent:[]};menuCount=0;revisions.clear();previousMode=previousBase=null;encounter=encounterMap=null;explicit=manual=null;lastThreat=lastFight=-Infinity;recoveryUntil=0;hold=paused=false;},prepare,transition,choosePiece,commitPiece,classicPool,syncVisit,repertoirePolicy}
+    _test:{vocalLines,updateLyrics,jukeboxRotates,playbackDuration,makeDisplayModel,displayFamilies,coinPose,visualState:()=>({readingMode,readingKind,readingClock,readingChanged,coinGone,coinFlight,coinHit,model:displayModel?.id}),setReader(fn){readScene=fn;},setClock(fn){now=fn;},reset(){stopPlayers();clearSuspense();visit={owner:null,stamp:null,epoch:0,count:0,mapStarted:false,last:null,recent:[]};menuCount=0;revisions.clear();previousMode=previousBase=null;encounter=encounterMap=null;explicit=manual=null;lastThreat=lastFight=-Infinity;recoveryUntil=0;hold=paused=false;},prepare,transition,choosePiece,commitPiece,classicPool,syncVisit,repertoirePolicy}
   };
 })();
 globalThis.BattleMusic=BattleMusic;
