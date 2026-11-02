@@ -5,12 +5,13 @@
   "description": "Battle Mage server: combat receipts, metered AI and persistent Suncat intentions",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/server-regression.cjs && node tests/client-regression.cjs",
+    "test": "node tests/multiplayer.cjs && node --test tests/runestones-server.cjs tests/dragonflight-server.cjs tests/summoner86.cjs tests/recovery87.cjs tests/flow88.cjs tests/loading91.cjs",
     "test:dragonflight": "node --test tests/dragonflight-server.cjs",
     "test:summoner": "node --test tests/summoner86.cjs",
     "test:recovery": "node --test tests/recovery87.cjs",
     "test:endurance": "node tests/endurance87.cjs",
-    "test:flow": "node --test tests/flow88.cjs"
+    "test:flow": "node --test tests/flow88.cjs",
+    "test:runestones": "node tests/multiplayer.cjs && node --test tests/runestones-server.cjs"
   },
   "engines": {
     "node": ">=20"
