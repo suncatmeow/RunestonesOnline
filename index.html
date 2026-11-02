@@ -51416,29 +51416,12 @@ const BMObstacles=(()=>{
                     let timeDiff = currentTime - lastMessageTimeReceived;
                     let displayText = "";
                     
-                    // 1. Rapid-fire indentation (Continuation of the same paragraph)
-                    if (senderName === lastSenderName && timeDiff < 200) {
-                        // Only indent if the text is NOT a decorative border!
-                        if (messageText.includes("✧ *****")) {
-                            displayText = messageText;
-                        } else {
-                            displayText = "    " + messageText; 
-                        }
-                    }
-                    // 2. Brand new message from a named player/NPC
-                    else if (senderName && senderName !== "" && senderName !== "[SYSTEM]" && senderName !== "[SUNCAT'S JOURNAL]") {
-                        displayText = `[${senderName}]: ${messageText}`;
-                    } 
-                    // 3. DM Narration or System Message (No brackets)
-                    else {
-                        displayText = messageText; 
-                    }
-
-                    // ---> THE FIX: PUSH THE OBJECT, NOT A STRING <---
-                    chatLog.push({ 
-                        text: displayText, 
-                            color: msgColor 
-                        });
+                    const named=senderName && !['[SYSTEM]',"[SUNCAT'S JOURNAL]"].includes(senderName);
+                    displayText=named?`[${senderName}]: ${messageText}`:messageText;
+                    const previous=chatLog.at(-1),legacy=!data?.complete && !data?.messageId;
+                    const continuation=legacy && senderName==='Suncat' && senderName===lastSenderName && timeDiff<200 && previous?._legacySuncat && previous.color===msgColor;
+                    if(continuation)BMReadableChat.append(previous,' '+messageText.trim());
+                    else chatLog.push({text:displayText,color:msgColor,_legacySuncat:legacy&&senderName==='Suncat'});
                         if (chatLog.length > 100) chatLog.shift();
                         lastSenderName = senderName;
                         lastMessageTimeReceived = currentTime;
@@ -52820,9 +52803,10 @@ const BMMastery=(()=>{
         let meter = 'Meter';
 /* Native-resolution text; history and preview DOM change only with content/layout. */
 const BMReadableChat=(()=>{
- const archive=[],limit=2000;let revision=0,root,lines,typeButton,historyButton,modal,list,older,newer,latest,count,returnScene,offset=0,seen=-1,lastLayout='',compact=false,wasVisible=false;
+ const archive=[],records=new WeakMap(),limit=2000;let revision=0,root,lines,typeButton,historyButton,modal,list,older,newer,latest,count,returnScene,offset=0,seen=-1,lastLayout='',compact=false,wasVisible=false;
  function entry(m){const text=typeof m==='object'?((m.sender?m.sender+': ':'')+(m.text??'')):String(m);return {text,divider:/^\s*✧\s*\*{3,}\s*✧\s*$/.test(text),color:typeof m==='object'?(m.color||'#eee8d3'):'#eee8d3',at:Date.now()};}
- function log(){const a=[];Object.defineProperty(a,'push',{value:function(...items){for(const m of items){archive.push(entry(m));if(archive.length>limit)archive.shift();}revision++;return Array.prototype.push.apply(this,items);}});return a;}
+ function log(){const a=[];Object.defineProperty(a,'push',{value:function(...items){for(const m of items){const record=entry(m);archive.push(record);if(m&&typeof m==='object')records.set(m,record);if(archive.length>limit)archive.shift();}revision++;return Array.prototype.push.apply(this,items);}});return a;}
+ function append(m,text){const record=records.get(m);if(!record)return false;m.text+=text;record.text+=text;revision++;return true;}
  const el=(tag,parent,text)=>{const n=document.createElement(tag);if(text)n.textContent=text;parent?.append(n);return n;};
  function message(tag,parent,m){const n=el(tag,parent);n.style.color=m.color;
   if(m.divider){n.className='divider';n.setAttribute('role','separator');n.setAttribute('aria-label','Message separator');for(const [text,kind]of [['✧','mark'],[m.text.replace(/[^*]/g,''),'stars'],['✧','mark']]){const s=el('span',n,text);s.className=kind;s.setAttribute('aria-hidden','true');}}
@@ -52875,7 +52859,7 @@ const BMReadableChat=(()=>{
    stop(modal);for(const t of ['keydown','keyup'])modal.addEventListener(t,e=>{e.stopPropagation();if(e.key==='Escape')close.click();});
   }offset=0;modal.hidden=false;paint();list.scrollTop=list.scrollHeight;sync();
  }
- return {log,sync,open,get records(){return archive;},get revision(){return revision;}};
+ return {log,append,sync,open,get records(){return archive;},get revision(){return revision;}};
 })();
 
         var chatLog = BMReadableChat.log();
@@ -52918,6 +52902,7 @@ const BMReadableChat=(()=>{
                 if (!Number.isFinite(x) || !Number.isFinite(y)) return true;
                 const kind = this.kind(maze, x, y), mode = this.mode(npc);
                 if (kind === 'outside' || kind === 'lava') return true;
+                if(world?.mapID===999&&BMRefuge.inside(world,x,y)&&!['ally','escort','escort_combat'].includes(npc.alignment))return true;
                 if(kind==='water'||kind==='chasm'){const z=BMLayers.actorZ(world,npc),above=BMLayers.active(world)&&BMLayers.support(world,x,y,z,0)>.02;
                     if(!above&&!(escape||mode==='air'||kind==='water'&&mode==='water'))return true;
                     return !!(BMLayers.active(world)&&BMLayers.overlaps(world,x,y,z+.02,z+BMLayers.body(world,npc)));}
@@ -56922,8 +56907,10 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                     this.y = data.y;
                     this.dir = data.dir;
                     BMLayers.settle(this,this,data.groundZ||0);BMPlayerMotion.reset();
+                    if(this.memory.pendingDeath||BMStorage.getItem('runestones.pendingDeath')||data.wardState?.currentWardTime===0)BMDeathRecovery.recover(this);
                     
                     this.isLoading = false; // We are done loading!
+                    if(this._bmRecovered){this._bmRecovered=false;this.saveGame();}
                     let myPersistentId = BMStorage.getItem("runestones_player_id");
 
                     // If they are a new player, generate a random ID
@@ -57384,6 +57371,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                 if (!data || data.id!==999 || !Array.isArray(data.maze) || !data.maze[0]?.length || !Array.isArray(data.npcs)) {
                     throw new Error('Invalid generated map blueprint.');
                 }
+                BMRefuge.prepare(data);
                 const newVisit=BMRealm.begin(data);
                 if(this.mapID===999&&this.customMapInstance===data.instanceId&&this.customScenario){BMScenario.sync(data);if(newVisit){this.x=data.spawnX;this.y=data.spawnY;this.targetMapX=this.x;this.targetMapY=this.y;this.isSlidingToTile=false;BMActivity.record('realm_visit_started',`Accepted an invitation to ${data.name}. A fresh visit ledger has begun.`,{visitId:data.visit.id});this.requestSave();}return;}
                 const cachedReturn=data.instanceId && window.latestCustomMapData?.instanceId===data.instanceId?window.latestCustomMapData.returnTo:null;
@@ -57419,7 +57407,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                         seen.add(record.index);this.npcs.push(SUNCAT_CLIENT.makeNPC(record));
                     }
                     if(returnTo && MAP_DB[returnTo.mapID]) {
-                        const p=SUNCAT_CLIENT.safePosition(this,this.x+1,this.y,99);
+                        const p=data.safeRoom?.exit || SUNCAT_CLIENT.safePosition(this,this.x+1,this.y,99);
                         this.npcs.push(SUNCAT_CLIENT.makeNPC({index:data.exitIndex,x:p.x,y:p.y,type:99,
                             state:'stationary',role:'portal',alignment:'friendly',
                             deck:[returnTo.x,returnTo.y,returnTo.mapID,3]}));
@@ -57968,7 +57956,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
             generateFlowField(...args) { return this.world.generateFlowField(...args); }
             getSafeSpawn(...args) { return this.world.getSafeSpawn(...args); }
             absorbHit(attacker, spellId = null, killerId = null) {
-                if(this===Dungeon&&BMPlayerMotion.evading)return true;
+                if(this===Dungeon&&(BMPlayerMotion.evading||BMDeathRecovery.protected(this)||BMRefuge.inside(this)))return true;
                 if (this.isDying || this.isDead || this.status === 'dead') {
                     return true;
                 }
@@ -61870,7 +61858,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                                 mapID: this.mapID,
                                 x: this.x,
                                 y: this.y,
-                                dir: this.dir
+                                dir: this.dir, groundZ: this.groundZ || 0
                             };
                             this.requestSave();
                             break;
@@ -63085,6 +63073,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                     this.isDead = false;
                     this.status = 'normal';
                     this._deathSequence = null;
+                    BMDeathRecovery.recover(this);
                     BMCombatNet.finishedDeath();
 
                     if (this.weather) {
@@ -63109,6 +63098,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                 if (this.isDying || this.isDead) return; 
                 
                 this.isDying = true;
+                BMDeathRecovery.mark(this);
                 console.log(`Player fatally wounded! Reason: ${reason}.`);
 
                 let killerName = "an unknown force";
@@ -69797,24 +69787,9 @@ const BMChatComposer=(()=>{
                             
                             Dungeon.isProcessingActions = false;
                             
-                            // 1. Grab the global spawn from memory
-                            let spawn = Dungeon.memory['globalSpawn'];
-                            
-                            if (spawn) {
-                                // Apply the global spawn point coordinates
-                                Dungeon.mapID = spawn.mapID;
-                                Dungeon.x = spawn.x;
-                                Dungeon.y = spawn.y;
-                                Dungeon.dir = spawn.dir;
-                            } else {
-                                // Fallback: If they haven't talked to an innkeeper yet
-                                // Send them to the default starting map (e.g., Tintagel Jail Cell)
-                                Dungeon.mapID = 0;
-                                Dungeon.x = 52.5;
-                                Dungeon.y = 33.5;
-                                Dungeon.dir = 0;
-                            }
-                            
+                            BMDeathRecovery.mark(Dungeon);
+                            BMDeathRecovery.recover(Dungeon);
+
                             // 2. Force a hard save BEFORE reloading!
                             Dungeon.saveGame();
                             
@@ -97998,7 +97973,7 @@ const BMWorldTalk=(()=>{
   function dismiss(){session=null;if(root){if(root.contains(document.activeElement))document.activeElement.blur();root.hidden=true;}}
   function clearTaunts(){taunt=null;queue=[];if(tauntRoot)tauntRoot.hidden=true;}
   function nextTaunt(now){taunt=queue.shift()||null;if(!taunt){if(tauntRoot)tauntRoot.hidden=true;return;}taunt.until=now+Math.min(8000,Math.max(2800,taunt.text.length*55));tauntTitle.textContent=taunt.title;tauntLine.textContent=taunt.text;tauntRoot.hidden=false;}
-  function sayTaunt(name,text){if(startGame!=='explore'||Dungeon.isDying||Dungeon.isDead)return false;create();for(const p of pages(Array.isArray(text)?text.join('\n\n'):text))if(queue.length<6)queue.push({title:name,text:p,map:Dungeon.mapID,owner:Dungeon});if(!taunt)nextTaunt(performance.now());return true;}
+  function sayTaunt(name,text){if(startGame!=='explore'||Dungeon.isDying||Dungeon.isDead)return false;const body=Array.isArray(text)?text.join(' '):String(text||'');if(!body.trim())return false;chatLog.push({text:(name?'['+name+']: ':'')+body,color:'#d6b3ff'});lastChatTime=Date.now();return true;}
   function tick(now=performance.now()){
     if(session&&(startGame!=='dialogue'||session.owner!==Dungeon||session.map!==Dungeon.mapID||Dungeon.isDying||Dungeon.isDead))dismiss();
     if(taunt){if(startGame!=='explore'||taunt.owner!==Dungeon||taunt.map!==Dungeon.mapID||Dungeon.isDying||Dungeon.isDead)clearTaunts();else if(now>=taunt.until)nextTaunt(now);}
@@ -102674,9 +102649,8 @@ const BMOnline = (() => {
   const sameParty = (p) => !!p?.partyId && p.partyId === self()?.partyId;
   function notice(text) {
     lastNotice = String(text);
-    if(startGame==='explore')BMWorldTalk.sayTaunt('Notice',lastNotice);
     noticeAt = Date.now();
-    chatLog.push("[ONLINE]: " + text);
+    chatLog.push({text:"[ONLINE]: " + text,color:"#d6b3ff"});
     lastChatTime = Date.now();
     renderVersion = "";
   }
@@ -104810,13 +104784,89 @@ const BMGuildBuilding=(()=>{
   // Library cases along the upper back wall, away from the staircase.
   for(const x of [49,50,51,55,56,57])add(x,16,floor,floor+.65,3);
   m.slabs=[...(m.slabs||[]).filter(s=>s.x<44||s.x>62||s.y<14||s.y>34),...slabs];
-  const positions={201:[53.5,29.5,0],205:[48.5,19.5,0],206:[58.5,19.5,0],207:[53.5,17.5,0],8001:[47.5,23.5,floor],8002:[59.5,23.5,floor],8003:[59.5,29.5,floor],8004:[47.5,27.5,floor],8005:[55.5,30.5,floor],8006:[57.5,19.5,floor]};
+  const positions={201:[53.5,29.5,0],205:[48.5,19.5,floor],206:[58.5,19.5,floor],207:[53.5,17.5,floor],8001:[47.5,23.5,0],8002:[59.5,23.5,0],8003:[59.5,29.5,0],8004:[47.5,27.5,0],8005:[55.5,35.5,0],8006:[57.5,21.5,0],2970:[49.5,19.5,0]};
+  // One authored tavern regular; old random wildlife copies are reconciled on load.
+  const drunk=m.wildlife?.find(n=>n.type==='moorDrunk');
+  if(drunk){m.wildlife=m.wildlife.filter(n=>n!==drunk);m.npcs.push({index:2970,x:49.5,y:19.5,sprite:297,state:'stationary',role:'dialogue',alignment:'defender',level:drunk.level,customDialogue:drunk.customDialogue});}
   for(const n of m.npcs||[]){const p=positions[n.index];if(p)Object.assign(n,{x:p[0],y:p[1],groundZ:p[2],homeX:p[0],homeY:p[1]});}
   const clerk=m.npcs.find(n=>n.index===201),original=clerk?.dialogueFactory;
-  if(original)clerk.dialogueFactory=d=>{const q=original(d);return {...q,text:[...q.text,'Trainers and the library are upstairs. The staircase is along the left-hand side of the entrance hall.']};};
+  if(original)clerk.dialogueFactory=d=>{const q=original(d);return {...q,text:[...q.text,'The trainers are here on the ground floor; the Knight guards the entrance outside. The Guildmaster, Vanguard Commander, Elder and library are upstairs. Take the staircase on the left.']};};
   m.guildBuilding={floor,roof,bounds,entrance:{x:53.5,y:34.5,z:0},stairs:{x:46.5,y:31.5,z:0},landing:{x:51.5,y:31.5,z:floor}};
  }
  install();return {floor,roof,bounds};
+})();
+
+/* Generated-realm refuge: a player-passable threshold with monster exclusion. */
+const BMRefuge=(()=>{
+ function prepare(data){
+  if(!data?.maze?.length)return data;
+  if(!data.safeRoom){
+   const x=Math.floor(data.outpost?.x??data.spawnX),y=Math.floor(data.outpost?.y??data.spawnY),left=x-2,right=x+2,top=y+3,bottom=y+7;
+   if(top<1||bottom>=data.maze.length-1||left<1||right>=data.maze[0].length-1)return data;
+   data.safeRoom={left,right,top,bottom,door:{x:x+.5,y:top+.5},spawn:{x:x+.5,y:top+2.5},exit:{x:x+1.5,y:top+2.5},version:1};
+  }
+  const r=data.safeRoom;
+  for(let y=r.top;y<=r.bottom;y++)for(let x=r.left;x<=r.right;x++)data.maze[y][x]=(x===r.left||x===r.right||y===r.top||y===r.bottom)?25:0;
+  data.maze[Math.floor(r.door.y)][Math.floor(r.door.x)]=2;
+  data.spawnX=r.spawn.x;data.spawnY=r.spawn.y;
+  // Migrate legacy village occupants out of the new room without deleting them.
+  for(const n of data.npcs||[])if(contains(r,n.x,n.y)){
+   let found=false;
+   for(let dy=1;dy<=10&&!found;dy++)for(let dx=-6;dx<=6;dx++){
+    const x=Math.floor(r.door.x)+dx,y=r.top-dy;
+    if(data.maze[y]?.[x]===0&&!data.npcs.some(q=>q!==n&&Math.hypot(q.x-x-.5,q.y-y-.5)<.8)){n.x=x+.5;n.y=y+.5;if(n.service){n.homeX=n.x;n.homeY=n.y;}found=true;break;}
+   }
+  }
+  return data;
+ }
+ function contains(r,x,y){return !!r&&x>=r.left&&x<r.right+1&&y>=r.top&&y<r.bottom+1;}
+ function inside(d,x=d.x,y=d.y){const m=window.latestCustomMapData;return d.mapID===999&&m?.instanceId===d.customMapInstance&&contains(m.safeRoom,x,y);}
+ return {prepare,contains,inside};
+})();
+const BMDeathRecovery=(()=>{
+ const key='runestones.pendingDeath';
+ function destination(d){
+  const m=window.latestCustomMapData;
+  if(d.mapID===999&&m?.instanceId===d.customMapInstance){BMRefuge.prepare(m);if(m.safeRoom)return {mapID:999,...m.safeRoom.spawn,dir:0,groundZ:0};}
+  const s=d.memory?.globalSpawn;
+  if(s&&s.mapID!==999&&MAP_DB[s.mapID]&&[s.x,s.y].every(Number.isFinite))return {...s};
+  return {mapID:0,x:53.5,y:35.5,dir:0,groundZ:0};
+ }
+ function mark(d){d.memory.pendingDeath=true;BMStorage.setItem(key,'1');d.saveGame();}
+ function protectedSpawn(d){return Date.now()<(d._respawnProtectedUntil||0);}
+ function recover(d){
+  const pos=destination(d),loading=d.isLoading;d.isLoading=true;
+  try{
+   d.activeSummons=[];d.projectiles=[];d.activeBuffs=[];d.actionQueue=[];d.isProcessingActions=false;
+   d.currentSpeaker=null;d.currentEnemy=null;d.focusTarget=null;d.isSlidingToTile=false;d.isAggroDashing=false;
+   if(pos.mapID!==999)d.loadMap(pos.mapID);
+   else {const m=window.latestCustomMapData;d.maze=m.maze.map(row=>row.slice());for(const n of d.npcs||[])if(n.index===m.exitIndex){n.x=m.safeRoom.exit.x;n.y=m.safeRoom.exit.y;}}
+   Object.assign(d,{x:pos.x,y:pos.y,dir:pos.dir??0,targetMapX:pos.x,targetMapY:pos.y,isDying:false,isDead:false,status:'normal',_deathSequence:null});
+   BMLayers.settle(d,d,pos.groundZ||0);BMPlayerMotion.reset();BMTouch.cancel();BMLock.clear();BMWorldTalk.dismiss();BMWorldTalk.clearTaunts();
+   d.currentWardTime=d.maxWards*d.timePerWard;d.wardShatterCooldown=0;d.wardShatterDuration=0;d.hostilePlayers?.clear();
+   d._respawnProtectedUntil=Date.now()+10000;
+   for(const n of d.npcs||[]){n.cachedPrey=null;n.target=null;if(n.state==='chasing'){n.state='wandering';n.chasing=false;}}
+   if(d.weather)d.weather.deathOverlayLocked=false;
+   delete d.memory.pendingDeath;BMStorage.removeItem(key);d._bmRecovered=true;
+  }finally{d.isLoading=loading;}
+  if(!loading){d.saveGame();d._bmRecovered=false;}
+  if(typeof socket!=='undefined'&&socket?.connected)socket.emit('move',{x:d.x,y:d.y,dir:d.dir,mapID:d.mapID,name:playerName,type:playerSprite});
+  return pos;
+ }
+ return {destination,mark,recover,protected:protectedSpawn};
+})();
+globalThis.BMRefuge=BMRefuge;globalThis.BMDeathRecovery=BMDeathRecovery;
+// Repair old generated duplicates while keeping recruits and summoned companions.
+(()=>{
+ const load=Explore.prototype.loadMap;
+ Explore.prototype.loadMap=function(...args){const result=load.apply(this,args);if(this.mapID===0){
+  this.npcs=this.npcs.filter(n=>Math.floor(n.type)!==297||['ally','escort','escort_combat'].includes(n.alignment)||n.index===2970);
+  const n=this.npcs.find(n=>n.index===2970);if(n&&!n.isDead)Object.assign(n,{x:49.5,y:19.5,groundZ:0,homeX:49.5,homeY:19.5,state:'stationary'});
+ }return result;};
+ const cast=Explore.prototype.castSpell;
+ Explore.prototype.castSpell=function(id,...args){if(BMRefuge.inside(this)&&!['heal','buff','item_buff','item_ward','item_booster','summon','cultivate'].includes(SPELL_REGISTRY[id]?.type))return;return cast.call(this,id,...args);};
+ const apply=Explore.prototype.applySpell;
+ Explore.prototype.applySpell=function(id,...args){if((BMRefuge.inside(this)||BMDeathRecovery.protected(this))&&['debuff','cone','gravity'].includes(SPELL_REGISTRY[id]?.type))return;return apply.call(this,id,...args);};
 })();
 
 /* Sparse layer integration hooks */
