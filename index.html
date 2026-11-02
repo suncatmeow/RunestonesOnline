@@ -28280,7 +28280,9 @@ class ClassicMusicPlayer {
   rt.queueLyric=(text,at)=>{host.pendingLyric={text,start:at};};
   rt.allowVocal=(at,duration)=>{
    if(host.combat)return false;
-   if(host.listening){if(at<host.lastLead+.08||at<host.leadEnd-.04)return false;host.lastLead=at;host.leadEnd=at+Math.min(8,duration);}
+   // Taliesin and Twilight already arrange their solo/chorus voices. Their
+   // 20–48 ms harmony offsets are intentional parts of the original score.
+   if(host.listening){if(![46,55].includes(host.entry?.id)&&(at<host.lastLead+.08||at<host.leadEnd-.04))return false;host.lastLead=at;host.leadEnd=at+Math.min(8,duration);}
    else{if(at<host.nextVocal)return false;host.nextVocal=at+Math.max(20,Math.min(8,duration)+16);}
    const cue=host.pendingLyric;
    if(cue&&at>=cue.start-.01&&at-cue.start<16){host.activeLyric={text:cue.text,start:at,end:at+Math.max(.4,Math.min(8,duration))};host.lyricCues.push(host.activeLyric);if(host.lyricCues.length>128)host.lyricCues.shift();host.pendingLyric=null;}
