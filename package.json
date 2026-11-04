@@ -1,11 +1,11 @@
 {
   "name": "battlemage-server",
-  "version": "1.9.1",
+  "version": "1.8.0",
   "private": true,
-  "description": "Battle Mage: original combat effects, projectile recovery and Sect Stronghold",
+  "description": "Battle Mage: Suncat world activities, cultivation, mercy and encrypted continuity",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/multiplayer.cjs && node --test --test-concurrency=1 tests/runestones-server.cjs tests/tintagel-server.cjs tests/class-paths-server.cjs tests/guild-story-server.cjs tests/dragonflight-server.cjs tests/summoner86.cjs tests/recovery87.cjs tests/flow88.cjs tests/loading91.cjs tests/attack-cadence-server.cjs tests/suncat-life.cjs tests/ground-loot-server.cjs tests/stronghold-chests-server.cjs",
+    "test": "node tests/multiplayer.cjs && node --test tests/runestones-server.cjs tests/tintagel-server.cjs tests/class-paths-server.cjs tests/guild-story-server.cjs tests/dragonflight-server.cjs tests/summoner86.cjs tests/recovery87.cjs tests/flow88.cjs tests/loading91.cjs tests/attack-cadence-server.cjs tests/suncat-life.cjs",
     "test:dragonflight": "node --test tests/dragonflight-server.cjs",
     "test:summoner": "node --test tests/summoner86.cjs",
     "test:recovery": "node --test tests/recovery87.cjs",
@@ -15,9 +15,7 @@
     "test:classes": "node --test tests/class-paths-server.cjs",
     "test:tintagel": "node --test tests/tintagel-server.cjs",
     "test:attack-cadence": "node --test tests/attack-cadence-server.cjs",
-    "test:suncat": "node --test tests/suncat-life.cjs",
-    "test:loot": "node --test tests/ground-loot-server.cjs",
-    "test:stronghold": "node --test tests/stronghold-chests-server.cjs"
+    "test:suncat": "node --test tests/suncat-life.cjs"
   },
   "engines": {
     "node": ">=20"
