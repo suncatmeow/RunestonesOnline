@@ -2,7 +2,7 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-04-bm-port-and-play"/>
+      <meta name="suncat-build" content="2026-11-04-bm-original-combat"/>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage</title>
       <style>
         html,body {
@@ -40764,7 +40764,7 @@ newAlly.y + (Math.random() - 0.5) * 0.8,
                     }
                 });
 
-                // 2. Spawn Team C (Cultists)
+                // 2. Spawn Team C (Sect members)
                 let invaderDeck = [5, 56, 56, 54, 54]; // Boss + 4 Minions
                 invaderDeck.forEach((typeId, index) => {
                     // Spawn them at the top edges of the map
@@ -40779,7 +40779,7 @@ newAlly.y + (Math.random() - 0.5) * 0.8,
                 // 3. Queue the Cinematic Text
                 this.cinematicQueue = [
                     { text: "Instructor: What is the meaning of this?! Who breached the arena?!", sprite: 249 }, // Clerk Portrait
-                    { text: "Cultist: Slay them all in the name of the Master!", sprite: 5 }, // Cultist Portrait
+                    { text: "Sect member: Slay them all in the name of the Master!", sprite: 5 }, // Sect member Portrait
                     { text: "Instructor: Rookie! Stand with me! This is no longer a test!", sprite: 249 }
                 ];
 
@@ -40824,7 +40824,7 @@ newAlly.y + (Math.random() - 0.5) * 0.8,
                     }
                 }
                 // 1. Spawn 3 S-Rank Allies at the bottom of the map
-                let sRankDeck = [185, 249, 252]; // Captain Solgata, Mara and Brann.
+                let sRankDeck = [185, 249, 252]; // Captain Solgata, Dancer and Warrior.
                 
                 sRankDeck.forEach((typeId, index) => {
                     let sX = 3 + (index * 2); // Spreads them out horizontally
@@ -40846,7 +40846,7 @@ newAlly.y + (Math.random() - 0.5) * 0.8,
                 this.cinematicQueue = [
                     { text: "Elder: You are stubborn, but you cannot stop the Master's plan! Die!", sprite: 203 }, 
                     { text: "Solgata: Stand down, Elder. Your ward is broken. The guild knows what you did.", sprite: 185 }, 
-                    { text: "Mara: Rookie, you held him off! Brann, take the front. I will cover our way out!", sprite: 249 }
+                    { text: "Dancer: Rookie, you held him off! Warrior, take the front. I will cover our way out!", sprite: 249 }
                 ];
 
                 this.state = 'CINEMATIC';
@@ -41949,6 +41949,8 @@ drawColumn(scene, stripX, hitCount, viewX, viewY, viewW, viewH, width, camX, cam
                         let baseR = parsed ? parsed.r : 139;
                         let baseG = parsed ? parsed.g : 69;
                         let baseB = parsed ? parsed.b : 19;
+                        const torchLight=scene._sectLight?.[hit.mapY]?.[hit.mapX]||0;
+                        baseR+=torchLight*70;baseG+=torchLight*34;baseB+=torchLight*5;
 
                     // --- SAFELY ANCHORED 3D ROOFS ---
                         if (heightMult < 15.0 && wallID !== 91 && wallID !== 88 && (hit.baseZ===undefined||draw_camZ>=floorZ+heightMult)) {
@@ -41987,7 +41989,7 @@ drawColumn(scene, stripX, hitCount, viewX, viewY, viewW, viewH, width, camX, cam
                         if (shade > 255) shade = 255;
                         if (side === 1) shade *= 0.75; 
 
-                        let brightness = shade / 255;
+                        let brightness = scene._sectLight?Math.max(shade/255,.40+torchLight*.35):shade/255;
                         let r = baseR * brightness + noise;
                         let g = baseG * brightness + noise;
                         let b = baseB * brightness + noise;
@@ -42058,7 +42060,7 @@ drawColumn(scene, stripX, hitCount, viewX, viewY, viewW, viewH, width, camX, cam
                                 draw_ctx.fillRect(screenX, viewY + drawStart, drawWidth, actualDrawHeight);
                                 drawFullStrip = false; 
                             }
-                            else if ([1,33,35,11,73,75,5,45].includes(wallID)) {
+                            else if ([1,33,35,11,73,75,5,45].includes(wallID)||(scene._sectLight&&wallID===25)) {
                                 let isSteel = [5,45].includes(wallID);
                                 let texR = rawR, texG = rawG, texB = rawB;
                                 let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
@@ -42882,6 +42884,7 @@ getSpriteConfig(scene, sprite, angle, overrideType) {
                 // 1. INSTANT O(1) DICTIONARY LOOKUP
                 // If the ID isn't in our config, default to 0.69 scale and -0.13 hover.
                 let config = host.SPRITE_CONFIGS[type] || { scale: 0.69, hover: -0.13, faceZ: 0.70, facePan: 0.0 };
+                if(sprite._sectScale)config={...config,scale:sprite._sectScale,hover:sprite._sectHover||0};
                 
                 let scale = config.scale;
                 let hover = config.hover;
@@ -43085,9 +43088,8 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                         // --- 2. ANIMATION STATES & DIRECTION FIRST ---
                         // ==========================================
                         let currentDir = 2; // Default South
-                        if (imageIndex >= 103 && sprite.spellId === undefined) {
-                            
-
+                        if (imageIndex >= 103) {
+                            if (sprite.spellId === undefined) {
                             let isAttacking = false;
                             let isMoving = false;
 
@@ -43129,7 +43131,8 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                                 }
                             }
 
-                            // Calculate 8-way direction index
+                            }
+                            // Calculate 8-way direction index, including flying-sword projectiles.
                             if (sprite.dir !== undefined && (sprite.socketId || sprite.isRemoteSummon || sprite.dirX === undefined)) {
                                 let relativeDir = (sprite.dir - scene.dir + 4) % 4;
                                 if (relativeDir === 0) currentDir = 0;
@@ -44034,13 +44037,7 @@ render(scene, dt) {
                             }
                         }
                         }else host.BMPlayerMotion.advance(dt);
-                        for (let i = scene.projectiles.length - 1; i >= 0; i--) {
-                            scene.projectiles[i].update(scene, dt);
-                            // If the projectile died during the update, remove it directly from the array
-                            if (!scene.projectiles[i].active) {
-                                scene.projectiles.splice(i, 1);
-                            }
-                        }
+                        scene.updateProjectiles(dt);
                         const viewport=(0, host.worldViewport)();
                         const viewW=viewport.w,viewH=viewport.h,viewX=viewport.x,viewY=viewport.y; 
 
@@ -45206,8 +45203,7 @@ renderTopDown(scene, dt, simulationDone = false) {
                 
                 scene.weather.resize(viewW, viewH); 
                 scene.weather.update(dt);
-                scene.projectiles.forEach(p => p.update(scene, dt));
-                scene.projectiles = scene.projectiles.filter(p => p.active);
+                scene.updateProjectiles(dt);
 
                 // 2. SETUP THE 2D GRID
                 void 0, (0, host.drawShape)('rec', 0, 0, 1, 0, 0, 10, 10, 0, 0, 0, 0, '#000000', 1);
@@ -45404,7 +45400,9 @@ renderTopDown(scene, dt, simulationDone = false) {
                             if (p.spellId && typeof host.SPELL_REGISTRY !== 'undefined' && host.SPELL_REGISTRY[p.spellId]) {
                                 projSprite = host.SPELL_REGISTRY[p.spellId].sprite2D || -37;
                             }
-                            if (p.spellId === 9999){
+                            if (p.exploding) {
+                                void 0, (0, host.drawPortrait)(p.type,0,0,1);
+                            } else if (p.spellId === 9999){
                                 void 0, (0, host.drawPortrait)(316,0,0,1);
                             } else {
                                 void 0, (0, host.drawPortrait)(projSprite, 0, 0, 1);
@@ -45963,7 +45961,7 @@ const BMOverhead=(()=>{
    if(!projectile){g.fillStyle='#0007';g.beginPath();g.ellipse(ground.x,ground.y,cell*.24,cell*.10,0,0,Math.PI*2);g.fill();}
    if(a.type===-27||a.cachedBillboard){const size=cell*(a.role==='herb'?.6:1),image=a.type===-27?BMWorldCards.get(a,size):a.cachedBillboard;g.drawImage(image,p.x-size/2,p.y-size*.9,size,size);continue;}
    if(a.model){a.model.draw(g,p.x,p.y-cell*.3,cell*.4,4);BMLock.markBody(a,g,{x:p.x-cell*.2,y:p.y-cell*.7,w:cell*.4,h:cell*.4});continue;}
-   let id=player?playerSprite:a.type??a.sprite??0;if(projectile)id=a.spellId===9999?316:SPELL_REGISTRY[a.spellId]?.sprite2D??-37;
+   let id=player?playerSprite:a.type??a.sprite??0;if(projectile)id=a.exploding?a.type:a.spellId===9999?316:SPELL_REGISTRY[a.spellId]?.sprite2D??-37;
    id=MODEL_UPGRADES[id]?.id??id;const moving=player?d._isoMoving||d.isSlidingToTile:a.isMoving||Math.hypot(a.x-(a.lastX??a.x),a.y-(a.lastY??a.y))>.003;
    if(!projectile&&id>=100)id=BMEquipment.state(id,moving,player?d.playerAttackTimer>0:a.attackAnimTimer>0||a.combatCooldown>0,false);
    const direction=facing(a),height=cell*(projectile?.45:Math.max(.4,Math.min(1.7,BMBodySizes.actor(d,a).height*.85)));
@@ -47714,7 +47712,7 @@ window.BMPerformance=BMPerformance;
                                     let finaleWinActions = [['update_quest_state', { key: 'guild_quest', state: 0 }], ['set_memory', { key: 'guild_rank', value: 'S' }], ['set_memory', { key: 'a_rank_progress', value: 3 }], ['give_card', { card: 71, text: "You earned your S-Rank License!" }], ['give_card', { card: 21, text: "Crown Received!" }], ['play_song', 20], ['play_sfx', 'chime'], ['spawn_ephemeral_npc', { index: 207888, x: 'PLAYER_X', y: 'PLAYER_Y', sprite: 185, name: "Solgata · S-rank captain", state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffd700', customDialogue: ["*Cough*... You did it. The Mastermind is destroyed.", "I'm too wounded to lead the Vanguard anymore.", "You are officially an S-Rank Adventurer."], endActions: [['close_dialogue', null]]}], ['trigger_dialogue', 207888]];
                                     let spawnPortal = ['spawn_ephemeral_npc', { index: 207999, x: 53.5, y: 19.5, sprite: -37, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ff0000', deck: [106, 203, 197, 270, 273,276], isBoss: true, customDialogue: ["*The air is suffocating. The Mastermind waits.*"], options: ['Draw Your Weapon'], yesActions: [['play_sfx', 'horn'], ['transform_npc', { index: 207999, clearDialogue: true, newDeathActions: finaleWinActions }], ['start_tactics', { id: 207999, isFinale: true, stakes: 'real' }], ['close_dialogue', null]] }];
                                     return {
-                                        text: ["Come in. Close the door.", "We found it. The Cult's main stronghold.", "Another Team has gone in ahead of you!"," Join forces with them and end this!"], options: ['Open the Portal', 'Wait'],
+                                        text: ["Come in. Close the door.", "We found it. The Sect's main stronghold.", "Another Team has gone in ahead of you!"," Join forces with them and end this!"], options: ['Open the Portal', 'Wait'],
                                         yesActions: [['set_memory', { key: 'guild_quest', value: { state: 1, type: 'finale', tName: 'The Mastermind', qRank: 'S', targetMap: 12, spawnActions: [spawnPortal] } }], ['play_sfx', 'teleport'], spawnPortal, ['notify', { text: "The Guildmaster opened the portal.", endActions: [['close_dialogue', null]] }]], noActions: [['close_dialogue', null]]
                                     };
                                 }
@@ -50976,7 +50974,7 @@ const BMObstacles=(()=>{
                 const owner=visualOnly?'network':Object.assign(Object.create(source),{alignment:data.alignment || 'foe'});
                 const missile=new Projectile(data.startX,data.startY,data.dirX,data.dirY,6,
                     visualOnly?0:data.damage,owner,spellData?.isHoming || false,spellId);
-                missile.type=spellId===9999?9999:(spellData?.sprite2D ?? 99);
+                missile.type=spellData?.sprite2D ?? -37;
                 missile.targetType=data.targetType ?? 'all';
                 Dungeon.projectiles.push(missile);
             });
@@ -52553,9 +52551,9 @@ const BMObstacles=(()=>{
             },
             "g_ch2_4": {
                 title: "The Left Hand Path",
-                text: "The Guild's suspicions were confirmed. The 'monsters' were being directed. Acolytes of the Left Hand Path—adepts who seek to dominate the human race—were meeting with an undercover fellow guildmember. The recruit met with the double-agent and smashed the gathering, ignoring their monologues entirely. The cult's roots ran deeper than anyone knew.",
+                text: "The Guild's suspicions were confirmed. The 'monsters' were being directed. Acolytes of the Left Hand Path—adepts who seek to dominate the human race—were meeting with an undercover fellow guildmember. The recruit met with the double-agent and smashed the gathering, ignoring their monologues entirely. The sect's roots ran deeper than anyone knew.",
                 system_events: ["Earned C-Rank License!"],
-                hook: "Ask the player if they prefer fighting mindless beasts or calculating cultists.",
+                hook: "Ask the player if they prefer fighting mindless beasts or calculating sect members.",
                 next_beat: "g_ch2_5" // Fixed null
             },
             
@@ -52584,7 +52582,7 @@ const BMObstacles=(()=>{
                 },
             "g_ch3_3": {
                     title: "The Elder Revealed",
-                    text: "In the desolate ruins, the Clerk stood flanked by Left Hand Path cultists. 'You actually showed up... kekeke,' the Clerk laughed, his Guild uniform burning away to reveal the robes of a Sect Elder. 'I assigned you those suicide missions hoping you'd die, but you just kept succeeding. Now, I will handle you myself!' The recruit didn't even blink, already calculating the exact AoE radius needed to vaporize the Elder and his minions in one turn.",
+                    text: "In the desolate ruins, the Clerk stood flanked by Left Hand Path sect members. 'You actually showed up... kekeke,' the Clerk laughed, his Guild uniform burning away to reveal the robes of a Sect Elder. 'I assigned you those suicide missions hoping you'd die, but you just kept succeeding. Now, I will handle you myself!' The recruit didn't even blink, already calculating the exact AoE radius needed to vaporize the Elder and his minions in one turn.",
                     system_events: ["Sect Elder Defeated!"],
                     hook: "Ask the player how satisfying it is to finally put down the NPC who has been giving them terrible fetch quests.",
                     next_beat: "g_ch3_4"
@@ -52622,7 +52620,7 @@ const BMObstacles=(()=>{
             // === RANK S: THE MASTERMIND (FINALE EXPANSION) ===
             "g_ch4_2": {
                 title: "Triangulating the Void",
-                text: "Finding the Left Hand Path's hidden stronghold should have required months of espionage, deciphering ancient texts, and interrogating high-ranking acolytes. The Guild recruit didn't have time for that. They simply gathered three corrupted teleportation crystals dropped by slain cultists, placed them in a perfect equilateral triangle on the grid, and cast Gravity. The conflicting return-to-base protocols caused a magical physics error, violently snapping a glowing red ley-line directly toward an uncharted mountain range.",
+                text: "Finding the Left Hand Path's hidden stronghold should have required months of espionage, deciphering ancient texts, and interrogating high-ranking acolytes. The Guild recruit didn't have time for that. They simply gathered three corrupted teleportation crystals dropped by slain sect members, placed them in a perfect equilateral triangle on the grid, and cast Gravity. The conflicting return-to-base protocols caused a magical physics error, violently snapping a glowing red ley-line directly toward an uncharted mountain range.",
                 system_events: ["Coordinates Acquired.", "Sequence Break Successful."],
                 hook: "Ask the player if they've ever sequence-broken a quest by completely bypassing the intended investigation mechanics.",
                 next_beat: "g_ch4_3"
@@ -53304,7 +53302,7 @@ const SUNCAT_LIFE_CLIENT = (() => {
                 return {index:data.index,x:data.x,y:data.y};
             },
             publicNPC(n,world) {
-                const stories={205:['Guild Elder','Handles expert regional threats at the Guild.'],206:['Vanguard Commander','Coordinates the Elite Vanguard.'],207:['Guildmaster',"Leads the Adventurer's Guild."]};
+                const stories={205:['Elder','B-rank guild leader.'],206:['Queen','A-rank guild leader.'],207:['King',"Guild leader."]};
                 const story=world.mapID===0?stories[n.index]:null;
                 return {...SUNCAT_FIELD.snapshot(n),kind:'npc',npcIndex:n.index,index:n.index,type:n.type,spriteId:n.type,
                     name:story?.[0]||n.name||'Creature',role:n.role,alignment:n.alignment,
@@ -58445,6 +58443,22 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
             drawStar(...args) { return BMWorldRenderer.drawStar(this, ...args); }
         //NPC RENDERING
             getSpriteConfig(...args) { return BMWorldRenderer.getSpriteConfig(this, ...args); }
+            updateProjectiles(dt) {
+                const shots = this.projectiles;
+                const visit = this.musicVisitSerial;
+                for (let i = shots.length - 1; i >= 0; i--) {
+                    const shot = shots[i];
+                    if (!shot) continue;
+                    shot.update(this, dt);
+                    // Death, respawn or travel can replace the entire world during a hit.
+                    // Stop this batch; never update stale shots or splice the new world's list.
+                    if (this.projectiles !== shots || this.musicVisitSerial !== visit) return;
+                    if (!shot.active) {
+                        const at = shots[i] === shot ? i : shots.indexOf(shot);
+                        if (at !== -1) shots.splice(at, 1);
+                    }
+                }
+            }
             cacheDynamicNPCBillboard(...args) { return BMWorldRenderer.cacheDynamicNPCBillboard(this, ...args); }
             cacheSignBillboard(...args) { return BMWorldRenderer.cacheSignBillboard(this, ...args); }
             drawCombinedSprites(...args) { return BMWorldRenderer.drawCombinedSprites(this, ...args); }
@@ -61990,7 +62004,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                             // 4. Close dialogue window before opening the UI
                             this.dCounter = 0;
                             this.status = 'normal';
-                            if(this.currentSpeaker?.index!==201)this.currentSpeaker = null; // Keep Mara present in her detailed guild conversation.
+                            if(this.currentSpeaker?.index!==201)this.currentSpeaker = null; // Keep Dancer present in her detailed guild conversation.
                             if (typeof btnYes !== 'undefined') btnYes.visible = false;
                             if (typeof btnNo !== 'undefined') btnNo.visible = false;
                             break;
@@ -62550,8 +62564,8 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                     
                     quests.push({
                         id: 'c_story_1', 
-                        title: "CAMPAIGN: Cult Meeting", 
-                        desc: "Our operative infiltrated the Cult's gathering in Avalon. Intervene.", 
+                        title: "CAMPAIGN: Sect Meeting", 
+                        desc: "Our operative infiltrated the Sect's gathering in Avalon. Intervene.", 
                         isStory: true,
                         status: cProgress > 0 ? 'completed' : 'available',
                         
@@ -62572,7 +62586,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                                     newDeathActions: [
                                         ['update_quest_state', {key: 'guild_quest', state: 2}], 
                                         ['play_sfx', 'chime'], 
-                                        ['notify', { text: "Cult Leader slain! Return to the Guild.", endActions: [['close_dialogue', null]]}]
+                                        ['notify', { text: "Sect Leader slain! Return to the Guild.", endActions: [['close_dialogue', null]]}]
                                     ] 
                                 }], 
                                 ['transform_npc', { index: leaderId+1, newAlignment: 'foe', newRole: 'battle', newState: 'chasing', clearDialogue: true, newIsBoss: true }], 
@@ -62626,7 +62640,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                                 isBoss: false, 
                                 customDialogue: [
                                     "You the backup? Good.", 
-                                    "The Cult leader is arriving right now.", 
+                                    "The Sect leader is arriving right now.", 
                                     "Stay quiet, follow my lead, and be ready to strike."
                                 ], 
                                 options: ['Ambush', 'Wait'], 
@@ -62638,7 +62652,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                                     spawnMinion1,               
                                     spawnMinion2,               
                                     ['notify', {
-                                        text: "The Double Agent joined your party! Confront the Cult Leader!", 
+                                        text: "The Double Agent joined your party! Confront the Sect Leader!", 
                                         endActions: [['close_dialogue', null]]
                                     }]
                                 ], 
@@ -62648,7 +62662,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                             return { 
                                 state: 1, 
                                 type: 'infiltration', 
-                                tName: 'Cult Meeting', 
+                                tName: 'Sect Meeting', 
                                 qRank: 'C', 
                                 targetMap: 0,              
                                 targetX: Math.floor(agentPos.x), targetY: Math.floor(agentPos.y),
@@ -62671,7 +62685,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
 
                     quests.push({
                         id: 'c_story_2', title: "CAMPAIGN: Beast Dilemma", desc: "A chained beast awaits execution by a corrupt decree. Decide its fate.", isStory: true,
-                        status: cProgress > 1 ? 'completed' : (cProgress === 1 ? 'available' : 'locked'), lockReason: "Complete 'Cult Meeting' first.",
+                        status: cProgress > 1 ? 'completed' : (cProgress === 1 ? 'available' : 'locked'), lockReason: "Complete 'Sect Meeting' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let monsterId = setup.id + 1;
                             
@@ -62733,7 +62747,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                     });
 
                     quests.push({
-                        id: 'c_story_4', title: "CAMPAIGN: Town Assault", desc: "EMERGENCY: The Cult lays siege to the Suncat Realm. Break their lines.", isStory: true,
+                        id: 'c_story_4', title: "CAMPAIGN: Town Assault", desc: "EMERGENCY: The Sect lays siege to the Suncat Realm. Break their lines.", isStory: true,
                         status: cProgress > 3 ? 'completed' : (cProgress === 3 ? 'available' : 'locked'), lockReason: "Complete 'Shipment Intercept' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id; let invasionSpawns = [];
@@ -62812,7 +62826,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                     });
 
                 quests.push({
-                        id: 'b_ritual_1', title: "Apocalyptic Ritual", desc: "The Cult awakens a forgotten god. Shatter their monoliths.", isStory: false, status: 'available',
+                        id: 'b_ritual_1', title: "Apocalyptic Ritual", desc: "The Sect awakens a forgotten god. Shatter their monoliths.", isStory: false, status: 'available',
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let p2 = setup.id+1; let p3 = setup.id+2; let bossId = setup.id+3;
                             let ritualClimax = [
@@ -62921,7 +62935,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                                 ['spawn_ephemeral_npc', { index: inqId+2, x: setup.pos.x, y: setup.pos.y, sprite: 77.1, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], 
                                 ['notify', { text: "Grand Inquisitor: You killed the Elder. For that, you will suffer!", endActions: [['close_dialogue', null]] }]
                             ];
-                            let spawnScout = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 42, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["*Cough* Get out of here! It wasn't a beast... it's a Cult Execution Squad! IT'S A TRAP!"], endActions: ambushActions }];
+                            let spawnScout = ['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 42, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#00ff00', isTarget: true, isBoss: false, customDialogue: ["*Cough* Get out of here! It wasn't a beast... it's a Sect Execution Squad! IT'S A TRAP!"], endActions: ambushActions }];
                             return { state: 1, type: 'inquisitor', tName: 'Abyssal Hunt', qRank: 'A', targetMap: 0, targetX: Math.floor(setup.pos.x), targetY: Math.floor(setup.pos.y), spawnActions: [spawnScout] };
                         }
                     });
@@ -62931,7 +62945,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                         status: aProgress > 1 ? 'completed' : (aProgress === 1 ? 'available' : 'locked'), lockReason: "Complete 'Abyssal Hunt' first.",
                         generateBlueprint: () => {
                             let setup = getQuestSetup(); let bossId = setup.id+1; let spawnList = [];
-                            let artifactPickup = [['disappear', setup.id], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: bossId, x: setup.pos.x , y: setup.pos.y, sprite: 35, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [35, 93, 12], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The Cult forces have been routed! The artifact is secure!", endActions: [['close_dialogue', null]] }]] }], ['spawn_ephemeral_npc', { index: bossId+1, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['spawn_ephemeral_npc', { index: bossId+2, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['notify', { text: "Cult Strike Leader: Fool! We'll pry that artifact from your cold, dead hands!", endActions: [['close_dialogue', null]] }]];
+                            let artifactPickup = [['disappear', setup.id], ['play_sfx', 'horn'], ['spawn_ephemeral_npc', { index: bossId, x: setup.pos.x , y: setup.pos.y, sprite: 35, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true, isTarget: true, deck: [35, 93, 12], deathActions: [['update_quest_state', { key: 'guild_quest', state: 2 }], ['play_sfx', 'chime'], ['notify', { text: "The Sect forces have been routed! The artifact is secure!", endActions: [['close_dialogue', null]] }]] }], ['spawn_ephemeral_npc', { index: bossId+1, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['spawn_ephemeral_npc', { index: bossId+2, x: setup.pos.x , y: setup.pos.y, sprite: 56, state: 'chasing', role: 'battle', alignment: 'foe', color: '#ff0000', isBoss: true }], ['notify', { text: "Sect Strike Leader: Fool! We'll pry that artifact from your cold, dead hands!", endActions: [['close_dialogue', null]] }]];
                             spawnList.push(['spawn_ephemeral_npc', { index: setup.id, x: setup.pos.x, y: setup.pos.y, sprite: 10, state: 'stationary', role: 'dialogue', alignment: 'friendly', color: '#ffff00', isTarget: true, isBoss: false, customDialogue: ["*An ancient, glowing artifact.*"], options: ['Secure Artifact'], yesActions: artifactPickup }]);
 
                             for (let i=1; i<=3; i++) {
@@ -64209,7 +64223,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
             this.exploding = true;
             this.vx = 0; 
             this.vy = 0;
-            this.type = -209; // Dedicated impact; 98 belongs to the Treasure Snake.
+            this.type = -209; // Exact original hit animation (raw sprite 98), isolated from monster upgrades.
             
             // ==========================================
             // --- FIREBALL AoE LOGIC ---
@@ -81069,6 +81083,9 @@ for (const index of directionalPortraits) {
             setSingle(90, 1.369, -0.13); setSingle(89, 1.369, -0.13);
             setSingle(35, 1.369, -0.13); setSingle(35.1, 1.369, -0.13);
             setSingle(81, 0.9631, -0.19); setSingle(53, 0.9631, -0.19);
+            // Raw 98 has always been the hit animation. Card/NPC 98 now has its
+            // own serpent model; this effect alias must never follow that remap.
+            spriteCache[-209] = spriteCache[98];
             // Restore Globals
             ctx = originalCtx;
             tX = oldTX; tY = oldTY; tL = oldTL; tH = oldTH;
@@ -81463,7 +81480,7 @@ for (const index of directionalPortraits) {
                         let cHuntSkin  = {r: 0.95, g: 0.80, b: 0.65, a: 1.0}; // Weathered skin
                         let cHuntHair  = {r: 0.90, g: 0.80, b: 0.20, a: 1.0}; // Golden blonde
                         let cHuntEye   = {r: 0.10, g: 0.80, b: 0.20, a: 1.0}; // Piercing green eyes
-                        let cPipeWood  = {r: 0.40, g: 0.20, b: 0.05, a: 1.0}; // Cherry wood pipe
+                        let cPipeWood  = {r: 0.40, g: 0.20, b: 0.05, a: 1.0}; // Dancer’s Pupil wood pipe
                         let cPipeSmoke = {r: 0.80, g: 0.80, b: 0.85, a: 0.6}; // Translucent grey smoke
                         let cHuntBow   = {r: 0.45, g: 0.30, b: 0.15, a: 1.0}; // Yew wood bow
                     //GIANT  FROG COLORS ---
@@ -97844,7 +97861,7 @@ function BMQuestEntries(){
                                 objText = `Meet the anonymous client in ${tMapName}${coords}. Proceed with extreme caution.`;
                                 break;
                             case 'idol':
-                                objText = `Intercept the Cult supply line in ${tMapName}${coords} and secure the evil idol.`;
+                                objText = `Intercept the Sect supply line in ${tMapName}${coords} and secure the evil idol.`;
                                 break;
                             case 'ritual':
                                 objText = `Sabotage the summoning ritual in ${tMapName}${coords}. Destroy the pillars! (${gQuest.count || 0}/${gQuest.max || 3} destroyed)`;
@@ -97868,7 +97885,7 @@ function BMQuestEntries(){
                                 objText = `Monitor the trainees and secure the artifact in ${tMapName}${coords}.`;
                                 break;
                             case 'stronghold':
-                                objText = `Raid the Cult stronghold in ${tMapName}${coords} and execute the Commander.`;
+                                objText = `Raid the Sect stronghold in ${tMapName}${coords} and execute the Commander.`;
                                 break;
                             case 'finale':
                                 objText = `Warp to ${tMapName} and reinforce the S-Rank teams against the Mastermind!`;
@@ -104234,7 +104251,6 @@ const BMCreatorStories=(()=>{
  const types=['questgiver','villager','guard','boss','merchant','companion','healer','scholar','bandit','traveler'];
  const coreRoles=['questgiver','guard','merchant','healer','companion','villager','scholar','boss'];
  const pools={questgiver:[4,160,197,330],villager:[0,3,4,160,161,197],guard:[158,161,252,255],boss:[117,123,164,203,270],merchant:[4,197,203,252],companion:[3,158,255,330],healer:[2,129,131,330],scholar:[1,4,330],bandit:[15,111,117,258],traveler:[0,3,158,197]};
- const names=['Mira','Rowan','Tamsin','Alden','Nessa','Orin','Tala','Fen','Liora','Bram','Sel','Ivo','Wren','Corin','Vela','Nim','Dara','Eren','Moss','Sable','Jun','Rill'];
  const pick=(a,r)=>a[Math.floor(r()*a.length)];
  function inferRole(text){const s=text.toLowerCase();return /quest.?giver|guildmaster|elder|mayor/.test(s)?'questgiver':/boss|villain|overlord|dragon|necromancer/.test(s)?'boss':/guard|soldier|sentinel|watchman/.test(s)?'guard':/merchant|shop|trader|blacksmith/.test(s)?'merchant':/healer|priest|medic/.test(s)?'healer':/companion|join|travel with|follower/.test(s)?'companion':/scholar|librarian|sage|research/.test(s)?'scholar':/bandit|robber|thief/.test(s)?'bandit':/traveler|wanderer|pilgrim/.test(s)?'traveler':'villager';}
  function context(text){const s=text.toLowerCase();
@@ -104246,7 +104262,7 @@ const BMCreatorStories=(()=>{
  function character(type,random=Math.random,previous,brief='',exact=''){
   if(type==='auto')type=inferRole(brief);if(!types.includes(type))type='villager';const candidates=pools[type].filter(id=>BMContent.spriteKnown(id)&&id!==previous);const sprite=pick(candidates.length?candidates:pools[type],random),c=context(brief),lower=brief.toLowerCase();
   const roleLines={questgiver:[`We need someone willing to put an end to ${c.trouble}. I can show you where to begin.`,`There is work to be done beyond ${c.place}. Hear me out before you take the road.`],villager:[`I used to feel safe around ${c.place}. These days I leave a light burning for anyone still on the road.`,`Everyone has a theory about ${c.trouble}. I would settle for one honest answer.`],guard:[`State your business. Until we understand ${c.trouble}, I am keeping watch over ${c.place}.`,`Stay on the path. I have no intention of losing another traveler near ${c.place}.`],boss:[`You came to end ${c.trouble}? Then come closer. Let us see what your courage is worth.`,`Everything beyond ${c.place} answers to me. You are welcome to prove otherwise.`],merchant:[`I still keep supplies for the road, despite ${c.trouble}. What do you need?`,`Good tools are harder to find around ${c.place} these days. Look before you spend.`],companion:[`I know the routes around ${c.place}. Shall we face ${c.trouble} together?`,`A second pair of eyes might keep you alive. Would you like me along?`],healer:[`Sit down a moment. ${c.trouble.charAt(0).toUpperCase()+c.trouble.slice(1)} has taken enough from us already.`,`You will need a steady hand out there. Take this medicine before you return to ${c.place}.`],scholar:[`The records mention ${c.trouble} before. What happened around ${c.place} is no accident.`,`Follow the oldest signs near ${c.place}. Someone has been trying to keep their meaning hidden.`],bandit:[`Road toll. Pay up, or ${c.place} will be the last place you see.`,`No guards this far out. That makes your supplies our supplies.`],traveler:[`I came through ${c.place} yesterday. What I saw has kept me from sleeping.`,`People on the road keep asking about ${c.trouble}. You are the first to ask what can be done.`]};
-  let name=type==='boss'?pick(['The Ash Regent','Keeper of the Hollow','The Broken Warden','The Thorn Sovereign','Warden of the Last Bell'],random):pick(names,random)+(type==='questgiver'?' the steward':type==='guard'?' the watchkeeper':type==='merchant'?' the trader':'');
+  let name=CARD_MANIFEST_DB[sprite]?.name||({questgiver:'Elder',villager:'Villager',guard:'Guard',boss:'Leader',merchant:'Merchant',companion:'Companion',healer:'Priest',scholar:'Mage',bandit:'Rogue',traveler:'Traveler'})[type];
   const named=brief.match(/\b(?:named|called)\s+([A-Z][\p{L}'-]*(?:\s+[A-Z][\p{L}'-]*){0,2})/u);if(named)name=named[1];
   let line=pick(roleLines[type],random);
   if(/fish|angler/.test(lower)&&type!=='boss')line=`I have spent years reading these waters. Lately, even the fish seem wary of ${c.place}.`;
@@ -104450,7 +104466,7 @@ const BMCreator=(()=>{
    const m=newMap(algo[0]+algo.slice(1).toLowerCase());m.maze=fake.maze;let found=null;for(let y=1;y<size-1&&!found;y++)for(let x=1;x<size-1;x++)if(C.passable(m,x+.5,y+.5)){found={x:x+.5,y:y+.5,dir:0};break;}if(!found)throw Error('No walkable entrance. Choose a passable floor terrain.');m.spawn=found;change(()=>{if(where==='replace'){m.id=map().id;m.name=map().name;project.maps[project.maps.findIndex(v=>v.id===m.id)]=m;}else project.maps.push(m);mapId=m.id;selected='';});
   },'primary');}
  const purposes=[['questgiver','Quest giver'],['guard','Guard'],['boss','Boss with taunt'],['healer','Healer'],['scholar','Scholar'],['traveler','Traveler'],['dialogue','Person to talk to'],['battle','Enemy'],['shop','Shopkeeper'],['become_ally','Recruitable companion'],['portal','Portal']];
- function legacyCreateNPC(role='dialogue',suggest=false){const names={dialogue:['Mira','Rowan','Tamsin','Alden'],battle:['Briar sentinel','Hollow watcher','Ash prowler','Mire stalker'],shop:['Nessa the trader','Orin the provisioner','Tala the merchant'],become_ally:['Wandering knight','Runaway apprentice','Forest scout'],portal:['Ancient gate','Hidden passage','Waystone']};const pick=a=>a[Math.floor(Math.random()*a.length)];const sprite=role==='battle'?15:role==='portal'?99:role==='become_ally'?3:4;
+ function legacyCreateNPC(role='dialogue',suggest=false){const names={dialogue:['Villager','Traveler','Elder'],battle:['Briar sentinel','Hollow watcher','Ash prowler','Mire stalker'],shop:['Merchant','Shopkeeper','Trader'],become_ally:['Wandering knight','Runaway apprentice','Forest scout'],portal:['Ancient gate','Hidden passage','Waystone']};const pick=a=>a[Math.floor(Math.random()*a.length)];const sprite=role==='battle'?15:role==='portal'?99:role==='become_ally'?3:4;
   return {id:makeId('npc'),name:suggest?pick(names[role]):({dialogue:'Village guide',battle:'Goblin guard',shop:'Village merchant',become_ally:'Travelling companion',portal:'Waystone'})[role],sprite,role,alignment:role==='battle'?'foe':'friendly',state:role==='battle'?'chasing':'stationary',level:0,boss:false,cinematic:false,color:role==='battle'?'#e48772':'#82cfbb',deck:role==='battle'?[15]:[],dialogue:role==='battle'||role==='portal'?[]:[role==='shop'?'Take a look at my wares.':role==='become_ally'?'Could you use another hand?':'Welcome, traveler. The road ahead is yours to discover.'],options:role==='become_ally'?['Join me','Maybe later']:[],actions:{yes:role==='become_ally'?[['become_ally',sprite],['disappear',null]]:[],no:[],end:[],death:[]},...(role==='shop'?{shop:{cards:[50,63],items:[],hires:[]}}:{}),...(role==='portal'?{destination:{id:map()?.id||0,x:map()?.spawn.x||1.5,y:map()?.spawn.y||1.5,dir:0}}:{})};
  }
  function thumb(parent,id,size=96){const c=el('canvas',parent,null,'portrait');c.width=c.height=size;try{if(id>=333&&id<=EXTRA_LAST_ID&&!requestExtraSprite(id))id=EXTRA_SPRITES.find(s=>id>=s.id&&id<=s.id+2).sources[0];const f=selectPortraitFrame(spriteCache[id],0,0,0,100,128);if(f?.image){const g=c.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(f.image,0,0,size,size);}}catch{}return c;}
@@ -104564,7 +104580,7 @@ const BMCreator=(()=>{
  function askStory(){if(story.variation)story.seed=makeId('seed');const scope=story.scope,seed=story.seed,exact=story.exact,brief=scope==='character'?story.npcBrief:story.brief;BMCreatorAI.ask(brief,scope,story.role,()=>{if(BMCreatorAI.response){try{let r=BMCreatorStories.parse(BMCreatorAI.response);r.seed=seed;if(scope==='map')r=BMCreatorStories.complete(r,seed,brief);else if(exact.trim())r.cast[0].line=exact;story.reply=JSON.stringify(r,null,2);}catch{story.reply=BMCreatorAI.response;}story.scope=scope;story.replyScope=scope;}if(tab==='Scenario')render();});}
  function renderScenario(parent){const layout=el('div',parent,null,'layout'),left=el('section',layout,null,'panel'),right=el('section',layout,null,'panel');el('h2',left,'Generate an adventure or a character');para(left,'Choose what to make, describe it, then generate. Adventures include terrain, a recurring cast of roles, dialogue and two playable quests. Each new variation changes names, appearances and layout.');choice(left,'Create',story.scope,[['map','Complete adventure'],['character','One NPC with dialogue']],v=>{story.scope=v;render();});
   if(story.scope==='map'){field(left,'Adventure brief',story.brief,v=>story.brief=v,'textarea','Example: A haunted mountain village beneath an abandoned watchtower.');para(left,'Every adventure includes a quest giver, guard, merchant, healer, companion, villager, scholar and boss, plus a few other encounters.');}
-  else{field(left,'Describe your NPC',story.npcBrief,v=>story.npcBrief=v,'textarea','Example: A kind old fisherman named Rowan whose daughter disappeared near the river.');choice(left,'Character role',story.role,[['auto','Infer from description'],...BMCreatorStories.types.map(v=>[v,v])],v=>story.role=v);field(left,'Exact dialogue (optional)',story.exact,v=>story.exact=v,'textarea','Paste the lines you want, one per line. Leave blank for a contextual draft.');}
+  else{field(left,'Describe your NPC',story.npcBrief,v=>story.npcBrief=v,'textarea','Example: A kind old fisherman whose daughter disappeared near the river.');choice(left,'Character role',story.role,[['auto','Infer from description'],...BMCreatorStories.types.map(v=>[v,v])],v=>story.role=v);field(left,'Exact dialogue (optional)',story.exact,v=>story.exact=v,'textarea','Paste the lines you want, one per line. Leave blank for a contextual draft.');}
   choice(left,'Variation',story.variation?'fresh':'fixed',[['fresh','New variation each generation'],['fixed','Repeat the same seed']],v=>story.variation=v==='fresh');btn(left,story.scope==='map'?'Generate adventure':'Generate NPC',()=>draftScenario(true),'primary');btn(left,'Draft for review',()=>draftScenario(false));para(left,'Local generation uses templates and recognized context words. Ask Suncat for more detailed prose and unusual character instructions. You can edit everything afterward.','help');
   const settings=details(left,'Generation settings');field(settings,'Scenario seed',story.seed,v=>story.seed=v);if(story.scope==='map'){choice(settings,'Layout',story.layout,['From scenario',...BMCreatorGen.layouts],v=>story.layout=v);choice(settings,'Landmark',story.landmark,[['From scenario','From scenario'],['none','None'],['tower','Winding tower'],['house','Two-storey house'],['cellar','Underground cellar']],v=>story.landmark=v);choice(settings,'Map size',story.size,[24,32,40,50,64,80],v=>story.size=Number(v));}para(settings,'Keep a seed to reproduce a draft. New generation creates another map or preset; Undo removes it.');
   const online=details(left,'Ask Suncat instead');btn(online,'Ask Suncat',askStory).disabled=BMCreatorAI.busy;btn(online,'Cancel request',()=>BMCreatorAI.cancel()).disabled=!BMCreatorAI.busy;btn(online,'Copy Suncat request',()=>copy(BMCreatorAI.prompt(story.scope==='map'?story.brief:story.npcBrief,story.scope,story.role)));para(online,BMCreatorAI.status,'help');para(online,'Uses existing public game chat and needs a connected named character. Keep the brief short: the server accepts 600 characters. Suncat’s draft stays here for review before it is applied. Local generation works offline.');
@@ -105123,7 +105139,7 @@ const BMGuildBuilding=(()=>{
   for(const n of m.npcs||[]){const p=positions[n.index];if(p)Object.assign(n,{x:p[0],y:p[1],groundZ:p[2],homeX:p[0],homeY:p[1]});}
   const clerk=m.npcs.find(n=>n.index===201),original=clerk?.dialogueFactory;
   if(clerk){const spawn=clerk.onSpawn;clerk.onSpawn=(n,d)=>{spawn?.(n,d);Object.assign(n,{fixedWorldAngle:Math.PI/2,dirX:0,dirY:1});};}
-  if(original)clerk.dialogueFactory=d=>{const q=original(d);return {...q,text:[...q.text,'Most trainers are here on the ground floor; the Knight guards the entrance outside. Hunter now teaches from his cabin in Savage Forest, through the eastern gap beyond Tintagel. The Guildmaster, Vanguard Commander, Elder and library are upstairs. Take the staircase on the left.']};};
+  if(original)clerk.dialogueFactory=d=>{const q=original(d);return {...q,text:[...q.text,'Most trainers are here on the ground floor; the Knight guards the entrance outside. Hunter now teaches from his cabin in Savage Forest, through the eastern gap beyond Tintagel. The King, Queen, Elder and library are upstairs. Take the staircase on the left.']};};
   m.guildBuilding={floor,roof,bounds,entrance:{x:53.5,y:34.5,z:0},stairs:{x:46.5,y:31.5,z:0},landing:{x:56.5,y:31.5,z:floor}};
  }
  install();return {floor,roof,bounds,resident,reconcile};
@@ -105148,7 +105164,7 @@ const BMTavern=(()=>{
   for(const x of [-.35,-.12,.12])p('arc',x,.07,-.35,.11,.06,.07,{r:.35,g:.46,b:.16});
   prepareSpriteNormals(m);art.set(key,m);return m;
  }
- const def={index:8008,name:'Guild bartender',x:59.5,y:16.5,groundZ:0,sprite:75,role:'dialogue',state:'stationary',alignment:'friendly',service:'merchant',companionEligible:false,
+ const def={index:8008,name:'Bartender',x:59.5,y:16.5,groundZ:0,sprite:75,role:'dialogue',state:'stationary',alignment:'friendly',service:'merchant',companionEligible:false,
   customDialogue:['A hot meal before the road? I buy herbs and kitchen ingredients, too.'],
   dialogueFactory:()=>({text:['A hot meal before the road? I buy herbs and kitchen ingredients, too.'],options:['Meals and ingredients','Leave'],yesActions:[['open_shop',stock()]],noActions:[['close_dialogue',null]]})};
  MAP_DB[0].npcs.push(def);
@@ -105378,35 +105394,35 @@ globalThis.BMRefuge=BMRefuge;globalThis.BMDeathRecovery=BMDeathRecovery;
 /* Patron-led classes. Quest receipts live in character memory, never in a shared map. */
 const BMClassPaths=(()=>{
  const patrons={
-  clerk:{name:'Guild clerk',map:0,id:201,where:'Guild ground floor',intro:'They say the Emperor’s court, who resides in Tintagel, knows the secret of utilizing cards in battle. Strange, isn’t it? Playing cards?'},
-  knight:{name:'The eccentric Knight',map:0,id:8005,where:'Beside the guild entrance',intro:'Train first. Questions later. I have prepared a place where a mistake will bruise your pride instead of ending your journey.'},
-  noble:{name:'Lady Rowan',map:2,id:8401,where:'Tintagel court, east side',intro:'A recommendation carries my name. Show me what you do when someone needs help before you ask what it will earn you.'},
-  priest:{name:'Travelling priest',map:2,id:8402,where:'Southwest promenade, Tintagel',intro:'An acolyte learns to notice suffering, then to offer useful care. Let us begin with one person.'},
-  mage:{name:'Mistress Elowen',map:2,id:8403,where:'Northern trading house, Tintagel',intro:'Observe first. Describe precisely. A patron cannot recommend an apprentice who mistakes a guess for a discovery.'},
-  broker:{name:'The Quiet Broker',map:2,id:8404,where:'Tintagel tavern',intro:'No grand speeches. Recover a misplaced ledger without hurting anyone, and perhaps we can discuss an apprenticeship.'},
+  clerk:{name:'Dancer',map:0,id:201,where:'Guild ground floor',intro:'They say the Emperor’s court, who resides in Tintagel, knows the secret of utilizing cards in battle. Strange, isn’t it? Playing cards?'},
+  knight:{name:'Knight',map:0,id:8005,where:'Beside the guild entrance',intro:'Train first. Questions later. I have prepared a place where a mistake will bruise your pride instead of ending your journey.'},
+  noble:{name:'Noble',map:2,id:8401,where:'Tintagel court, east side',intro:'A recommendation carries my name. Show me what you do when someone needs help before you ask what it will earn you.'},
+  priest:{name:'Priest',map:2,id:8402,where:'Southwest promenade, Tintagel',intro:'An acolyte learns to notice suffering, then to offer useful care. Let us begin with one person.'},
+  mage:{name:'Mage',map:2,id:8403,where:'Northern trading house, Tintagel',intro:'Observe first. Describe precisely. A patron cannot recommend an apprentice who mistakes a guess for a discovery.'},
+  broker:{name:'Rogue',map:2,id:8404,where:'Tintagel tavern',intro:'No grand speeches. Recover a misplaced ledger without hurting anyone, and perhaps we can discuss an apprenticeship.'},
   hunter:{name:'Hunter',map:5,id:8006,where:'Cabin beyond Tintagel’s eastern tree gap',intro:'The forest teaches anyone who pays attention. Bring back what I ask for, and leave enough for what lives here.'},
-  pupil:{name:'Cherry, the dancer’s pupil',map:2,id:8405,where:'Tintagel tavern',intro:'She is too busy running the guild to teach every step herself. I can help. First learn where to place your feet; then learn where to place everyone’s attention.'},
+  pupil:{name:'Dancer’s Pupil',map:2,id:8405,where:'Tintagel tavern',intro:'She is too busy running the guild to teach every step herself. I can help. First learn where to place your feet; then learn where to place everyone’s attention.'},
   patient:{name:'Injured courier',map:2,id:8406,where:'Tintagel market square',intro:'The road can wait. My leg cannot. Did the priest send you?'}
  };
  const visit=(key,text)=>({kind:'visit',key,text}),node=(key,text)=>({kind:'node',key,text}),trial=(key,text,style='combat')=>({kind:'trial',key,text,style});
  const paths=[
   {id:'warrior',name:'Warrior',from:['none'],patron:'clerk',base:'warrior',sprite:252,stats:{0:4},level:0,growth:[0],skills:[50],lesson:50,desc:'Double STR training gains. Learn Sword before your first practical test.',steps:[visit('knight','Deliver the clerk’s training request to the Knight outside the guild.'),trial('knight','Complete the Knight’s first sparring course.'),visit('clerk','Return the training report to the guild clerk.')]},
-  {id:'squire',name:'Squire',from:['none','warrior'],patron:'knight',base:'knight',sprite:158,stats:{0:4,1:4},level:0,growth:[0,1],skills:[64],lesson:50,desc:'Double STR and CON training gains. Earn a noble’s letter, then become the eccentric Knight’s squire.',steps:[visit('noble','Ask Lady Rowan at Tintagel court for a recommendation.'),visit('priest','Carry her medicine parcel to the priest on the southwest promenade.'),visit('noble','Return for Lady Rowan’s signed recommendation.'),trial('knight','Present the letter and complete the Knight’s squire trial.')]},
+  {id:'squire',name:'Squire',from:['none','warrior'],patron:'knight',base:'knight',sprite:158,stats:{0:4,1:4},level:0,growth:[0,1],skills:[64],lesson:50,desc:'Double STR and CON training gains. Earn a noble’s letter, then become the eccentric Knight’s squire.',steps:[visit('noble','Ask Noble at Tintagel court for a recommendation.'),visit('priest','Carry her medicine parcel to the priest on the southwest promenade.'),visit('noble','Return for Noble’s signed recommendation.'),trial('knight','Present the letter and complete the Knight’s squire trial.')]},
   {id:'acolyte',name:'Acolyte',from:['none'],patron:'priest',base:'priest',sprite:255,stats:{2:4},level:0,growth:[1,2],skills:[25],desc:'Double CON and INT training gains. Learn Heal through a small act of service.',steps:[node('moonleaf','Gather the marked silver-veined moonleaf beyond the eastern forest gap.'),visit('priest','Bring the moonleaf to the priest to prepare a dressing.'),visit('patient','Deliver the dressing to the injured courier in Tintagel market.'),visit('priest','Return for the priest’s recommendation.')]},
-  {id:'apprentice',name:'Apprentice',from:['none'],patron:'mage',base:'mage',sprite:261,stats:{2:4},level:0,growth:[2],skills:[22],desc:'Double INT training gains. Study the town’s ward marks and learn Meditation.',steps:[node('glyphCourt','Observe the ward stone outside the court.'),node('glyphGate','Observe the ward stone beside the eastern tree gap.'),visit('mage','Bring your observations to Mistress Elowen.')]},
-  {id:'rogue',name:'Rogue',from:['none'],patron:'broker',base:'rogue',sprite:258,stats:{3:4},level:0,growth:[3],skills:[41],desc:'Double AGI training gains. Earn the local ring’s trust and learn Loot / lockpicking.',steps:[node('ledger','Recover the hidden ledger behind Tintagel’s western storehouse.'),visit('broker','Return the sealed ledger to the Quiet Broker.')]},
+  {id:'apprentice',name:'Apprentice',from:['none'],patron:'mage',base:'mage',sprite:261,stats:{2:4},level:0,growth:[2],skills:[22],desc:'Double INT training gains. Study the town’s ward marks and learn Meditation.',steps:[node('glyphCourt','Observe the ward stone outside the court.'),node('glyphGate','Observe the ward stone beside the eastern tree gap.'),visit('mage','Bring your observations to Mage.')]},
+  {id:'rogue',name:'Rogue',from:['none'],patron:'broker',base:'rogue',sprite:258,stats:{3:4},level:0,growth:[3],skills:[41],desc:'Double AGI training gains. Earn the local ring’s trust and learn Loot / lockpicking.',steps:[node('ledger','Recover the hidden ledger behind Tintagel’s western storehouse.'),visit('broker','Return the sealed ledger to the Rogue.')]},
   {id:'hunter',name:'Hunter',from:['none'],patron:'hunter',base:'hunter',sprite:264,stats:{3:4},level:0,growth:[3],skills:[53,234],desc:'Double AGI training gains. Learn Camp and Squirrel from the Hunter at his forest cabin.',steps:[node('moonleaf','Find the marked silver-veined moonleaf west of the cabin.'),node('glowcap','Find the blue-flecked mushroom east of the cabin.'),visit('hunter','Bring both specimens to Hunter.')]},
-  {id:'dancer',name:'Dancer',from:['none'],patron:'pupil',base:'rogue',sprite:249,stats:{3:4},level:0,growth:[3],skills:[1180],desc:'Double AGI training gains. Captivating Dance briefly distracts nearby ordinary enemies; stronger minds resist.',steps:[visit('clerk','Ask the busy guild dancer to introduce her pupil.'),trial('pupil','Practice Cherry’s three travelling steps in the rehearsal room.','dance'),visit('pupil','Return to Cherry for your first complete dance.')]},
-  {id:'knight',name:'Knight',from:['squire'],patron:'knight',base:'knight',sprite:158,stats:{0:6,1:6},level:5,growth:[0,1],skills:[65],desc:'Advance your shield training and learn Shield Bash.',steps:[visit('noble','Seek Lady Rowan’s endorsement of your service as a squire.'),trial('knight','Complete the Knight’s second trial.'),visit('knight','Swear your oath before the Knight.')]},
-  {id:'mage',name:'Mage',from:['apprentice'],patron:'mage',base:'mage',sprite:261,stats:{2:6},level:5,growth:[2],skills:[26],lesson:26,desc:'Learn Fireball and demonstrate your practical control in a warded trial.',steps:[trial('mage','Complete the mage’s practical examination.'),visit('mage','Present yourself for Mistress Elowen’s formal recommendation.')]},
+  {id:'dancer',name:'Dancer',from:['none'],patron:'pupil',base:'rogue',sprite:249,stats:{3:4},level:0,growth:[3],skills:[1180],desc:'Double AGI training gains. Captivating Dance briefly distracts nearby ordinary enemies; stronger minds resist.',steps:[visit('clerk','Ask the busy guild dancer to introduce her pupil.'),trial('pupil','Practice Dancer’s Pupil’s three travelling steps in the rehearsal room.','dance'),visit('pupil','Return to Dancer’s Pupil for your first complete dance.')]},
+  {id:'knight',name:'Knight',from:['squire'],patron:'knight',base:'knight',sprite:158,stats:{0:6,1:6},level:5,growth:[0,1],skills:[65],desc:'Advance your shield training and learn Shield Bash.',steps:[visit('noble','Seek Noble’s endorsement of your service as a squire.'),trial('knight','Complete the Knight’s second trial.'),visit('knight','Swear your oath before the Knight.')]},
+  {id:'mage',name:'Mage',from:['apprentice'],patron:'mage',base:'mage',sprite:261,stats:{2:6},level:5,growth:[2],skills:[26],lesson:26,desc:'Learn Fireball and demonstrate your practical control in a warded trial.',steps:[trial('mage','Complete the mage’s practical examination.'),visit('mage','Present yourself for Mage’s formal recommendation.')]},
   {id:'priest',name:'Priest',from:['acolyte'],patron:'priest',base:'priest',sprite:255,stats:{1:6,2:6},level:5,growth:[1,2],skills:[12,28],desc:'Learn Bind and Defence; advance from individual care to protecting others.',steps:[node('glowcap','Gather a blue-flecked mushroom for the chapel’s medicine stores.'),visit('patient','Check on the recovering courier.'),visit('priest','Return to take your vows.')]},
   {id:'centurion',name:'Centurion',from:['warrior'],patron:'clerk',base:'warrior',sprite:252,stats:{0:10,1:8},level:12,growth:[0,1],skills:[51,58],prestige:true,desc:'Double STR and CON training gains. Lead from the front with Overpower and Intimidate.',steps:[trial('knight','Complete the veteran formation trial.'),visit('clerk','Receive your commission from the guild clerk.')]},
-  {id:'royal-knight',name:'Royal Knight',from:['knight'],patron:'noble',base:'knight',sprite:306,stats:{0:8,1:10},level:12,growth:[0,1],skills:[66,65],prestige:true,desc:'Double STR and CON training gains. A royal commission and advanced armour training.',steps:[trial('knight','Complete the royal guard’s proving course.'),visit('noble','Return to Lady Rowan to receive the royal commission.')]},
+  {id:'royal-knight',name:'Royal Knight',from:['knight'],patron:'noble',base:'knight',sprite:306,stats:{0:8,1:10},level:12,growth:[0,1],skills:[66,65],prestige:true,desc:'Double STR and CON training gains. A royal commission and advanced armour training.',steps:[trial('knight','Complete the royal guard’s proving course.'),visit('noble','Return to Noble to receive the royal commission.')]},
   {id:'dragon-knight',name:'Dragon Knight',from:['knight'],patron:'knight',base:'knight',sprite:306,stats:{0:10,2:8},level:12,growth:[0,2],skills:[206],prestige:true,tier:1,desc:'Double STR and INT training gains. Learn Wyvern after the draconic proving trial. Requires Avalon Silver tier.',steps:[visit('hunter','Ask Hunter how to approach a wyvern without provoking it.'),trial('knight','Complete the draconic proving trial.'),visit('knight','Return to be recognized as a Dragon Knight.')]},
   {id:'high-priest',name:'High Priest',from:['priest'],patron:'priest',base:'priest',sprite:255,stats:{1:8,2:10},level:12,growth:[1,2],skills:[19,27],prestige:true,desc:'Double CON and INT training gains. Deepen your restorative and protective disciplines.',steps:[node('moonleaf','Gather moonleaf for the chapel’s pilgrimage supplies.'),visit('patient','Visit the courier now recovering under the chapel’s care.'),trial('priest','Complete the vigil of protection.'),visit('priest','Return for your consecration.')]},
   {id:'assassin',name:'Assassin',from:['rogue'],patron:'broker',base:'rogue',sprite:258,stats:{0:8,3:10},level:12,growth:[0,3],skills:[52,95],prestige:true,desc:'Double STR and AGI training gains. Learn Backstab and Flurry in a private proving ground.',steps:[trial('broker','Complete the shadow ring’s proving course.'),visit('broker','Return for recognition by the ring.')]},
   {id:'ranger',name:'Ranger',from:['hunter'],patron:'hunter',base:'hunter',sprite:264,stats:{2:8,3:10},level:12,growth:[2,3],skills:[191,60],prestige:true,desc:'Double INT and AGI training gains. Learn Wolf and Pixie through the Hunter’s advanced instruction.',steps:[node('glowcap','Identify the rare mushroom beside the forest cabin.'),trial('hunter','Complete the woodland proving course.'),visit('hunter','Return to Hunter for your ranger’s recognition.')]},
-  {id:'archmage',name:'Archmage',from:['mage','battle-mage'],patron:'mage',base:'mage',sprite:330,stats:{2:12},level:15,growth:[2],skills:[93,1001],prestige:true,tier:2,desc:'Double INT training gains. Learn Lightning and Drain. Requires Avalon Gold tier.',steps:[node('glyphCourt','Revisit the court ward with an experienced eye.'),node('glyphGate','Revisit the boundary ward at the forest gap.'),trial('mage','Complete the final arcane examination.'),visit('mage','Return to Mistress Elowen for recognition.')]}
+  {id:'archmage',name:'Archmage',from:['mage','battle-mage'],patron:'mage',base:'mage',sprite:330,stats:{2:12},level:15,growth:[2],skills:[93,1001],prestige:true,tier:2,desc:'Double INT training gains. Learn Lightning and Drain. Requires Avalon Gold tier.',steps:[node('glyphCourt','Revisit the court ward with an experienced eye.'),node('glyphGate','Revisit the boundary ward at the forest gap.'),trial('mage','Complete the final arcane examination.'),visit('mage','Return to Mage for recognition.')]}
  ];
  const nodes={moonleaf:{map:5,id:8421,x:8.5,y:52.5,sprite:1161,name:'Silver-veined moonleaf',text:'You take one mature leaf and leave the roots undisturbed.'},glowcap:{map:5,id:8422,x:24.5,y:52.5,sprite:1162,name:'Blue-flecked mushroom',text:'You identify the blue flecks and collect one sound specimen.'},ledger:{map:2,id:8423,x:12.5,y:56.5,sprite:1163,name:'Hidden ledger',text:'The ledger is sealed. You recover it without opening the binding.'},glyphCourt:{map:2,id:8424,x:31.5,y:37.5,sprite:1164,name:'Court ward stone',text:'The inner line turns inward: the ward gathers and holds mana.'},glyphGate:{map:2,id:8425,x:94.5,y:44.5,sprite:1164,name:'Boundary ward stone',text:'The outer line turns outward: the ward releases mana along the boundary.'}};
  let previous='explore',selectedPatron=null,notice='',skip=null;
@@ -105486,7 +105502,7 @@ const BMClassPaths=(()=>{
   const npcs=[{index:8490,x:12.5,y:20.5,sprite:1164,name:'Return sigil',role:'dialogue',state:'stationary',alignment:'friendly',isCinematic:true,companionEligible:false,onSpawn(n){n._classTrialExit=true;BMClassArt.resource(n,1164);}}];
   for(const [i,x,y]of [[0,7.5,16.5],[1,16.5,11.5],[2,7.5,6.5]])npcs.push({index:8491+i,x,y,sprite:1164,name:(t.style==='dance'?'Dance step ':'Training standard ')+(i+1),role:'dialogue',state:'stationary',alignment:'friendly',isCinematic:true,companionEligible:false,onSpawn(n){n._classTrialMark=i+1;BMClassArt.resource(n,1164);}});
   if(t.style!=='dance')for(let i=0;i<3;i++)npcs.push({index:8495+i,x:9.5+i*3,y:8.5+i*3,sprite:252,name:'Warded sparring partner '+(i+1),role:'battle',state:'wandering',alignment:'foe',level:t.advanced?8:0,deck:[50],onSpawn(n){n._classTrialFoe=true;if(!t.advanced){n.stat=[[1,4,0],[1,4,0],[1,4,0],[1,4,0]];n.maxWards=1;n.currentWardTime=3;n.innateSpells=[];}n.xp=0;n.rewardCard=null;n.customDialogue=null;n.endActions=[];if(t.defeated.includes(n.index))Object.assign(n,{isDead:true,visible:false});}});
-  MAP_DB[t.map]={name:t.style==='dance'?'Cherry’s rehearsal room':'The Knight’s warded proving ground',maze,npcs,spawn:{x:12.5,y:19.5,dir:0},skyColor:'#506e81',floorColor:'#68734b',biome:'None',weather:'clear',slabs:[]};d.defaultSpawns[t.map]={x:12.5,y:19.5,dir:0};
+  MAP_DB[t.map]={name:t.style==='dance'?'Dancer’s Pupil’s rehearsal room':'The Knight’s warded proving ground',maze,npcs,spawn:{x:12.5,y:19.5,dir:0},skyColor:'#506e81',floorColor:'#68734b',biome:'None',weather:'clear',slabs:[]};d.defaultSpawns[t.map]={x:12.5,y:19.5,dir:0};
  }
  function inTrial(d=Dungeon){return !!state(d).trial&&state(d).trial.map===d.mapID;}
  function enterTrial(id){if(state().trial)return false;if(BMOnline.publicState()?.self?.combatUntil>Date.now()){notice='Finish player combat before entering training.';BMShell.invalidate();return false;}const p=id?def(id):null,r=p&&rec(p.id),step=p?.steps[r?.stage],key=step?.key||'knight';if(!at(key)||p&&(!r.accepted||step?.kind!=='trial'||p.prestige&&!finale()))return false;
@@ -105514,19 +105530,30 @@ const BMClassPaths=(()=>{
 })();
 globalThis.BMClassPaths=BMClassPaths;
 
-/* Cherry shares the original dancer's choreography, with a distinct palette. */
+/* Dancer’s Pupil shares the original dancer's choreography, with a distinct palette. */
 const BMClassArt=(()=>{
  const cache=new Map();
  function model(id){if(cache.has(id))return cache.get(id);let result;
   if(id===1160){const source=BattleMusic.spriteDisplay.model(249,{width:8.1,height:8.3,centerY:5});result={...source,meshes:source.meshes.map(row=>row.map(mesh=>({...mesh,faces:mesh.faces.map(f=>{let color=f.color;if(color&&Math.abs(color.r-.10)<.001&&Math.abs(color.g-.05)<.001&&Math.abs(color.b-.08)<.001)color={...color,r:.31,g:.14,b:.055};else if(color&&Math.abs(color.r-.70)<.001&&Math.abs(color.g-.10)<.001&&Math.abs(color.b-.40)<.001)color={...color,r:.69,g:.045,b:.12};return {...f,color};})})))};}
-  else {let mesh;if(id===1163)mesh=BMPortableArt.mesh(1133);else if(id===1164){const base=BMPortableArt.mesh(1118);mesh={...base,faces:base.faces.map(f=>({...f,color:{r:.2,g:.55,b:.85}}))};}else{mesh={vertices:[],faces:[],outwardRects:true};const p=(shape,x,y,z,sx,sy,sz,c,rz=0)=>add3dShapeRigged(mesh,shape,{x,y,z,rx:0,ry:0,rz},sx,sy,sz,c),stem={r:.34,g:.48,b:.18};
-    if(id===1161){p('arc',0,.18,0,.055,.5,.055,stem);for(const [x,y,a]of [[-.23,-.05,-.6],[.23,-.3,.6],[-.18,-.46,-.6]]){p('arc',x,y,0,.29,.11,.12,{r:.24,g:.62,b:.39},a);p('rec',x,y-.035,-.1,.23,.015,.012,{r:.8,g:.91,b:.76},a);}}
+  else {let mesh;if(id===1163)mesh=BMPortableArt.mesh(1133);else if(id===1169)mesh=BMPortableArt.mesh(1110);else if(id===1164){const base=BMPortableArt.mesh(1118);mesh={...base,faces:base.faces.map(f=>({...f,color:{r:.2,g:.55,b:.85}}))};}else{mesh={vertices:[],faces:[],outwardRects:true};const p=(shape,x,y,z,sx,sy,sz,c,rz=0)=>add3dShapeRigged(mesh,shape,{x,y,z,rx:0,ry:0,rz},sx,sy,sz,c),stem={r:.34,g:.48,b:.18};
+    if(id===1165){
+     const wood={r:.22,g:.13,b:.10};for(const x of [-.48,.48])p('rec',x,0,0,.035,.65,.16,wood);p('rec',0,0,.14,.48,.65,.025,wood);
+     for(const y of [-.64,-.22,.20,.62])p('rec',0,y,0,.5,.025,.18,wood);
+     const colors=[{r:.35,g:.13,b:.13},{r:.19,g:.25,b:.23},{r:.45,g:.34,b:.18},{r:.25,g:.21,b:.32}];
+     for(let row=0;row<3;row++)for(let i=0;i<8;i++){const y=-.44+row*.42,x=-.40+i*.115,h=.14+(i%3)*.018;p('rec',x,y,0,.045,h,.12,colors[(row+i)%4]);p('rec',x,y-h*.5,-.125,.035,.009,.006,{r:.65,g:.49,b:.25});}
+    }else if(id===1168){
+     const wood={r:.27,g:.16,b:.10},iron={r:.57,g:.62,b:.65};for(const x of [-.55,.55]){p('rec',x,0,0,.045,.63,.055,wood);p('rec',x,.58,0,.12,.045,.25,wood);}for(const y of [-.38,.31])p('rec',0,y,0,.61,.05,.07,wood);
+     for(const x of [-.33,0,.33]){p('rec',x,-.17,-.1,.045,.40,.025,iron);p('tri',x,-.61,-.1,.045,.08,.025,iron,Math.PI);p('rec',x,.25,-.1,.13,.025,.04,iron);p('rec',x,.39,-.1,.035,.12,.035,wood);}
+    }else if(id===1166){const iron={r:.13,g:.12,b:.13};p('rec',0,.55,0,.23,.04,.23,iron);p('arc',0,.04,0,.035,.52,.035,iron);p('arc',0,-.48,0,.18,.07,.18,iron);}
+    else if(id===1167){p('arc',0,.15,0,.20,.3,.20,{r:.18,g:.35,b:.29,a:.65});p('arc',0,-.18,0,.22,.04,.22,{r:.2,g:.16,b:.13});p('arc',0,.14,0,.12,.18,.12,{r:.42,g:.44,b:.22});}
+    else if(id===1170){const wood={r:.24,g:.15,b:.1};p('rec',0,.25,0,.38,.06,.65,wood);for(const x of [-.32,.32])for(const z of [-.59,.59])p('rec',x,.39,z,.035,.16,.035,wood);p('rec',0,.14,0,.34,.06,.6,{r:.28,g:.27,b:.31});p('rec',0,.07,-.43,.3,.05,.15,{r:.65,g:.63,b:.56});}
+    else if(id===1161){p('arc',0,.18,0,.055,.5,.055,stem);for(const [x,y,a]of [[-.23,-.05,-.6],[.23,-.3,.6],[-.18,-.46,-.6]]){p('arc',x,y,0,.29,.11,.12,{r:.24,g:.62,b:.39},a);p('rec',x,y-.035,-.1,.23,.015,.012,{r:.8,g:.91,b:.76},a);}}
     else{p('arc',0,.22,0,.13,.48,.13,{r:.84,g:.79,b:.65});p('arc',0,-.27,0,.56,.26,.49,{r:.27,g:.29,b:.49});for(const [x,z]of [[-.21,-.3],[.19,-.3],[.31,.1],[-.31,.1],[0,0]])p('arc',x,-.5,z,.07,.025,.07,{r:.44,g:.81,b:.96});}prepareSpriteNormals(mesh);}
    result={meshes:[[mesh]],x:5,y:5,scale:12};}
   cache.set(id,result);return result;
  }
  function draw(id,angle=.2,pose=0,frame=0){const m=model(id),row=m.meshes[pose%m.meshes.length];render3dMesh(row[frame%row.length],m.x,m.y,m.scale,0,angle,0);}
- function bake(id){if(spriteCache[id])return;const saved={ctx,tX,tY,tL,tH};try{const dirs=[];for(let dir=0;dir<8;dir++){const frames=[];for(let frame=0;frame<(id===1160?4:1);frame++){const c=document.createElement('canvas');c.width=c.height=256;ctx=c.getContext('2d');tX=tY=0;tL=tH=256;draw(id,dir*Math.PI/4,0,frame);const pixels=ctx.getImageData(0,0,256,256).data;let bottom=255;while(bottom>0&&!Array.from({length:256},(_,x)=>pixels[(bottom*256+x)*4+3]).some(a=>a>8))bottom--;const ground=document.createElement('canvas');ground.width=ground.height=256;ground.getContext('2d').drawImage(c,0,255-bottom);frames.push(ground);}dirs.push(frames);}spriteCache[id]=dirs;SPRITE_CONFIGS[id]={...(SPRITE_CONFIGS[249]||{}),scale:id===1160?.8:.28,hover:0,faceZ:.5,facePan:0};}finally{({ctx,tX,tY,tL,tH}=saved);}}
+ function bake(id){if(spriteCache[id])return;const saved={ctx,tX,tY,tL,tH};try{const dirs=[];for(let dir=0;dir<8;dir++){const frames=[];for(let frame=0;frame<(id===1160?4:1);frame++){const c=document.createElement('canvas');c.width=c.height=256;ctx=c.getContext('2d');tX=tY=0;tL=tH=256;draw(id,dir*Math.PI/4,0,frame);const pixels=ctx.getImageData(0,0,256,256).data;let bottom=255;while(bottom>0&&!Array.from({length:256},(_,x)=>pixels[(bottom*256+x)*4+3]).some(a=>a>8))bottom--;const ground=document.createElement('canvas');ground.width=ground.height=256;ground.getContext('2d').drawImage(c,0,255-bottom);frames.push(ground);}dirs.push(frames);}spriteCache[id]=dirs;SPRITE_CONFIGS[id]={...(SPRITE_CONFIGS[249]||{}),scale:id===1160?.8:id===1165?1.55:id===1166?1.1:id===1169?.55:id===1168?.75:id===1170?1.05:.28,hover:0,faceZ:.5,facePan:0};}finally{({ctx,tX,tY,tL,tH}=saved);}}
  function pupil(n){bake(1160);n._classArt=1160;}
  function resource(n,id){bake(id);n._classArt=id;}
  return {model,draw,pupil,resource};
@@ -105556,7 +105583,7 @@ BMClassPaths.install();
 /* Guild campaign: recurring veterans and a personal, resumable stronghold. */
 const BMGuildStory=(()=>{
  const TEMPLATE=8841,BOSS=884110,WARDENS=[884102,884103],ENTRY=884100,EXIT=884120;
- const team={201:{name:'Mara · Dancer',sprite:249,text:'I danced through the cult’s outer guard while Brann broke their gate. S-rank work is not all strength. Solgata leads our company; these days I keep the guild running and Cherry teaches my first steps.'},8001:{name:'Brann · Warrior',sprite:252,text:'S-rank does not mean you stop training. I hold the line for Mara and Vey; Iona keeps us standing. Watch my footing before you watch my blade.'},8002:{name:'Vey · Rogue',sprite:258,text:'I work inside the cult when I can. Elder Malrec commands their field cells. He burns his own escape routes behind him, so bring proof, not a boast that you almost caught him.'},8003:{name:'Eris · Mage',sprite:261,text:'Our captain, Solgata, lays the wards. I make the openings. If we meet in a fight, watch for my signal before you spend your mana.'},8004:{name:'Iona · Priest',sprite:255,text:'Our S-rank company returns together. That is the measure I care about. Solgata’s wards buy me time; even our strongest need someone watching their back.'},8005:{name:'Sir Garrick · Knight',sprite:306,text:'Yes, I travel with Solgata’s S-rank company. Today I guard this door. A knight who thinks a door beneath him will someday find his home undefended.'},8006:{name:'Alder · Hunter',sprite:264,text:'I still answer Solgata’s call. But my work starts here: tracks, missing travellers, and the forest’s warnings. A guild can learn much from one quiet cabin.'}};
+ const team={201:{name:'Dancer',sprite:249,text:'I danced through the sect’s outer guard while Warrior broke their gate. S-rank work is not all strength. Solgata leads our company; these days I keep the guild running and Dancer’s Pupil teaches my first steps.'},8001:{name:'Warrior',sprite:252,text:'S-rank does not mean you stop training. I hold the line for Dancer and Rogue; Priest keeps us standing. Watch my footing before you watch my blade.'},8002:{name:'Rogue',sprite:258,text:'I work inside the sect when I can. Sect Elder commands their field cells. He burns his own escape routes behind him, so bring proof, not a boast that you almost caught him.'},8003:{name:'Mage',sprite:261,text:'Our captain, Solgata, lays the wards. I make the openings. If we meet in a fight, watch for my signal before you spend your mana.'},8004:{name:'Priest',sprite:255,text:'Our S-rank company returns together. That is the measure I care about. Solgata’s wards buy me time; even our strongest need someone watching their back.'},8005:{name:'Knight',sprite:306,text:'Yes, I travel with Solgata’s S-rank company. Today I guard this door. A knight who thinks a door beneath him will someday find his home undefended.'},8006:{name:'Hunter',sprite:264,text:'I still answer Solgata’s call. But my work starts here: tracks, missing travellers, and the forest’s warnings. A guild can learn much from one quiet cabin.'}};
  let joining=false,lastTick=0;
  const state=(d=Dungeon)=>{d.memory??={};return d.memory.guildStory??={version:1,met:{},escapes:[],chapter:{defeated:[],clues:[]}};};
  const chapter=()=>state().chapter;
@@ -105565,19 +105592,19 @@ const BMGuildStory=(()=>{
  function sharedVisit(){return active()&&!!state().visit.shared;}
  function save(){Dungeon.requestSave();BMShell.invalidate();}
  function tell(sprite,text,actions=[]){Dungeon.executeActions([['notify',{sprite,text,endActions:[['close_dialogue',null],...actions]}]]);}
- function scene(kind){const c=chapter();if(kind==='warning'){if(c.warningSeen)return;c.pendingWarning=true;save();tell(5,['Malrec: Kekekeke… too late. You broke the wardens. You broke me.','While you were here, our main force reached your guild. This garrison was never meant to win. Only to keep you here.','Go on. Run home. See what your victory has cost.'],[['guild_story',{action:'warning_read'}]]);}else if(kind==='briefing'){tell(185,['Solgata: You have met our veterans. Mara, Brann, Vey, Eris, Iona, Garrick and Alder. We are the guild’s S-rank company.','Rank is responsibility. When someone else cannot get home, we go after them. Learn our faces; you will not be alone out there.'],[['guild_story',{action:'briefed'}]]);}}
+ function scene(kind){const c=chapter();if(kind==='warning'){if(c.warningSeen)return;c.pendingWarning=true;save();tell(5,['Sect Elder: Kekekeke… too late. You broke the wardens. You broke me.','While you were here, our main force reached your guild. This garrison was never meant to win. Only to keep you here.','Go on. Run home. See what your victory has cost.'],[['guild_story',{action:'warning_read'}]]);}else if(kind==='briefing'){tell(185,['Solgata: You have met our veterans. Dancer, Warrior, Rogue, Mage, Priest, Knight and Hunter. We are the guild’s S-rank company.','Rank is responsibility. When someone else cannot get home, we go after them. Learn our faces; you will not be alone out there.'],[['guild_story',{action:'briefed'}]]);}}
  function action(p){if(p.action==='warning_read'){Object.assign(chapter(),{warningSeen:true,pendingWarning:false});save();}if(p.action==='escape'){if(!state().escapes.includes(p.encounter))state().escapes.push(p.encounter);save();}if(p.action==='briefed'){state().briefed=true;save();}}
  function makeMap(id,d=Dungeon){const maze=Array.from({length:40},()=>Array(40).fill(1));const carve=(x,y,w,h)=>{for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)maze[j][i]=0;};
   carve(18,34,5,5);carve(20,33,1,1);carve(19,9,3,24);carve(12,3,17,10);carve(4,17,13,12);carve(23,17,13,12);carve(16,21,8,3);maze[33][20]=0;
   const npcs=[],foe=(index,x,y,sprite,name,boss=false)=>npcs.push({index,x,y,sprite,name,role:'battle',alignment:'foe',state:'stationary',isBoss:boss,level:boss?12:7,deck:boss?[26,12,28]:[50,26],onSpawn(n){n._guildStronghold=true;n.innateSpells=boss?[26,12]:[26];n.isRanged=true;n.respawnTime=Infinity;if((state(d).visit?.defeated||[]).includes(index))Object.assign(n,{isDead:true,visible:false});}});
-  foe(884101,20.5,28.5,56,'Cult sentry');foe(WARDENS[0],9.5,22.5,5,'West seal warden',true);foe(WARDENS[1],30.5,22.5,5,'East seal warden',true);foe(884104,7.5,18.5,56,'Archive guard');foe(884105,33.5,26.5,56,'Barracks guard');foe(884106,17.5,9.5,56,'Hall guard');foe(884107,24.5,9.5,56,'Hall guard');foe(BOSS,20.5,6.5,5,'Elder Malrec',true);
+  foe(884101,20.5,28.5,56,'Sect sentry');foe(WARDENS[0],9.5,22.5,5,'West seal warden',true);foe(WARDENS[1],30.5,22.5,5,'East seal warden',true);foe(884104,7.5,18.5,56,'Archive guard');foe(884105,33.5,26.5,56,'Barracks guard');foe(884106,17.5,9.5,56,'Hall guard');foe(884107,24.5,9.5,56,'Hall guard');foe(BOSS,20.5,6.5,5,'Sect Elder',true);
   const prop=(index,x,y,sprite,name,kind,text)=>npcs.push({index,x,y,sprite,name,role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,customDialogue:[text],onSpawn(n){n._guildProp=kind;if(sprite>=1161)BMClassArt.resource(n,sprite);}});
-  prop(EXIT,21.5,36.5,1164,'Return sigil','exit','The sigil returns you to the southeast port.');prop(884121,5.5,18.5,1163,'March orders','orders','Most companies departed before dawn. Destination: the travellers’ guild. Malrec’s seal authorizes the march.');prop(884122,34.5,18.5,1163,'Garrison ledger','ledger','An entire stronghold, provisioned for only a handful of guards. The wardens were ordered to delay intruders, not call for aid.');prop(884123,26.5,4.5,1164,'Spent portal focus','focus','The focus is cold. Its last destination was within the guild’s walls. Someone opened the way from inside.');
-  const m={name:'Malrec’s Stronghold',maze,npcs,spawn:{x:20.5,y:36.5,dir:0},skyColor:'#20253d',floorColor:'#686875',biome:'None',weather:'clear',playerOnlyPassages:[{x:20,y:33}],guildChapter:1,slabs:[]};
+  prop(EXIT,21.5,36.5,1164,'Return sigil','exit','The sigil returns you to the southeast port.');prop(884121,5.5,18.5,1163,'March orders','orders','Most companies departed before dawn. Destination: the travellers’ guild. The Sect Elder’s seal authorizes the march.');prop(884122,34.5,18.5,1163,'Garrison ledger','ledger','An entire stronghold, provisioned for only a handful of guards. The wardens were ordered to delay intruders, not call for aid.');prop(884123,26.5,4.5,1164,'Spent portal focus','focus','The focus is cold. Its last destination was within the guild’s walls. Someone opened the way from inside.');
+  const m={name:'Sect Stronghold',maze,npcs,spawn:{x:20.5,y:36.5,dir:0},skyColor:'#20253d',floorColor:'#686875',biome:'None',weather:'clear',playerOnlyPassages:[{x:20,y:33}],guildChapter:1,slabs:[]};
   for(const [x,y]of [[5,18],[6,18],[34,18],[34,19],[25,4],[26,4]])m.slabs.push({x,y,bottom:0,top:.25,tile:15});
-  MAP_DB[id]=m;d.defaultSpawns[id]={x:20.5,y:36.5,dir:0};BMGuildDecor.addSurface(id,[{x:13,y:4,w:15,h:8,color:'#6b5357'},{x:19,y:12,w:3,h:21,color:'#77747a'},{x:18,y:34,w:5,h:5,color:'#526b67'}]);return m;
+  globalThis.BMStronghold?.prepare(m,d);MAP_DB[id]=m;d.defaultSpawns[id]={x:20.5,y:36.5,dir:0};BMGuildDecor.addSurface(id,[{x:13,y:4,w:15,h:8,color:'#6b5357'},{x:19,y:12,w:3,h:21,color:'#77747a'},{x:18,y:34,w:5,h:5,color:'#526b67'}]);return m;
  }
- function blueprint(){return {state:1,type:'stronghold',storyChapter:1,tName:'Malrec’s Last Stand',title:'FINALE I · Malrec’s Last Stand',qRank:'A',targetMap:0,targetX:95,targetY:88,spawnActions:[]};}
+ function blueprint(){return {state:1,type:'stronghold',storyChapter:1,tName:'Sect Stronghold',title:'FINALE I · Sect Stronghold',qRank:'A',targetMap:0,targetX:95,targetY:88,spawnActions:[]};}
  function localMap(){let h=2166136261;for(const c of BMActivity.identity?.()||BMStorage.getItem('runestones_player_id')||playerName)h=Math.imul(h^c.charCodeAt(0),16777619);return 400000000+(h>>>0)%100000000;}
  function beginVisit(data){const c=chapter(),s=state();s.visit={map:data.map,phaseId:data.phaseId||null,shared:!!data.shared,eligible:!!data.eligible,defeated:data.defeated||[],returnTo:{mapID:0,x:95.5,y:88.5,dir:0,groundZ:0}};if(data.eligible){c.map=data.map;c.phaseId=data.phaseId||null;}makeMap(data.map);BMWorldTalk.dismiss();Dungeon.currentSpeaker=null;startGame=preGame='explore';Dungeon.loadMap(data.map);if(Dungeon.mapID!==data.map){delete s.visit;return false;}Object.assign(Dungeon,{x:20.5,y:36.5,groundZ:0,dir:0,currentAngle:0});Dungeon._respawnProtectedUntil=Date.now()+10000;BMPlayerMotion.reset();save();return true;}
  function enter(){if(joining||BMOnline.publicState()?.self?.combatUntil>Date.now())return false;const party=BMOnline.publicState()?.party;if(!ownQuest()&&!party?.guildChapter)return false;
@@ -105585,7 +105612,7 @@ const BMGuildStory=(()=>{
   if(!ownQuest())return false;return beginVisit({map:chapter().map||localMap(),defeated:chapter().defeated||[],eligible:true});
  }
  function leave(){if(!active())return false;const v=state().visit;delete state().visit;Dungeon.isDead=Dungeon.isDying=false;Dungeon.loadMap(v.returnTo.mapID);Object.assign(Dungeon,{x:v.returnTo.x,y:v.returnTo.y,dir:v.returnTo.dir,groundZ:v.returnTo.groundZ});Dungeon.projectiles=[];Dungeon.currentSpeaker=Dungeon.currentEnemy=null;Dungeon._respawnProtectedUntil=Date.now()+10000;BMPlayerMotion.reset();startGame=preGame='explore';save();return true;}
- function complete(){if(!ownQuest()||!state().visit?.eligible)return false;const c=chapter();if(c.complete)return false;c.complete=true;c.pendingWarning=true;Dungeon.memory.guild_quest.state=2;BMActivity.record('guild_chapter','Broke the seal wardens and defeated Elder Malrec in his stronghold.',{chapter:1});save();setTimeout(()=>{if(startGame==='explore')scene('warning');},200);return true;}
+ function complete(){if(!ownQuest()||!state().visit?.eligible)return false;const c=chapter();if(c.complete)return false;c.complete=true;c.pendingWarning=true;Dungeon.memory.guild_quest.state=2;BMActivity.record('guild_chapter','Broke the seal wardens and defeated Sect Elder in his stronghold.',{chapter:1});save();setTimeout(()=>{if(startGame==='explore')scene('warning');},200);return true;}
  function defeated(index){const v=state().visit;if(!v)return;v.defeated??=[];if(!v.defeated.includes(index))v.defeated.push(index);if(v.eligible)chapter().defeated=[...new Set([...(chapter().defeated||[]),index])];save();}
  function receiveReward(data){if(data.guildChapter!==1)return;const q=Dungeon.memory.guild_quest;if(q?.type!=='stronghold'||q.storyChapter!==1||q.state!==1)return;chapter().complete=true;chapter().pendingWarning=true;q.state=2;save();}
  function room(data){if(!active()||!data?.room||data.mapID!==Dungeon.mapID)return;for(const n of data.npcs||[])if(n.dead)defeated(n.index);}
@@ -105593,7 +105620,7 @@ const BMGuildStory=(()=>{
   d.npcs=d.npcs.filter(n=>n.index!==885140);
   const restore=n=>{if([884130,207888].includes(n.index)||d.mapID===10&&n.index===208){n.name='Solgata · S-rank captain';if('sprite' in n)n.sprite=185;if('type' in n)n.type=185;}return n;};
   d.npcs.forEach(restore);for(const key of Object.keys(d.memory).filter(k=>k.startsWith('spawned_')))if(Array.isArray(d.memory[key]))d.memory[key]=d.memory[key].filter(n=>n.index!==885140).map(restore);
-const s=state(d),q=d.memory.guild_quest;if(q&&['infiltration','expedition'].includes(q.type)&&!q.rivalId)rival(q);if(q?.rivalId){const n=d.npcs.find(n=>n.index===q.rivalId);if(n)n.name='Elder Malrec';}if(q?.type==='stronghold'&&!q.storyChapter){if(q.state===2){s.chapter.legacyReady=true;}else if(q.state===1){const old=q.spawnActions||[];const ids=new Set();walkActions(old,(a,p)=>{if(a==='spawn_ephemeral_npc')ids.add(p.index);});d.actionQueue=d.actionQueue.filter(a=>a[0]!=='spawn_ephemeral_npc'||!ids.has(a[1]?.index));for(const key of Object.keys(d.memory).filter(k=>k.startsWith('spawned_')))d.memory[key]=d.memory[key].filter(n=>!ids.has(n.index));d.npcs=d.npcs.filter(n=>!ids.has(n.index));d.memory.guild_quest=blueprint();}}
+const s=state(d),q=d.memory.guild_quest;if(q?.storyChapter===1){q.tName='Sect Stronghold';q.title='FINALE I · Sect Stronghold';}if(q&&['infiltration','expedition'].includes(q.type)&&!q.rivalId)rival(q);if(q?.rivalId){const n=d.npcs.find(n=>n.index===q.rivalId);if(n)n.name='Sect Elder';}if(q?.type==='stronghold'&&!q.storyChapter){if(q.state===2){s.chapter.legacyReady=true;}else if(q.state===1){const old=q.spawnActions||[];const ids=new Set();walkActions(old,(a,p)=>{if(a==='spawn_ephemeral_npc')ids.add(p.index);});d.actionQueue=d.actionQueue.filter(a=>a[0]!=='spawn_ephemeral_npc'||!ids.has(a[1]?.index));for(const key of Object.keys(d.memory).filter(k=>k.startsWith('spawned_')))d.memory[key]=d.memory[key].filter(n=>!ids.has(n.index));d.npcs=d.npcs.filter(n=>!ids.has(n.index));d.memory.guild_quest=blueprint();}}
   if(q?.storyChapter===1&&q.type==='stronghold'){q.targetX=95;q.targetY=88;}
   if(s.visit?.returnTo?.mapID===0)Object.assign(s.visit.returnTo,{x:95.5,y:88.5});
   if(d.mapID===0)d.syncStoryNPCs([ENTRY,884130]);
@@ -105601,28 +105628,28 @@ const s=state(d),q=d.memory.guild_quest;if(q&&['infiltration','expedition'].incl
   if(active(d))for(const n of d.npcs){if(s.visit.defeated?.includes(n.index))Object.assign(n,{isDead:true,visible:false});}
   if(d.mapID===2&&d.memory.fake_emperor_dead){d.syncStoryNPCs([202]);const n=d.npcs.find(n=>n.index===202),def=MAP_DB[2].npcs.find(n=>n.index===202);if(n){n.dialogueFactory=def.dialogueFactory;n.customDialogue=def.customDialogue.slice();n._visitDialogueDone=false;}}
  }
- function interact(n){if(n.index===ENTRY&&Dungeon.mapID===0){enter();return true;}if(n.index===884130&&Dungeon.mapID===0){n.customDialogue=['Solgata: Mara, Brann, Vey, Eris, Iona, Garrick and Alder travel with me. We are the guild’s S-rank company.','Rank is responsibility. When someone else cannot get home, we go after them. Learn our faces; you will not be alone out there.'];n.options=null;n.endActions=[['close_dialogue',null],['guild_story',{action:'briefed'}]];n.startDialogue(Dungeon);return true;}if(active()&&n._guildProp){if(n._guildProp==='exit'){if(chapter().pendingWarning&&!chapter().warningSeen){scene('warning');return true;}leave();return true;}const c=chapter();c.clues??=[];if(!c.clues.includes(n._guildProp))c.clues.push(n._guildProp);save();tell(n.type,n.customDialogue);return true;}
+ function interact(n){if(n.index===ENTRY&&Dungeon.mapID===0){enter();return true;}if(n.index===884130&&Dungeon.mapID===0){n.customDialogue=['Solgata: Dancer, Warrior, Rogue, Mage, Priest, Knight and Hunter travel with me. We are the guild’s S-rank company.','Rank is responsibility. When someone else cannot get home, we go after them. Learn our faces; you will not be alone out there.'];n.options=null;n.endActions=[['close_dialogue',null],['guild_story',{action:'briefed'}]];n.startDialogue(Dungeon);return true;}if(active()&&n._guildProp){if(['laboratory','stronghold_chest'].includes(n._guildProp))return BMStronghold.chest(n);if(n._guildProp==='exit'){if(chapter().pendingWarning&&!chapter().warningSeen){scene('warning');return true;}leave();return true;}const c=chapter();c.clues??=[];if(!c.clues.includes(n._guildProp))c.clues.push(n._guildProp);save();tell(n.type,n.customDialogue);return true;}
   const who=team[n.index];if(!who||!(Dungeon.mapID===0||n.index===8006&&Dungeon.mapID===5))return false;
   if(!state().met[n.index]){state().met[n.index]=true;save();}
   BMTouch.cancel();BMLock.clear();Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;
   BMDialogueFlow.revisit(n,()=>{n.triggerInteraction(Dungeon);if(startGame==='explore')n.startDialogue(Dungeon);});return true;
  }
  function walkActions(list,fn){for(const a of list||[]){if(!Array.isArray(a))continue;const p=a[1];fn(a[0],p,a);if(p&&typeof p==='object')for(const key of ['yesActions','noActions','endActions','deathActions','newDeathActions'])walkActions(p[key],fn);}}
- function rival(q){if(!['infiltration','expedition'].includes(q.type))return q;let id=null;walkActions(q.spawnActions,(a,p)=>{if(a==='spawn_ephemeral_npc'&&(q.type==='infiltration'&&p.isBoss&&p.isTarget||q.type==='expedition'&&p.isBoss&&p.isTarget)){id=p.index;p.name='Elder Malrec';p.sprite=5;p.deck=[26,12,28];p.customDialogue=['Malrec: Vey. The guild’s little shadow. I wondered when you would bring your new accomplice.','Stand aside. The Master has plans for your guild.'];}});if(!id)return q;q.rivalId=id;q.rivalEncounter=q.type;const escape=[['update_quest_state',{key:'guild_quest',state:2}],['notify',{sprite:5,text:q.type==='infiltration'?['Malrec: You exposed my cell. Enjoy your scraps of evidence.','Vey: A prepared escape seal! Keep clear—the seal is burning out. We have the orders; let him run.']:['Malrec: Keep the relic, rookie. I have already taken what the Master needs.','Eris: He burned a second escape focus. There will be nowhere left to run at his stronghold.'],endActions:[['guild_story',{action:'escape',encounter:q.type}],['close_dialogue',null]]}]];
-  walkActions(q.spawnActions,(a,p,event)=>{if(a==='become_ally'&&p===42){event[0]='notify';event[1]={sprite:258,text:'Vey: I will seal the escape behind us. Get Malrec’s orders!',endActions:[['close_dialogue',null]]};}if(a==='notify'&&p?.text?.startsWith?.('Cult Strike Leader:'))p.text=p.text.replace('Cult Strike Leader:','Malrec:');if(a==='notify'&&p?.text?.includes?.('Double Agent joined'))p.text='Vey has secured the approach. Confront Malrec!';if(p?.index===id){if(a==='spawn_ephemeral_npc')p.deathActions=escape;if(a==='transform_npc')p.newDeathActions=escape;}if(a==='spawn_ephemeral_npc'&&q.type==='infiltration'&&p.sprite===256){p.sprite=258;p.name='Vey · Rogue';p.customDialogue=['Vey: You recognize me? Good. Keep your voice down.','Malrec commands this cult cell. Help me uncover his orders before he can destroy them.'];}if(a==='become_ally'&&p===42){} });return q;
+ function rival(q){if(!['infiltration','expedition'].includes(q.type))return q;let id=null;walkActions(q.spawnActions,(a,p)=>{if(a==='spawn_ephemeral_npc'&&(q.type==='infiltration'&&p.isBoss&&p.isTarget||q.type==='expedition'&&p.isBoss&&p.isTarget)){id=p.index;p.name='Sect Elder';p.sprite=5;p.deck=[26,12,28];p.customDialogue=['Sect Elder: Rogue. The guild’s little shadow. I wondered when you would bring your new accomplice.','Stand aside. The Master has plans for your guild.'];}});if(!id)return q;q.rivalId=id;q.rivalEncounter=q.type;const escape=[['update_quest_state',{key:'guild_quest',state:2}],['notify',{sprite:5,text:q.type==='infiltration'?['Sect Elder: You exposed my cell. Enjoy your scraps of evidence.','Rogue: A prepared escape seal! Keep clear—the seal is burning out. We have the orders; let him run.']:['Sect Elder: Keep the relic, rookie. I have already taken what the Master needs.','Mage: He burned a second escape focus. There will be nowhere left to run at his stronghold.'],endActions:[['guild_story',{action:'escape',encounter:q.type}],['close_dialogue',null]]}]];
+  walkActions(q.spawnActions,(a,p,event)=>{if(a==='become_ally'&&p===42){event[0]='notify';event[1]={sprite:258,text:'Rogue: I will seal the escape behind us. Get the Sect Elder’s orders!',endActions:[['close_dialogue',null]]};}if(a==='notify'&&p?.text?.startsWith?.('Sect Strike Leader:'))p.text=p.text.replace('Sect Strike Leader:','Sect Elder:');if(a==='notify'&&p?.text?.includes?.('Double Agent joined'))p.text='Rogue has secured the approach. Confront Sect Elder!';if(p?.index===id){if(a==='spawn_ephemeral_npc')p.deathActions=escape;if(a==='transform_npc')p.newDeathActions=escape;}if(a==='spawn_ephemeral_npc'&&q.type==='infiltration'&&p.sprite===256){p.sprite=258;p.name='Rogue';p.customDialogue=['Rogue: You recognize me? Good. Keep your voice down.','Sect Elder commands this sect cell. Help me uncover his orders before he can destroy them.'];}if(a==='become_ally'&&p===42){} });return q;
  }
- function entries(){const s=state(),c=chapter(),out=[];if(Object.keys(s.met||{}).length||s.briefed)out.push({id:'guild-veterans',title:'The guild’s S-rank company',text:'Captain: Solgata, the black fairy. Mara (Dancer), Brann (Warrior), Vey (Rogue), Eris (Mage), Iona (Priest), Garrick (Knight) and Alder (Hunter). Their ordinary lessons continue between missions.',completed:!!s.briefed});if(ownQuest()||c.complete||active())out.push({id:'guild-stronghold',title:'FINALE I · Malrec’s Last Stand',completed:!!c.rewardClaimed,text:(c.complete?'Malrec is defeated. Return to the guild.':`Go to the southeast port. Enter the storehouse at 95,88 and use the doorway against its north wall. Break both seal wardens, then confront Malrec. Wardens: ${WARDENS.filter(id=>(state().visit?.defeated||c.defeated||[]).includes(id)).length}/2.`)+'\n\nClues: '+(c.clues||[]).join(', ')+'\n\nThe entrance refuge and return sigil remain safe. Party helpers may enter; completion belongs to adventurers with this commission.'});return out;}
+ function entries(){const s=state(),c=chapter(),out=[];if(Object.keys(s.met||{}).length||s.briefed)out.push({id:'guild-veterans',title:'The guild’s S-rank company',text:'Captain: Solgata, the black fairy. Dancer, Warrior, Rogue, Mage, Priest, Knight and Hunter. Their ordinary lessons continue between missions.',completed:!!s.briefed});if(ownQuest()||c.complete||active())out.push({id:'guild-stronghold',title:'FINALE I · Sect Stronghold',completed:!!c.rewardClaimed,text:(c.complete?'Sect Elder is defeated. Return to the guild.':`Go to the southeast port. Enter the storehouse at 95,88 and use the doorway against its north wall. Break both seal wardens, then confront Sect Elder. Wardens: ${WARDENS.filter(id=>(state().visit?.defeated||c.defeated||[]).includes(id)).length}/2.`)+'\n\nClues: '+(c.clues||[]).join(', ')+'\n\nThe entrance refuge and return sigil remain safe. Party helpers may enter; completion belongs to adventurers with this commission.'});return out;}
  function install(){
   for(const [id,p]of Object.entries(team)){const def=MAP_DB[id==8006?5:0].npcs.find(n=>n.index===Number(id));if(def){def.name=p.name;if(id==201){const factory=def.dialogueFactory;def.dialogueFactory=d=>({...factory(d),options:['Listen','Leave']});}else def.options=['Listen','Leave'];}}
   MAP_DB[0].npcs.push({index:ENTRY,x:95.5,y:86.05,sprite:-35,name:'Storehouse doorway',role:'dialogue',alignment:'friendly',state:'stationary',companionEligible:false,isCinematic:true,spawnCondition:d=>d.memory.guild_quest?.type==='stronghold'&&d.memory.guild_quest.state===1||!!BMOnline.publicState()?.party?.guildChapter,onSpawn(n){n.nonBlocking=true;n.isTarget=true;}});
   MAP_DB[0].npcs.push({index:884130,x:50.5,y:17.5,sprite:185,name:'Solgata · S-rank captain',role:'dialogue',alignment:'friendly',state:'stationary',companionEligible:false,isCinematic:true,customDialogue:['Solgata watches over the guild beneath the oak crest.']});
-  const quests=Explore.prototype.getBountyList;Explore.prototype.getBountyList=function(...a){const list=quests.apply(this,a);for(const q of list){if(q.id==='a_stronghold_1'){Object.assign(q,{title:'FINALE I · Malrec’s Last Stand',desc:'Follow the southeast road to the port storehouse (95,88). Its north-wall doorway leads to Malrec’s stronghold. Break the two wardens, examine the garrison and stop the commander.',isStory:true,status:state(this).chapter.rewardClaimed||this.memory.guild_rank==='S'?'completed':(this.memory.a_rank_progress||0)>=2?'available':'locked',generateBlueprint:blueprint});}else if(q.id==='a_finale'&&q.status!=='completed'){q.status=(state(this).chapter.complete||state(this).chapter.legacyReady)&&(this.memory.a_rank_progress||0)>=2?'available':'locked';q.lockReason='Complete Malrec’s stronghold chapter.';}else if(['c_story_1','a_story_2'].includes(q.id)){const gen=q.generateBlueprint;q.generateBlueprint=()=>rival(gen());if(q.id==='c_story_1')q.desc='Meet Vey, the guild’s undercover veteran, and expose Elder Malrec’s local cult cell.';}}return list;};
+  const quests=Explore.prototype.getBountyList;Explore.prototype.getBountyList=function(...a){const list=quests.apply(this,a);for(const q of list){if(q.id==='a_stronghold_1'){Object.assign(q,{title:'FINALE I · Sect Stronghold',desc:'Follow the southeast road to the port storehouse (95,88). Its north-wall doorway leads to the sect stronghold. Break the two wardens, examine the garrison and stop the commander.',isStory:true,status:state(this).chapter.rewardClaimed||this.memory.guild_rank==='S'?'completed':(this.memory.a_rank_progress||0)>=2?'available':'locked',generateBlueprint:blueprint});}else if(q.id==='a_finale'&&q.status!=='completed'){q.status=(state(this).chapter.complete||state(this).chapter.legacyReady)&&(this.memory.a_rank_progress||0)>=2?'available':'locked';q.lockReason='Complete the sect stronghold chapter.';}else if(['c_story_1','a_story_2'].includes(q.id)){const gen=q.generateBlueprint;q.generateBlueprint=()=>rival(gen());if(q.id==='c_story_1')q.desc='Meet Rogue, the guild’s undercover veteran, and expose Sect Elder’s local sect cell.';}}return list;};
   const turnIn=BMGuild.turnIn;BMGuild.turnIn=function(){const q=Dungeon.memory.guild_quest,isChapter=q?.type==='stronghold'&&q.storyChapter===1;if(isChapter&&(q.state!==2||!chapter().complete||chapter().rewardClaimed))return false;const paid=turnIn.apply(this,arguments);if(paid&&isChapter){chapter().rewardClaimed=true;save();}return paid;};
   const abandon=BMGuild.abandon;BMGuild.abandon=function(){if(Dungeon.memory.guild_quest?.storyChapter===1&&chapter().complete)return false;return abandon.apply(this,arguments);};
   const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...a){const s=state(this);if(s.visit?.map===Number(id))makeMap(Number(id),this);const out=load.call(this,id,...a);reconcile(this);return out;};
   const kill=Explore.prototype.killNPC;Explore.prototype.killNPC=function(n,...a){if(active(this)&&n?._guildStronghold){if(n.isDead)return false;if(n.index===BOSS&&!WARDENS.every(id=>state(this).visit.defeated.includes(id)))return false;if(sharedVisit()&&!this._onlineApplyingKill)return false;const result=kill.call(this,n,true,...a.slice(1));if(!n.isDead)return result;defeated(n.index);if(n.index===BOSS&&!sharedVisit())complete();return result;}const q=this.memory.guild_quest;if(n?.index===q?.rivalId){if(n.isDead)return false;Object.assign(n,{isDead:true,visible:false});this.memory[this.mapID+'_'+n.index]={permanent:true};this.executeActions(n.deathActions||[]);this.requestSave();return true;}return kill.call(this,n,...a);};
   const hit=NPC.prototype.absorbHit;NPC.prototype.absorbHit=function(...a){if(active()&&this._guildStronghold&&(sharedVisit()&&!BMOnline.shared(this)||this.index===BOSS&&!WARDENS.every(id=>state().visit.defeated.includes(id))))return true;return hit.apply(this,a);};
-  const update=NPC.prototype.update;NPC.prototype.update=function(...a){if(active()&&this._guildStronghold&&(sharedVisit()&&!BMOnline.shared(this)||Dungeon.y>=33))return;return update.apply(this,a);};
+  const update=NPC.prototype.update;NPC.prototype.update=function(...a){if(active()&&this._guildStronghold&&(sharedVisit()&&!BMOnline.shared(this)||Dungeon.x>=18&&Dungeon.x<23&&Dungeon.y>=33&&Dungeon.y<39))return;return update.apply(this,a);};
   const playerHit=Explore.prototype.absorbHit;Explore.prototype.absorbHit=function(...a){if(active(this)&&this.x>=18&&this.x<23&&this.y>=33&&this.y<39)return true;return playerHit.apply(this,a);};
   const die=Explore.prototype.killPlayer;Explore.prototype.killPlayer=function(...a){if(active(this)&&!sharedVisit()){Object.assign(this,{x:20.5,y:36.5,targetMapX:20.5,targetMapY:36.5,isSlidingToTile:false,isDead:false,isDying:false,currentWardTime:this.maxWards*this.timePerWard,groundZ:0});this.projectiles=[];this._respawnProtectedUntil=Date.now()+10000;BMPlayerMotion.reset();startGame='explore';save();return;}return die.apply(this,a);};
   setInterval(()=>{if(typeof Dungeon==='undefined'||!Dungeon.memory)return;const t=Date.now();if(t-lastTick<900)return;lastTick=t;if(startGame==='explore'){reconcile();if(chapter().pendingWarning&&!chapter().warningSeen)scene('warning');}},1000);
@@ -105635,19 +105662,19 @@ const BMGuildFinale=(()=>{
  'use strict';
  const CREST=-208,ELDERS=[885201,885202],MASTER=885301,PORTAL=885290,EXIT=885291;
  const cast={
-  201:{name:'Mara · Dancer',sprite:249,destination:'Desert',siege:'Stay in step with me, rookie. I can hold their eyes. Get upstairs and break their command!',after:'There are courts in the desert where a dance can open doors that armies cannot. Perhaps Cherry and I could teach there. But tonight, we stay together.'},
-  8001:{name:'Brann · Warrior',sprite:252,destination:'Germany',siege:'Put your strength through the weapon, not your shoulders! Go! I will hold this floor!',after:'Germany. That is where I would raise our next training hall. The road is not open yet. There is work for my hands right here first.'},
-  8002:{name:'Vey · Rogue',sprite:258,destination:'Tintagel',siege:'Keep low. The elders think their soldiers have you pinned. Take the stairs while they are watching me.',after:'Tintagel has alleys no royal messenger will enter. A small branch there could hear things the court never does. I am only thinking aloud; nobody leaves tonight.'},
-  8003:{name:'Eris · Mage',sprite:261,destination:'Desert',siege:'Channel your mana between their volleys! The elders upstairs are sustaining the assault.',after:'The desert has old observatories buried beneath its sands. I could build a school there. Mara would bring the music; I would try not to set the curtains alight.'},
-  8004:{name:'Iona · Priest',sprite:255,destination:'Snow mountain',siege:'Breathe. Let your wards settle. We will keep the wounded safe; you must reach the elders!',after:'I keep thinking of the snow mountain, and travellers caught above the last shelter. A warm room, a lamp, a place to heal. Someday. There are people to tend here first.'},
-  8005:{name:'Sir Garrick · Knight',sprite:306,destination:'Brittany',siege:'The doorway is mine! Through the hall, up the western stairs. Strike at their command!',after:'Brittany could use an open gate and a knight who answers it. When the time comes, I will ride there under this oak. Not before everyone here can stand.'},
-  8006:{name:'Alder · Hunter',sprite:264,destination:'Savage Forest',siege:'I followed their trail from the eastern woods. Their leaders are above us. Take them down; I will cover the wounded.',after:'The forest will still be there tomorrow. My cabin can shelter anyone who needs it. For now, I am staying with the company.'},
-  207:{name:'King · Guildmaster',sprite:309,destination:'Tintagel castle',siege:'Two elders hold the breach! We will hold their guard. Break both elders and their army will falter!',after:'The Emperor has offered the Queen and me a room in Tintagel castle. We could keep the guild’s records there. For now, the records—and our people—stay together.'},
-  206:{name:'Queen · Vanguard Commander',sprite:312,destination:'Tintagel castle',siege:'The card reader is holding their portal. Defeat the elders before they can collapse it!',after:'A room in the castle would give us a place to coordinate the branches. Tintagel is an offer, not a farewell. There are still names to account for here.'},
+  201:{name:'Dancer',sprite:249,destination:'Desert',siege:'Stay in step with me, rookie. I can hold their eyes. Get upstairs and break their command!',after:'There are courts in the desert where a dance can open doors that armies cannot. Perhaps Dancer’s Pupil and I could teach there. But tonight, we stay together.'},
+  8001:{name:'Warrior',sprite:252,destination:'Germany',siege:'Put your strength through the weapon, not your shoulders! Go! I will hold this floor!',after:'Germany. That is where I would raise our next training hall. The road is not open yet. There is work for my hands right here first.'},
+  8002:{name:'Rogue',sprite:258,destination:'Tintagel',siege:'Keep low. The elders think their soldiers have you pinned. Take the stairs while they are watching me.',after:'Tintagel has alleys no royal messenger will enter. A small branch there could hear things the court never does. I am only thinking aloud; nobody leaves tonight.'},
+  8003:{name:'Mage',sprite:261,destination:'Desert',siege:'Channel your mana between their volleys! The elders upstairs are sustaining the assault.',after:'The desert has old observatories buried beneath its sands. I could build a school there. Dancer would bring the music; I would try not to set the curtains alight.'},
+  8004:{name:'Priest',sprite:255,destination:'Snow mountain',siege:'Breathe. Let your wards settle. We will keep the wounded safe; you must reach the elders!',after:'I keep thinking of the snow mountain, and travellers caught above the last shelter. A warm room, a lamp, a place to heal. Someday. There are people to tend here first.'},
+  8005:{name:'Knight',sprite:306,destination:'Brittany',siege:'The doorway is mine! Through the hall, up the western stairs. Strike at their command!',after:'Brittany could use an open gate and a knight who answers it. When the time comes, I will ride there under this oak. Not before everyone here can stand.'},
+  8006:{name:'Hunter',sprite:264,destination:'Savage Forest',siege:'I followed their trail from the eastern woods. Their leaders are above us. Take them down; I will cover the wounded.',after:'The forest will still be there tomorrow. My cabin can shelter anyone who needs it. For now, I am staying with the company.'},
+  207:{name:'King',sprite:309,destination:'Tintagel castle',siege:'Two elders hold the breach! We will hold their guard. Break both elders and their army will falter!',after:'The Emperor has offered the Queen and me a room in Tintagel castle. We could keep the guild’s records there. For now, the records—and our people—stay together.'},
+  206:{name:'Queen',sprite:312,destination:'Tintagel castle',siege:'The card reader is holding their portal. Defeat the elders before they can collapse it!',after:'A room in the castle would give us a place to coordinate the branches. Tintagel is an offer, not a farewell. There are still names to account for here.'},
   884130:{name:'Solgata · S-rank captain',sprite:185,destination:'Avalon',siege:'My wards cover the wounded. Go—the elders are upstairs!',after:'They broke the hall. They did not break the company. We will bury what has fallen and tend what grows from it. One tree can become many. Avalon’s springs may shelter our next branch. When we are ready. Tonight, nobody walks alone.'},
-  8007:{name:'The guild card reader',sprite:2,destination:null,siege:'I have caught the edge of their portal. I cannot fight and hold it! Break the elders’ wards!',after:'The cards are scattered, but the deck is whole. Let us gather ourselves before we read the next road.'},
-  8008:{name:'Guild bartender',sprite:75,destination:null,siege:'The wounded are behind me. Take the stairs! I will keep a place for you.',after:'The kitchen is gone, but the pot survived. A meal first. Plans afterward.'},
-  2970:{name:'The tavern regular',sprite:297,destination:null,siege:'Experts come here to hunt and discuss ideas. Today they seem to be saving my life. Go help them!',after:'Experts come here to hunt and discuss ideas. Still do, apparently. Even without the roof. *burp*'}
+  8007:{name:'Card Reader',sprite:2,destination:null,siege:'I have caught the edge of their portal. I cannot fight and hold it! Break the elders’ wards!',after:'The cards are scattered, but the deck is whole. Let us gather ourselves before we read the next road.'},
+  8008:{name:'Bartender',sprite:75,destination:null,siege:'The wounded are behind me. Take the stairs! I will keep a place for you.',after:'The kitchen is gone, but the pot survived. A meal first. Plans afterward.'},
+  2970:{name:'Drunk',sprite:297,destination:null,siege:'Experts come here to hunt and discuss ideas. Today they seem to be saving my life. Go help them!',after:'Experts come here to hunt and discuss ideas. Still do, apparently. Even without the roof. *burp*'}
  };
  let guildBase=null,elapsed=0,volley=0;
  const state=(d=Dungeon)=>d.memory.guildFinale??={version:1,stage:null,defeated:[],damage:[],rewarded:false,gathered:false};
@@ -105660,7 +105687,7 @@ const BMGuildFinale=(()=>{
  function begin(d=Dungeon){const s=state(d);if(s.stage||!eligible(d))return false;
   if(d.memory.guild_quest?.storyChapter===1&&d.memory.guild_quest.state===2)BMGuild.turnIn();
   s.wasSRank=d.memory.guild_rank==='S';s.stage='siege';ids(d);d.memory.guild_quest={state:1,type:'guild_finale',storyChapter:2,tName:'The Falling Oak',qRank:'A',targetMap:s.map,targetX:53,targetY:18};
-  BMActivity.record('guild_siege_started','Returned from Malrec’s stronghold to find the Travelers of the Wilderness under attack.');save();return true;
+  BMActivity.record('guild_siege_started','Returned from the sect stronghold to find the Travelers of the Wilderness under attack.');save();return true;
  }
  function crestArt(){const c=document.createElement('canvas');c.width=320;c.height=384;const g=c.getContext('2d');
   g.fillStyle='#15352b';g.strokeStyle='#d7bd70';g.lineWidth=9;g.beginPath();g.moveTo(28,20);g.lineTo(292,20);g.lineTo(282,233);g.quadraticCurveTo(250,299,160,340);g.quadraticCurveTo(70,299,38,233);g.closePath();g.fill();g.stroke();
@@ -105686,12 +105713,12 @@ const BMGuildFinale=(()=>{
   const positions=gather?[[884130,53.5,23.5],[201,51.5,23.5],[8001,48.5,25.5],[8002,57.5,25.5],[8003,58.5,23.5],[8004,48.5,23.5],[8005,56.5,28.5],[8006,49.5,28.5],[207,52.5,20.5],[206,54.5,20.5],[8007,50.5,21.5],[8008,58.5,28.5],[2970,47.5,28.5]]:
    [[201,53.5,20.5],[8001,50.5,28.5],[8002,57.5,27.5],[8003,59.5,29.5],[8004,47.5,27.5],[8005,55.5,34.5],[8006,48.5,31.5],[207,52.5,18.5,BMGuildBuilding.floor],[206,55.5,18.5,BMGuildBuilding.floor],[8007,57.5,16.5,BMGuildBuilding.floor],[884130,48.5,21.5],[8008,59.5,19.5],[2970,49.5,19.5]];
   m.npcs=positions.map(([i,x,y,z])=>castDef(i,x,y,z||0,s.stage));
-  const pupil=MAP_DB[0].npcs.find(n=>n.name?.includes('Cherry'));if(pupil)m.npcs.push({...pupil,x:gather?51.5:52.5,y:gather?25.5:19.5,groundZ:0,spawnCondition:null,onSpawn(n){BMClassArt.pupil(n);n._guildCast=true;n._guildCherry=true;}});
+  const pupil=MAP_DB[0].npcs.find(n=>n.name?.includes('Dancer’s Pupil'));if(pupil)m.npcs.push({...pupil,x:gather?51.5:52.5,y:gather?25.5:19.5,groundZ:0,spawnCondition:null,onSpawn(n){BMClassArt.pupil(n);n._guildCast=true;n._guildCherry=true;}});
   m.npcs.push(crest(885150,53.5,gather?20.5:16.03,gather?.15:.64));if(!gather)m.npcs.push(crest(885151,53.5,34.03,1.25));
   if(gather)m.npcs.push({index:885152,x:53.5,y:25.7,sprite:-205,name:'The company’s fire',role:'sign',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false});
   if(s.stage==='siege'){
-   for(const [index,x,y,name]of [[ELDERS[0],49.5,18.5,'Elder of Cinders'],[ELDERS[1],59.5,18.5,'Elder of the Breach']])m.npcs.push({index,x,y,groundZ:BMGuildBuilding.floor,sprite:5,name,role:'battle',alignment:'foe',state:'stationary',isBoss:true,level:12,deck:[26,50,28],onSpawn(n){n._guildElder=true;n.isRanged=true;n.innateSpells=[26];n.respawnTime=Infinity;if(s.defeated.includes(index))Object.assign(n,{isDead:true,visible:false});}});
-   for(let i=0;i<8;i++)m.npcs.push({index:885210+i,x:[47.5,50.5,56.5,59.5][i%4],y:i<4?32.5:24.5,sprite:i%2?56:203,name:'Cult assault guard',role:'dialogue',alignment:'friendly',state:'stationary',level:100,isCinematic:true,companionEligible:false,onSpawn(n){n._guildWave=true;},customDialogue:['The defenders are holding this line. Reach the elders upstairs!']});
+   for(const [index,x,y,name]of [[ELDERS[0],49.5,18.5,'Sect Elder'],[ELDERS[1],59.5,18.5,'Sect Elder']])m.npcs.push({index,x,y,groundZ:BMGuildBuilding.floor,sprite:5,name,role:'battle',alignment:'foe',state:'stationary',isBoss:true,level:12,deck:[26,50,28],onSpawn(n){n._guildElder=true;n.isRanged=true;n.innateSpells=[26];n.respawnTime=Infinity;if(s.defeated.includes(index))Object.assign(n,{isDead:true,visible:false});}});
+   for(let i=0;i<8;i++)m.npcs.push({index:885210+i,x:[47.5,50.5,56.5,59.5][i%4],y:i<4?32.5:24.5,sprite:i%2?56:203,name:'Sect assault guard',role:'dialogue',alignment:'friendly',state:'stationary',level:100,isCinematic:true,companionEligible:false,onSpawn(n){n._guildWave=true;},customDialogue:['The defenders are holding this line. Reach the elders upstairs!']});
   }
   if(!gather)m.npcs.push({index:PORTAL,x:57.5,y:17.5,groundZ:BMGuildBuilding.floor,sprite:1164,name:'Held invasion portal',role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn:n=>BMClassArt.resource(n,1164)});
   m.npcs.push({index:EXIT,x:54.5,y:37.5,sprite:1164,name:'Road to Tintagel',role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn:n=>BMClassArt.resource(n,1164)});
@@ -105718,28 +105745,28 @@ const BMGuildFinale=(()=>{
   if(a==='registry'){Dungeon.currentSpeaker=null;startGame='explore';Dungeon.executeActions([['open_guild_menu','avalon']]);return;}
   if(a==='services'){startGame='explore';Dungeon.currentSpeaker=null;Dungeon.executeActions([['open_guild_menu','moors']]);return;}
  }
- function gather(){if(state().stage!=='gathering')return;scene([[884130,state().wasSRank?'Solgata: Everyone is accounted for. Sit with us. You have kept your place beneath this oak.':'Solgata: Everyone is accounted for. Sit with us. You have earned your S-rank license—and your place beneath this oak.'],[207,'King: The hall is gone. The guild is here. We buried the fallen oak beside its roots; we will tend what grows from it.'],[8004,'Iona: A shelter on the snow mountain. I have been thinking of it. When the wounded can travel.'],[8003,'Eris: A school in the desert. The old observatories must still have something to teach us.'],[201,'Mara: Then perhaps a dance hall nearby. Cherry and I would bring a little life to those quiet sands.'],[8005,'Garrick: Brittany. An open gate, an honest watch. That is where I could be useful.'],[8001,'Brann: Germany, when that road opens. Until then, these hands are needed here.'],[8002,'Vey: Tintagel. Someone should keep an ear to the alleys while you all look toward the horizon.'],[884130,'Solgata: Avalon has healing springs. Perhaps our next weary travellers could find a welcome beside them.'],[206,'Queen: The Emperor offered us a room in Tintagel castle. We could keep the branches in touch. We are not leaving tonight.'],[884130,'Solgata: One tree, many branches. Those are tomorrow’s roads. Tonight, we share this fire. Nobody has to say goodbye.']], 'gathered');}
- function interact(n){const s=state();if(!active()){if(Dungeon.mapID===0&&n.index===884130&&Dungeon.memory.guild_rank==='S'&&!s.stage&&(Dungeon.memory.guild_quest?.state||0)===0){talk(n,['Solgata: We need our company together. The cult has turned its forces toward the guild.','You already hold S-rank. Will you answer our call?'],{labels:['Answer the guild’s call','Not yet'],yes:[close,action('legacy')],no:[close]});return true;}return false;}
+ function gather(){if(state().stage!=='gathering')return;scene([[884130,state().wasSRank?'Solgata: Everyone is accounted for. Sit with us. You have kept your place beneath this oak.':'Solgata: Everyone is accounted for. Sit with us. You have earned your S-rank license—and your place beneath this oak.'],[207,'King: The hall is gone. The guild is here. We buried the fallen oak beside its roots; we will tend what grows from it.'],[8004,'Priest: A shelter on the snow mountain. I have been thinking of it. When the wounded can travel.'],[8003,'Mage: A school in the desert. The old observatories must still have something to teach us.'],[201,'Dancer: Then perhaps a dance hall nearby. Dancer’s Pupil and I would bring a little life to those quiet sands.'],[8005,'Knight: Brittany. An open gate, an honest watch. That is where I could be useful.'],[8001,'Warrior: Germany, when that road opens. Until then, these hands are needed here.'],[8002,'Rogue: Tintagel. Someone should keep an ear to the alleys while you all look toward the horizon.'],[884130,'Solgata: Avalon has healing springs. Perhaps our next weary travellers could find a welcome beside them.'],[206,'Queen: The Emperor offered us a room in Tintagel castle. We could keep the branches in touch. We are not leaving tonight.'],[884130,'Solgata: One tree, many branches. Those are tomorrow’s roads. Tonight, we share this fire. Nobody has to say goodbye.']], 'gathered');}
+ function interact(n){const s=state();if(!active()){if(Dungeon.mapID===0&&n.index===884130&&Dungeon.memory.guild_rank==='S'&&!s.stage&&(Dungeon.memory.guild_quest?.state||0)===0){talk(n,['Solgata: We need our company together. The sect has turned its forces toward the guild.','You already hold S-rank. Will you answer our call?'],{labels:['Answer the guild’s call','Not yet'],yes:[close,action('legacy')],no:[close]});return true;}return false;}
   if(n.index===EXIT){talk(n,Dungeon.mapID===ids()[1]?'The held portal still leads home.':'The road to Tintagel is open. The company will remain here.',{labels:['Travel','Stay'],yes:[close,action(Dungeon.mapID===ids()[1]?'return':'road')],no:[close]});return true;}
-  if(n.index===PORTAL){if(s.stage==='siege')talk(n,'Two elders anchor this breach. Defeat them before you cross.');else talk(n,'Solgata has gone ahead. Mara, Brann and Iona will join you beyond this portal.',{labels:['Follow the company','Wait'],yes:[close,action('enter')],no:[close]});return true;}
+  if(n.index===PORTAL){if(s.stage==='siege')talk(n,'Two elders anchor this breach. Defeat them before you cross.');else talk(n,'Solgata has gone ahead. Dancer, Warrior and Priest will join you beyond this portal.',{labels:['Follow the company','Wait'],yes:[close,action('enter')],no:[close]});return true;}
   if(n.index===MASTER){talk(n,['Mastermind: Your guild is ash. Still you come.','Solgata: Rookie—stay behind my wards. We will make you an opening.'],{labels:['Face the Mastermind','Not yet'],yes:[close,action('fight')],no:[close]});return true;}
   if(n._guildWave){talk(n,'The trainers have these soldiers engaged. The elders upstairs are directing the assault!');return true;}
-  if(n._guildCherry){talk(n,s.stage==='gathering'?'Cherry: Mara says the desert has dances we have never seen. I want to learn them. For now, I can help everyone here catch their breath.':'Cherry: Mara is drawing their attention. I am keeping the wounded behind the counter!');return true;}
+  if(n._guildCherry){talk(n,s.stage==='gathering'?'Dancer’s Pupil: Dancer says the desert has dances we have never seen. I want to learn them. For now, I can help everyone here catch their breath.':'Dancer’s Pupil: Dancer is drawing their attention. I am keeping the wounded behind the counter!');return true;}
   if(n._guildCast){const who=cast[n.index];if(!who)return false;
    if(s.stage==='gathering'){if(n.index===884130)talk(n,who.after,{labels:['Gather the company','Stay a while'],yes:[close,action('gather')],no:[close]});else if(n.index===201)talk(n,who.after,{labels:['Guild services','Stay a while'],yes:[close,action('services')],no:[close]});else if(n.index===206)talk(n,who.after,{labels:['S-class registry','Stay a while'],yes:[close,action('registry')],no:[close]});else if([8001,8002,8003,8004,8005,8006,8007,8008].includes(n.index))talk(n,who.after,{labels:[n.index===8008?'Meals and ingredients':n.index===8007?'Card reading':'Lessons','Stay a while'],yes:[close,action({usual:n.index})],no:[close]});else talk(n,who.after);}
    else if(Dungeon.mapID===ids()[1])talk(n,n.index===884130?'Solgata: Keep close. Their first volley broke our outer wards. We still have enough for one opening.':'Hold steady. Solgata will cover your approach to the Mastermind.');
    else if(s.stage==='siege')talk(n,who.siege||'The elders upstairs are directing this assault!');
-   else if(n.index===207)talk(n,['King: The elders have fallen. Their soldiers are retreating.','The card reader still holds the portal. The Mastermind is beyond it. Solgata has gone ahead. Mara, Brann and Iona will go with you.'],{labels:['Follow through the portal','Speak to the others'],yes:[close,action('enter')],no:[close]});
+   else if(n.index===207)talk(n,['King: The elders have fallen. Their soldiers are retreating.','The card reader still holds the portal. The Mastermind is beyond it. Solgata has gone ahead. Dancer, Warrior and Priest will go with you.'],{labels:['Follow through the portal','Speak to the others'],yes:[close,action('enter')],no:[close]});
    else talk(n,n.index===8007?'The portal is steady. Go after Solgata; I will hold your way home.':'A moment to breathe. Solgata has gone through the portal. The advance team is ready to follow you. We will look after the guild.');return true;
   }return false;
  }
- function kill(n,d=Dungeon){if(!active(d))return null;if(n?._guildCast||n?._guildWave)return false;if(!n?._guildElder)return null;const s=state(d);if(n.isDead||s.defeated.includes(n.index))return false;Object.assign(n,{isDead:true,visible:false,isSliding:false,isAggroDashing:false});s.defeated.push(n.index);if(ELDERS.every(i=>s.defeated.includes(i))){s.stage='peace';d.projectiles=[];for(const w of d.npcs.filter(n=>n._guildWave))Object.assign(w,{visible:false,isDead:true});d.memory.guild_quest.storyChapter=3;d.memory.guild_quest.tName='Beyond the Breach';BMActivity.record('guild_siege_won','Both cult elders fell. Speak to the King upstairs, then follow Solgata through the held portal.');chatLog.push({text:'[GUILD]: The assault falters. Speak to the King upstairs.',color:'#d6b3ff'});}save();return true;}
+ function kill(n,d=Dungeon){if(!active(d))return null;if(n?._guildCast||n?._guildWave)return false;if(!n?._guildElder)return null;const s=state(d);if(n.isDead||s.defeated.includes(n.index))return false;Object.assign(n,{isDead:true,visible:false,isSliding:false,isAggroDashing:false});s.defeated.push(n.index);if(ELDERS.every(i=>s.defeated.includes(i))){s.stage='peace';d.projectiles=[];for(const w of d.npcs.filter(n=>n._guildWave))Object.assign(w,{visible:false,isDead:true});d.memory.guild_quest.storyChapter=3;d.memory.guild_quest.tName='Beyond the Breach';BMActivity.record('guild_siege_won','Both sect elders fell. Speak to the King upstairs, then follow Solgata through the held portal.');chatLog.push({text:'[GUILD]: The assault falters. Speak to the King upstairs.',color:'#d6b3ff'});}save();return true;}
  function fire(from,to,key){if(Dungeon.projectiles.filter(p=>p._guildSiegeShot&&p.active).length>=16)return;const dx=to.x-from.x,dy=to.y-from.y,len=Math.hypot(dx,dy)||1,p=new Projectile(from.x,from.y,dx/len,dy/len,7,0,from,false,26);Object.assign(p,{isHoming:false,_guildSiegeShot:true,_guildTarget:{...to,key},_guildDistance:len,_guildTravel:0,worldZ:(from.groundZ||0)+.45,vz:((to.z??.3)-((from.groundZ||0)+.45))/len*7});Dungeon.projectiles.push(p);from.attackAnimTimer=8;}
  function tick(dt){if(active()&&state().stage==='gathering'&&!state().gathered&&startGame==='explore'&&!Dungeon.isProcessingActions){gather();return;}if(!active()||state().stage!=='siege'||startGame!=='explore'||BMShell.active()||document.hidden)return;elapsed+=Math.min(.1,dt);if(elapsed<1.4)return;elapsed=0;const waves=Dungeon.npcs.filter(n=>n._guildWave&&!n.isDead),defenders=Dungeon.npcs.filter(n=>n._guildCast&&n.groundZ<1&&!n._guildCherry);if(!waves.length)return;
   for(let i=0;i<3;i++){const w=waves[(volley+i)%waves.length],p=pieces[(volley+i)%pieces.length];fire(w,{x:p.x+.5,y:p.y+.5,z:p.kind==='wall'?.65:.2},p.key);const friend=defenders[(volley+i)%defenders.length];fire(friend,{x:w.x,y:w.y,z:.45},null);}volley++;
  }
  function revive(d){if(!active(d))return false;const m=MAP_DB[d.mapID],p=m.spawn;Object.assign(d,{x:p.x,y:p.y,targetMapX:p.x,targetMapY:p.y,isSlidingToTile:false,isDead:false,isDying:false,currentWardTime:d.maxWards*d.timePerWard,groundZ:0});d.currentSpeaker=d.currentEnemy=null;d.projectiles=[];d._respawnProtectedUntil=Date.now()+10000;BMPlayerMotion.reset();startGame=preGame='explore';save();return true;}
- function entries(){const s=state();if(!s.stage)return [];return [{id:'guild-finale',title:s.stage==='gathering'?'The oak and its branches':s.stage==='siege'?'FINALE II · The Falling Oak':'FINALE III · Beyond the Breach',completed:s.stage==='gathering',text:s.stage==='siege'?`The trainers hold the ground floor. Take the western stairs and defeat both cult elders upstairs (${s.defeated.length}/2). Their volleys can damage the hall. The road outside remains safe.`:s.stage==='peace'?'The assault has stopped. Speak to the King upstairs, then follow Solgata through the portal held by the card reader.':s.stage==='mastermind'?'Enter the Mastermind’s sanctum through the guild portal. Solgata and the advance team need your help.':'The survivors remain together in the ruins. Speak to Solgata to gather everyone again. Iona: snow mountain. Eris and Mara: desert. Garrick: Brittany. Brann: Germany, when its road opens. Vey: Tintagel. Solgata: Avalon. King and Queen: a room in Tintagel castle. These are plans; nobody has dispersed.'}];}
+ function entries(){const s=state();if(!s.stage)return [];return [{id:'guild-finale',title:s.stage==='gathering'?'The oak and its branches':s.stage==='siege'?'FINALE II · The Falling Oak':'FINALE III · Beyond the Breach',completed:s.stage==='gathering',text:s.stage==='siege'?`The trainers hold the ground floor. Take the western stairs and defeat both sect elders upstairs (${s.defeated.length}/2). Their volleys can damage the hall. The road outside remains safe.`:s.stage==='peace'?'The assault has stopped. Speak to the King upstairs, then follow Solgata through the portal held by the card reader.':s.stage==='mastermind'?'Enter the Mastermind’s sanctum through the guild portal. Solgata and the advance team need your help.':'The survivors remain together in the ruins. Speak to Solgata to gather everyone again. Priest: snow mountain. Mage and Dancer: desert. Knight: Brittany. Warrior: Germany, when its road opens. Rogue: Tintagel. Solgata: Avalon. King and Queen: a room in Tintagel castle. These are plans; nobody has dispersed.'}];}
  function install(){crestArt();
   MAP_DB[0].npcs.push(crest(885150,53.5,16.03,.64),crest(885151,53.5,34.03,1.25));
   const m=MAP_DB[2];m.slabs=m.slabs.filter(s=>!(s.x===25&&[23,24].includes(s.y)&&s.bottom<1.5));m.slabs.push({x:25,y:23,bottom:0,top:1,tile:15},{x:25,y:24,bottom:0,top:.25,tile:15});
@@ -105761,7 +105788,7 @@ const BMGuildFinale=(()=>{
   const abandon=BMGuild.abandon;BMGuild.abandon=function(){if(Dungeon.memory.guild_quest?.type==='guild_finale')return false;return abandon.apply(this,arguments);};
   // A failed or interrupted final battle can be entered again; completion pays once.
   const finish=BMTacticsSession.finish;BMTacticsSession.finish=function(t,...args){const guild=!!t?.config?.guildFinale,result=finish.call(this,t,...args);if(guild&&result&&!t.playerWon)save();return result;};
-  const cinematic=TacticsController.prototype.triggerFinaleCutscene;TacticsController.prototype.triggerFinaleCutscene=function(){if(!this.config?.guildFinale)return cinematic.call(this);this.musicPhase='finale';const positions=[[252,6.5,7.5],[255,3.5,7.5],[249,8.5,7.5],[185,5.5,6.5]];for(const [type,x,y]of positions)this.units.push({id:'guild-witness-'+type,x,y,type,alignment:'spectator',role:'guild_cinematic',isDead:false,visible:true,hasMoved:true,hasActed:true,color:'#d8cdf0',stat:[[1,4,0],[1,4,0],[1,4,0],[1,4,0]],activeBuffs:[],maxWards:1,currentWardTime:1,innateSpells:[]});this.cinematicQueue=[{sprite:106,text:'Mastermind: Your greatest champions. Watch their wards break.'},{sprite:252,text:'Brann: Down! Everyone—down!'},{sprite:255,text:'Iona: They are alive. Solgata’s last ward took the blow.'},{sprite:185,text:'Solgata: Rookie… stay behind me. I can hold one more opening.'},{sprite:249,text:'Mara: There. Between the volleys. Your turn.'}];this.state='CINEMATIC';MusicEngine.followScene();};
+  const cinematic=TacticsController.prototype.triggerFinaleCutscene;TacticsController.prototype.triggerFinaleCutscene=function(){if(!this.config?.guildFinale)return cinematic.call(this);this.musicPhase='finale';const positions=[[252,6.5,7.5],[255,3.5,7.5],[249,8.5,7.5],[185,5.5,6.5]];for(const [type,x,y]of positions)this.units.push({id:'guild-witness-'+type,x,y,type,alignment:'spectator',role:'guild_cinematic',isDead:false,visible:true,hasMoved:true,hasActed:true,color:'#d8cdf0',stat:[[1,4,0],[1,4,0],[1,4,0],[1,4,0]],activeBuffs:[],maxWards:1,currentWardTime:1,innateSpells:[]});this.cinematicQueue=[{sprite:106,text:'Mastermind: Your greatest champions. Watch their wards break.'},{sprite:252,text:'Warrior: Down! Everyone—down!'},{sprite:255,text:'Priest: They are alive. Solgata’s last ward took the blow.'},{sprite:185,text:'Solgata: Rookie… stay behind me. I can hold one more opening.'},{sprite:249,text:'Dancer: There. Between the volleys. Your turn.'}];this.state='CINEMATIC';MusicEngine.followScene();};
   const tu=TacticsController.prototype.update;TacticsController.prototype.update=function(dt){if(this.config?.guildFinale){if(this.state==='CINEMATIC'){for(const n of this.units.filter(n=>n.role==='guild_cinematic')){n.attackAnimTimer=n.type===185?2:0;n.damageFlashTimer=this.cinematicQueue.length>=4?3:0;}return;}this.units=this.units.filter(n=>n.role!=='guild_cinematic');}return tu.call(this,dt);};
   // Existing completed saves retain their old ending; only this new finale gathers the cast.
   for(const [map,id]of [[5,8006],[10,208]]){const n=MAP_DB[map].npcs.find(n=>n.index===id),prior=n.spawnCondition;n.spawnCondition=d=>state(d).stage!=='gathering'&&(!prior||prior(d));}
@@ -105776,7 +105803,7 @@ const BMGroundLoot=(()=>{
  const BAG=-210,IMPACT=-209;let serial=0,last=0,busy=new Set(),retryAt=new Map(),reported=new Set();
  const identity=d=>String(d.mapID)+':'+(d.mapID===999?d.customMapInstance||'':'');
  const store=d=>{d.memory??={};return d.memory.groundLoot??={version:1,piles:[]};};
- function art(){for(const [id,impact]of [[BAG,false],[IMPACT,true]]){const c=document.createElement('canvas');c.width=c.height=96;const g=c.getContext('2d');if(impact){g.strokeStyle='#fff1b5';g.lineWidth=5;for(let i=0;i<8;i++){const a=i*Math.PI/4;g.beginPath();g.moveTo(48+Math.cos(a)*10,48+Math.sin(a)*10);g.lineTo(48+Math.cos(a)*35,48+Math.sin(a)*35);g.stroke();}g.fillStyle='#ffe39a';g.beginPath();g.arc(48,48,9,0,7);g.fill();}else{g.fillStyle='#533725';g.beginPath();g.ellipse(48,83,29,8,0,0,7);g.fill();g.fillStyle='#bb8b48';g.beginPath();g.moveTo(35,28);g.lineTo(60,28);g.bezierCurveTo(68,48,84,61,71,79);g.quadraticCurveTo(48,93,25,79);g.bezierCurveTo(12,60,29,45,35,28);g.fill();g.fillStyle='#dcc485';g.fillRect(31,26,34,6);g.fillStyle='#855b31';g.fillRect(43,34,5,40);g.fillStyle='#f2de9a';g.beginPath();g.arc(57,59,7,0,7);g.fill();}spriteCache[id]=c;SPRITE_CONFIGS[id]={scale:impact?.28:.27,hover:0,faceZ:.7,facePan:0};}}
+ function art(){const c=document.createElement('canvas');c.width=c.height=96;const g=c.getContext('2d');g.fillStyle='#533725';g.beginPath();g.ellipse(48,83,29,8,0,0,7);g.fill();g.fillStyle='#bb8b48';g.beginPath();g.moveTo(35,28);g.lineTo(60,28);g.bezierCurveTo(68,48,84,61,71,79);g.quadraticCurveTo(48,93,25,79);g.bezierCurveTo(12,60,29,45,35,28);g.fill();g.fillStyle='#dcc485';g.fillRect(31,26,34,6);g.fillStyle='#855b31';g.fillRect(43,34,5,40);g.fillStyle='#f2de9a';g.beginPath();g.arc(57,59,7,0,7);g.fill();spriteCache[BAG]=c;SPRITE_CONFIGS[BAG]={scale:.27,hover:0,faceZ:.7,facePan:0};}
  function drop(d,n,payload={}){
   const key=payload.mapKey||identity(d),records=store(d).piles;
   if(payload.id&&records.some(p=>p.id===payload.id))return records.find(p=>p.id===payload.id);
@@ -105801,7 +105828,7 @@ const BMGroundLoot=(()=>{
  }
  function tick(now=performance.now()){if(now-last<150||startGame!=='explore'||Dungeon.isLoading||Dungeon.isDead||Dungeon.isDying)return;last=now;sync();if(BMPlayerMotion.airborne)return;for(const p of store(Dungeon).piles){if(p.mapKey!==identity(Dungeon)||Math.hypot(p.x-Dungeon.x,p.y-Dungeon.y)>.7||Math.abs(p.z-BMTerrainPhysics.feet(Dungeon,Dungeon))>.3)continue;if(BMTerrainPhysics.trace(Dungeon,Dungeon.x,Dungeon.y,p.z+.2,p.x,p.y,p.z+.2))pickup(p);}}
  function reward(data){const n=Dungeon.npcs.find(n=>n.index===(data.lootIndex??data.index));const x=Number.isFinite(data.x)?data.x:n?.x??Dungeon.x,y=Number.isFinite(data.y)?data.y:n?.y??Dungeon.y;
-  const items=Number.isFinite(data.lootType)?[...BMMonsterLoot.roll({type:data.lootType}),...BMFieldCraft.loot({type:data.lootType})]:[],card=typeof data.card==='object'?data.card?.index:data.card;
+  const items=[...(Number.isFinite(data.lootType)?[...BMMonsterLoot.roll({type:data.lootType}),...BMFieldCraft.loot({type:data.lootType})]:[]),...(Array.isArray(data.items)?data.items.filter(i=>i&&typeof i.key==='string'&&Number.isInteger(i.count)&&i.count>0&&i.count<=99).slice(0,32):[])],card=typeof data.card==='object'?data.card?.index:data.card;
   return drop(Dungeon,{x,y,groundZ:Number.isFinite(data.z)?data.z:n?.groundZ??0},{id:data.id,mapID:data.mapID??Dungeon.mapID,mapKey:String(data.mapID??Dungeon.mapID)+':'+(data.mapID===999?data.instanceId||Dungeon.customMapInstance||'':''),items,cards:Number.isInteger(card)?[card]:[],silver:data.silver||0,server:data.groundLoot===1});
  }
  function install(){art();const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...a){const result=load.apply(this,a);sync(this);return result;};const update=NPC.prototype.update;NPC.prototype.update=function(...a){if(this._groundLoot)return;return update.apply(this,a);};
@@ -105825,7 +105852,7 @@ const BMClassicChoices=(()=>{
  function talk(lines){const n=Dungeon.currentSpeaker;if(!n)return;hide();n.customDialogue=Array.isArray(lines)?lines:[String(lines)];n.options=null;n.choiceActions=null;n.yesActions=null;n.noActions=null;n.endActions=[['close_dialogue',null]];Dungeon.isProcessingActions=false;Dungeon.actionQueue=[];n.startDialogue(Dungeon);}
  function install(){const render=Explore.prototype.render;Explore.prototype.render=function(...a){if(startGame!=='dialogue'||shown!==this.currentSpeaker)hide();return render.apply(this,a);};
   for(const id of [201,8001,8002,8003,8004,8005]){const n=MAP_DB[0].npcs.find(n=>n.index===id);if(!n)continue;const original=n.dialogueFactory,yes=n.yesActions;
-   n.dialogueFactory=d=>{const old=original?.(d)||{text:n.customDialogue||[],yesActions:yes},who=BMGuildStory.trainerInfo(n),key=id===201?'clerk':id===8005?'knight':null;const choices=id===201?['Guild','Talk','Dance','Leave']:['Learn','Talk',...(key?['Classes']:[]),'Leave'];const actions=id===201?[[['open_guild_menu','moors']],[['classic_talk',[who.text,BMClassPaths.patrons.clerk.intro]]],[['classic_talk','Cherry teaches at the Tintagel tavern. Ask her for a recommendation to become a Dancer.']],[['close_dialogue',null]]]:[old.yesActions||[['open_trainer',n.deck]],[['classic_talk',who?.text||old.text]],...(key?[[['class_paths',key]]]:[]),[['close_dialogue',null]]];return {...old,text:[id===201?'Welcome. How can I help?':id===8002?'Money is all that matters.':'Ready to learn?'],options:choices,choiceActions:actions,yesActions:actions[0],noActions:actions[1],endActions:[['close_dialogue',null]]};};
+   n.dialogueFactory=d=>{const old=original?.(d)||{text:n.customDialogue||[],yesActions:yes},who=BMGuildStory.trainerInfo(n),key=id===201?'clerk':id===8005?'knight':null;const choices=id===201?['Guild','Talk','Dance','Leave']:['Learn','Talk',...(key?['Classes']:[]),'Leave'];const actions=id===201?[[['open_guild_menu','moors']],[['classic_talk',[who.text,BMClassPaths.patrons.clerk.intro]]],[['classic_talk','Dancer’s Pupil teaches at the Tintagel tavern. Ask her for a recommendation to become a Dancer.']],[['close_dialogue',null]]]:[old.yesActions||[['open_trainer',n.deck]],[['classic_talk',who?.text||old.text]],...(key?[[['class_paths',key]]]:[]),[['close_dialogue',null]]];return {...old,text:[id===201?'Welcome. How can I help?':id===8002?'Money is all that matters.':'Ready to learn?'],options:choices,choiceActions:actions,yesActions:actions[0],noActions:actions[1],endActions:[['close_dialogue',null]]};};
   }
  }
  return {draw,touch,key,choose,hide,talk,install};
@@ -105852,7 +105879,7 @@ const BMPort=(()=>{
  const NPCS=[
   [886001,86.5,79.5,2,'Card merchant',['Welcome, traveller. Dark cards are hard to find inland. Have a look; a card is only a tool.'],['So you found the storehouse. I sell cards. Who buys them is their own affair.'],[5,56,57,82,86,12,26,92]],
   [886002,92.5,88.5,252,'Storekeeper',['Keep to the road after sunset. Our north storeroom is private. The guild can put you up if you need a bed.'],['Those marching orders were never meant to leave the storeroom. You had better speak to your guild.']],
-  [886003,89.5,83.5,312,'Port resident',['The ships bring good business. We look after one another here.'],['Malrec promised the port would be spared. We were told the guild would never discover the passage.']],
+  [886003,89.5,83.5,312,'Port resident',['The ships bring good business. We look after one another here.'],['Sect Elder promised the port would be spared. We were told the guild would never discover the passage.']],
   [886004,93.5,81.5,258,'Dock worker',['Another guild traveller? The sailors will know which ships are ready.'],['I carried their crates. I did not ask what was inside. The seal on those orders is ours.']],
   [886005,89.5,90.5,252,'Sailor',['Strange things happen on the roads at night. Stay near the port until dawn—or make for the guild before dark.','We carry plenty of guild travellers to other lands. Their hall is the safest place nearby.'],['The guild was right about this place. We will keep the gangway clear for anyone who needs shelter.']]
  ];
@@ -105873,6 +105900,106 @@ const BMGuildDefenders=(()=>{
  const kill=Explore.prototype.killNPC;Explore.prototype.killNPC=function(n,...args){if(!n?._guildDefender)return kill.call(this,n,...args);if(n.isDead)return false;Object.assign(n,{isDead:true,isDying:true,visible:false,respawnTime:Infinity,isSliding:false,isAggroDashing:false,activeBuffs:[]});this.memory['0_'+n.index]={permanent:true,guildResident:true};this.requestSave();return true;};
  return {ids,configure};
 })();
+
+
+const BMWorldNames=(()=>{
+ const changes=[["Malrec’s Stronghold", "Sect Stronghold"], ["Malrec’s stronghold", "the sect stronghold"], ["Malrec’s Last Stand", "Sect Stronghold"], ["Elder Malrec", "Sect Elder"], ["Malrec’s", "the Sect Elder’s"], ["Malrec", "Sect Elder"], ["Sir Garrick", "Knight"], ["Garrick", "Knight"], ["Lady Rowan", "Noble"], ["Mistress Elowen", "Mage"], ["Mara", "Dancer"], ["Brann", "Warrior"], ["Vey", "Rogue"], ["Eris", "Mage"], ["Iona", "Priest"], ["Alder", "Hunter"], ["Cherry, the dancer’s pupil", "Dancer’s Pupil"], ["Cherry", "Dancer’s Pupil"]];
+ function text(value){if(typeof value!=='string')return value;for(const [from,to]of changes)value=value.split(from).join(to);return value.replace(/\bCultists\b/g,'Sect members').replace(/\bcultists\b/g,'sect members').replace(/\bCultist\b/g,'Sect member').replace(/\bcultist\b/g,'sect member').replace(/\bCult\b/g,'Sect').replace(/\bcult\b/g,'sect');}
+ function apply(d){
+  for(const n of d.npcs||[]){if(n.creator||n.creatorId||n.socketId)continue;
+   if([201,8001,8002,8003,8004,8005,8006,8007,8008,2970,8401,8402,8403,8404,8405].includes(n.index)){
+    const names={201:'Dancer',8001:'Warrior',8002:'Rogue',8003:'Mage',8004:'Priest',8005:'Knight',8006:'Hunter',8007:'Card Reader',8008:'Bartender',2970:'Drunk',8401:'Noble',8402:'Priest',8403:'Mage',8404:'Rogue',8405:'Dancer’s Pupil'};n.name=names[n.index];
+   }
+   if((d.mapID===0||MAP_DB[d.mapID]?.guildPersonal)&&[205,206,207].includes(n.index))n.name={205:'Elder',206:'Queen',207:'King'}[n.index];
+   if(n._guildStronghold||n.index===d.memory?.guild_quest?.rivalId){n.name=text(n.name);if(Array.isArray(n.customDialogue))n.customDialogue=n.customDialogue.map(text);}
+  }
+ }
+ const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...a){const result=load.apply(this,a);apply(this);return result;};
+ return {apply,text};
+})();globalThis.BMWorldNames=BMWorldNames;
+
+/* Authored sect interior: cached props, baked torch pools, optional laboratory. */
+const BMStronghold=(()=>{
+ const LAB=[884201,884202,884203,884204,884205,884206],CHEST=884220,REWARDS=[270,315];
+ const CHESTS=[{"id":884220,"x":35.5,"y":4.5,"area":"Laboratory","cards":[270,315],"silver":0,"items":[],"requires":[884201,884202,884203,884204,884205,884206]},{"id":884230,"x":34.5,"y":24.5,"area":"Barracks","cards":[],"silver":12,"items":[],"requires":[]},{"id":884231,"x":26.5,"y":34.5,"area":"Officer room","cards":[],"silver":20,"items":[],"requires":[]},{"id":884232,"x":8.5,"y":33.5,"area":"Armory","cards":[50],"silver":6,"items":[],"requires":[]},{"id":884233,"x":34.5,"y":34.5,"area":"Dining room","cards":[],"silver":0,"items":[{"key":"dish:mushroom_stew","name":"Mushroom Stew","kind":"consumable","effect":"ward","count":2}],"requires":[]}];
+ let claiming=false;
+ const labRows=[
+  [884201,34.5,5.5,330,'Scientist',14,true,[26,12,28]],
+  [884202,31.5,10.5,56,'Imp',10,false,[26]],
+  [884203,36.5,10.5,56,'Imp',10,false,[26]],
+  [884204,31.5,6.5,318,'Ghoul',11,false,[50]],
+  [884205,36.5,7.5,282,'Beast-Man',11,false,[50]],
+  [884206,34.5,8.5,270,'Questing Beast',13,true,[50,26]]
+ ];
+ const torches=[[19.25,35.5],[21.75,35.5],[19.25,30],[21.75,25],[19.25,19],[21.75,13],
+  [5.25,20],[15.7,26.5],[24.25,20],[34.7,26.5],[13.25,6],[27.7,6],[17,11.7],[24,11.7],[31.25,13],[36.7,4.5],[5.25,31.5],[13.7,36.5],[24.7,31.5],[28.7,36.5],[31.7,31.5],[36.7,36.5]];
+ function prepare(m,d){
+  for(const [x,y,w,h]of [[4,30,11,8],[8,28,3,3],[24,30,6,8],[25,28,3,3],[31,30,7,8],[32,28,3,3]])for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)m.maze[yy][xx]=0;
+  for(let y=3;y<16;y++)for(let x=30;x<38;x++)m.maze[y][x]=0;
+  for(let y=15;y<19;y++)for(let x=32;x<35;x++)m.maze[y][x]=0;
+  m.maze=m.maze.map(row=>row.map(v=>v===1?25:v));
+  Object.assign(m,{name:'Sect Stronghold',skyColor:'#111016',floorColor:'#292a30',biome:'None',sectInterior:true});
+  const quads=[],light=Array.from({length:40},()=>Array(40).fill(0));
+  for(let y=0;y<40;y++)for(let x=0;x<40;x++){
+   let glow=0;for(const [tx,ty]of torches)glow=Math.max(glow,Math.max(0,1-Math.hypot(x+.5-tx,y+.5-ty)/4.5));light[y][x]=glow;
+   if(m.maze[y][x]!==0)continue;
+   const v=35+((x*17+y*13)%3)*4;quads.push({x,y,w:.98,h:.98,color:`rgb(${Math.round(v+glow*47)},${Math.round(v+glow*25)},${Math.round(v+5+glow*5)})`});
+   m.slabs.push({x,y,bottom:2.2,top:2.35,tile:25});
+  }
+  m.sectLight=light;m.torches=torches;
+  // A plain reading-room runner; no religious or occult symbols.
+  quads.push({x:18.5,y:4,w:4,h:8,color:'#433b40'});
+  m.sectFloor=quads;
+  let serial=884300;
+  function decor(x,y,sprite,name,z=0,scale){m.npcs.push({index:serial++,x,y,sprite,name,role:'decoration',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,groundZ:z,hideMinimap:true,nonBlocking:true,onSpawn(n){Object.assign(n,{hideMinimap:true,nonBlocking:true,groundZ:sprite===-205?0:z,_sectHover:sprite===-205?z:0,fixedWorldAngle:Math.PI/2});if(sprite>=1165){BMClassArt.resource(n,sprite);}if(scale)n._sectScale=scale;}});}
+  for(const [x,y]of [[6.5,17.25],[9.5,17.25],[12.5,17.25],[5.25,27.5],[14.5,27.5],[14.5,3.25],[18.5,3.25],[22.5,3.25],[26.5,3.25]])decor(x,y,1165,'Bookcase');
+  for(const [x,y]of torches){decor(x,y,1166,'Torch stand');decor(x,y,-205,'Torch',.3,.34);}
+  // Side workbenches leave a wide central route through the laboratory.
+  for(const [x,y]of [[30,4],[31,4],[36,4],[37,4],[30,11],[37,11]])m.slabs.push({x,y,bottom:0,top:.4,tile:15});
+  for(const [x,y]of [[30.5,4.5],[37.5,4.5],[30.5,11.5],[37.5,11.5]])decor(x,y,1167,'Specimen jar',.4);
+  for(const [index,x,y,sprite,name,level,isBoss,spells]of labRows)m.npcs.push({index,x,y,sprite,name,level,isBoss,deck:spells,role:'battle',alignment:'foe',state:'stationary',onSpawn(n){Object.assign(n,{_guildStronghold:true,_sectLab:true,isRanged:[330,56].includes(sprite),innateSpells:spells.slice(),respawnTime:Infinity});if(BMGuildStory.state(d).visit?.defeated?.includes(index))Object.assign(n,{isDead:true,visible:false});}});
+  const books=[
+   [884221,10.5,20.5,'Field Notes',['Wisps keep a steady charge when the lamps are shielded. Shades retreat from direct light. Imps can tend the apparatus, but must be kept away from the written records.','The Ghouls show movement without recovery. The Beast-Man survived the binding. The Questing Beast refuses every command. The Scientist has requested stronger restraints.']],
+   [884222,25.5,19.5,'Shipping Ledger',['Books, glassware and dark cards arrived through the southeast port. Payments were divided among several ordinary shops.','The guild was only one destination. Other consignments went toward the mountain roads, the desert crossings and the western border. Each shipment carries a different seal.']],
+   [884223,33.5,5.5,'Sealed Instructions',['Delay the guild. Interrupt the couriers. Empty the granaries before winter. Let each failure appear to have a different cause.','The one directing this stronghold is responsible for only a single part. No commander is to receive the full list of targets. When the rulers turn to one crisis, begin the next.']]
+  ];
+  for(const [index,x,y,name,lines]of books){m.slabs.push({x:Math.floor(x),y:Math.floor(y),bottom:0,top:.3,tile:15});m.npcs.push({index,x,y,sprite:1163,name,role:'dialogue',alignment:'friendly',state:'stationary',groundZ:.3,isCinematic:true,companionEligible:false,customDialogue:lines,onSpawn(n){n._guildProp='book:'+index;BMClassArt.resource(n,1163);}});}
+  for(const reward of CHESTS)m.npcs.push({index:reward.id,x:reward.x,y:reward.y,sprite:1169,name:'Chest',role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn(n){n._guildProp='stronghold_chest';BMClassArt.resource(n,1169);}});
+  // Bunks, officers' beds, low mess tables and weapon racks establish daily life.
+  for(const [x,y]of [[24.5,23.5],[24.5,26.5],[28.5,24.5],[28.5,27.5],[25.5,36.5],[28.5,36.5]])decor(x,y,1170,'Bed');
+  for(const [x,y]of [[6.5,31.2],[9.5,31.2],[12.5,31.2]])decor(x,y,1168,'Weapon rack');
+  for(const x of [33,34,35])for(const y of [32,36])m.slabs.push({x,y,bottom:0,top:.3,tile:15});
+  for(const [x,y]of [[32.5,32.5],[36.5,32.5],[32.5,36.5],[36.5,36.5]])m.slabs.push({x:Math.floor(x),y:Math.floor(y),bottom:0,top:.18,tile:15});
+  for(const [index,x,y,sprite,name,level]of [[884240,9.5,35.5,252,'Sect guard',9],[884241,27.5,32.5,261,'Inner disciple',12],[884242,34.5,36.5,252,'Sect member',8]])m.npcs.push({index,x,y,sprite,name,level,deck:sprite===261?[26,12]:[50],role:'battle',alignment:'foe',state:'stationary',onSpawn(n){Object.assign(n,{_guildStronghold:true,isRanged:sprite===261,innateSpells:sprite===261?[26,12]:[50],respawnTime:Infinity});if(BMGuildStory.state(d).visit?.defeated?.includes(index))Object.assign(n,{isDead:true,visible:false});}});
+  m.npcs.push({index:884224,x:27.5,y:35.5,sprite:1163,name:'Duty Roster',role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,customDialogue:['Outer members keep watch, carry supplies and train in the yard. Inner disciples study the ward records and direct the experiments. Officers answer to the Sect Elder.','Food allotments have been cut again. Most of the main force is away. The residents left here are ordered to keep the workshops running and delay anyone who reaches the archive.'],onSpawn(n){n._guildProp='book:884224';BMClassArt.resource(n,1163);}});
+
+ }
+ function configure(d){
+  if(d._sectDefaults){for(const [key,value]of Object.entries(d._sectDefaults))d[key]=value;delete d._sectDefaults;}
+  const m=MAP_DB[d.mapID];d._sectLight=null;if(!m?.sectInterior)return;
+  d._sectDefaults={wallColors:d.wallColors,parsedWallColors:d.parsedWallColors,tileHeights:d.tileHeights,noiseLevels:d.noiseLevels};
+  d.wallColors={...d.wallColors,25:'#41424c'};d.parsedWallColors={...d.parsedWallColors,25:d.parseColor('#41424c')};d.tileHeights={...d.tileHeights,25:2.2};d.noiseLevels={...d.noiseLevels,25:2};
+  d.skyColor=m.skyColor;d.floorColor=m.floorColor;d.biome='None';d._sectLight=m.sectLight;BMGuildDecor.addSurface(d.mapID,m.sectFloor);
+ }
+ function chest(n){
+  if(claiming)return true;const reward=CHESTS.find(c=>c.id===n.index);if(!reward)return false;
+  const c=BMGuildStory.chapter();c.chests??={};if(c.labChestClaimed)c.chests[CHEST]=true;
+  const say=text=>{n.customDialogue=[text];n.options=null;n.endActions=[['close_dialogue',null]];n.startDialogue(Dungeon);};
+  if(c.chests[n.index]){say('The chest is empty.');return true;}
+  if(!reward.requires.every(id=>BMGuildStory.state().visit?.defeated?.includes(id))){say('The Scientist’s seal holds the chest shut. Defeat the laboratory experiments and their keepers first.');return true;}
+  const mark=()=>{c.chests[n.index]=true;if(n.index===CHEST)c.labChestClaimed=true;Dungeon.requestSave();};
+  if(BMGuildStory.sharedVisit()){
+   const map=Dungeon.mapID;claiming=true;BMOnline.chapter({action:'stronghold_chest',index:n.index},r=>{claiming=false;if(!r?.ok){if(Dungeon.mapID===map)say(r?.error||'The chest could not be opened. Try again.');return;}mark();if(Dungeon.mapID===map)say('You open the chest. Its contents lie beside it.');});
+  }else{
+   const id=(n.index===CHEST?'sect-laboratory:':'sect-chest:'+n.index+':')+BMGuildStory.state().visit.map;
+   BMGroundLoot.drop(Dungeon,n,{id,cards:reward.cards,silver:reward.silver,items:reward.items});mark();say(n.index===CHEST?'The seal breaks. A Questing Beast card and a Flying Sword card lie beside the chest.':'You open the chest. Its contents lie beside it.');
+  }
+  return true;
+ }
+
+ const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...a){const out=load.apply(this,a);configure(this);return out;};
+ return {prepare,configure,chest,LAB,CHEST,CHESTS,REWARDS,labRows};
+})();globalThis.BMStronghold=BMStronghold;
 
 const BMCombatRecovery=(()=>{
  function clearDeath(d){clearTimeout(d._deathTimeout);d._deathSequence=null;d.isDead=d.isDying=false;d.status='normal';d.currentWardTime=d.maxWards*d.timePerWard;d._respawnProtectedUntil=Date.now()+10000;d.wardShatterCooldown=0;d.wardShatterDuration=0;d.activeBuffs=[];d.isAggroDashing=false;d.actionQueue=[];d.isProcessingActions=false;d.currentSpeaker=d.currentEnemy=null;if(d.weather){d.weather.deathOverlayLocked=false;d.weather.setMode(MAP_DB[d.mapID]?.weather||'clear');d.weather.dyingTimer=0;}BMClassicChoices.hide();BMLock.clear();}
