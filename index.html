@@ -2,7 +2,7 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-05-bm-port-ring-loot"/>
+      <meta name="suncat-build" content="2026-11-05-bm-material-workshop"/>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage</title>
       <style>
         html,body {
@@ -41989,7 +41989,7 @@ drawColumn(scene, stripX, hitCount, viewX, viewY, viewW, viewH, width, camX, cam
                         if (shade > 255) shade = 255;
                         if (side === 1) shade *= 0.75; 
 
-                        let brightness = scene._sectLight?Math.max(shade/255,.40+torchLight*.35):shade/255;
+                        let brightness = Math.max(scene._landmarkLight||0,scene._sectLight?Math.max(shade/255,.40+torchLight*.35):shade/255);
                         let r = baseR * brightness + noise;
                         let g = baseG * brightness + noise;
                         let b = baseB * brightness + noise;
@@ -42061,7 +42061,7 @@ drawColumn(scene, stripX, hitCount, viewX, viewY, viewW, viewH, width, camX, cam
                                 drawFullStrip = false; 
                             }
                             else if ([1,33,35,11,73,75,5,45].includes(wallID)||(scene._sectLight&&wallID===25)) {
-                                let isSteel = [5,45].includes(wallID);
+                                let isSteel = [5,45].includes(wallID)&&!scene._landmarkStone;
                                 let texR = rawR, texG = rawG, texB = rawB;
                                 let isVertMortar = (wallHitX < 0.05 || wallHitX > 0.95);
                                 
@@ -43062,6 +43062,29 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                             if (transformY <= nearClip) continue; 
                         }
 
+                        // Wall art is a fixed world plane, perspective mapped and depth clipped.
+                        if(sprite.wallArt){
+                            const a=sprite.wallArt,img=sprite.cachedBillboard||host.spriteCache[sprite.type];
+                            if(img&&!Array.isArray(img)&&((camX-sprite.x)*a.normalX+(camY-sprite.y)*a.normalY)>0){
+                                const tx=a.normalY*a.width/2,ty=-a.normalX*a.width/2;
+                                const project=(x,y,u)=>{x-=camX;y-=camY;return {x:invDet*(dirY*x-dirX*y),z:invDet*(-planeY*x+planeX*y),u};};
+                                let l=project(sprite.x-tx,sprite.y-ty,0),r=project(sprite.x+tx,sprite.y+ty,1);
+                                if(l.z>.05||r.z>.05){
+                                    if(l.z<.05){const k=(.05-l.z)/(r.z-l.z);l={x:l.x+(r.x-l.x)*k,z:.05,u:k};}
+                                    if(r.z<.05){const k=(.05-r.z)/(l.z-r.z);r={x:r.x+(l.x-r.x)*k,z:.05,u:1+(l.u-1)*k};}
+                                    l.s=viewW/2*(1+l.x/l.z);r.s=viewW/2*(1+r.x/r.z);if(l.s>r.s)[l,r]=[r,l];
+                                    const span=r.s-l.s,bottom=(sprite.worldZ||0)-a.height/2;
+                                    ctx.save();ctx.imageSmoothingEnabled=true;
+                                    for(let x=Math.max(0,Math.floor(l.s));span>.1&&x<Math.min(viewW,Math.ceil(r.s));x+=2){
+                                        const f=Math.max(0,Math.min(1,(x+1-l.s)/span)),iz=(1-f)/l.z+f/r.z,z=1/iz,u=((1-f)*l.u/l.z+f*r.u/r.z)/iz;
+                                        const h=wallScale/z*a.height,top=viewY+horizon+wallScale/z*(scene.camZ-bottom-a.height),w=Math.min(2,viewW-x);
+                                        ctx.save();if(host.BMLayers.active(scene))ctx.clip(host.BMLayers.clip(scene,viewX+x,top,viewX+x+w,top+h,z,viewX,viewY,viewW,viewH));
+                                        else{checkOcclusion(x,z,.002,sprite,bottom);ctx.beginPath();ctx.rect(viewX+x,Math.max(viewY,top),w,Math.max(0,Math.min(top+h,occlusionResult.minClipY,viewBottom)-Math.max(viewY,top)));ctx.clip();}
+                                        ctx.globalAlpha=Math.min(1,Math.max(0,(dynamicMaxVis-z)/(dynamicMaxVis-fogStart)));ctx.drawImage(img,Math.max(0,Math.min(img.width-1,u*img.width)),0,Math.max(1,img.width*w/span),img.height,viewX+x,top,w,h);ctx.restore();
+                                    }ctx.restore();
+                                }
+                            }continue;
+                        }
                         const spriteScreenX = Math.floor((viewW / 2) * (1 + transformX / transformY));
 
                         // ==========================================
@@ -43292,175 +43315,17 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                     // ==========================================
                     // --- WARD RING ---
                     // ==========================================
-                    // 1. Check Alignment: Only show on foes or defenders!
-                    let isValidAuraTarget = false;
-                    if (sprite.alignment) {
-                        if (sprite.alignment.startsWith('foe')) {
-                            isValidAuraTarget = true;
-                        }
+                    if (host.window.BMFoeRings?.eligible(sprite)) {
+                        const foot=(0,host.getRingFoot)(srcImg),config=host.SPRITE_CONFIGS[imageIndex]||{};
+                        const fx=config.ringFootX===undefined?foot.x:(config.ringFootX-(imageMeta?.left??0))/(imageMeta?.side??1);
+                        const fy=config.ringFootY===undefined?foot.y:(config.ringFootY-(imageMeta?.top??0))/(imageMeta?.side??1);
+                        const rx=drawStartX+spriteSize*fx,ry=drawStartY+spriteSize*fy;
+                        const radius=Math.max(4,spriteSize*(config.ringRadius===undefined?foot.radius:config.ringRadius/(imageMeta?.side??1)));
+                        const box={x:rx-radius-3,y:ry-radius*.45-3,w:radius*2+6,h:radius*.9+6};
+                        const clip=host.BMLayers.active(scene)?host.BMLayers.clip(scene,box.x,box.y,box.x+box.w,box.y+box.h,transformY,viewX,viewY,viewW,viewH):(0,host.auraVisibilityClip)(box,viewX,viewY,viewW,viewH,transformY,sprite,totalFootZ,checkOcclusion);
+                        ctx.save();ctx.clip(clip);host.window.BMFoeRings.draw(scene,sprite,ctx,rx,ry,radius,config.ringSquash??.35,Math.max(1.3,2.5/transformY));ctx.restore();
                     }
 
-                    if (!sprite.isPlayer && isValidAuraTarget) {
-                        ctx.save();
-                        
-                        const foot = (0, host.getRingFoot)(srcImg);
-                        const ringConfig = host.SPRITE_CONFIGS[imageIndex] || {};
-
-                        const footX = ringConfig.ringFootX===undefined?foot.x:(ringConfig.ringFootX-(imageMeta?.left??0))/(imageMeta?.side??1);
-                        const footY = ringConfig.ringFootY===undefined?foot.y:(ringConfig.ringFootY-(imageMeta?.top??0))/(imageMeta?.side??1);
-
-                        let ringX = drawStartX + spriteSize * footX;
-                        let ringY = drawStartY + spriteSize * footY;
-
-                        let ringRadius = Math.max(
-                            4,
-                            spriteSize * (ringConfig.ringRadius===undefined?foot.radius:ringConfig.ringRadius/(imageMeta?.side??1))
-                        );
-
-                        const ringSquash = ringConfig.ringSquash ?? 0.35;
-                        // 3. Scan columns to ensure it doesn't render over solid walls (Occlusion)
-                        let isOccluded = false;
-                        let sampleCol = Math.floor(ringX - viewX);
-                        if (sampleCol >= 0 && sampleCol < viewW) {
-                            let endIdx = sampleCol * bufferStride + scene.zBufferCounts[sampleCol] * 3;
-                            for (let idx = sampleCol * bufferStride; idx < endIdx; idx += 3) {
-                                if (scene.zBuffer[idx] < transformY) {
-                                    let wallID = scene.zBuffer[idx+1];
-                                    if (!scene.transparentWalls || !scene.transparentWalls.includes(wallID)) {
-                                        isOccluded = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        /*
-                        Object.assign(SPRITE_CONFIGS[158], {
-                            ringFootX: 0.5,
-                            ringFootY: 0.78,
-                            ringRadius: 0.18,
-                            ringSquash: 0.35
-                        });
-                        */
-                        // 4. Render the rings if visible in front of walls
-                        if (!isOccluded) {
-                            
-                            // --- CALCULATE DANGER LEVEL ---
-                            let playerMax = 16;
-                            if (scene.stat && scene.stat.length >= 4) {
-                                playerMax = 0;
-                                for (let i = 0; i < 4; i++) {
-                                    let pDice = scene.getEffectiveDice ? scene.getEffectiveDice(i) : { numDice: scene.stat[i][0] || 1, diceSides: scene.stat[i][1] || 4, flatMod: scene.stat[i][2] || 0 };
-                                    playerMax += (pDice.numDice * pDice.diceSides) + pDice.flatMod;
-                                }
-                            }
-                            
-                            let npcMax = 0;
-                            if (typeof sprite.getEffectiveDice === 'function') {
-                                for (let i = 0; i < 4; i++) {
-                                    let nDice = sprite.getEffectiveDice(i);
-                                    npcMax += (nDice.numDice * nDice.diceSides) + nDice.flatMod;
-                                }
-                                if (sprite.isBoss) npcMax = Math.floor(npcMax * 1.5);
-                            }
-                            
-                                
-                            const diff = npcMax - playerMax;
-                            let conSolid = '#00FF00'; // Default: Green (Trivial)
-                            if (diff >= 15) conSolid = '#FF0000'; // Red (Certain Death)
-                            else if (diff >= 5) conSolid = '#FFFF00'; // Yellow (Challenge)
-                            else if (diff >= -4) conSolid = '#FFFFFF'; // White (Equal)
-                            else if (diff >= -12) conSolid = '#1E90FF'; // Blue (Easy)
-                            else if (diff >= -19) conSolid = '#00FFFF'; // Cyan (Very Easy)
-
-                            // --- DETERMINE RING COLOR (STATUS CYCLING) ---
-                            let ringColor = conSolid; 
-                            let activeStatusColors = [];
-                            
-                            if (sprite.activeBuffs && sprite.activeBuffs.length > 0) {
-                                if (sprite.activeBuffs.some(b => b.name === 'Burn')) activeStatusColors.push('#FF4500');
-                                if (sprite.activeBuffs.some(b => b.name === 'Poison')) activeStatusColors.push('#32CD32');
-                                if (sprite.activeBuffs.some(b => b.name === 'Curse')) activeStatusColors.push('#8A2BE2');
-                                if (sprite.activeBuffs.some(b => b.name === 'Webbed' || b.bind)) activeStatusColors.push('#FFFFFF');
-                            }
-
-                            if (activeStatusColors.length > 0) {
-                                const cycle = [conSolid, ...activeStatusColors];
-                                ringColor = cycle[Math.floor(Date.now() / 600) % cycle.length];
-                            }
-
-                            // --- CALCULATE WARD DEPLETION PERCENTAGE ---
-                            let wardPercent = 1.0;
-                            if (sprite.currentWardTime !== undefined && sprite.maxWards !== undefined) {
-                                let maxTime = sprite.maxWards * (sprite.timePerWard || 3.0);
-                                if (maxTime > 0) {
-                                    wardPercent = Math.max(0, Math.min(1.0, sprite.currentWardTime / maxTime));
-                                }
-                            }
-
-                            const ringTime = frameNow / 1000;
-                            const ringStart = -Math.PI / 2;
-                            const ringEnd = ringStart + Math.PI * 2 * wardPercent;
-                            const ringWidth = Math.max(1, 2.5 / transformY);
-
-                            ctx.strokeStyle = ringColor;
-                            ctx.lineWidth = ringWidth;
-
-                            // Empty-ward outline remains visible.
-                            ctx.globalAlpha = 0.25;
-                            ctx.beginPath();
-                            ctx.ellipse(
-                                ringX, ringY,
-                                ringRadius, ringRadius * ringSquash,
-                                0, 0, Math.PI * 2
-                            );
-                            ctx.stroke();
-
-                            if (wardPercent > 0) {
-                                // Keep one continuous, readable HP arc underneath the shimmer.
-                                ctx.globalAlpha = 0.7;
-                                ctx.beginPath();
-                                ctx.ellipse(
-                                    ringX, ringY,
-                                    ringRadius, ringRadius * ringSquash,
-                                    0, ringStart, ringEnd
-                                );
-                                ctx.stroke();
-
-                                // Modest segment count; fewer segments for distant sprites.
-                                const segments = Math.max(
-                                    12,
-                                    Math.min(40, Math.ceil(ringRadius * 0.8))
-                                );
-
-                                ctx.lineWidth = ringWidth * 1.8;
-
-                                for (let i = 0; i < segments; i++) {
-                                    const a0 = ringStart + Math.PI * 2 * i / segments;
-                                    if (a0 >= ringEnd) break;
-
-                                    const a1 = Math.min(
-                                        ringEnd,
-                                        ringStart + Math.PI * 2 * (i + 1) / segments
-                                    );
-
-                                    const wave =
-                                        Math.sin(a0 * 7 - ringTime * 2.5) * 0.5 +
-                                        Math.cos(a0 * 11 + ringTime * 1.7) * 0.5;
-
-                                    ctx.globalAlpha = 0.2 + (wave + 1) * 0.3;
-
-                                    ctx.beginPath();
-                                    ctx.ellipse(
-                                        ringX, ringY,
-                                        ringRadius, ringRadius * ringSquash,
-                                        0, a0, a1
-                                    );
-                                    ctx.stroke();
-                                }
-                            }
-                        }
-                        ctx.restore();
-                    }
                         } 
                         
                 // --- DRAW 3D PARTICLES ---
@@ -43906,8 +43771,8 @@ render(scene, dt) {
                             }
                         }
                 // --- THE HUNTED DIRECTOR ---
-                        host.window.BMCursedRing?.active(scene);
-                        if (scene.memory['hunted_active'] && scene.mapID !== 999 && scene.mapID !== -1 && host.startGame === 'explore') {
+                        host.window.BMCursedRing?.tick(scene,dt);
+                        if (!scene.memory.hunted_curse && scene.memory['hunted_active'] && scene.mapID !== 999 && scene.mapID !== -1 && host.startGame === 'explore') {
                             scene.memory['hunted_timer'] += dt; // dt is in seconds
                             
                             if (scene.memory['hunted_timer'] >= scene.memory['hunted_interval']) {
@@ -45239,6 +45104,7 @@ renderTopDown(scene, dt, simulationDone = false) {
                     if (Math.abs(diffX) <= range + 1 && Math.abs(diffY) <= range + 1) {
                         let canSeeNPC = bypassLOS || ((scene.dSense > 0 && dist <= scene.dSense) && scene.checkLineOfSight(npc.x, npc.y));
                         if (canSeeNPC) {
+                            if(npc.model)host.window.BMFoeRings?.draw(scene,npc,host.ctx,viewX+viewW/10*(tx+cellSize/2),viewY+viewH/10*ty+viewW/10*cellSize*.94,viewW/10*cellSize*.34,.35);
                             if (npc.model) {
                                 let centerX = viewX + (viewW / 10) * tx + ((viewW / 10) * cellSize) / 2;
                                 let centerY = viewY + (viewH / 10) * ty + ((viewH / 10) * cellSize) / 2;
@@ -45287,7 +45153,7 @@ renderTopDown(scene, dt, simulationDone = false) {
                                         
                                         if (npc.name && npc.name !== "undefined") {
                                             host.tX = oldTX; host.tY = oldTY; host.tL = oldTL; host.tH = oldTH;
-                                            void 0, (0, host.drawText)(tx+ cellSize/11, ty + cellSize, cellSize, 0.4, ''+npc.name, 'green', 1, 'center');
+                                            void 0, (0, host.drawText)(tx, ty + cellSize, cellSize, 0.4, ''+npc.name, 'green', 1, 'center');
                                         }
                                     }
                                 }
@@ -45329,7 +45195,7 @@ renderTopDown(scene, dt, simulationDone = false) {
                                         host.tX = oldTX; host.tY = oldTY; host.tL = oldTL; host.tH = oldTH;
                                         let isHostile = (scene.hostilePlayers && scene.hostilePlayers.has(id));
                                         let nameColor = isHostile ? '#ff0000' : ((p.name && p.name.toLowerCase().includes('suncat')) ? '#ff6600' : '#00ffff');
-                                        void 0, (0, host.drawText)(tx + (cellSize/2)-1, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
+                                        void 0, (0, host.drawText)(tx - cellSize/2, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
                                     }
                                     host.tX = oldTX; host.tY = oldTY; host.tL = oldTL; host.tH = oldTH;
                                 }
@@ -45362,7 +45228,7 @@ renderTopDown(scene, dt, simulationDone = false) {
                                                 host.tX = oldTX; host.tY = oldTY; host.tL = oldTL; host.tH = oldTH;
                                                 let isHostile = (scene.hostilePlayers && scene.hostilePlayers.has(id));
                                                 let nameColor = isHostile ? '#ff0000' : '#00ff00'; 
-                                                void 0, (0, host.drawText)(tx + (cellSize/2)-1, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
+                                                void 0, (0, host.drawText)(tx - cellSize/2, ty + cellSize, cellSize * 2, 0.4, ''+p.name, nameColor, 1, 'center');
                                             }
                                             host.tX = oldTX; host.tY = oldTY; host.tL = oldTL; host.tH = oldTH;
                                         }
@@ -45443,7 +45309,7 @@ renderTopDown(scene, dt, simulationDone = false) {
                     void 0, (0, host.BMBodySizes.worldPortrait)(scene,currentPSprite,0,0,1,0,currentDir,-1);host.ctx.restore(); 
                     
                     host.tX = oldTX; host.tY = oldTY; host.tL = oldTL; host.tH = oldTH;
-                    void 0, (0, host.drawText)(centerScreenX - cellSize-.5, centerScreenY + (cellSize / 2)-.5, cellSize * 2, 0.4, ''+host.playerName, '#ffcc00', 1, 'center');
+                    void 0, (0, host.drawText)(centerScreenX - cellSize, centerScreenY + (cellSize / 2), cellSize * 2, 0.4, ''+host.playerName, '#ffcc00', 1, 'center');
                 }
                 host.tX = oldTX; host.tY = oldTY; host.tL = oldTL; host.tH = oldTH;
 
@@ -45963,6 +45829,7 @@ const BMOverhead=(()=>{
     polygon(roof,d.wallColors?.[id]||'#64735a');g.strokeStyle='#a9b69344';g.lineWidth=.7;g.stroke();continue;
    }
    const {actor:a,player,projectile,p,z}=o,ground=project(a.x,a.y,d.getFloorElevation(a.x,a.y));
+   if(!projectile&&!player)globalThis.BMFoeRings?.draw(d,a,g,p.x,p.y,cell*.32,.4);
    if(!projectile){g.fillStyle='#0007';g.beginPath();g.ellipse(ground.x,ground.y,cell*.24,cell*.10,0,0,Math.PI*2);g.fill();}
    if(a.type===-27||a.cachedBillboard){const size=cell*(a.role==='herb'?.6:1),image=a.type===-27?BMWorldCards.get(a,size):a.cachedBillboard;g.drawImage(image,p.x-size/2,p.y-size*.9,size,size);continue;}
    if(a.model){a.model.draw(g,p.x,p.y-cell*.3,cell*.4,4);BMLock.markBody(a,g,{x:p.x-cell*.2,y:p.y-cell*.7,w:cell*.4,h:cell*.4});continue;}
@@ -46774,7 +46641,7 @@ const BMTouch = (() => {
         ctx.restore();BMFishing.draw();
     }
     return {directionPress,directionRelease,dashDirection,attack,holdAttack,freeCamera,settleCamera,settingsUI,setSensitivity,get sensitivity(){return sensitivity;},enabled,live,down,move,up,cancel,step,tick,draw,buttons,cameraAngle,vector,ownsButton,
-        get moving(){return !!vector();},get travelSpeed(){return enabled()?moveSpeed:1;},
+        get moving(){return !!vector();},get travelSpeed(){return (enabled()?moveSpeed:1)*(window.BMWorkshopEffects?.speed(Dungeon)||1);},
         get jumpHeight(){return BMPlayerMotion.height;}};
 })();
 
@@ -46981,76 +46848,48 @@ const BMFishSprites=(()=>{
 
 // A small, local fishing activity. Catch records use the existing saved memory.
 const BMFishing=(()=>{
-    let reveal=null;
-    let cast=null,water=null,checked=-Infinity,notice='',noticeUntil=0,checkedMap=null,checkedMaze=null,checkedX=NaN,checkedY=NaN;
-    function safe(){return BMTouch.live()&&!Dungeon.inCombat&&!Dungeon.isThreatNearby&&!Dungeon.isAggroDashing;}
-    function nearby(now=performance.now()) {
-        const x=Math.floor(Dungeon.x),y=Math.floor(Dungeon.y);
-        if(now>=checked&&now-checked<300&&checkedMap===Dungeon.mapID&&checkedMaze===Dungeon.maze&&checkedX===x&&checkedY===y)return water;
-        checkedMap=Dungeon.mapID;checkedMaze=Dungeon.maze;checkedX=x;checkedY=y;
-        checked=now;water=null;
-        if(!safe())return null;
-        let best=Infinity;
-        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
-            const tile=Dungeon.maze[y+dy]?.[x+dx];
-            if(tile!==92&&tile!==93)continue;
-            const dist=Math.hypot(x+dx+.5-Dungeon.x,y+dy+.5-Dungeon.y);
-            // Adjacent water only: a diagonal bank must not put a wall between us.
-            if(dx&&dy&&(BMPlayerMotion.blocked(x+dx,y)||BMPlayerMotion.blocked(x,y+dy)))continue;
-            if(dist<best){best=dist;water={x:x+dx,y:y+dy};}
-        }
-        return water;
-    }
-    function say(text,now){notice=text;noticeUntil=now+4500;}
-    function cancel(){if(cast){cast.message='Fishing cancelled.';BMCraftMastery.finish(cast,false);}cast=null;}
-    function tick(now=performance.now()) {
-        if(reveal&&(now>=reveal.until||reveal.map!==Dungeon.mapID||!safe()))reveal=null;
-        if(cast&&(!safe()||cast.map!==Dungeon.mapID||Math.hypot(Dungeon.x-cast.x,Dungeon.y-cast.y)>.12||Dungeon.isSlidingToTile))cancel();
-        if(cast&&now>=cast.bite&&now<=cast.bite+1900&&!cast.sounded){cast.sounded=true;BMCraftAudio.cue('craftBite');}
-        if(cast&&now>cast.bite+1900){cast.message='The fish slipped away.';BMCraftMastery.finish(cast,false);BMCraftAudio.result(false);BMActivity.record('fishing_missed','A fish slipped off the line.');cancel();say('The fish slipped away. Cast again!',now);}
-    }
-    function press(now=performance.now()) {
-        tick(now);if(!safe())return;
-        if(cast){
-            if(now<cast.bite){BMCraftAudio.cue('craftReel');cancel();say('Line reeled in. Cast again when ready.',now);return;}
-            if(!BMCraftMastery.checkpoint(cast,'reel',now-cast.bite<500?1:.8,true)){cast.bite=now;notice=cast.message;noticeUntil=now+4500;say(cast.message,now);return;}BMCraftAudio.cue('craftReel');BMCraftAudio.cue('craftSplash');BMCraftAudio.result(true);
-            const fishIndex=Math.floor(Math.random()*BMFishSprites.species.length);
-            const species=BMFishSprites.species[fishIndex].name,cm=8+Math.floor(Math.random()*44);
-            reveal={index:fishIndex,map:Dungeon.mapID,at:now,until:now+2600};
-            const record=Dungeon.memory.fishingRecord||{catches:0,bestCm:0};
-            record.catches++;record.bestCm=Math.max(record.bestCm,cm);record.lastSpecies=species;
-            BMActivity.record('fish_caught',`Caught a ${cm} cm ${species}.`,{fish:species,fishIndex,cm});Dungeon.memory.fishingRecord=record;BMInventory.add({key:'fish:'+fishIndex,name:species,kind:'fish',fishIndex,category:'misc'},1);BMCraftMastery.finish(cast,true);Dungeon.requestSave();cancel();
-            notice='';noticeUntil=0;reveal.text=`${species} · ${cm} cm!  Total: ${record.catches} · Best: ${record.bestCm} cm`;
-            return;
-        }
-        checked=-Infinity;
-        if(Dungeon.isSlidingToTile||!nearby(now))return;
-        reveal=null;
-        cast={kind:'fishing',x:Dungeon.x,y:Dungeon.y,map:Dungeon.mapID,bite:now+1800+Math.random()*2600};
-        BMCraftMastery.begin(cast);BMCraftAudio.cue('craftSplash');BMActivity.record('fishing_started','Cast a fishing line beside the water.');
-        notice='';
-    }
-    function draw(){
-        if(!BMTouch.live())return;
-        const now=performance.now(),bite=cast&&now>=cast.bite;
-        const catchVisible=reveal&&now<reveal.until&&reveal.map===Dungeon.mapID&&safe();
-        // One fade controls the fish, its caption, and the caption background.
-        const catchAlpha=catchVisible?Math.max(0,Math.min(1,(now-reveal.at)/140,(reveal.until-now)/400)):0;
-        if(catchVisible){
-            const age=(now-reveal.at)/1000,u=tL/10;
-            ctx.save();ctx.globalAlpha*=catchAlpha;
-            BMFishSprites.draw(reveal.index,tX+tL*.5,tY+tH*.26-Math.sin(Math.min(1,age/.5)*Math.PI*.5)*u*.22,
-                Math.min(190,tL*.34),age);ctx.restore();
-        }
-        const text=cast?(bite?(cast.message||'Bite! Tap Reel now!'):'Fishing… wait for a bite. Tap Reel to cancel.'):catchVisible?reveal.text:(now<noticeUntil?notice:'');
-        if(!text)return;
-        const u=tL/10,x=tX+u*.35,y=tY+3.7*u,width=tL*.75;
-        ctx.save();if(!cast&&catchVisible)ctx.globalAlpha*=catchAlpha;ctx.fillStyle='rgba(0,0,0,.78)';ctx.fillRect(x,y,width,u*.85);
-        ctx.fillStyle=bite?'#a9f4ec':'#e9ddb0';ctx.font=`${Math.max(11,Math.min(16,u*.27))}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,x+width/2,y+u*.34,width-u*.2);
-        if(cast){const phase=bite?Math.max(0,1-(now-cast.bite)/1900):.5+.3*Math.sin(now/450);ctx.fillStyle=bite?'#a9f4ec':'#827c48';ctx.fillRect(x+u*.15,y+u*.65,(width-u*.3)*phase,3);}
-        ctx.restore();
-    }
-    return {available:()=>safe()&&(!!cast||!!nearby()),press,tick,cancel,draw,reset(){cancel();reveal=null;checked=-Infinity;water=null;notice='';},get active(){return !!cast;},get biting(){return !!cast&&performance.now()>=cast.bite;}};
+ let cast=null,water=null,checked=0,cacheKey='',notice='',noticeUntil=0,reveal=null,controls=null,reel=null,rod=null,last=0;
+ const safe=()=>BMTouch.live()&&!Dungeon.isDead&&!Dungeon.inCombat&&!Dungeon.isThreatNearby&&!Dungeon.isAggroDashing;
+ function nearby(now=performance.now()){const key=[Dungeon.mapID,Math.floor(Dungeon.x),Math.floor(Dungeon.y)].join(':');if(now-checked<300&&key===cacheKey)return water;checked=now;cacheKey=key;water=null;if(!safe())return null;let best=Infinity;
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const x=Math.floor(Dungeon.x)+dx,y=Math.floor(Dungeon.y)+dy,t=Dungeon.maze[y]?.[x];if(![92,93].includes(t))continue;if(dx&&dy&&(BMPlayerMotion.blocked(x,Math.floor(Dungeon.y))||BMPlayerMotion.blocked(Math.floor(Dungeon.x),y)))continue;const dist=Math.hypot(x+.5-Dungeon.x,y+.5-Dungeon.y);if(dist<best){water={x,y};best=dist;}}return water;
+ }
+ function say(s,now=performance.now()){notice=s;noticeUntil=now+4000;}
+ function finish(ok,message){if(!cast)return;const g=cast;g.message=message;BMCraftMastery.finish(g,ok);cast=null;if(controls)controls.hidden=true;say(message);if(!ok)BMCraftAudio.result(false);}
+ function cancel(){if(cast)finish(false,'Line reeled in.');}
+ function ui(){if(controls)return;controls=document.createElement('div');controls.id='bm-fishing-controls';controls.style.cssText='position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 16px);transform:translateX(-50%);z-index:980;display:flex;gap:8px;padding:8px;background:#12201de8;border:1px solid #a18e5d;border-radius:12px;color:#eadfbe';controls.hidden=true;document.body.append(controls);
+  const style=document.createElement('style');style.textContent='#bm-fishing-controls[hidden]{display:none}#bm-fishing-controls button{min-height:48px;padding:9px 16px;border:1px solid #a28e61;background:#283a2c;color:#eadfbe;border-radius:9px;font:15px system-ui;touch-action:none}';document.head.append(style);
+  for(const t of ['pointerdown','pointermove','pointerup','pointercancel','touchstart','touchmove','touchend','click','keydown','keyup'])controls.addEventListener(t,e=>e.stopPropagation());
+  reel=document.createElement('button');reel.textContent='Hold to reel';controls.append(reel);reel.onpointerdown=e=>{if(!cast)return;e.preventDefault();reel.setPointerCapture(e.pointerId);cast.reeling=true;};const release=()=>{if(cast)cast.reeling=false;};reel.onpointerup=reel.onpointercancel=reel.onlostpointercapture=release;reel.onkeydown=e=>{if([' ','Enter'].includes(e.key)&&cast){e.preventDefault();cast.reeling=true;}};reel.onkeyup=release;
+  rod=document.createElement('button');rod.textContent='↔ Rod';rod.setAttribute('aria-label','Drag the rod against the fish’s pull');controls.append(rod);let origin=null;rod.onpointerdown=e=>{origin=e.clientX;rod.setPointerCapture(e.pointerId);};rod.onpointermove=e=>{if(origin!==null&&cast)cast.rod=Math.max(-1,Math.min(1,(e.clientX-origin)/55));};rod.onpointerup=rod.onpointercancel=()=>{origin=null;if(cast)cast.rod=0;};rod.onkeydown=e=>{if(cast&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();cast.rod=e.key==='ArrowLeft'?-1:1;}};rod.onkeyup=()=>{if(cast)cast.rod=0;};
+  const stop=document.createElement('button');stop.textContent='Stop';stop.onclick=cancel;controls.append(stop);
+ }
+ function catchFish(now){const g=cast;if(!g)return;if(!BMCraftMastery.checkpoint(g,'landing',.95,true)){g.distance=.1;return;}
+  const fishIndex=g.fishIndex,name=BMFishSprites.species[fishIndex].name,cm=g.cm,record=Dungeon.memory.fishingRecord??={catches:0,bestCm:0};record.catches++;record.bestCm=Math.max(record.bestCm,cm);record.lastSpecies=name;
+  BMInventory.add({key:'fish:'+fishIndex,name,kind:'fish',fishIndex},1);BMActivity.record('fish_caught','Caught a '+cm+' cm '+name+'.',{fish:name,fishIndex,cm});finish(true,name+' · '+cm+' cm');reveal={index:fishIndex,at:now,until:now+2600,map:Dungeon.mapID};BMCraftAudio.cue('craftSplash');BMCraftAudio.result(true);Dungeon.requestSave();
+ }
+ function tick(now=performance.now()){const dt=Math.max(0,Math.min(.15,(now-last)/1000));last=now;if(reveal&&(now>reveal.until||!safe()))reveal=null;if(!cast){if(controls)controls.hidden=true;return;}
+  if(!safe()||cast.map!==Dungeon.mapID||Math.hypot(Dungeon.x-cast.x,Dungeon.y-cast.y)>.12||Dungeon.isSlidingToTile){cancel();return;}
+  if(cast.phase==='wait'){if(now>=cast.bite&&!cast.sounded){cast.sounded=true;BMCraftAudio.cue('craftBite');}if(now>cast.bite+2200)finish(false,'The fish slipped away.');return;}
+  const g=cast;g.elapsed+=dt;const run=(g.elapsed%5.5)<1.8&&g.energy>.18;g.running=run;g.pull=Math.sin(g.elapsed*1.1+.8)>.0?1:-1;const counter=Math.max(0,-g.rod*g.pull),bad=Math.max(0,g.rod*g.pull);
+  g.tension+=(g.reeling?(run?.30:.055):-.17)*dt+(run?.10:0)*dt+bad*.11*dt-counter*.14*dt;g.tension=Math.max(0,Math.min(1.1,g.tension));
+  if(g.tension>.25&&g.tension<.86)g.energy=Math.max(0,g.energy-dt*(.045+counter*.035));
+  if(g.reeling&&!run)g.distance=Math.max(0,g.distance-dt*(.025+(1-g.energy)*.11));else if(run)g.distance=Math.min(1,g.distance+dt*.025);
+  g.slack=g.tension<.08?g.slack+dt:0;g.strain=g.tension>.96?g.strain+dt:0;
+  if(g.strain>.8){finish(false,'The line snapped. Release the reel during strong runs.');return;}if(g.slack>2.5){finish(false,'The hook slipped. Keep a little tension on the line.');return;}
+  if(reel)reel.textContent=run?'Release · fish running':'Hold to reel';if(rod)rod.textContent=g.pull>0?'← Pull left':'Pull right →';
+  if(g.distance<=.02&&g.energy<.30)catchFish(now);
+ }
+ function press(now=performance.now()){tick(now);if(!safe())return;if(cast){if(cast.phase==='fight'){cast.reeling=!cast.reeling;return;}if(now<cast.bite){cancel();return;}cast.phase='fight';cast.elapsed=0;cast.tension=.48;cast.energy=1;cast.distance=1;cast.rod=0;cast.pull=1;cast.reeling=false;cast.slack=cast.strain=0;ui();controls.hidden=false;BMCraftAudio.cue('craftReel');return;}
+  if(Dungeon.isSlidingToTile||!nearby(now)||!BMCraftMastery.canBegin())return;cast={kind:'fishing',phase:'wait',x:Dungeon.x,y:Dungeon.y,map:Dungeon.mapID,bite:now+1800+Math.random()*2600,fishIndex:Math.floor(Math.random()*BMFishSprites.species.length),cm:8+Math.floor(Math.random()*44)};last=now;BMCraftMastery.begin(cast);BMCraftAudio.cue('craftSplash');BMActivity.record('fishing_started','Cast a fishing line beside the water.');notice='';
+ }
+ function draw(){if(!BMTouch.live())return;const now=performance.now(),g=cast;if(reveal){const a=Math.max(0,Math.min(1,(reveal.until-now)/400));ctx.save();ctx.globalAlpha=a;BMFishSprites.draw(reveal.index,tX+tL*.5,tY+tH*.34,Math.min(190,tL*.34),(now-reveal.at)/1000);ctx.restore();}
+  const message=g?g.phase==='wait'?(now>=g.bite?'Bite! Tap Reel.':'Waiting for a bite…'):(g.running?'Let it run. Guide the rod against its pull.':'Reel steadily. Keep the line balanced.'):now<noticeUntil?notice:'';if(!message)return;
+  const x=tX+tL*.10,y=tY+tH*.36,w=tL*.80,h=Math.max(100,tL*.23);ctx.save();ctx.fillStyle='#071512dc';ctx.fillRect(x,y,w,h);ctx.textAlign='center';ctx.fillStyle='#e8ddbb';ctx.font=Math.max(12,Math.min(17,tL*.026))+'px system-ui';ctx.fillText(message,x+w/2,y+22,w-12);
+  if(g?.phase==='fight'){const sx=x+w*.20,sy=y+h*.74,ex=x+w*(.5+g.rod*.16),ey=y+h*.32;ctx.strokeStyle='#aa7c47';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(sx,sy);ctx.quadraticCurveTo(ex-g.pull*20*g.tension,sy-45,ex,ey);ctx.stroke();ctx.strokeStyle=g.tension>.85?'#e79579':'#ddd8b8';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(ex,ey);ctx.quadraticCurveTo(ex+g.pull*40,ey+25,x+w*(.73+g.pull*.09),y+h*.67);ctx.stroke();
+   for(const [i,label,value,color]of [[0,'Tension',g.tension,g.tension>.85?'#dc8368':'#c7c787'],[1,'Fish',g.energy,'#89b9d4'],[2,'Distance',g.distance,'#8bc4a0']]){const by=y+h-27+i*8;ctx.fillStyle='#243d32';ctx.fillRect(x+75,by,w-90,5);ctx.fillStyle=color;ctx.fillRect(x+75,by,(w-90)*Math.min(1,value),5);ctx.textAlign='right';ctx.font='9px system-ui';ctx.fillText(label,x+69,by+5);}
+  }ctx.restore();
+ }
+ return {available:()=>safe()&&(!!cast||!!nearby()),press,tick,cancel,draw,reset(){cancel();water=null;cacheKey='';checked=0;reveal=null;notice='';},get message(){return notice;},get active(){return !!cast;},get biting(){return !!cast&&performance.now()>=cast.bite;},get state(){return cast;}};
 })();
 window.addEventListener('blur',()=>{BMTouch.cancel();BMFishing.cancel();});
 window.addEventListener('resize',()=>BMTouch.cancel());
@@ -67018,11 +66857,23 @@ const BMDebugProgression=(()=>{
   return card?.type==='spell'||card?.type==='monster'||spell&& !String(spell.type).startsWith('item_')||Object.values(BM_TRAINER_CATALOGS).some(list=>list.some(lesson=>lesson.id===id));
  }
  function say(text){chatLog.push('[SYSTEM]: '+text);if(chatLog.length>100)chatLog.shift();}
+ function normalize(text){return String(text).normalize('NFKC').trim().replace(/^\.hack(?:\s*\/\/\s*|\s+)(?=(?:level(?:up)?|master|learn)\b)/i,'.hack//');}
  function command(text){
-  const match=/^\.hack\/\/(levelup|learn)(?:\s+(.*))?$/i.exec(String(text).trim());if(!match)return false;
+  const match=/^\.hack\/\/(levelup|level|master|learn)(?:\s+(.*))?$/i.exec(normalize(text));if(!match)return false;
   const action=match[1].toLowerCase(),arg=(match[2]||'').trim();
-  if(action==='levelup'){
-   if(arg){say('Use .hack//levelup to gain one level.');return true;}
+  if(action==='master'){
+   if(arg){say('Use .hack//master to master all crafting skills.');return true;}
+   const state=BMCraftMastery.state();for(const id of Object.keys(BMCraftMastery.definitions))state.disciplines[id].xp=BMCraftMastery.target(id)[3];
+   Dungeon.updateSkills();Dungeon.requestSave();BMShell.invalidate();say('All crafting skills: Master. Crafting bonuses updated; book discoveries are unchanged.');return true;
+  }
+  if(action==='level'&&arg.toLowerCase()!=='up'){
+   if(!/^\d+$/.test(arg)||!Number.isSafeInteger(Number(arg))||Number(arg)>10000){say('Use .hack//level 20 to reset level training, or .hack//level up to gain one level.');return true;}
+   const level=Number(arg);Dungeon.stat=Dungeon.stat.map(()=>[1,4,0]);Dungeon.statProgress=[0,0,0,0];Dungeon.level=level;Dungeon.xp=0;Dungeon.xpNeeded=Math.floor(100*Math.pow(level+1,1.8));Dungeon.power=100+level*13;
+   Dungeon.statPoints=level*(String(Dungeon.playerClass).toLowerCase()==='battle-mage'?9:4);Dungeon.syncLivingPlayerCards?.();Dungeon.updateSkills();Dungeon.requestSave();BMShell.invalidate();
+   say('Level '+level+' · base dice reset · '+Dungeon.statPoints+' points available. Craft attainment and separate bonuses are retained.');return true;
+  }
+  if(action==='levelup'||action==='level'&&arg.toLowerCase()==='up'){
+   if(arg&&!(action==='level'&&arg.toLowerCase()==='up')){say('Use .hack//levelup to gain one level.');return true;}
    const before=Dungeon.level||0,points=Dungeon.statPoints||0,needed=Math.floor(100*Math.pow(before+1,1.8));
    if(!Number.isSafeInteger(needed)||!Number.isFinite(Dungeon.xp||0)){say('Unable to advance this character level.');return true;}
    Dungeon.xp=(Dungeon.xp||0)+needed;Dungeon.levelUpPlayer();Dungeon.updateSkills();
@@ -67043,7 +66894,7 @@ const BMDebugProgression=(()=>{
   say((all||added?'Learned ':'Already learned ')+name+'. Open Player → Spells for the 3D preview.');
   return true;
  }
- return {command,learnable};
+ return {command,learnable,normalize};
 })();
 
 const BMChatComposer=(()=>{
@@ -67107,6 +66958,8 @@ const BMChatComposer=(()=>{
                         }
                         // --------------------------------------
 
+                        // Local tests terminate here, before throttling, networking or Suncat.
+                        if(BMDebugProgression.command(chatDraft)){chatInput.value='';chatDraft='';isChatActive=false;chatInput.blur();return;}
                         // SEND
                         let msg = BMChatComposer.message(chatDraft);
                         if(msg===null)return; 
@@ -81197,7 +81050,7 @@ for (const index of directionalPortraits) {
         }
         function drawPortrait(index,x,y,z,card=0,direction=0,frameOverride=-1,pixels=PORTRAIT_PIXELS) {
             if(Number(index)===98)index=89;
-    index=BMArtwork.normalize(index);if(index===-27)card=BMArtwork.id(card?.index??card?.id??card)??0;
+    index=BMArtwork.normalize(index);if(index===72&&globalThis.BMCursedRing){ctx.drawImage(BMCursedRing.portrait(),tX+x*tL/10,tY+y*tH/10,tL*z,tH*z);return null;}if(index===-27)card=BMArtwork.id(card?.index??card?.id??card)??0;
     if(typeof BMPortableArt!=='undefined'&&BMPortableArt.has(index)){BMArtwork.portable(index,x,y,z,pixels);return null;}
     if(Number(index)===-27){drawPortraitPaths(index,x,y,z,card);return null;}
     const placement=portraitPlacement(index,x,y,z,direction,frameOverride,pixels);
@@ -88184,6 +88037,7 @@ const BMEquipment=(()=>{
     const names={...Object.fromEntries(Object.entries(BMArtisanData.gear).map(([id,g])=>[id,g.name])),6:'The Lovers',17:'Star',21:'Crown',22:'Wand',27:'Amulet',30:'Protect Orb',31:'Tome',36:'Hourglass',45:'Chalice',50:'Sword',64:'Shield',66:'Armor',72:'Magic Ring',84:'Excalibur',92:'Fire Sword',1005:'Venom Blade',1006:'Cursed Dagger',1007:'Mace of Terror',1008:'Fur Boots'};
     const DAY_MS=24*60*60*1000,RECOVERY_MS=60000;
     const isEquip=id=>Object.hasOwn(names,Number(id));
+    const register=(id,name)=>{names[id]=name;};
     function ledger(actor){if(actor===Dungeon){actor.memory??={};return actor.memory.equipmentTimers??={};}return actor.equipmentTimers??={};}
     function prepare(actor,b,id,now=Date.now()){
         if(!isEquip(id))return;
@@ -88287,7 +88141,7 @@ const BMEquipment=(()=>{
         const old=p.crop||{left:0,top:0,side:1},next=equipped.meta,unit=p.w/old.side;
         return {...p,image:equipped.image,x:p.x+(next.left-old.left)*unit,y:p.y+(next.top-old.top)*unit,w:unit*next.side,h:unit*next.side,crop:next};
     }
-    return {active,state,append,frame,portrait,isEquip,prepare,sync,status,label,boots,useItem,DAY_MS,RECOVERY_MS};
+    return {register,active,state,append,frame,portrait,isEquip,prepare,sync,status,label,boots,useItem,DAY_MS,RECOVERY_MS};
 })();
 
 /* World body heights in feet; wall height 1 = 9 ft. Portraits retain their own framing. */
@@ -88335,7 +88189,7 @@ const BMBodySizes=(()=>{
   // reduction. Card portraits and editor previews never pass through here.
   const h=(profile(id)??6)/6,k=Math.max(.45,Math.min(1.5,h))*(summoned(a)?summonFactor:1);
   ctx.save();const px=tX+x*tL/10+z*tL*.5,py=tY+y*tH/10+z*tH;ctx.translate(px,py);ctx.scale(k,k);ctx.translate(-px,-py);
-  try{const p=drawActorPortrait(a,id,x,y,z,...rest);if(p&&BMLock.matches(a)){const body=spriteTargetBox(p.index,p.direction,p.frame,p);BMLock.markBody(a,ctx,body);}return p;}finally{ctx.restore();}
+  try{const p=drawActorPortrait(a,id,x,y,z,...rest);if(p&&window.gameViewMode==='2d'&&!BMOverhead.active()&&globalThis.BMFoeRings?.eligible(a)){const foot=getRingFoot(p.image);BMFoeRings.draw(Dungeon,a,ctx,p.x+p.w*foot.x,p.y+p.h*foot.y,Math.max(5/k,p.w*foot.radius),.35,1.5/k);}if(p&&BMLock.matches(a)){const body=spriteTargetBox(p.index,p.direction,p.frame,p);BMLock.markBody(a,ctx,body);}return p;}finally{ctx.restore();}
  }
  return {feetPerTile,summonFactor,heights,metrics,measure,config,actor,ground,creatorHover,worldPortrait,summoned};
 })();
@@ -96651,7 +96505,7 @@ const BMCamp=(()=>{
         for(const type of ['pointerdown','pointermove','pointerup','pointercancel','touchstart','touchmove','touchend','click','wheel','keydown','keyup'])root.addEventListener(type,e=>e.stopPropagation());
         const wrap=el('div',root,null,'wrap'),head=el('header',wrap),names=el('div',head);el('div',names,'SUNCAT · CAMP & CARDS','muted');title=el('h1',names);
         exitButton=button(head,'Return to game',close);nav=el('nav',wrap);body=el('main',wrap);
-        for(const [key,label]of [['cook','Cooking'],['alchemy','Alchemy'],['sewing','Crafts & sewing'],['blackjack','Blackjack']]){const b=button(nav,label,()=>{mode=key;stamp='';render();});b.dataset.mode=key;}
+        for(const [key,label]of [['cook','Cooking'],['alchemy','Alchemy'],['sewing','Crafts & sewing'],['blackjack','Blackjack']]){const b=button(nav,label,()=>{if(['cook','alchemy'].includes(key)&&globalThis.BMWorkshopUI){BMWorkshopUI.open(key);return;}mode=key;stamp='';render();});b.dataset.mode=key;}
         button(nav,'Smithing',()=>BMArtisan.openForge());
     }
     function open(next='cook',reward='',table=null){
@@ -97697,7 +97551,7 @@ const BMShell=(()=>{
                 }else if(item.kind==='consumable'){
                     el('p',card,BMInventory.description(item),'muted');
                     button(card,'Consume one',()=>{BMInventory.consume(item.key);invalidate();},'primary');
-                }else el('p',card,item.kind==='fish'?'Raw catch · after cooking: '+BMInventory.description(item):item.kind==='herb'?'Gathered herb · refine it into powder.':item.kind==='powder'?'Refined ingredient · use it to brew medicine or elixir.':'Saved crafting material.','muted');
+                }else el('p',card,globalThis.BMMaterials?.definition(item)?BMMaterials.describe(item,BMCraftMastery.rank('smithing')>BMCraftMastery.rank('alchemy')?'smithing':'alchemy'):BMInventory.description(item),'muted');
             }
             if(itemTab==='misc'&&Dungeon.memory.fishingRecord?.catches)el('p',body,`Fishing record: ${Dungeon.memory.fishingRecord.catches} total catches · Best ${Dungeon.memory.fishingRecord.bestCm||0} cm. Earlier catches were recorded only as totals; new catches fill the stacks above.`,'muted');
         }
@@ -101590,7 +101444,7 @@ const BMInventoryModels=(()=>{
    case 69:for(const [x,y]of [[-.35,.35],[.05,.16],[.36,.38]])coin(x,y,0,.29);heart(0,-.48,0,.50);break;
    case 70:bar(0,.71,0,-.60,0,.035,green);for(const s of [-1,1]){part('arc',s*.28,-.16,0,.34,.13,.11,green,-s*.5);bar(0,.30,s*.21,.58,0,.025,wood);}break;
    case 71:bar(-.40,.80,.26,-.45,0,.08,wood);box(.25,-.48,0,.48,.18,.22,iron,.35);box(-.06,.79,.04,.63,.12,.28,iron);break;
-   case 72:ring(0,.09,0,.58,.58,.085,gold);ball(0,-.55,-.08,.25,.20,.22,violet);break;
+   case 72:ring(0,.09,0,.58,.58,.085,gold);ball(0,-.55,-.08,.25,.20,.22,red);break;
    case 84:case 92:case 1005:case 1006:sword(id===92?c('#ff771f'):id===1005?green:id===1006?violet:silver,id===1006);if(id===84)ball(0,.31,-.10,.10,.09,.04,blue);break;
    case 93:plate([[.03,-.96],[.49,-.96],[.05,-.12],[.43,-.12],[-.36,.96],[-.08,.13],[-.43,.13]],0,.10,c('#ffea4d'));break;
    case 96:shield(c('#8bc8e4'),white);break;
@@ -101867,7 +101721,7 @@ const BMBooks=(()=>{
     if(!Object.keys(out).length)return [];if(ref.caption)out.caption=text(ref.caption,240);return [out];
   });}
   function metadata(item,old={}){
-    const out={};const craftReq=BMCraftMastery.requirement(item.craftRequirement??old.craftRequirement);if(craftReq)out.craftRequirement=craftReq;const recipeId=item.recipeId??old.recipeId;if(Object.hasOwn(BMArtisanData.recipes,recipeId))out.recipeId=recipeId;
+    const out={};if((item.craftData??old.craftData)?.version===1)out.craftData=JSON.parse(JSON.stringify(item.craftData??old.craftData));const craftReq=BMCraftMastery.requirement(item.craftRequirement??old.craftRequirement);if(craftReq)out.craftRequirement=craftReq;const recipeId=item.recipeId??old.recipeId;if(Object.hasOwn(BMArtisanData.recipes,recipeId))out.recipeId=recipeId;
     for(const k of ['description','author','text','insight'])if(typeof (item[k]??old[k])==='string')out[k]=text(item[k]??old[k]);
     for(const k of ['spriteId','portraitId']){const n=BMArtwork.id(item[k]??old[k]);if(n!==null)out[k]=n;}
     if(typeof (item.magic??old.magic)==='boolean')out.magic=item.magic??old.magic;
@@ -102601,7 +102455,7 @@ const BMItemRules=(()=>{
   const colors={strength:'#f4d447',int:'#ed5353',con:'#62cf79',agi:'#529df5',ward:'#62cf79',medicine:'#62cf79',cleanse:'#62cf79',stats:'#e8cf78'};
   const healing={key:'potion:healing',name:'Healing Potion',kind:'consumable',effect:'ward'};
   function normalize(item){const i={...item},key=String(i.key||'');
-    if(i.kind==='consumable'&&!key.startsWith('cooked:')&&!key.startsWith('dish:')&&i.fishIndex===undefined){
+    if(!i.craftData&&i.kind==='consumable'&&!key.startsWith('cooked:')&&!key.startsWith('dish:')&&i.fishIndex===undefined){
       if(i.effect==='medicine'){if(/^(medicine:|potion:glowcap)/.test(key)){i.name='Medicine';i.effect='cleanse';}else Object.assign(i,healing);}
       else if(['elixir','restorative'].includes(i.effect)){i.name='Elixir';i.effect='stats';i.key='potion:elixir';}
       else if(i.effect==='ward')Object.assign(i,healing);
@@ -102715,7 +102569,7 @@ const BMEquipmentQuality=(()=>{
   const stats=['STR','CON','INT','AGI'];let pending=null,busy=false;
   const base=i=>i.baseKey||String(i.key||'').split(':grade:')[0];
   function grade(i={}){return Number.isFinite(i.quality)?i.quality>=.99?'Perfect':i.quality>=.62?'Good':'Poor':i.grade==='Perfect'?'Perfect':['Poor','Rustic'].includes(i.grade)?'Poor':'Good';}
-  const slot=id=>({22:'weapon',72:'ring',1121:'sheath',1122:'weapon',50:'weapon',84:'weapon',92:'weapon',1005:'weapon',1006:'weapon',1007:'weapon',1100:'weapon',1107:'weapon',1120:'weapon',64:'shield',1103:'shield',66:'armor',1102:'armor',1106:'armor',1008:'boots',1105:'boots',1104:'head',1101:'necklace',1108:'ring',1109:'ring'})[id]||null;
+  const slot=id=>BMArtisanData.gear[id]?.craftSlot||({22:'weapon',72:'ring',1121:'sheath',1122:'weapon',50:'weapon',84:'weapon',92:'weapon',1005:'weapon',1006:'weapon',1007:'weapon',1100:'weapon',1107:'weapon',1120:'weapon',64:'shield',1103:'shield',66:'armor',1102:'armor',1106:'armor',1008:'boots',1105:'boots',1104:'head',1101:'necklace',1108:'ring',1109:'ring'})[id]||null;
   function normalize(i){if(i.kind!=='equipment'||(!Number.isFinite(i.quality)&&!i.grade&&!i.baseKey))return {...i};const storedPenalty=String(i.key||'').match(/:penalty:([0-3])$/);if(!Number.isInteger(i.badStat)&&storedPenalty)i={...i,badStat:Number(storedPenalty[1])};const g=grade(i),b=base(i),badStat=g==='Poor'?(Number.isInteger(i.badStat)&&i.badStat>=0&&i.badStat<4?i.badStat:Math.floor(Math.random()*4)):undefined;
     return {...i,baseKey:b,key:b+':grade:'+g.toLowerCase()+(g==='Poor'?':penalty:'+badStat:''),name:g+' '+String(i.name||'Equipment').replace(/^(Good|Perfect|Poor|Rustic) /,''),grade:g,quality:g==='Perfect'?1:g==='Good'?.7:.4,...(badStat!==undefined?{badStat}:{})};}
   const entries=BMInventory.entries;
@@ -102846,8 +102700,8 @@ const BMCraftMastery=(()=>{
     g.craftInjury={pending:false,resolved:true,treatment:method};if(method==='continue')g.craftQualityPenalty=(g.craftQualityPenalty||0)+.08;g.heat=Math.min(60,g.heat||0);g.temp=Math.min(60,g.temp||0);g.overheat=0;g.scorch=Math.min(.7,g.scorch||0);g.message=method==='continue'?'The burn is sore; you continue carefully. Finish quality is reduced.':'The burn is cooled and work can continue.';document.getElementById('bm-craft-injury')?.remove();g._craftSnapshotAt=0;snapshot(g,g.kind==='forge'?'artisan':'native',g.craftContext||{});save();return true;}
   function injuryUI(g){if(!g.craftInjury?.pending)return;let box=document.getElementById('bm-craft-injury');if(box)return;box=document.createElement('section');box.id='bm-craft-injury';box.setAttribute('role','dialog');box.style.cssText='position:fixed;inset:15% 5%;overflow:auto;z-index:1400;padding:24px;background:#211712;color:#eadbbf;border:2px solid #c88953;border-radius:16px;font:17px/1.6 system-ui';const p=document.createElement('p');p.textContent=g.craftInjury.message+' Work is paused. This burn will not keep damaging you while a menu is open.';box.append(p);
     for(const [label,method]of [['Cool with water','water'],['Use medicine','medicine'],['Continue with sore hands','continue'],['Abandon work','abandon']]){const b=document.createElement('button');b.textContent=label;b.style.cssText='padding:14px;margin:8px;font:inherit';b.onclick=()=>{if(method==='abandon'){box.remove();g.craftInjury.pending=false;if(g.kind==='forge')BMArtisan.close();else BMCrafting.abandon();state().active=null;save();}else if(!treat(g,method))p.textContent='No suitable medicine. You can cool the burn with water.';};box.append(b);}for(const t of ['pointerdown','pointerup','click','touchstart','touchend','keydown','keyup'])box.addEventListener(t,e=>e.stopPropagation());box.tabIndex=-1;box.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();return;}if(e.key==='Tab'){const list=[...box.querySelectorAll('button')],i=list.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();list.at(-1)?.focus();}else if(!e.shiftKey&&i===list.length-1){e.preventDefault();list[0]?.focus();}}});document.body.append(box);box.querySelector('button').focus({preventScroll:true});}
-  function panel(parent){let box=parent.querySelector('[data-craft-mastery]');if(!box){box=document.createElement('section');box.dataset.craftMastery='';box.className='panel';parent.append(box);}const text=Object.keys(definitions).map(id=>summary(id)).join('\n')+'\nEvery discipline contributes its own passive bonus.';if(box.dataset.signature===text)return;box.dataset.signature=text;box.replaceChildren();const h=document.createElement('h2');h.textContent='Craft attainment';box.append(h);for(const line of text.split('\n')){const p=document.createElement('p');p.textContent=line;box.append(p);}}
-  function canBegin(){const a=state().active;if(!a||a.game?.status!=='playing'||state().attempts[a.game.craftAttempt]?.committed)return true;const text='Unfinished work is saved. Resume it or abandon it at camp before starting another job.';if(typeof Logres!=='undefined')Logres.toast(text);else{chatLog.push('[SYSTEM]: '+text);lastChatTime=Date.now();}return false;}
+  function panel(parent){if(globalThis.BMMaterials?.masteryPanel)return globalThis.BMMaterials.masteryPanel(parent);let box=parent.querySelector('[data-craft-mastery]');if(!box){box=document.createElement('section');box.dataset.craftMastery='';box.className='panel';parent.append(box);}const text=Object.keys(definitions).map(id=>summary(id)).join('\n')+'\nEvery discipline contributes its own passive bonus.';if(box.dataset.signature===text)return;box.dataset.signature=text;box.replaceChildren();const h=document.createElement('h2');h.textContent='Craft attainment';box.append(h);for(const line of text.split('\n')){const p=document.createElement('p');p.textContent=line;box.append(p);}}
+  function canBegin(){if(globalThis.BMMaterials?.state().active?.status==='playing'){chatLog.push('[SYSTEM]: Finish or discard the saved batch first.');return false;}const a=state().active;if(!a||a.game?.status!=='playing'||state().attempts[a.game.craftAttempt]?.committed)return true;const text='Unfinished work is saved. Resume it or abandon it at camp before starting another job.';if(typeof Logres!=='undefined')Logres.toast(text);else{chatLog.push('[SYSTEM]: '+text);lastChatTime=Date.now();}return false;}
   function abandonSaved(){const a=state().active;if(!a||BMCrafting.game?.status==='playing'||BMArtisan.active)return false;const g=a.game;g.message='Work abandoned.';finish(g,false);if(g.kind==='forge'&&Object.keys(g.spent||{}).length)BMInventory.add({key:'material:metal_scrap',name:'Metal Scrap',kind:'material'},1);state().active=null;save();BMShell.invalidate();return true;}
   function resume(){const a=state().active;if(!a||a.game.status!=='playing'||!state().attempts[a.game.craftAttempt]||state().attempts[a.game.craftAttempt].committed)return false;if(a.owner==='native'&&startGame==='camp'){BMCrafting.restoreGame(copy(a.game));BMCamp.open(a.game.kind==='fish'?'cook':a.game.kind==='sewing'?'sewing':'alchemy');BMShell.invalidate();return true;}if(a.owner==='artisan'&&startGame==='camp')return BMArtisan.resume(copy(a));return false;}
   // Optional artisans judge craft attainment, never deny their ordinary services.
@@ -102978,6 +102832,7 @@ const BMOnline = (() => {
       guildStrongholdAccepted: Dungeon.memory.guild_quest?.type==='stronghold'&&Dungeon.memory.guild_quest?.storyChapter===1&&[1,2].includes(Dungeon.memory.guild_quest?.state),
       dead: !!(Dungeon.isDead || Dungeon.isDying),
       groundLoot: 1,
+      workshop: globalThis.BMMaterials?.onlineProfile()||null,
       active: startGame === "explore" && !Dungeon.isDead && !Dungeon.isDying && !globalThis.BMClassPaths?.inTrial(),
       summons: Dungeon.npcs
         .filter(
@@ -105630,8 +105485,8 @@ const BMGuildStory=(()=>{
   carve(18,34,5,5);carve(20,33,1,1);carve(19,9,3,24);carve(12,3,17,10);carve(4,17,13,12);carve(23,17,13,12);carve(16,21,8,3);maze[33][20]=0;
   const npcs=[],foe=(index,x,y,sprite,name,boss=false)=>npcs.push({index,x,y,sprite,name,role:'battle',alignment:'foe',state:'stationary',isBoss:boss,level:boss?12:7,deck:boss?[26,12,28]:[50,26],onSpawn(n){n._guildStronghold=true;n.innateSpells=boss?[26,12]:[26];n.isRanged=true;n.respawnTime=Infinity;if((state(d).visit?.defeated||[]).includes(index))Object.assign(n,{isDead:true,visible:false});}});
   foe(884101,20.5,28.5,56,'Sect sentry');foe(WARDENS[0],9.5,22.5,5,'West seal warden',true);foe(WARDENS[1],30.5,22.5,5,'East seal warden',true);foe(884104,7.5,18.5,56,'Archive guard');foe(884105,33.5,26.5,56,'Barracks guard');foe(884106,17.5,9.5,56,'Hall guard');foe(884107,24.5,9.5,56,'Hall guard');foe(BOSS,20.5,6.5,5,'Sect Elder',true);
-  const prop=(index,x,y,sprite,name,kind,text)=>npcs.push({index,x,y,sprite,name,role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,customDialogue:[text],onSpawn(n){n._guildProp=kind;if(sprite>=1161)BMClassArt.resource(n,sprite);}});
-  prop(EXIT,21.5,36.5,1164,'Return sigil','exit','The sigil returns you to the southeast port.');prop(884121,5.5,18.5,1163,'March orders','orders','Most companies departed before dawn. Destination: the travellers’ guild. The Sect Elder’s seal authorizes the march.');prop(884122,34.5,18.5,1163,'Garrison ledger','ledger','An entire stronghold, provisioned for only a handful of guards. The wardens were ordered to delay intruders, not call for aid.');prop(884123,26.5,4.5,1164,'Spent portal focus','focus','The focus is cold. Its last destination was within the guild’s walls. Someone opened the way from inside.');
+  const prop=(index,x,y,sprite,name,kind,text)=>npcs.push({index,x,y,sprite,name,role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,customDialogue:[text],onSpawn(n){n._guildProp=kind;if(kind==='exit')Object.assign(n,{_guildEntrance:true,nonBlocking:false,hideMinimap:false});if(sprite>=1161)BMClassArt.resource(n,sprite);}});
+  prop(EXIT,20.5,38.5,-35,'Exit','exit','Return to the port.');prop(884121,5.5,18.5,1163,'March orders','orders','Most companies departed before dawn. Destination: the travellers’ guild. The Sect Elder’s seal authorizes the march.');prop(884122,34.5,18.5,1163,'Garrison ledger','ledger','An entire stronghold, provisioned for only a handful of guards. The wardens were ordered to delay intruders, not call for aid.');prop(884123,26.5,4.5,1164,'Spent portal focus','focus','The focus is cold. Its last destination was within the guild’s walls. Someone opened the way from inside.');
   const m={name:'Sect Stronghold',maze,npcs,spawn:{x:20.5,y:36.5,dir:0},skyColor:'#20253d',floorColor:'#686875',biome:'None',weather:'clear',playerOnlyPassages:[{x:20,y:33}],guildChapter:1,slabs:[]};
   for(const [x,y]of [[5,18],[6,18],[34,18],[34,19],[25,4],[26,4]])m.slabs.push({x,y,bottom:0,top:.25,tile:15});
   globalThis.BMStronghold?.prepare(m,d);MAP_DB[id]=m;d.defaultSpawns[id]={x:20.5,y:36.5,dir:0};BMGuildDecor.addSurface(id,[{x:13,y:4,w:15,h:8,color:'#6b5357'},{x:19,y:12,w:3,h:21,color:'#77747a'},{x:18,y:34,w:5,h:5,color:'#526b67'}]);return m;
@@ -105728,7 +105583,7 @@ const BMGuildFinale=(()=>{
   for(const [x,y,r]of [[82,153,29],[106,119,33],[138,93,30],[171,91,32],[207,116,33],[238,150,29],[115,158,33],[159,139,37],[203,158,34]])leaf(x,y,r);
   spriteCache[CREST]=c;SPRITE_CONFIGS[CREST]={scale:.76,hover:0,faceZ:.7,facePan:0};return c;
  }
- function crest(index,x,y,z){return {index,x,y,groundZ:z,sprite:CREST,name:'Oak crest · Travelers of the Wilderness',role:'sign',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn(n){n.worldZ=z+.38;n._guildCrest=true;n.nonBlocking=true;n.role='decoration';}};}
+ function crest(index,x,y,z){return {index,x,y,groundZ:z,sprite:CREST,name:'Oak crest · Travelers of the Wilderness',role:'sign',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn(n){n.worldZ=z+.38;n.wallArt={width:.68,height:.76,normalX:0,normalY:1};n._guildCrest=true;n.nonBlocking=true;n.role='decoration';}};}
  const pieces=[{key:'west-table',x:50,y:19,kind:'table'},{key:'east-table',x:56,y:26,kind:'table'},{key:'long-table',x:57,y:26,kind:'table'},{key:'front-table',x:49,y:29,kind:'table'},{key:'east-window',x:61,y:24,kind:'wall'},{key:'west-window',x:45,y:24,kind:'wall'},{key:'east-wall',x:61,y:27,kind:'wall'},{key:'front-wall',x:58,y:33,kind:'wall'}];
  function geometry(m,d=Dungeon){const s=state(d),broken=new Set(s.damage);m.slabs=guildBase.slabs.filter(p=>{
    if(s.stage==='gathering'&&p.x>=45&&p.x<=61&&p.y>=15&&p.y<=33&&p.top>.5&&!(p.bottom===0&&(p.x===45||p.x===61||p.y===15||p.y===33)))return false;
@@ -105837,9 +105692,10 @@ const BMWorldItemArt=(()=>{
   if(card){for(let i=0;i<3;i++){p('rec',i*.09,0,i*.055,.39,.55,.022,{r:.73,g:.60,b:.32},i*.08);p('rec',i*.09,0,i*.055-.027,.34,.49,.006,{r:.06,g:.07,b:.37},i*.08);}p('rec',.09,0,-.034,.12,.12,.01,{r:.85,g:.7,b:.38},Math.PI/4);cards=m;}
   else{for(let i=0;i<4;i++)p('arc',(i%2)*.32-.16,-i*.09,0,.28,.05,.28,{r:.72,g:.76,b:.8});coins=m;}prepareSpriteNormals(m);return m;
  }
- function loot(p){const items=p.items.slice(0,3),key=JSON.stringify([items.map(i=>[i.key,i.spriteId,i.spellId,i.fishIndex]),!!p.cards.length,!!p.silver]);if(cache.has(key))return cache.get(key);
-  const parts=items.map(item=>BMItemArt.meshFor(BMItemArt.resolve(item)));if(p.cards.length)parts.unshift(token(true));if(p.silver&&parts.length<3)parts.push(token(false));if(!parts.length)parts.push(BMShopModels.mesh('misc'));
+ function loot(p){const items=p.items.slice(0,3),key=JSON.stringify([items.map(i=>[i.key,i.spriteId,i.spellId,i.fishIndex]),p.cards.slice(0,3),p.cards.length,!!p.silver]);if(cache.has(key))return cache.get(key);
+  const parts=items.map(item=>BMItemArt.meshFor(BMItemArt.resolve(item)));if(p.silver&&parts.length<3)parts.push(token(false));if(!parts.length&&!p.cards.length)parts.push(BMShopModels.mesh('misc'));
   const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),list=parts.slice(0,3);list.forEach((m,i)=>{const art=stamp(m,96),size=list.length===1?116:80;g.drawImage(art,list.length===1?6:[0,48,23][i],list.length===1?12:[34,36,48][i],size,size);});
+  if(p.cards.length){g.save();g.fillStyle='#0008';g.beginPath();g.ellipse(64,121,43,5,0,0,Math.PI*2);g.fill();for(let i=Math.min(2,p.cards.length-1);i>=0;i--){g.drawImage(BMWorldCards.get(p.cards[i],128),7+i*5,3-i*3,114,114);}if(p.cards.length>1){g.fillStyle='#151a22';g.fillRect(91,98,32,22);g.fillStyle='#f3dd9b';g.font='bold 15px sans-serif';g.textAlign='center';g.fillText('×'+p.cards.length,107,114);}g.restore();}
   if(cache.size>=48)cache.delete(cache.keys().next().value);cache.set(key,c);return c;
  }
  return {stamp,loot,get cached(){return cache.size;}};
@@ -105875,7 +105731,7 @@ const BMGroundLoot=(()=>{
  }
  function tick(now=performance.now()){if(now-last<150||startGame!=='explore'||Dungeon.isLoading||Dungeon.isDead||Dungeon.isDying)return;last=now;sync();if(BMPlayerMotion.airborne)return;for(const p of store(Dungeon).piles){if(p.mapKey!==identity(Dungeon)||Math.hypot(p.x-Dungeon.x,p.y-Dungeon.y)>.7||Math.abs(p.z-BMTerrainPhysics.feet(Dungeon,Dungeon))>.3)continue;if(BMTerrainPhysics.trace(Dungeon,Dungeon.x,Dungeon.y,p.z+.2,p.x,p.y,p.z+.2))pickup(p);}}
  function reward(data){const n=Dungeon.npcs.find(n=>n.index===(data.lootIndex??data.index));const x=Number.isFinite(data.x)?data.x:n?.x??Dungeon.x,y=Number.isFinite(data.y)?data.y:n?.y??Dungeon.y;
-  const items=[...(Number.isFinite(data.lootType)?[...BMMonsterLoot.roll({type:data.lootType}),...BMFieldCraft.loot({type:data.lootType})]:[]),...(Array.isArray(data.items)?data.items.filter(i=>i&&typeof i.key==='string'&&Number.isInteger(i.count)&&i.count>0&&i.count<=99).slice(0,32):[])],card=typeof data.card==='object'?data.card?.index:data.card;
+  const items=[...(Number.isFinite(data.lootType)?[...BMMonsterLoot.roll({type:data.lootType,alignment:'foe'}),...BMFieldCraft.loot({type:data.lootType,alignment:'foe'})]:[]),...(Array.isArray(data.items)?data.items.filter(i=>i&&typeof i.key==='string'&&Number.isInteger(i.count)&&i.count>0&&i.count<=99).slice(0,32):[])],card=typeof data.card==='object'?data.card?.index:data.card;
   return drop(Dungeon,{x,y,groundZ:Number.isFinite(data.z)?data.z:n?.groundZ??0},{id:data.id,mapID:data.mapID??Dungeon.mapID,mapKey:String(data.mapID??Dungeon.mapID)+':'+(data.mapID===999?data.instanceId||Dungeon.customMapInstance||'':''),items,cards:Number.isInteger(card)?[card]:[],silver:data.silver||0,server:data.groundLoot===1});
  }
  function install(){art();const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...a){const result=load.apply(this,a);sync(this);return result;};const update=NPC.prototype.update;NPC.prototype.update=function(...a){if(this._groundLoot)return;return update.apply(this,a);};
@@ -105992,20 +105848,27 @@ const BMCompactMenus=(()=>{
 
 globalThis.BMCompactMenus=BMCompactMenus;
 const BMCursedRing=(()=>{
- let vignette=null;
- function active(d){const m=d.memory||{};
-  if(m.hunted_curse===undefined&&m.hunted_active&&m.hunted_mobs?.length&&m.hunted_mobs.every(v=>v.sprite===23)&&m['0_516330']?.permanent)m.hunted_curse=true;
-  if(!m.hunted_curse)return false;
-  const old=m.hunted_curse_targets||[],alive=old.filter(t=>t.mapID===d.mapID&&(d.npcs||[]).some(n=>n.index===t.index&&!n.isDead&&n.visible!==false));
-  if(alive.length!==old.length)m.hunted_curse_targets=alive;
-  if(!m.hunted_active&&!alive.length){m.hunted_curse=false;d.requestSave?.();return false;}return true;
+ let vignette=null,frames,portraitImage;
+ const records=d=>d.memory.hunted_curse_targets??=[];
+ function active(d){const m=d.memory||{};if(m.hunted_curse===undefined&&m.hunted_active&&m.hunted_mobs?.every(v=>v.sprite===23)&&m['0_516330']?.permanent)m.hunted_curse=true;return !!m.hunted_curse;}
+ function finish(d){const m=d.memory;if(!m.hunted_curse||m.hunted_waves_left>0||records(d).length)return false;m.hunted_curse=false;m.hunted_active=false;m.hunted_timer=0;d.requestSave?.();chatLog.push({text:'The last wisp fades. The ring’s curse has lifted.',color:'#dfd5b4'});return true;}
+ function remember(d){if(!active(d))return;for(const n of d.npcs||[])if(n._ringWave&&!n.isDead){let r=records(d).find(r=>r.index===n.index);if(!r){r={index:n.index};records(d).push(r);}Object.assign(r,{mapID:d.mapID,sprite:n.type,deck:n.deck,currentWardTime:n.currentWardTime});}}
+ function spots(d){const list=[],z=BMTerrainPhysics.feet(d,d);for(let y=Math.max(0,Math.floor(d.y)-8);y<Math.min(d.maze.length,Math.floor(d.y)+9);y++)for(let x=Math.max(0,Math.floor(d.x)-8);x<Math.min(d.maze[0].length,Math.floor(d.x)+9);x++){const range=Math.hypot(x+.5-d.x,y+.5-d.y);if(range>=3&&range<=8&&!d.isWall(x+.5,y+.5,z)&&!BMLayers.blocked(d,x+.5,y+.5,z)&&d.checkLineOfSight(x+.5,y+.5))list.push({x:x+.5,y:y+.5});}return list;}
+ function spawn(d,r,point){const n=new NPC(r.index,point.x,point.y,r.sprite??23,'chasing','#ff0000',r.deck||[23],'battle',false,'foe_wave');Object.assign(n,{_ringWave:true,customDialogue:null,respawnDelay:Infinity,respawnTime:Infinity,groundZ:BMTerrainPhysics.feet(d,d)});if(Number.isFinite(r.currentWardTime))n.currentWardTime=r.currentWardTime;d.npcs.push(n);r.mapID=d.mapID;return n;}
+ function tick(d,dt){if(!active(d)||startGame!=='explore'||d.isLoading||d.isDead||d.isDying||d.mapID===-1)return;
+  const m=d.memory;let changed=false;for(const r of [...records(d)]){const n=d.npcs.find(n=>n.index===r.index&&n._ringWave);if(n?.isDead||m[r.mapID+'_'+r.index]?.permanent){m.hunted_curse_targets=records(d).filter(v=>v!==r);changed=true;}}
+  if(finish(d))return;
+  const pending=records(d).filter(r=>!d.npcs.some(n=>n._ringWave&&n.index===r.index&&!n.isDead));
+  if(pending.length){const points=spots(d);for(const r of pending){const point=points.pop();if(!point)break;spawn(d,r,point);changed=true;}}
+  if(!records(d).length&&m.hunted_waves_left>0){m.hunted_timer=(m.hunted_timer||0)+Math.max(0,dt||0);if(m.hunted_timer>=(m.hunted_interval||12)){const points=spots(d),mobs=m.hunted_mobs?.length?m.hunted_mobs:[{sprite:23}];if(points.length>=mobs.length){m.hunted_timer=0;m.hunted_waves_left--;m.hunted_active=m.hunted_waves_left>0;for(const mob of mobs){m.ringSerial=(m.ringSerial||0)+1;const r={index:7600000+m.ringSerial,sprite:mob.sprite,deck:mob.deck||[mob.sprite]};records(d).push(r);spawn(d,r,points.pop());}chatLog.push({text:'Wisps gather around the ring’s curse.',color:'#d4a9e5'});MusicEngine.play3DSFX('horn');changed=true;}}}
+  if(changed)d.requestSave?.();
  }
- function draw(d,c,x,y,w,h){if(!active(d)||d.isDying||d.isDead)return;
-  if(!vignette){vignette=document.createElement('canvas');vignette.width=vignette.height=128;const g=vignette.getContext('2d'),v=g.createRadialGradient(64,64,25,64,64,88);v.addColorStop(0,'rgba(55,0,90,0)');v.addColorStop(.55,'rgba(57,6,78,.17)');v.addColorStop(1,'rgba(67,0,96,.65)');g.fillStyle=v;g.fillRect(0,0,128,128);}
-  c.save();c.globalAlpha=.82+.10*Math.sin(performance.now()/1400);c.drawImage(vignette,x,y,w,h);c.restore();
- }
- let frames;function prepare(){if(!frames){const source=BMInventoryModels.mesh(72),mesh={vertices:source.vertices.map(([x,y,z])=>[x,-z,y]),faces:source.faces.map(f=>({indices:f.indices,color:f.color})),outwardRects:true};frames=[];for(let i=0;i<8;i++)frames.push([BMWorldItemArt.stamp(mesh,128,i*Math.PI/4)]);}spriteCache[72]=frames;SPRITE_CONFIGS[72]={scale:.085,hover:0,faceZ:.5,facePan:0};BMBodySizes.heights[72]=.4;}
- return {active,draw,prepare};
+ function draw(d,c,x,y,w,h){if(!active(d)||d.isDying||d.isDead)return;if(!vignette){vignette=document.createElement('canvas');vignette.width=vignette.height=128;const g=vignette.getContext('2d'),v=g.createRadialGradient(64,64,25,64,64,88);v.addColorStop(0,'rgba(55,0,90,0)');v.addColorStop(.55,'rgba(57,6,78,.17)');v.addColorStop(1,'rgba(67,0,96,.65)');g.fillStyle=v;g.fillRect(0,0,128,128);}c.save();c.globalAlpha=.82+.1*Math.sin(performance.now()/1400);c.drawImage(vignette,x,y,w,h);c.restore();}
+ function portrait(){if(!portraitImage){portraitImage=document.createElement('canvas');portraitImage.width=portraitImage.height=256;const saved={ctx,tX,tY,tL,tH};try{ctx=portraitImage.getContext('2d');tX=tY=0;tL=tH=256;BMItemArt.draw(BMItemArt.preview(BMItemArt.portrait(72)),0,true);}finally{({ctx,tX,tY,tL,tH}=saved);}}return portraitImage;}
+ function prepare(){if(!frames){const source=BMInventoryModels.mesh(72),mesh={vertices:source.vertices.map(([x,y,z])=>[x,-z,y]),faces:source.faces.map(f=>({indices:f.indices,color:f.color})),outwardRects:true};frames=[];for(let i=0;i<8;i++){const c=BMWorldItemArt.stamp(mesh,128,i*Math.PI/4),g=c.getContext('2d');g.globalCompositeOperation='destination-over';g.fillStyle='#0009';g.beginPath();g.ellipse(64,123,53,4,0,0,Math.PI*2);g.fill();g.globalCompositeOperation='source-over';frames.push([c]);}}spriteCache[72]=frames;SPRITE_CONFIGS[72]={scale:.14,hover:0,faceZ:.5,facePan:0};BMBodySizes.heights[72]=.14;}
+ const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...args){remember(this);return load.apply(this,args);};
+ const kill=Explore.prototype.killNPC;Explore.prototype.killNPC=function(n,permanent,...args){const ring=!!n?._ringWave,result=kill.call(this,n,ring?true:permanent,...args);if(ring&&n.isDead){this.memory.hunted_curse_targets=records(this).filter(r=>r.index!==n.index);finish(this);this.requestSave?.();}return result;};
+ return {active,tick,draw,prepare,portrait,remember,finish};
 })();globalThis.BMCursedRing=BMCursedRing;
 
 const BMPort=(()=>{
@@ -106182,6 +106045,356 @@ const BMCombatRecovery=(()=>{
  let shown=false;window.addEventListener('error',e=>{if(shown||!BattleMageStartup?.ready||BMEngine.runtime.running)return;shown=true;console.error('Battle Mage frame stopped',e.error||e.message);const box=document.createElement('div');box.id='bm-game-error';box.style.cssText='position:fixed;z-index:999999;inset:20% 8% auto;padding:20px;background:#101724;color:#eee;border:2px solid #bda96d;font:16px/1.5 system-ui';const text=document.createElement('p');text.textContent='The game stopped drawing. You can return to safety. '+String(e.message||'Unexpected rendering error').slice(0,180);box.append(text);const b=document.createElement('button');b.textContent='Return to safety';b.style.cssText='padding:12px;font:inherit';b.onclick=()=>{box.remove();shown=false;clearDeath(Dungeon);if(BMGuildStory.active())BMGuildStory.leave();else BMDeathRecovery.recover(Dungeon);canvas.width=canvas.width;resizeCanvas();startGame='explore';BMEngine.start();};box.append(b);document.body.append(box);});
  return {clearDeath,finishQuestDeath};
 })();globalThis.BMCombatRecovery=BMCombatRecovery;
+
+
+/* BM_MATERIALS_BEGIN — shared client/server rules; no DOM or generated executable code. */
+function createMaterialWorkshop(env){
+ 'use strict';
+ const clone=x=>JSON.parse(JSON.stringify(x)),cap=(v,a,b)=>Math.max(a,Math.min(b,Number(v)||0));
+ const effects={str:{name:'Strength',symbol:'◆',color:'#e6c04d'},con:{name:'Constitution',symbol:'⬡',color:'#6dc180'},int:{name:'Intelligence',symbol:'✦',color:'#d98391'},agi:{name:'Agility',symbol:'➤',color:'#79b3ef'},speed:{name:'Movement speed',symbol:'»',color:'#9bc8ed'},recovery:{name:'Ward recovery',symbol:'↟',color:'#75c9a2'},poison:{name:'Poison',symbol:'●',color:'#a7c458'},ward:{name:'Ward restoration',symbol:'◈',color:'#8de0d0'},burn:{name:'Burn',symbol:'♨',color:'#e79455'}};
+ const materials={
+  'herb:moonleaf':{name:'Moonleaf',kind:'herb',color:'#92c5ae',rank:0,props:{agi:1,recovery:1},delicate:true,flavor:{bitter:1},tags:['plant','seasoning']},
+  'herb:sunsage':{name:'Sunsage',kind:'herb',color:'#e4bd5f',rank:0,props:{str:1,ward:1},delicate:true,flavor:{sweet:1},tags:['plant','seasoning']},
+  'herb:bitterroot':{name:'Bitterroot',kind:'herb',color:'#b394c9',rank:1,props:{speed:1,recovery:-1},flavor:{bitter:2},tags:['plant','seasoning']},
+  'herb:glowcap':{name:'Glowcap',kind:'herb',color:'#74dde5',rank:1,props:{int:1,poison:-1},delicate:true,flavor:{savory:1},tags:['plant','seasoning']},
+  'herb:cavefern':{name:'Cavefern',kind:'herb',color:'#89f1bd',rank:2,props:{con:1,poison:-1},flavor:{bitter:1},tags:['plant','seasoning']},
+  'material:meat':{name:'Raw meat',rank:0,props:{ward:1},flavor:{savory:2},tags:['food','raw']},
+  'material:mushroom':{name:'Mushroom',rank:0,props:{ward:.5},flavor:{savory:1},tags:['food','seasoning']},
+  'material:grass':{name:'Wild greens',rank:0,props:{con:1},flavor:{bitter:1},tags:['food','plant']},
+  'material:salt':{name:'Salt',rank:0,props:{con:1},flavor:{salt:1},tags:['seasoning']},
+  'material:berries':{name:'Berries',rank:0,props:{agi:1},flavor:{sweet:2},delicate:true,tags:['food','seasoning']},
+  'material:spider_leg':{name:'Spider leg',rank:2,props:{agi:1,poison:.5},flavor:{savory:1},tags:['food','raw','animal','rigid'],parts:{head:{agi:1,poison:.5},grip:{speed:1}}},
+  'material:scorpion_gland':{name:'Scorpion gland',rank:2,props:{poison:2,recovery:-1},tags:['animal'],parts:{fitting:{poison:1}}},
+  'material:werewolf_organ':{name:'Werewolf organ',rank:2,props:{recovery:2,burn:.5},tags:['animal'],parts:{fitting:{recovery:1,burn:.5}}},
+  'material:chitin':{name:'Chitin',rank:1,props:{con:1},tags:['rigid','animal'],parts:{head:{con:1,agi:1},grip:{agi:1}}},
+  'material:boar_tusk':{name:'Boar tusk',rank:1,props:{str:1},tags:['rigid','animal'],parts:{head:{str:1,agi:1},grip:{agi:1}}},
+  'material:wolf_tooth':{name:'Wolf tooth',rank:1,props:{agi:1},tags:['rigid','animal'],parts:{head:{agi:1},fitting:{str:1}}},
+  'material:bear_claw':{name:'Bear claw',rank:1,props:{str:1,recovery:-1},tags:['rigid','animal'],parts:{head:{str:2},fitting:{str:1}}},
+  'material:fur':{name:'Fur',rank:0,props:{con:.5},tags:['flexible'],parts:{grip:{con:1}}},
+  'material:pixie_thread':{name:'Thread',rank:1,props:{int:1},tags:['flexible'],parts:{grip:{int:1},fitting:{agi:1}}},
+  'material:spriggan_heartwood':{name:'Heartwood',rank:2,props:{int:1,recovery:1},tags:['rigid'],parts:{head:{int:2},grip:{recovery:1}}},
+  'ore:iron':{name:'Iron',rank:0,props:{con:1,speed:-1},tags:['rigid','metal'],parts:{head:{str:2,speed:-1},grip:{con:1,speed:-1}}},
+  'ore:gold':{name:'Gold',rank:1,props:{int:1},tags:['metal'],parts:{fitting:{int:1}}},
+  'ore:ruby':{name:'Ruby',rank:2,props:{str:1,burn:1},tags:['gem'],parts:{fitting:{burn:1}}},
+  'ore:ice':{name:'Ice crystal',rank:1,props:{burn:-1,con:1},tags:['gem'],parts:{fitting:{con:1}}},
+  'ore:fire':{name:'Fire crystal',rank:1,props:{burn:1,str:1},tags:['gem'],parts:{fitting:{burn:1}}},
+  'ore:blood':{name:'Blood stone',rank:2,props:{recovery:1,poison:1},tags:['gem'],parts:{fitting:{recovery:1}}},
+  'fish:0':{name:'Ward fish',rank:0,props:{ward:1},flavor:{savory:2},tags:['food','raw']},
+  'fish:1':{name:'Cleansing fish',rank:0,props:{poison:-2},flavor:{savory:2},tags:['food','raw']},
+  'fish:2':{name:'Silver fish',rank:1,props:{agi:1,int:1},flavor:{savory:2},tags:['food','raw']}
+ };
+ const books={
+  spider:{key:'book:spider_notes',name:'A traveller’s journal',text:'The apothecary dried the spider’s legs beside the hearth, then ground them into a fine powder. A little restored the lightness of tired feet; a careless measure left the drinker ill.',facts:{'material:spider_leg':['agi','poison']}},
+  tusk:{key:'book:smith_notes',name:'Workshop notes',text:'I kept the boar’s tusks when the others sold theirs. One made a light dagger blade; the other sat comfortably in a handle. A master can take apart a weapon made from separate pieces and preserve the sound components.',facts:{'material:boar_tusk':['str']}},
+  venom:{key:'book:field_notes',name:'Field notes',text:'The scorpion’s gland kept its venom after the shell had dried. Cavefern tempered its poison, but did nothing for the weary feeling left by the extract.',facts:{'material:scorpion_gland':['poison','recovery'],'herb:cavefern':['poison']}},
+  kitchen:{key:'book:kitchen_notes',name:'Kitchen notes',text:'Sweet berries softened the greens’ bitterness. A pinch of salt suited the meat; a handful spoiled the pot. Delicate leaves went in last, after the pan left the flame.',facts:{'material:berries':['agi'],'material:salt':['con'],'herb:moonleaf':['agi','recovery']}}
+ };
+ function state(){const m=env.memory();let s=m.materialWorkshop;if(!s||s.version!==1)s=m.materialWorkshop={version:1,knowledge:{},recipes:[],active:null,sequence:0};s.knowledge??={};s.recipes??=[];return s;}
+ function rank(id){return cap(env.rank?.(id),0,3);}
+ function item(key){return env.entries()[key];}
+ function definition(value){const v=typeof value==='string'?(item(value)||{key:value}):value;if(!v)return null;const key=v.key||'';
+  if(v.craftData?.version===1)return {name:v.name,kind:v.kind,rank:v.craftData.knowledgeRank??1,props:v.craftData.props||{},effects:v.craftData.effects,tags:v.craftData.tags||['extract'],color:v.craftData.color||'#b9b89a',parts:v.craftData.parts,flavor:v.craftData.flavor||{},delicate:false};
+  if(materials[key])return {...materials[key],key};
+  if(key.startsWith('powder:')){const original=materials['herb:'+key.slice(7)]||materials['material:'+key.slice(7)];if(original)return {...original,key,kind:'powder',delicate:false};}
+  return null;
+ }
+ function known(value,discipline='alchemy'){const v=typeof value==='string'?(item(value)||{key:value}):value,d=definition(v);if(!d)return null;
+  const k=state().knowledge[v.key]||{},r=rank(discipline),recognized=r>=d.rank||!!k.method;
+  const names=Object.keys(d.props||{}).filter(id=>r>=d.rank||k[id]);return {recognized,props:Object.fromEntries(names.map(id=>[id,d.props[id]])),source:k.source||'',canRefine:recognized&&r>=Math.min(d.rank,2),parts:discipline==='smithing'&&recognized?Object.keys(d.parts||{}):[],rank:d.rank};
+ }
+ function learn(key,props,source){const d=definition(key);if(!d)return false;const k=state().knowledge[key]??={};k.method=true;k.source=String(source||'Experiment').slice(0,100);for(const id of props||Object.keys(d.props))if(effects[id])k[id]=true;env.save?.();return true;}
+ function read(book){const b=Object.values(books).find(b=>b.key===(typeof book==='string'?book:book.key));if(!b)return false;for(const [key,ids]of Object.entries(b.facts))learn(key,ids,b.name);return true;}
+ function inspect(key,discipline='alchemy'){const v=item(key),d=definition(v),k=known(v,discipline);if(!v)return null;return {key,name:v.name,count:v.count,...(!d?{}:k?.recognized?{properties:k.props,uses:discipline==='smithing'?k.parts:['refine','combine'],canRefine:k.canRefine,source:k.source}:{})};}
+ function fingerprint(value){let h=2166136261;for(const ch of JSON.stringify(value))h=Math.imul(h^ch.charCodeAt(0),16777619);return (h>>>0).toString(36);}
+ function merge(rows){const result=[];for(const id of Object.keys(effects)){const xs=rows.filter(e=>e.id===id&&Number.isFinite(e.amount)&&Number.isFinite(e.duration)&&e.duration>0).map(e=>({...e,start:cap(e.start,0,300),end:cap((e.start||0)+e.duration,0,300)})),ends=[...new Set(xs.flatMap(e=>[e.start,e.end]))].sort((a,b)=>a-b);for(let j=1;j<ends.length;j++){const amount=xs.filter(e=>e.start<=ends[j-1]&&e.end>=ends[j]).reduce((s,e)=>s+e.amount,0);if(Math.abs(amount)>.001){const next={id,amount:Math.round(cap(amount,-8,8)*100)/100,start:ends[j-1],duration:ends[j]-ends[j-1]},old=result.at(-1);if(old?.id===id&&old.amount===next.amount&&old.start+old.duration===next.start)old.duration+=next.duration;else result.push(next);}}}return result;}
+
+ function properties(rows){const p={};for(const e of rows)if(!(e.start>0))p[e.id]=(p[e.id]||0)+e.amount;return p;}
+ function rawEffects(v){const d=definition(v);if(!d)return [];return d.effects?clone(d.effects):Object.entries(d.props).map(([id,amount])=>({id,amount,duration:60}));}
+ function available(mode){return Object.values(env.entries()).filter(v=>v.count>0&&definition(v)&&!v.craftData?.components&&!v.craftData?.component&&(mode!=='cooking'||definition(v).tags.some(t=>['food','seasoning','plant','extract'].includes(t))));}
+ function start(mode,options={}){if(!['alchemy','cooking'].includes(mode)||state().active?.status==='playing'||env.canBegin?.()===false)return false;
+  const operation=mode==='cooking'?'cook':options.operation||'brew';if(!['cook','brew','refine','isolate','concentrate','coating'].includes(operation)||operation==='isolate'&&(rank('alchemy')<2||!effects[options.property]))return false;
+  const s=state();s.active={id:'batch-'+(++s.sequence),kind:mode==='cooking'?'fish':'alchemy',mode,operation,property:options.property||null,method:['fry','soup','roast'].includes(options.method)?options.method:'fry',status:'playing',elapsed:0,heat:55,temp:20,progress:0,stirAge:0,stirs:0,flips:0,side:0,brown:[0,0],scorch:0,inputs:[],actions:[],message:'Choose an ingredient.',guide:options.guide||null};env.event?.('craft_started','Started '+mode+'.',{operation});env.save?.();return s.active;}
+ function add(key){const g=state().active,v=item(key),d=definition(v);if(g?.status!=='playing'||!v?.count||!d||g.inputs.length>=8||v.craftData?.components||v.craftData?.component)return false;
+  if(g.mode==='cooking'&&!d.tags.some(t=>['food','plant','seasoning','extract'].includes(t)))return false;
+  if(['refine','isolate','concentrate'].includes(g.operation)&&!known(v)?.canRefine)return false;
+  if(g.operation==='isolate'&&!Object.hasOwn(known(v).props,g.property))return false;
+  if(!env.take({[key]:1}))return false;
+  g.inputs.push({item:clone({...v,count:1}),at:g.elapsed,delicate:!!d.delicate,damage:0,prepared:0});g.actions.push({action:'add',key,at:Math.round(g.elapsed*10)/10,heat:g.heat});g.message='Added '+v.name+'.';if(g.inputs.length===1||g.mode==='cooking'&&d.tags.includes('raw'))g.progress=0;env.save?.();return true;
+ }
+ function control(action,value){const g=state().active;if(g?.status!=='playing')return false;
+  if(action==='heat')g.heat=cap(value,0,100);
+  else if(action==='stir'){if(g.elapsed-(g.lastStir??-10)<.45)return false;g.stirAge=0;g.lastStir=g.elapsed;g.stirs++;g.message='Stirred.';}
+  else if(action==='flip'){if(g.mode!=='cooking'||g.method==='soup'||g.elapsed-(g.lastFlip??-10)<.6)return false;g.side=1-g.side;g.flips++;g.lastFlip=g.elapsed;g.message='Turned.';}
+  else return false;g.actions.push({action,value:action==='heat'?g.heat:undefined,at:Math.round(g.elapsed*10)/10});if(g.actions.length>160)g.actions.splice(0,g.actions.length-160);env.save?.();return true;
+ }
+ function tick(dt){const g=state().active;if(g?.status!=='playing')return false;dt=cap(dt,0,.2);g.elapsed+=dt;g.stirAge+=dt;g.temp+=(20+g.heat*.85-g.temp)*(1-Math.exp(-dt/2));if(!g.inputs.length)return true;
+  const effective=g.temp>42&&g.temp<88;g.progress+=effective?dt*(g.operation==='refine'?.06:.045):g.temp>=88?dt*.025:0;
+  if(g.temp>88)g.scorch+=(g.temp-88)*dt*.004;
+  if(g.mode==='alchemy'||g.method==='soup'){if(g.stirAge>7&&g.temp>55)g.scorch+=dt*.017;}
+  else {if(g.method==='roast')g.side=Math.floor(g.elapsed/4)%2;g.brown[g.side]+=Math.max(0,g.temp-42)*dt*.0012;if(g.brown[g.side]>1.15)g.scorch+=dt*.05;}
+  for(const input of g.inputs){if(effective)input.prepared=(input.prepared||0)+dt*.05;}
+  if(g.mode==='cooking')for(const input of g.inputs)if(definition(input.item).tags.includes('raw'))g.progress=Math.min(g.progress,input.prepared||0);
+  for(const input of g.inputs)if(input.delicate&&g.temp>65)input.damage=cap(input.damage+(g.temp-65)*dt*.002,0,1);
+  if(g.scorch>=1.5)finish(true);if(Math.floor(g.elapsed)!==g.savedSecond){g.savedSecond=Math.floor(g.elapsed);env.save?.();}return true;
+ }
+ function preview(g=state().active){if(!g)return null;const rows=[],flavor={sweet:0,bitter:0,salt:0,savory:0};let food=0,seasonings=0;const notes=[];
+  for(const input of g.inputs){const d=definition(input.item),q=input.item.craftData?1:cap(input.item.quality??1,.1,1),survival=1-input.damage*.8;if(input.damage>.25)notes.push(input.item.name+' lost delicate properties to heat.');
+   for(const e of rawEffects(input.item))rows.push({...e,amount:e.amount*q*survival});for(const [id,n]of Object.entries(d.flavor||{}))flavor[id]=(flavor[id]||0)+n;if(d.tags.includes('food'))food++;else if(d.tags.includes('seasoning')||d.tags.includes('plant')||d.tags.includes('extract'))seasonings++;
+  }
+  // Flavor is another opposing-property system; seasoning tolerance follows portions.
+  let flavorPenalty=0;if(g.mode==='cooking'){const balance=flavor.sweet-flavor.bitter;flavorPenalty=Math.max(0,Math.abs(balance)-2)*.08+Math.max(0,flavor.salt-Math.max(1,food))*.18+Math.max(0,seasonings-Math.max(2,food*2))*.12;
+   if(flavor.sweet&&flavor.bitter)notes.push('Sweetness balanced bitterness.');if(flavor.salt>0&&flavor.salt<=Math.max(1,food)&&flavor.savory>0){rows.push({id:'con',amount:.25,duration:60});notes.push('Salt complemented the savory ingredients.');}if(flavorPenalty>.1)notes.push('Too much seasoning overpowered the dish.');
+  }
+  let quality=cap(1-g.scorch*.5-flavorPenalty-(g.mode==='cooking'&&g.method==='fry'&&g.flips<1?.2:0),.1,1),combined=merge(rows);
+  const ids=new Set(rows.map(e=>e.id));for(const id of ids)if(rows.some(e=>e.id===id&&e.amount>0)&&rows.some(e=>e.id===id&&e.amount<0))notes.push(effects[id].name+': opposing properties balanced each other.');
+  if(g.operation==='coating'){combined=combined.filter(e=>['poison','burn'].includes(e.id)&&e.amount>0);notes.push('Coatings carry poison or burn on physical hits.');}
+  if(g.operation==='isolate'){combined=combined.filter(e=>e.id===g.property);quality*=.75;notes.push('Isolation retained one property and reduced the yield.');}
+  if(g.operation==='concentrate'){combined=combined.map(e=>({...e,amount:cap(e.amount*.8,-8,8)}));notes.push('Several measures concentrated into one; some potency was lost.');}
+  if(g.mode==='alchemy'&&g.operation==='brew'&&g.stirs<1)quality*=.6;
+  combined=combined.map(e=>({...e,amount:Math.round(e.amount*quality*100)/100}));return {effects:combined,props:properties(combined),flavor,quality,food,notes};
+ }
+ function finish(forced=false){const g=state().active;if(g?.status!=='playing')return false;if(!g.inputs.length||!forced&&g.progress<1){g.message='Keep a gentle heat until ready.';return false;}
+  const result=preview(g),needsTwo=['concentrate'].includes(g.operation);if(!forced&&needsTwo&&g.inputs.length<2){g.message='Use at least two measures to concentrate.';return false;}
+  const good=!forced&&g.scorch<1.25&&(g.mode!=='cooking'||result.food>0)&&result.quality>=.25&&result.effects.length>0;
+  g.status=good?'success':'failed';g.result=result;
+  if(good){const powder=['refine','isolate','concentrate'].includes(g.operation),coating=g.operation==='coating';const name=g.mode==='cooking'?({fry:'Pan meal',soup:'Stew',roast:'Roast'}[g.method]):powder?(g.property?effects[g.property].name+' powder':g.inputs.length===1?g.inputs[0].item.name+' powder':'Mixed powder'):coating?'Weapon coating':'Potion';
+   const data={version:1,form:g.mode==='cooking'?'meal':powder?'powder':coating?'coating':'potion',props:result.props,effects:result.effects,tags:[powder?'extract':coating?'coating':'consumable'],flavor:result.flavor,color:effects[Object.keys(result.props)[0]]?.color||'#a5be86',origin:g.inputs.map(v=>v.item.key)};
+   let output={key:'craft:'+data.form+':'+fingerprint(data),name,kind:powder?'powder':'consumable',effect:'crafted',quality:result.quality,grade:result.quality>=.86?'Perfect':result.quality>=.62?'Good':'Rustic',craftData:data};
+   output=env.output?.(g,result,output)||output;
+   if(!env.add(output,1)){g.status='failed';g.message='The result could not be stored.';env.save?.();return false;}g.output=output;learn(output.key,Object.keys(data.props),'Experiment');
+   for(const input of g.inputs)learn(input.item.key,Object.keys(definition(input.item).props),'Experiment');
+   g.message=name+' ready.';
+  }else g.message=g.scorch>=1.25?'The batch scorched.':g.mode==='cooking'&&!result.food?'Seasoning alone did not make a meal.':g.operation==='coating'&&!result.effects.length?'The mixture has no poison or burn to coat a weapon.':'The mixture spoiled.';
+  env.finish?.(g,good);env.event?.(g.mode==='cooking'?'cooking_result':'alchemy_result',g.message,{success:good,quality:result.quality,properties:result.props,notes:result.notes});env.save?.();return good;
+ }
+ function saveRecipe(name){const g=state().active;if(g?.status!=='success'||!g.output)return false;const recipe={name:String(name||g.output.name).slice(0,60),mode:g.mode,operation:g.operation,property:g.property,method:g.method,ingredients:g.inputs.map(i=>i.item.key),actions:clone(g.actions),id:fingerprint([g.mode,g.operation,g.inputs.map(i=>i.item.key),g.property])};const list=state().recipes,i=list.findIndex(r=>r.id===recipe.id);if(i>=0)list[i]=recipe;else list.push(recipe);if(list.length>60)list.shift();env.save?.();return recipe;}
+ function abandon(){const g=state().active;if(g?.status==='playing'){g.status='failed';g.message='Work abandoned.';env.finish?.(g,false);}state().active=null;env.save?.();return true;}
+ function component(value,slot){const v=typeof value==='string'?item(value):value;if(!v)return null;
+  if(v.craftData?.component){if(v.craftData.component.slot!==slot)return null;return {key:v.key,kind:'material',name:v.name,craftData:clone(v.craftData)};}
+  const d=definition(v),props=d?.parts?.[slot];if(!props)return null;const data={version:1,form:'component',props:clone(props),tags:['component'],color:d.color||'#b8a889',component:{slot,source:v.key,quality:cap(v.quality??1,.1,1)}};
+  return {key:'craft:part:'+fingerprint(data),kind:'material',name:d.name+' '+({head:'blade',grip:'handle',fitting:'fitting'}[slot]),craftData:data};
+ }
+ function assemble(selection){if(rank('smithing')<3||state().active?.status==='playing'||env.canBegin?.()===false)return {ok:false,error:'Requires Master Smithing.'};
+  const form=['dagger','sword','staff'].includes(selection?.form)?selection.form:'dagger',parts=[],req={};for(const slot of ['head','grip','fitting']){const key=selection?.[slot];if(!key&&slot==='fitting')continue;const p=component(key,slot);if(!key||!p)return {ok:false,error:'Choose a suitable '+slot+'.'};req[key]=(req[key]||0)+1;parts.push(p);}
+  const originals=Object.fromEntries(Object.keys(req).map(k=>[k,clone(item(k)||{})]));
+  if(parts.length<2||!env.take(req))return {ok:false,error:'Missing components.'};
+  const rows=parts.flatMap(p=>Object.entries(p.craftData.props).map(([id,amount])=>({id,amount:amount*p.craftData.component.quality,duration:60}))),props=properties(merge(rows)),data={version:1,form:'weapon',weaponType:form,props,effects:merge(rows),components:parts,tags:['weapon']};
+  const signature=fingerprint(data),output={key:'craft:weapon:'+signature,name:'Crafted '+form,kind:'equipment',spellId:2000000+parseInt(signature,36)%100000000,craftData:data,grade:'Good',quality:.7};
+  if(!env.add(output,1)){for(const [key,n]of Object.entries(req))env.add(originals[key],n);return {ok:false,error:'Unable to store weapon.'};}env.event?.('weapon_assembled','Assembled a '+form+'.',{properties:props,components:parts.map(p=>p.name)});env.save?.();return {ok:true,item:output};
+ }
+ function disassemble(key){const v=item(key);if(state().active?.status==='playing'||env.canBegin?.()===false)return {ok:false,error:'Finish your current work first.'};if(rank('smithing')<3)return {ok:false,error:'Requires Master Smithing.'};if(!v?.craftData?.components?.length)return {ok:false,error:'This weapon was not made from recoverable components.'};if(env.equipped?.(v))return {ok:false,error:'Unequip the weapon first.'};if(!env.take({[key]:1}))return {ok:false,error:'Weapon unavailable.'};for(const p of v.craftData.components)env.add(clone(p),1);env.event?.('weapon_disassembled','Recovered the weapon’s components.',{});env.save?.();return {ok:true,parts:clone(v.craftData.components)};}
+ function reward(spec){if(!spec||!['potion','meal','powder','coating'].includes(spec.form))throw Error('Unsupported reward form.');const entries=Object.entries(spec.props||{});if(!entries.length||entries.length>4||entries.some(([id,n])=>!effects[id]||!Number.isFinite(n)||Math.abs(n)>2||n===0))throw Error('Use one to four supported properties, each between -2 and 2.');if(spec.form==='coating'&&entries.some(([id,n])=>!['poison','burn'].includes(id)||n<=0))throw Error('Coatings require poison or burn.');const duration=cap(spec.duration??60,5,120),data={version:1,form:spec.form,props:Object.fromEntries(entries),effects:entries.map(([id,amount])=>({id,amount,start:0,duration})),tags:[spec.form==='powder'?'extract':'consumable'],color:effects[entries[0][0]].color,origin:['reward'],knowledgeRank:1};return {key:'craft:reward:'+fingerprint(data),name:String(spec.name||({potion:'Potion',meal:'Meal',powder:'Powder',coating:'Coating'}[spec.form])).slice(0,60),kind:spec.form==='powder'?'powder':'consumable',effect:'crafted',craftData:data};}
+ function describe(v,discipline='alchemy'){const k=known(v,discipline);if(!k?.recognized)return 'Sellable material.';const props=Object.entries(k.props).map(([id,n])=>(n>0?'+':'')+Math.round(n*100)/100+' '+effects[id].name).join(' · ');return [props,discipline==='smithing'&&k.parts.length?'Component: '+k.parts.join(', '):k.canRefine?'Can be refined.':'Preparation needs more skill.'].filter(Boolean).join(' · ');}
+ return {materials,effects,books,state,rank,definition,known,learn,read,inspect,merge,properties,available,start,add,control,tick,preview,finish,saveRecipe,abandon,component,assemble,disassemble,reward,describe,fingerprint};
+}
+/* BM_MATERIALS_END */
+
+/* Material workshop: browser adapter and ordinary inventory/combat integration. */
+const BMMaterials=(()=>{
+ const statIds={str:0,con:1,int:2,agi:3},meshes=new Map(),thumbs=new Map();let lab,registering=false;
+ function register(v){if(!v?.craftData?.components)return;const id=Number(v.spellId),p=v.craftData.props||{};if(!Number.isInteger(id)||id<2000000||id>102000000)return;
+  BMArtisanData.gear[id]={name:v.name,base:v.craftData.weaponType==='staff'?22:50,weaponType:v.craftData.weaponType||'dagger',craftSlot:'weapon',mods:Object.entries(p).filter(([k])=>k in statIds).map(([k,n])=>[statIds[k],n]),craftProps:p,components:v.craftData.components,description:Object.entries(p).map(([k,n])=>(n>0?'+':'')+n+' '+(lab?.effects[k]?.name||k)).join(' · ')};
+  BMEquipment.register(id,v.name);CARD_MANIFEST_DB[id]={name:v.name,type:'item',classes:['all'],power:20};SPELL_REGISTRY[id]={name:v.name,type:'item_buff',multiStat:BMArtisanData.gear[id].mods.map(([stat,amount])=>({stat,amount})),duration:86400*30,cooldown:0,sfx:'buff2',craftProps:p};
+ }
+ const add=BMInventory.add;BMInventory.add=function(v,n=1){register(v);return add.call(this,v,n);};
+ const update=Explore.prototype.updateSkills;Explore.prototype.updateSkills=function(...a){if(!registering){registering=true;try{for(const i of Object.values(this.memory?.itemStacks||{}))register(i);}finally{registering=false;}}return update.apply(this,a);};
+ lab=createMaterialWorkshop({memory:()=>Dungeon.memory??={},entries:()=>BMInventory.entries(),take:r=>BMInventory.takeMany(r),add:(v,n)=>BMInventory.add(v,n),rank:id=>BMCraftMastery.rank(id),save:()=>Dungeon.requestSave(),event:(k,t,d)=>BMActivity.record(k,t,d),output:legacyOutput,finish:(g,ok)=>{if(ok){BMFieldCraft.success(g);if(g.legacyRecipe&&typeof LogresAdventure!=='undefined')LogresAdventure.state().crafted[g.legacyRecipe]=true;}BMCraftMastery.finish(g,ok);const id=g.mode==='cooking'?'cooking':'alchemy',s=BMCrafting.stats()[id];s.attempts++;if(ok)s.successes++;BMCraftAudio.result(ok);},canBegin:()=>!BMCrafting.game?.status?.includes('playing')&&!BMArtisan.active&&BMCraftMastery.canBegin(),equipped:v=>BMEquipmentQuality.equipped(v)});
+ function legacyOutput(g,result,output){
+  const req={};for(const i of g.inputs)req[i.item.key]=(req[i.item.key]||0)+1;
+  const match=Object.entries(BMFieldCraft.recipes).find(([id,r])=>BMFieldCraft.known()[id]&&r.kind===g.mode&&['brew','cook','refine'].includes(g.operation)&&JSON.stringify(Object.entries(r.req).sort())===JSON.stringify(Object.entries(req).sort()));
+  if(match){g.legacyRecipe=match[0];return {...output,key:match[1].output.key,name:match[1].output.name};}
+  if(g.operation==='refine'&&g.inputs.length===1){const v=g.inputs[0].item;if(v.key.startsWith('herb:'))return {...output,key:'powder:'+v.key.slice(5),herbId:v.key.slice(5)};}
+  return output;
+ }
+ const itemDescription=BMInventory.description;BMInventory.description=v=>{if(!lab.definition(v))return itemDescription(v);if(v.craftData?.components)return BMArtisanData.gear[v.spellId]?.description||'Crafted weapon.';const k=lab.known(v,v.craftData?.form==='meal'?'cooking':'alchemy');if(v.craftData?.effects&&!v.craftData.component){const visible=v.craftData.effects.filter(e=>Object.hasOwn(k.props,e.id));return (v.craftData.form==='coating'?'Apply to an equipped weapon · 12 successful physical hits. ':'')+(visible.length?describeEffects(visible):'Properties not yet identified.');}return lab.describe(v);};
+
+ function describeEffects(es){return (es||[]).map(e=>(e.amount>0?'+':'')+Math.round(e.amount*100)/100+' '+(lab.effects[e.id]?.name||e.id)+(e.start?' after '+e.start+'s':'')+' · '+Math.round(e.duration)+'s').join(' · ');}
+ function alive(b){return b.duration>0&&(!b.equipmentExpiresAt||b.equipmentExpiresAt>Date.now())&&auraEffectAlive(b);}
+ function currentProps(d){const p={};for(const b of d.activeBuffs||[]){if(!alive(b))continue;const props=BMArtisanData.gear[b.equipmentId]?.craftProps||{};for(const [k,v]of Object.entries(props))if(!(k in statIds)&&!['poison','burn'].includes(k))p[k]=(p[k]||0)+v;if(b.craftProperty)p[b.craftProperty]=(p[b.craftProperty]||0)+b.craftAmount;}return p;}
+ function applyEffects(d,es,name,group='meal'){
+  d.activeBuffs??=[];d.activeBuffs=d.activeBuffs.filter(b=>b.craftGroup!==group);d.memory??={};d.memory.craftDelayed=(d.memory.craftDelayed||[]).filter(x=>x.group!==group);let delayed=[];
+  for(const e of es||[]){if(!lab.effects[e.id]||!Number.isFinite(e.amount)||!Number.isFinite(e.duration))continue;if(e.start>0){delayed.push({...e});continue;}applyOne(d,e,name,group);}
+  if(delayed.length){d.memory??={};d.memory.craftDelayed=(d.memory.craftDelayed||[]).filter(x=>x.group!==group);for(const e of delayed)d.memory.craftDelayed.push({e,name,group,at:Date.now()+e.start*1000});}
+ }
+ function applyOne(d,e,name,group){if(e.id==='ward'){d.currentWardTime=Math.max(0,Math.min(d.maxWards*d.timePerWard,(d.currentWardTime||0)+e.amount*d.timePerWard));return;}
+  if(e.id==='poison'&&e.amount<0){d.activeBuffs=d.activeBuffs.filter(b=>b.craftProperty!=='poison'&&b.name!=='Poison');return;}
+  const b={name,craftGroup:group,type:['poison','burn'].includes(e.id)?'debuff':'item_buff',duration:Math.min(300,e.duration)*30,amount:0,tickTimer:0,craftProperty:e.id,craftAmount:e.amount};if(e.id in statIds){delete b.craftProperty;b.buffStat=statIds[e.id];b.amount=e.amount;}d.activeBuffs.push(b);markAuraTick(b,d);
+ }
+ const consume=BMInventory.consume;BMInventory.consume=function(key){const v=BMInventory.entries()[key];if(!v?.craftData?.effects||v.kind!=='consumable')return consume(key);if(Dungeon.isDead||Dungeon.isDying)return false;
+  if(v.craftData.form==='coating'){const weapon=(Dungeon.activeBuffs||[]).find(b=>BMEquipmentQuality.slot(b.equipmentId)==='weapon'&&alive(b));if(!weapon){chatLog.push('[SYSTEM]: Equip a weapon before applying a coating.');return false;}if(!BMInventory.takeMany({[key]:1}))return false;weapon.craftCoating={props:v.craftData.props,hits:12,id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)};}
+  else{if(!BMInventory.takeMany({[key]:1}))return false;applyEffects(Dungeon,v.craftData.effects,v.name,v.craftData.form==='meal'?'meal':'potion');}
+  BMActivity.record('consumable_used','Used '+v.name+'.',{properties:v.craftData.props});Dungeon.updateSkills();Dungeon.requestSave();MusicEngine.play3DSFX('heal');return true;
+ };
+ let lastEffects=Date.now();function tick(){const now=Date.now(),dt=Math.min(.2,(now-lastEffects)/1000);lastEffects=now;if(startGame!=='explore'||Dungeon.isDead||Dungeon.isDying||document.hidden)return;
+  for(const d of [Dungeon,...(Dungeon.npcs||[])]){if(d.isDead||d.isDying)continue;const p=currentProps(d),damage=Math.max(0,p.poison||0)+Math.max(0,p.burn||0),recovery=(p.recovery||0)*.12-damage*.15;if(recovery)d.currentWardTime=Math.max(0,Math.min((d.maxWards||3)*(d.timePerWard||3),(d.currentWardTime||0)+recovery*dt));}
+  const pending=Dungeon.memory?.craftDelayed;if(pending?.length){for(const p of pending.filter(p=>p.at<=now))applyOne(Dungeon,{...p.e,start:0},p.name,p.group);Dungeon.memory.craftDelayed=pending.filter(p=>p.at>now);}
+ }
+ const render=Explore.prototype.render;Explore.prototype.render=function(...a){tick();return render.apply(this,a);};
+ for(const proto of [Explore.prototype,NPC.prototype]){const hit=proto.absorbHit;proto.absorbHit=function(attacker,spellId,...a){const before=this.currentWardTime,r=hit.call(this,attacker,spellId,...a);if(before>this.currentWardTime&&[undefined,null,9999,9998,51,52,59,65,95].includes(spellId)&&attacker){
+   const weapon=(attacker.activeBuffs||[]).find(b=>BMEquipmentQuality.slot(b.equipmentId)==='weapon'&&alive(b));if(weapon){const props={...BMArtisanData.gear[weapon.equipmentId]?.craftProps};if(weapon.craftCoating?.hits>0){for(const [k,n]of Object.entries(weapon.craftCoating.props))props[k]=(props[k]||0)+n;if(--weapon.craftCoating.hits===0)delete weapon.craftCoating;}
+    for(const k of ['poison','burn'])if(props[k]>0){this.activeBuffs=(this.activeBuffs||[]).filter(b=>b.craftGroup!=='weapon-'+k);applyOne(this,{id:k,amount:Math.min(4,props[k]),duration:6},lab.effects[k].name,'weapon-'+k);}
+   }
+  }return r;};}
+ function onlineProfile(){const w=(Dungeon.activeBuffs||[]).find(b=>BMEquipmentQuality.slot(b.equipmentId)==='weapon'&&alive(b));if(!w)return null;const p=BMArtisanData.gear[w.equipmentId]?.craftProps||{},c=w.craftCoating;return {poison:Math.max(0,Math.min(4,p.poison||0)),burn:Math.max(0,Math.min(4,p.burn||0)),...(c?.hits>0?{coating:{id:c.id,hits:c.hits,poison:Math.max(0,Math.min(4,c.props.poison||0)),burn:Math.max(0,Math.min(4,c.props.burn||0))}}:{})};}
+ socket?.on('workshop_coating',data=>{for(const w of Dungeon.activeBuffs||[])if(w.craftCoating?.id===data?.id){w.craftCoating.hits=Math.max(0,Math.min(w.craftCoating.hits,Number(data.hits)||0));if(!w.craftCoating.hits)delete w.craftCoating;Dungeon.requestSave();}});
+ const portableMesh=BMPortableArt.mesh,portableDraw=BMPortableArt.draw;BMPortableArt.mesh=id=>BMArtisanData.gear[id]?.components?weaponMesh({key:'weapon:'+id,craftData:{components:BMArtisanData.gear[id].components,weaponType:BMArtisanData.gear[id].weaponType}}):portableMesh(id);BMPortableArt.draw=function(id,x,y,z,angle=.25){if(BMArtisanData.gear[id]?.components)return render3dMesh(BMPortableArt.mesh(id),x+5*z,y+5*z,12*z,.13,angle,0);return portableDraw(id,x,y,z,angle);};
+ const art=BMItemArt.resolve;BMItemArt.resolve=function(v){if(v.craftData?.components)return {kind:'mesh',mesh:weaponMesh(v),itemSprite:true};if(v.craftData?.component)return {kind:'mesh',mesh:partMesh(v),itemSprite:true};if(v.craftData?.form==='powder')return {kind:'mesh',mesh:BMItemArt.powderMesh(v.craftData.color||'#c5bc8a'),itemSprite:true};if(['potion','coating'].includes(v.craftData?.form))return {kind:'potion',color:v.craftData.color||'#8cb982',itemSprite:true};if(v.craftData?.form==='meal')return {kind:'mesh',mesh:mealMesh(),itemSprite:true};if(/scorpion_gland|werewolf_organ|spider_leg|chitin|material:salt|material:berries/.test(v.key||''))return {kind:'mesh',mesh:organicMesh(v.key),itemSprite:true};return art(v);};
+ function buildMesh(id,fn){if(meshes.has(id))return meshes.get(id);const m={vertices:[],faces:[],outwardRects:true};const rgb=h=>({r:parseInt(h.slice(1,3),16)/255,g:parseInt(h.slice(3,5),16)/255,b:parseInt(h.slice(5,7),16)/255});fn((shape,x,y,z,sx,sy,sz,color,rz=0)=>add3dShapeRigged(m,shape,{x,y,z,rx:0,ry:0,rz},sx,sy,sz,rgb(color)),m);prepareSpriteNormals(m);if(meshes.size>128)meshes.delete(meshes.keys().next().value);meshes.set(id,m);return m;}
+ function organicMesh(key){return buildMesh(key,p=>{if(key.includes('spider_leg')){p('arc',-.12,-.25,0,.075,.43,.08,'#6c5742',-.4);p('arc',.09,.40,0,.05,.35,.05,'#918064',.5);p('arc',.05,.09,0,.12,.12,.12,'#a19269');}else if(key.includes('chitin')){for(let j=0;j<3;j++)p('arc',0,(j-1)*.32,0,.47,.24,.20,j%2?'#605738':'#958651');}else if(key.includes('salt')){for(let j=0;j<6;j++)p('rec',(j%3-1)*.19,Math.floor(j/3)*.16,0,.13,.11,.14,'#e8dfc7',j*.5);}else if(key.includes('berries')){for(let j=0;j<5;j++)p('arc',Math.cos(j*1.3)*.3,Math.sin(j*1.3)*.3,0,.18,.18,.18,'#984b6e');}else{const gland=key.includes('gland');p('arc',0,.1,0,.34,.43,.28,gland?'#809649':'#8e4b58');p('arc',.08,-.42,0,.09,.23,.08,gland?'#a8ad6a':'#ba6d79',-.3);p('arc',-.18,.2,-.24,.09,.24,.025,gland?'#bdc581':'#d09495',.4);}});}
+ function mealMesh(){return buildMesh('meal',p=>{p('arc',0,.4,0,.70,.10,.54,'#bfaa7b');p('arc',0,.24,0,.48,.18,.35,'#936840');for(let j=0;j<4;j++)p('arc',(j-1.5)*.20,.08,-.04,.10,.06,.12,j%2?'#a8793c':'#6e9148');});}
+ function blade(m,color,length=1){const rgb={r:parseInt(color.slice(1,3),16)/255,g:parseInt(color.slice(3,5),16)/255,b:parseInt(color.slice(5,7),16)/255},base=m.vertices.length,outline=[[-.12,0],[.12,0],[.11,-.58],[0,-.95],[-.11,-.58]];for(const z of [-.045,.045])for(const [x,y]of outline)m.vertices.push([x,y*length,z]);m.faces.push({indices:[0,1,2,3,4].map(i=>i+base),color:rgb},{indices:[9,8,7,6,5].map(i=>i+base),color:rgb});for(let i=0;i<5;i++)m.faces.push({indices:[i,(i+1)%5,(i+1)%5+5,i+5].map(i=>i+base),color:rgb});}
+ function bladeColor(source){return /tusk|tooth/.test(source)?'#ded5b5':source.includes('chitin')?'#a7a075':'#a8c0ca';}
+ function partMesh(v){return buildMesh(v.key,(p,m)=>{const c=v.craftData.component;if(c.slot==='head')blade(m,bladeColor(c.source));else p('arc',0,0,0,.12,.45,.12,c.slot==='fitting'?'#958962':'#8e6b49');});}
+ function weaponMesh(v){return buildMesh(v.key,(p,m)=>{const head=v.craftData.components.find(v=>v.craftData.component.slot==='head')?.craftData.component.source||'';if(v.craftData.weaponType==='staff'){p('arc',0,.15,0,.07,.9,.07,'#77553a');p('arc',0,-.85,0,.2,.23,.2,head.includes('heartwood')?'#8cc896':'#bcb58b');}else{p('arc',0,.43,0,.09,.31,.09,'#77553a');p('rec',0,.08,0,.29,.045,.09,'#b8a05a');blade(m,bladeColor(head),v.craftData.weaponType==='sword'?1.5:1);}});}
+
+ function thumb(v,size=96){const signature=(v.key||v.name)+':'+(v.grade||'')+':'+size;if(thumbs.has(signature))return thumbs.get(signature);const c=document.createElement('canvas');c.width=c.height=size;const saved={ctx,tX,tY,tL,tH};try{ctx=c.getContext('2d');tX=tY=0;tL=tH=size;BMItemArt.draw(BMItemArt.preview(BMItemArt.resolve(v)),0,true);}finally{({ctx,tX,tY,tL,tH}=saved);}if(thumbs.size>80)thumbs.delete(thumbs.keys().next().value);thumbs.set(signature,c);return c;}
+ const loot=BMMonsterLoot.roll;BMMonsterLoot.roll=function(n,random=Math.random){const out=loot(n,random);if(n.isCinematic||n.role==='summoned_minion'||!String(n.alignment).startsWith('foe'))return out;const id=Math.floor(Number(n.type)),family=SPRITE_META[id]?.family??id;const pairs=[[[57],['material:spider_leg','material:chitin']],[[210,211,212],['material:scorpion_gland','material:chitin']],[[213,214,215,216,217,218],['material:chitin']],[[282,283,284],['material:werewolf_organ']]];for(const [ids,keys]of pairs)if(ids.includes(id)||ids.includes(family))for(const key of keys)if(random()<.45)out.push({key,name:lab.materials[key].name,kind:'material',count:1});return out;};
+ const openBook=BMBooks.open;BMBooks.open=function(key,...args){const result=openBook.call(this,key,...args);if(result!==false&&typeof key==='string'&&BMInventory.entries()[key]?.count&&!args[0]?.preview)lab.read(key);return result;};
+ const configure=BMShop.configure;BMShop.configure=function(options={}){const r=configure.call(this,options);if(!window.isGuildShop&&!BMShop.isSage){for(const book of Object.values(lab.books))if(!shopInventory.some(i=>(i.item||i).key===book.key))shopInventory.push({key:book.key,name:book.name,text:book.text,kind:'book',price:5,stockQuantity:1});if(BMShop.isTavern)for(const key of ['material:salt','material:berries'])if(!shopInventory.some(i=>(i.item||i).key===key))shopInventory.push({key,name:lab.materials[key].name,kind:'material',price:2,stockQuantity:30});}return r;};
+ const accepts=BMTavern.accepts;BMTavern.accepts=v=>!!lab.definition(v)||accepts(v);
+ function skillIcon(id){const paths={mining:'M5 8 Q16 1 27 8 M17 6 L9 27',smithing:'M8 3 H22 V10 H8 Z M15 10 V28 M5 25 H26',herbalism:'M16 28 V10 M16 18 Q2 17 6 7 Q18 6 16 18 M16 23 Q29 22 26 12 Q15 11 16 23',alchemy:'M12 3 H20 M14 3 V12 L5 25 Q4 29 9 29 H23 Q28 29 27 25 L18 12 V3 M8 22 H24',cooking:'M5 15 H27 L25 27 H7 Z M9 11 Q5 7 10 3 M17 11 Q13 7 18 3 M25 11 Q21 7 26 3',leatherworking:'M5 27 L25 5 Q29 0 29 5 L26 10 Z M12 22 Q20 29 27 20',fishing:'M7 28 L22 3 M22 3 V20 Q22 29 14 24 L14 19'};
+  const c=document.createElement('canvas');c.width=c.height=40;c.setAttribute('aria-hidden','true');const g=c.getContext('2d');g.translate(4,4);g.strokeStyle='#dec589';g.lineWidth=2;g.lineCap='round';g.stroke(new Path2D(paths[id]||paths.alchemy));return c;
+ }
+ BMCraftMastery.panel=function(parent){let box=parent.querySelector('[data-craft-mastery]');if(!box){box=document.createElement('section');box.dataset.craftMastery='';parent.append(box);}const sig=Object.keys(BMCraftMastery.definitions).map(id=>BMCraftMastery.rank(id)).join();if(box.dataset.signature===sig)return;box.dataset.signature=sig;box.replaceChildren();box.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:10px 0';for(const [id,def]of Object.entries(BMCraftMastery.definitions)){const b=document.createElement('button'),r=BMCraftMastery.rank(id);b.style.cssText='display:flex;gap:8px;align-items:center;min-height:64px;text-align:left;font:13px system-ui';b.append(skillIcon(id));const label=document.createElement('span');label.textContent=def.name+' · '+BMCraftMastery.ranks[r]+' · '+['◆','⬡','✦','➤'][def.stat]+' +'+r;b.append(label);b.title=BMCraftMastery.summary(id);b.onclick=()=>BMWorkshopUI.help(id);box.append(b);}};
+ return Object.assign(lab,{thumb,skillIcon,register,applyEffects,currentProps,describeEffects,onlineProfile,masteryPanel:BMCraftMastery.panel});
+})();globalThis.BMMaterials=BMMaterials;
+globalThis.BMWorkshopEffects={speed:d=>Math.max(.5,Math.min(1.5,1+(BMMaterials.currentProps(d).speed||0)*.08))};
+
+const BMWorkshopUI=(()=>{
+ const W=BMMaterials;let root,main,title,tray,scene,cue,heat,serve,progress,mode='alchemy',view='work',last=0,drawAt=0,returnMode='explore',guide=null,toast='',signature='',selected={},returnView='work';
+ const make=(tag,parent,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;parent.append(e);return e;};
+ const button=(p,text,fn,cls)=>{const b=make('button',p,text,cls);b.type='button';b.onclick=fn;return b;};
+ function picture(p,v,size=88){const c=make('canvas',p);c.width=c.height=size;c.getContext('2d').drawImage(W.thumb(v,size),0,0);c.setAttribute('role','img');c.setAttribute('aria-label',v.name);return c;}
+ function create(){if(root)return;make('style',document.head,`
+ #bm-workshop{position:fixed;inset:0;z-index:1210;background:#0b1412;color:#e9dfc4;font:15px/1.4 system-ui;display:flex;flex-direction:column;padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));box-sizing:border-box;gap:8px}
+ #bm-workshop[hidden]{display:none}#bm-workshop *{box-sizing:border-box}#bm-workshop header{display:flex;align-items:center;gap:8px}#bm-workshop h1{font:25px Georgia,serif;color:#e5cf9c;margin:0;flex:1}#bm-workshop h2{font:21px Georgia,serif;color:#e5cf9c;margin:8px 0}#bm-workshop p{margin:6px 0}#bm-workshop button,#bm-workshop select{font:inherit;min-height:44px;border:1px solid #6a745b;border-radius:8px;background:#1c2b24;color:#e9dfc4;padding:8px 12px;touch-action:manipulation}#bm-workshop .card{min-width:0}#bm-workshop .card label{display:block}#bm-workshop .card select{display:block;width:100%;min-width:0;max-width:100%;margin-bottom:8px}#bm-workshop button:disabled{opacity:.4}#bm-workshop button:focus-visible{outline:2px solid #e7c77c}#bm-workshop .primary{background:#405437;border-color:#c5b279}#bm-workshop .tabs{display:flex;gap:6px;overflow:auto;flex-shrink:0}#bm-workshop .tabs button{white-space:nowrap;padding:7px 11px;font-size:13px}#bm-workshop .tabs [aria-pressed=true]{border-color:#e3cd91;background:#394b32}
+ #bm-workshop main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}#bm-workshop .bench{height:100%;min-height:390px;display:grid;grid-template-rows:minmax(130px,1fr) auto auto auto;gap:6px}#bm-workshop .stage{min-height:0;position:relative;border-radius:14px;background:radial-gradient(ellipse at 50% 60%,#294234,#0c1815 78%);overflow:hidden}#bm-workshop .stage canvas{display:block;width:100%;height:100%;touch-action:none;object-fit:contain}#bm-workshop .meters{display:flex;align-items:center;gap:10px;font-size:13px}#bm-workshop progress{flex:1;height:10px;accent-color:#b5ce8e}#bm-workshop .controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap}#bm-workshop .heat{display:flex;align-items:center;gap:8px;flex:1;min-width:140px;font-size:13px}#bm-workshop input[type=range]{min-width:80px;width:100%;accent-color:#d3ae6c;height:36px}#bm-workshop .tray{display:flex;gap:7px;overflow-x:auto;padding:3px 0 5px;min-height:106px;align-items:stretch}#bm-workshop .ingredient{flex:0 0 88px;text-align:center;position:relative}#bm-workshop .ingredient button.pick{display:flex;width:100%;height:98px;flex-direction:column;align-items:center;padding:3px;font-size:11px;line-height:1.15}#bm-workshop .ingredient canvas{width:53px;height:53px}#bm-workshop .ingredient button.info{position:absolute;right:0;top:0;min-height:30px;width:30px;padding:2px;border-radius:50%;font-size:13px;background:#182920e8}#bm-workshop .ingredient .guided{outline:2px solid #ecd286}#bm-workshop .cue{font-size:13px;color:#c3d6ad;min-height:20px}#bm-workshop .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}#bm-workshop .card{border:1px solid #425842;border-radius:10px;padding:12px;background:#122119}#bm-workshop .card canvas{display:block;margin:auto;max-width:100%}#bm-workshop .chips{display:flex;gap:6px;flex-wrap:wrap}#bm-workshop .chip{padding:4px 7px;background:#243326;border-radius:8px;font-size:13px}#bm-workshop .small{color:#b1b9a6;font-size:13px}#bm-workshop .steps{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:16px 0}#bm-workshop .steps div{padding:14px;border:1px solid #657458;border-radius:12px;flex:1;text-align:center}#bm-workshop .steps strong{display:block;font-size:26px;color:#d7bd7e}
+ @media(orientation:landscape) and (max-height:540px){#bm-workshop{gap:4px;padding-top:6px}#bm-workshop h1{font-size:21px}#bm-workshop .bench{min-height:220px;grid-template-columns:1fr 270px;grid-template-rows:1fr auto auto}#bm-workshop .stage{grid-row:1/4}#bm-workshop .tray{grid-column:2;grid-row:1;flex-wrap:wrap;overflow:auto;align-content:flex-start;min-height:0}#bm-workshop .ingredient{flex-basis:78px}#bm-workshop .ingredient button.pick{height:89px}#bm-workshop .controls{grid-column:2}#bm-workshop .meters{grid-column:2;font-size:12px}#bm-workshop .cue{font-size:12px}}
+ #bm-camp .craft-product canvas{width:144px!important;height:144px!important}#bm-camp .play{max-height:52vh;min-height:200px}#bm-camp .panel{padding:10px;margin:8px 0}#bm-camp .wrap{max-width:1050px}
+ `);
+  root=make('section',document.body);root.id='bm-workshop';root.hidden=true;root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-label','Crafting workbench');for(const t of ['pointerdown','pointermove','pointerup','pointercancel','touchstart','touchmove','touchend','click','wheel','keydown','keyup'])root.addEventListener(t,e=>e.stopPropagation());
+  const head=make('header',root);title=make('h1',head,'Workbench');button(head,'Recipes',()=>{view='recipes';render();});button(head,'Help',()=>help(mode));button(head,'Return',close);
+  const nav=make('nav',root,null,'tabs');for(const [id,label]of [['alchemy','Alchemy'],['cooking','Cooking'],['sewing','Leather'],['smithing','Smithing'],['modify','Modify']]){const b=button(nav,label,()=>switchMode(id));b.dataset.mode=id;}
+  main=make('main',root);root.addEventListener('keydown',e=>{if(e.key==='Escape'){if(view!=='work'){view='work';render();}else close();}if(e.key==='Tab'){const list=[...root.querySelectorAll('button:not(:disabled):not([hidden]),input,select')],i=list.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();list.at(-1)?.focus();}else if(!e.shiftKey&&i===list.length-1){e.preventDefault();list[0]?.focus();}}});
+ }
+ function switchMode(id){if(W.state().active?.status==='playing'){toast='Finish this batch or leave it saved before changing work.';render();return;}if(['sewing','smithing'].includes(id)){hide();if(id==='smithing')BMArtisan.openForge();else nativeOpen('sewing');return;}mode=id;view=id==='modify'?'modify':'work';guide=null;render();}
+ const nativeOpen=BMCamp.open,nativeClose=BMCamp.close,nativeTick=BMCamp.tick;
+ function open(next='alchemy'){if(!nativeOpen(next==='cooking'?'cook':next))return false;create();returnMode='camp';mode=next==='cook'?'cooking':next;const active=W.state().active;if(active?.status==='playing')mode=active.mode;view=mode==='modify'?'modify':'work';root.hidden=false;document.getElementById('bm-camp').hidden=true;last=performance.now();render();root.querySelector('button')?.focus();return true;}
+ function hide(){if(root)root.hidden=true;}
+ function close(){hide();Dungeon.requestSave();if(returnMode!=='camp'){startGame=returnMode;return;}nativeClose();}
+ const fire=BMCamp.openAtFire;BMCamp.openAtFire=function(...args){const r=fire.apply(this,args);if(startGame==='camp'&&!BMCrafting.game?.status?.includes('playing'))open('cooking');return r;};
+ BMCamp.open=function(next,...args){return ['cook','alchemy','cooking'].includes(next)?open(next):nativeOpen(next,...args);};
+ BMCamp.close=()=>{hide();nativeClose();};
+ function live(){return !!root&&!root.hidden&&startGame==='camp';}
+ BMCamp.tick=function(now=performance.now()){if(!live()){hide();const old=document.getElementById('bm-camp'),tab=old?.querySelector('nav button[aria-pressed="true"]')?.dataset.mode;if(startGame==='camp'&&old&&!old.hidden&&!BMCrafting.game&&['cook','alchemy'].includes(tab)){open(tab);return;}return nativeTick(now);}document.getElementById('bm-camp').hidden=true;const dt=document.hidden?0:Math.min(.15,Math.max(0,(now-last)/1000));last=now;const before=W.state().active?.status;if(view==='work')W.tick(dt);BMEquipment.sync();if(before!==W.state().active?.status){render();return;}if(view==='work')update(now);};
+ function render(){create();main.replaceChildren();scene=tray=cue=heat=serve=progress=null;signature='';title.textContent=mode==='cooking'?'Cooking':mode==='modify'?'Modify':'Alchemy';for(const b of root.querySelectorAll('[data-mode]')){b.hidden=b.dataset.mode==='modify'&&W.rank('smithing')<3;b.setAttribute('aria-pressed',String(b.dataset.mode===mode));}
+  if(toast){make('p',main,toast,'cue');toast='';}if(view==='recipes'){recipes();return;}if(view==='help'){helpPage();return;}if(view==='inspect'){inspectPage();return;}if(mode==='modify'){modify();return;}
+  const g=W.state().active;if(g&&g.mode===mode&&g.status!=='playing'){results(g);return;}bench(g?.mode===mode?g:null);update(performance.now());
+ }
+ function bench(g){const box=make('div',main,null,'bench'),stage=make('div',box,null,'stage');scene=make('canvas',stage);scene.width=720;scene.height=500;scene.setAttribute('aria-label',mode==='cooking'?'Food and pan. Swipe up to flip; drag down to remove from heat.':'Mixing pot. Draw a circle to stir.');
+  let origin=null,motion=0;scene.onpointerdown=e=>{origin={x:e.clientX,y:e.clientY};motion=0;scene.setPointerCapture(e.pointerId);};scene.onpointermove=e=>{if(origin)motion+=Math.abs(e.movementX||0)+Math.abs(e.movementY||0);};scene.onpointerup=e=>{if(!origin)return;const dy=e.clientY-origin.y;origin=null;if(!W.state().active)return;if(mode==='cooking'&&dy<-24)act('flip');else if(dy>50){W.control('heat',0);if(heat)heat.value=0;}else if(motion>30)act('stir');};scene.onpointercancel=()=>origin=null;
+  const meters=make('div',box,null,'meters');make('span',meters,'Ready');progress=make('progress',meters);progress.max=1;progress.value=0;cue=make('span',meters,'Choose ingredients.','cue');
+  const controls=make('div',box,null,'controls');
+  if(!g){if(mode==='alchemy'){const op=make('select',controls);op.setAttribute('aria-label','Preparation');for(const [id,label]of [['brew','Brew'],['refine','Refine'],['concentrate','Concentrate'],['coating','Coating'],...(W.rank('alchemy')>=2?[['isolate','Isolate']]:[])]){const o=make('option',op,label);o.value=id;}const property=make('select',controls);property.setAttribute('aria-label','Property to isolate');property.hidden=true;for(const [id,e]of Object.entries(W.effects)){const o=make('option',property,e.name);o.value=id;}op.onchange=()=>property.hidden=op.value!=='isolate';button(controls,'Begin',()=>{W.start(mode,{operation:op.value,property:property.value,guide});render();},'primary');}else{const method=make('select',controls);method.setAttribute('aria-label','Cooking method');for(const [id,label]of [['fry','Pan'],['soup','Soup'],['roast','Roast']])make('option',method,label).value=id;button(controls,'Begin',()=>{W.start(mode,{method:method.value,guide});render();},'primary');}}
+  else{const l=make('label',controls,null,'heat');make('span',l,'Heat');heat=make('input',l);heat.type='range';heat.min=0;heat.max=100;heat.value=g.heat;heat.setAttribute('aria-label','Heat');heat.oninput=()=>W.control('heat',Number(heat.value));button(controls,mode==='cooking'&&g.method!=='soup'?'Flip':'Stir',()=>act(mode==='cooking'&&g.method!=='soup'?'flip':'stir'));serve=button(controls,mode==='cooking'?'Serve':g.operation==='refine'||g.operation==='isolate'?'Collect':'Bottle',()=>{W.finish();render();},'primary');}
+  tray=make('div',box,null,'tray');fillTray();if(g?.guide?.name)make('p',main,'Guide: '+g.guide.name+' · highlighted ingredients are suggestions.','small');
+ }
+ function act(id){if(W.control(id)){const g=W.state().active;if(id==='flip')g.flipAt=performance.now();BMCraftAudio.cue(id==='flip'?'craftSizzle':'craftBubble');}}
+ function fillTray(){if(!tray)return;const g=W.state().active,list=W.available(mode),sig=list.map(v=>v.key+':'+v.count).join('|')+'|'+(g?.inputs.length||0);if(sig===signature)return;signature=sig;tray.replaceChildren();
+  for(const v of list){const box=make('div',tray,null,'ingredient'),b=button(box,'',()=>{if(!g){toast='Choose a preparation and press Begin.';render();return;}if(W.add(v.key)){BMCraftAudio.cue('craftBubble');fillTray();}else{cue.textContent='This ingredient needs more skill or cannot be used here.';}},'pick');b.setAttribute('aria-label',v.name+' ×'+v.count);picture(b,v);make('span',b,v.name+' ×'+v.count);const desired=g?.guide?.ingredients||guide?.ingredients;if(desired?.filter(k=>k===v.key).length>(g?.inputs.filter(i=>i.item.key===v.key).length||0))b.classList.add('guided');button(box,'i',()=>{selected={key:v.key};view='inspect';render();},'info').setAttribute('aria-label','Inspect '+v.name);}
+  if(!list.length)make('p',tray,'Collect ingredients in the world or visit the shop.','small');
+ }
+ function update(now){if(!scene)return;const g=W.state().active;if(progress)progress.value=Math.min(1,g?.progress||0);if(serve)serve.disabled=!g?.inputs.length||(g.progress||0)<1;if(cue){const ready=g?.progress>=1;cue.textContent=!g?'Choose a preparation.':!g.inputs.length?'Add an ingredient.':g.scorch>.6?'Too hot or sticking!':ready?'Ready to finish':g.temp<42?'Warm the mixture':g.stirAge>6&&(mode==='alchemy'||g.method==='soup')?'Stir now':g.inputs.some(i=>i.delicate&&i.damage>.15)?'Delicate herbs are losing potency':g.mode==='cooking'&&g.method==='fry'&&g.brown[g.side]>.65?'Flip the food':'Keep a gentle heat';}
+  if(g?.guide&&cue&&g.inputs.length&&g.scorch<.6){const desired=g.guide.ingredients||[],counts={};for(const i of g.inputs)counts[i.item.key]=(counts[i.item.key]||0)+1;const next=desired.find(k=>{if(counts[k]){counts[k]--;return false;}return true;});const actions=g.guide.actions||[],heatStep=actions.filter(a=>a.action==='heat'&&a.at<=g.elapsed+1).at(-1);if(heatStep&&Math.abs(heatStep.value-g.heat)>3)cue.textContent='Guide: set heat to '+heatStep.value+'.';else if(next){const used=g.inputs.filter(i=>i.item.key===next).length,step=actions.filter(a=>a.action==='add'&&a.key===next)[used],wait=Math.max(0,Math.ceil((step?.at||0)-g.elapsed));cue.textContent='Guide: '+(wait?'in '+wait+'s, ':'')+'add '+(W.definition(next)?.name||BMFieldCraft.itemName(next));}else {const action=actions.find(a=>a.at>g.elapsed);if(action&&action.at-g.elapsed<5)cue.textContent='Guide: '+(action.action==='heat'?'heat to '+action.value:action.action)+(action.action==='add'?' '+(W.definition(action.key)?.name||'ingredient'):'')+' soon';}}
+  if(now-drawAt<50)return;drawAt=now;const c=scene.getContext('2d');c.clearRect(0,0,720,500);const sample=g||{kind:mode==='cooking'?'fish':'alchemy',method:mode==='cooking'?'fry':'soup',temp:20,stirAge:20,brown:[0,0],side:0,elapsed:0,meat:true};c.save();c.translate(360,225);c.scale(1.85,1.85);c.translate(-360,-155);BMCraftScenes.cooking(c,{...sample,meat:sample.inputs?.some(i=>i.item.key==='material:meat')??true},now);c.restore();
+  c.textAlign='center';c.fillStyle='#e6d9bb';c.font='18px system-ui';c.fillText(g?Math.round(g.temp)+'° · '+(g.inputs.length?g.inputs.map(i=>i.item.name).join(' + '):'Empty pot'):'Your ingredients, your recipe',360,440,670);
+  if(g?.inputs.length){const x=360-g.inputs.length*22;g.inputs.forEach((i,j)=>c.drawImage(W.thumb(i.item,80),x+j*44,354,65,65));}
+ }
+ function results(g){const box=make('div',main,null,'card');if(g.output)picture(box,g.output,220);make('h2',box,g.message);if(g.output){make('p',box,'Quality '+Math.round(g.result.quality*100)+'%');effectChips(box,g.result.props);make('p',box,W.describeEffects(g.result.effects),'small');make('p',box,'A meal and a potion can be active together. A new one replaces the previous effect of its kind.','small');}for(const note of g.result?.notes||[])make('p',box,note,'small');const actions=make('div',box,null,'controls');if(g.output)button(actions,'Save recipe',()=>{W.saveRecipe();toast='Recipe saved.';render();});button(actions,'New batch',()=>{W.abandon();guide=null;render();},'primary');}
+ function effectChips(parent,props){const chips=make('div',parent,null,'chips');for(const [id,n]of Object.entries(props||{})){const e=W.effects[id];if(!e)continue;const b=button(chips,e.symbol+' '+(n>0?'+':'')+Math.round(n*100)/100,()=>{toast=(n<0?'Reduces ':'')+e.name;const existing=chips.nextElementSibling;if(existing?.className==='small')existing.remove();make('p',parent,e.name+' '+n,'small');},'chip');b.title=e.name;b.setAttribute('aria-label',e.name+' '+n);}}
+ function inspectPage(){const v=BMInventory.entries()[selected.key];button(main,'Back',()=>{view='work';render();});if(!v)return;picture(main,v,200);make('h2',main,v.name);const k=W.known(v);make('p',main,W.describe(v));if(k?.recognized){effectChips(main,k.props);if(k.source)make('p',main,'Learned from '+k.source,'small');}else make('p',main,'A material you can keep or sell.','small');}
+ function recipes(){button(main,'Back to work',()=>{view='work';render();});const list=[...W.state().recipes];for(const [id,r]of Object.entries(BMFieldCraft.recipes))if(W.rank(r.kind==='cooking'?'cooking':'alchemy')>=0&&BMFieldCraft.known()[id]&&['alchemy','cooking'].includes(r.kind))list.push({id,name:r.name,mode:r.kind,operation:id.includes('refine')?'refine':'brew',method:r.kind==='cooking'?'soup':undefined,ingredients:Object.entries(r.req).flatMap(([k,n])=>Array(n).fill(k))});const cards=make('div',main,null,'cards');
+  for(const r of list){const box=make('div',cards,null,'card');make('h2',box,r.name);for(const key of [...new Set(r.ingredients)]){const v=BMInventory.entries()[key]||{key,name:W.definition(key)?.name||BMFieldCraft.itemName(key),kind:key.startsWith('powder:')?'powder':'material'};picture(box,v,80);make('p',box,v.name+' ×'+r.ingredients.filter(k=>k===key).length,'small');}button(box,'Use guide',()=>{if(W.state().active?.status==='playing'){toast='Finish the current batch first.';view='work';render();return;}W.abandon();mode=r.mode;guide=r;W.start(mode,{...r,guide:r});view='work';render();},'primary');}
+  if(!list.length)make('p',main,'Save a successful experiment or read a recipe book.');
+ }
+ let helpTopic='alchemy';function help(id){create();if(!live()){returnView=startGame;returnMode=startGame;startGame='camp';root.hidden=false;}else returnView='work';helpTopic=id;view='help';render();}
+ function helpPage(){button(main,'Back',()=>{if(returnView!=='work'){hide();startGame=returnMode;}else{view='work';render();}});make('h2',main,BMCraftMastery.definitions[helpTopic]?.name||'Crafting');const stages=helpTopic==='cooking'?[['♧','Choose food'],['♨','Cook and turn'],['✦','Season to taste']]:helpTopic==='fishing'?[['⌁','Cast'],['↔','Balance tension'],['↟','Reel when tired']]:helpTopic==='smithing'?[['◆','Choose material'],['⚒','Shape and temper'],['◇','Finish']]:[['♧','Choose ingredients'],['♨','Heat and stir'],['◈','Collect']];const steps=make('div',main,null,'steps');for(const [symbol,text]of stages){const tile=make('div',steps);make('strong',tile,symbol);make('span',tile,text);}
+  const paragraphs=helpTopic==='cooking'?['Put food in the pan or pot. Keep the heat gentle. Swipe up to flip, draw a small circle to stir, or use the buttons. Drag down to take the pan off the heat.','Ingredients keep their properties. Sweetness balances bitterness; a little salt can complement savory food. Too much seasoning overwhelms the dish. Add delicate herbs near the end, with the heat lowered.','Serve when the Ready meter fills. The results explain what survived, what burned, and which flavors worked together.']:helpTopic==='fishing'?['Cast beside water. Tap Reel when a fish bites. Hold Reel while the fish rests; release when it runs.','Drag the rod opposite the fish’s pull. Keep tension away from both extremes. Steady pressure tires the fish; reel it close once it weakens.']:helpTopic==='smithing'?['Ordinary recipes make complete equipment. At the master’s bench, tusks, chitin, iron and other suitable materials can form different components.','Master Smithing unlocks component assembly. Only weapons made this way can be disassembled. Unequip first; the recovered pieces keep their properties. Rebuilding replaces the old weapon effects.']:['Each ingredient carries properties. Identical properties add together; opposites cancel according to strength and duration. Books and experiments teach uses that may not be visible yet.','Brew makes a potion. Refine makes powder. Concentrate combines several measures into one. Expert alchemists can isolate a known property, sacrificing some yield. Coating makes a preparation for an equipped weapon.','Keep the heat around 50–75°, stir before the mixture sticks, and collect when Ready is full. Recipes highlight ingredients without blocking experimentation.'];for(const p of paragraphs)make('p',main,p);if(W.state().active?.status==='playing')button(main,'Discard this batch',()=>{W.abandon();view='work';render();});make('p',main,'Each craft trains its own skill. Higher ranks add passive stat bonuses.','small');}
+ function modify(){if(W.rank('smithing')<3){make('p',main,'Requires Master Smithing.');return;}const cards=make('div',main,null,'cards'),assembly=make('div',cards,null,'card');make('h2',assembly,'Build a weapon');const form=make('select',assembly);form.setAttribute('aria-label','Weapon');for(const id of ['dagger','sword','staff'])make('option',form,id[0].toUpperCase()+id.slice(1)).value=id;const choices={};for(const slot of ['head','grip','fitting']){const label=make('label',assembly,({head:'Blade',grip:'Handle',fitting:'Fitting'}[slot])+' '),select=make('select',label);select.setAttribute('aria-label',slot);make('option',select,slot==='fitting'?'None':'Choose…').value='';for(const v of Object.values(BMInventory.entries()))if(W.component(v,slot))make('option',select,v.name+' ×'+v.count).value=v.key;choices[slot]=select;select.onchange=()=>{preview.replaceChildren();for(const [role,input]of Object.entries(choices)){const v=W.component(input.value,role);if(v){picture(preview,v,100);effectChips(preview,v.craftData.props);}}};}const preview=make('div',assembly,null,'controls');button(assembly,'Assemble',()=>{const r=W.assemble({...Object.fromEntries(Object.entries(choices).map(([k,v])=>[k,v.value])),form:form.value});toast=r.ok?'Weapon assembled. Equip it from Items.':r.error;render();},'primary');
+  for(const v of Object.values(BMInventory.entries()).filter(i=>i.craftData?.components)){const box=make('div',cards,null,'card');picture(box,v,180);make('h2',box,v.name);effectChips(box,v.craftData.props);for(const part of v.craftData.components)make('p',box,part.name,'small');button(box,'Disassemble',()=>{const r=W.disassemble(v.key);toast=r.ok?'Components recovered. Their effects leave the old weapon.':r.error;render();});}
+ }
+ // Open the master bench from the existing forge without crowding ordinary recipes.
+ const forge=BMArtisan.openForge;BMArtisan.openForge=function(...a){const r=forge.apply(this,a);queueMicrotask(()=>{const shell=document.querySelector('#bm-artisan');if(!shell||W.rank('smithing')<3||shell.querySelector('[data-master-modify]'))return;const b=button(shell.querySelector('footer')||shell,'Modify weapons',()=>{BMArtisan.close();open('modify');});b.dataset.masterModify='';});return r;};
+ return {open,close,help,render,live};
+})();globalThis.BMWorkshopUI=BMWorkshopUI;
+
+/* Every view uses the same CON and ward state; the ring stays at the feet. */
+const BMFoeRings=(()=>{
+ const eligible=n=>!!n&&!n.isPlayer&&!n.isDead&&n.visible!==false&&String(n.alignment||'').startsWith('foe');
+ function state(d,n){const max=a=>{let sum=0;for(let i=0;i<4;i++){const v=a.getEffectiveDice?.(i)||{numDice:a.stat?.[i]?.[0]||1,diceSides:a.stat?.[i]?.[1]||4,flatMod:a.stat?.[i]?.[2]||0};sum+=v.numDice*v.diceSides+v.flatMod;}return sum;};const diff=Math.floor(max(n)*(n.isBoss?1.5:1))-max(d),base=diff>=15?'#FF0000':diff>=5?'#FFFF00':diff>=-4?'#FFFFFF':diff>=-12?'#1E90FF':diff>=-19?'#00FFFF':'#00FF00',colors=[base];
+  for(const [name,color]of [['Burn','#FF4500'],['Poison','#32CD32'],['Curse','#8A2BE2'],['Webbed','#FFFFFF']])if(n.activeBuffs?.some(b=>b.name===name||name==='Webbed'&&b.bind))colors.push(color);
+  const total=n.maxWards*(n.timePerWard||3),percent=Number.isFinite(n.currentWardTime)&&total>0?Math.max(0,Math.min(1,n.currentWardTime/total)):1;
+  return {color:colors[Math.floor(Date.now()/600)%colors.length],percent};
+ }
+ function draw(d,n,c,x,y,r,squash=.35,width=1.6){if(!eligible(n)||![x,y,r].every(Number.isFinite))return;const v=state(d,n);c.save();c.filter='none';c.globalCompositeOperation='source-over';c.lineWidth=width+2;c.globalAlpha=.65;c.strokeStyle='#080c12';c.beginPath();c.ellipse(x,y,r,r*squash,0,0,Math.PI*2);c.stroke();c.lineWidth=width;c.strokeStyle=v.color;c.globalAlpha=.3;c.stroke();if(v.percent>0){c.globalAlpha=.95;c.beginPath();c.ellipse(x,y,r,r*squash,0,-Math.PI/2,-Math.PI/2+Math.PI*2*v.percent);c.stroke();}c.restore();}
+ return {eligible,state,draw};
+})();globalThis.BMFoeRings=BMFoeRings;
+
+/* Authored port and landmark geometry. Story actors retain their original actions. */
+const BMDesertLandmarks=(()=>{
+ let serial=887000;
+ const surfaces={};
+ function floor(id,x,y,w,h,a,b){const q=surfaces[id]??=[];for(let j=0;j<h;j++)for(let i=0;i<w;i++)q.push({x:x+i,y:y+j,w:1,h:1,color:(i+j)%2?a:b});}
+ function slab(m,x,y,bottom,top,tile){m.slabs??=[];if(top>bottom+.12)m.slabs.push({x,y,bottom,top,tile});}
+ function decor(m,x,y,sprite,name,z=0){m.npcs.push({index:serial++,x,y,sprite,name,role:'decoration',state:'stationary',alignment:'friendly',isCinematic:true,companionEligible:false,hideMinimap:true,nonBlocking:true,groundZ:z,onSpawn(n){Object.assign(n,{hideMinimap:true,nonBlocking:true,groundZ:z,fixedWorldAngle:0});BMClassArt.resource(n,sprite);}});}
+ function torch(m,x,y){decor(m,x,y,1166,'Lamp');m.npcs.push({index:serial++,x,y,sprite:-205,role:'decoration',state:'stationary',alignment:'friendly',isCinematic:true,hideMinimap:true,nonBlocking:true,onSpawn(n){Object.assign(n,{hideMinimap:true,nonBlocking:true,groundZ:0,_sectHover:.62});}});}
+ function person(m,x,y,sprite,name,text,stock){const close=[['close_dialogue',null]];m.npcs.push({index:serial++,x,y,sprite,name,role:'dialogue',state:'stationary',alignment:'friendly',companionEligible:false,customDialogue:text,options:stock?['Shop','Leave']:null,yesActions:stock?[['open_shop',stock]]:close,noActions:close,endActions:close,onSpawn(n){n.serviceStock=stock;n.nonBlocking=false;}});}
+ function house(m,id,x,y,w,h,door,style){for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++){m.maze[j][i]=0;const edge=j===y||j===y+h-1||i===x||i===x+w-1,entry=j===y+h-1&&Math.abs(i-door)<=0,window=edge&&!entry&&((i===x||i===x+w-1)&&j===y+2||j===y&&i===x+2);if(edge&&!entry){if(window){slab(m,i,j,0,.85,1);slab(m,i,j,1.7,2.9,1);}else slab(m,i,j,0,2.9,1);}slab(m,i,j,2.9,3.06,15);}
+  floor(id,x+1,y+1,w-2,h-2,style[0],style[1]);floor(id,door,y+h-1,1,2,style[0],style[1]);return {x,y,w,h,door};}
+ function desert(){const id=4,m=MAP_DB[id];m.slabs??=[];
+  // Replace the old port's disconnected walls; preserve its shore and ship.
+  for(let y=70;y<=97;y++)for(let x=19;x<=38;x++)if(m.maze[y][x]===1)m.maze[y][x]=0;
+  const sailor=house(m,id,29,71,7,8,32,['#80634b','#886b51']);
+  const market=house(m,id,27,82,10,7,31,['#a18360','#967957']);
+  const inn=house(m,id,20,91,11,7,25,['#785a43','#826449']);
+  // A worn dockside path uses irregular paving patches rather than a broad stripe.
+  for(let y=78;y<91;y++)for(let x=25;x<=28;x++)if((x+y)%4!==0)(surfaces[id]??=[]).push({x:x+.08,y:y+.07,w:.72,h:.79,color:(x+y)%2?'#b99c70':'#c2a57a'});
+  person(m,32.5,74.5,252,'Sailor',['The ship carries travellers to Tintagel. Ask at the gangway when you are ready.','Rest here before crossing the dunes. The red pyramid stands in the southeast.']);
+  person(m,34.5,85.5,41,'Merchant',['Water, supplies, and cards for the desert road.'],[15,16,25,26,27,50,64]);
+  person(m,28.5,93.5,297,'Innkeeper',['Come in out of the heat. We keep the lamps burning for returning travellers.']);
+  decor(m,30.45,72.5,1170,'Bed');decor(m,34.5,72.5,1169,'Sea chest');decor(m,34.5,76.5,1163,'Charts',.28);slab(m,34,76,0,.28,15);decor(m,30.5,76.5,1172,'Water barrel');
+  for(let y=84;y<=86;y++)slab(m,33,y,0,.28,15);decor(m,33.5,84.5,1163,'Ledger',.28);decor(m,28.5,83.5,1165,'Shelf');decor(m,35.5,83.5,1169,'Card chest');decor(m,28.5,87.5,1171,'Crates');
+  for(const [x,y]of [[22,93],[26,95]])slab(m,x,y,0,.28,15);decor(m,21.5,92.5,1170,'Bed');decor(m,29.5,96.5,1172,'Water barrel');decor(m,22.5,93.5,1167,'Jug',.28);torch(m,29.5,92.5);torch(m,28.5,83.5);torch(m,30.5,72.5);
+  m.portBuildings={sailor,market,inn};
+  // Triangular footprint with rising red stone terraces and a clear front gate.
+  for(let y=59;y<=79;y++)for(let x=63;x<=91;x++)if(m.maze[y][x]===5)m.maze[y][x]=0;
+  for(let y=60;y<=78;y++)for(let x=63;x<=91;x++){const side=.72*(y-60)-Math.abs(x-77);if(side<0)continue;const inset=Math.min((78-y)/6,(y-60)/12,side/8.64),top=.65+Math.max(0,Math.floor(inset*6))*1.1;m.maze[y][x]=0;
+   if(Math.abs(x-77)<=1&&y>=75)slab(m,x,y,2.2,Math.max(2.4,top),5);else slab(m,x,y,0,top,5);}
+  const entry=m.npcs.find(n=>n.index===1&&n.role==='portal');Object.assign(entry,{x:77.5,y:77.5});entry.deck=[8.5,23.5,31,0];
+  const guards={6:[74.5,80.5],7:[80.5,80.5],8:[75.5,83.5],9:[79.5,83.5],10:[84.5,81.5],11:[70.5,81.5],910000:[63.5,75.5],910001:[89.5,79.5],910002:[64.5,70.5]};for(const n of m.npcs)if(guards[n.index])[n.x,n.y]=guards[n.index];
+  floor(id,76,78,3,4,'#ac7353','#b5805d');torch(m,75.5,79.5);torch(m,79.5,79.5);
+  m.landmark={shape:'triangular-pyramid',center:[77,72],entrance:[77.5,77.5]};
+ }
+ function sapphire(){const m=MAP_DB[6];m.slabs??=[];for(let y=22;y<=31;y++)for(let x=42;x<=50;x++)if(m.maze[y][x]===25)m.maze[y][x]=0;for(let y=7;y<=22;y++)for(let x=39;x<=53;x++){if(m.maze[y][x]===9)m.maze[y][x]=0;const distance=Math.abs(x-46)+Math.abs(y-14);if(distance>7)continue;m.maze[y][x]=0;const top=.7+Math.floor((7-distance)/1.2)*1.25;if(x===46&&y>=17)slab(m,x,y,2.2,Math.max(2.4,top),9);else slab(m,x,y,0,top,9);}
+  floor(6,46,19,1,5,'#688aab','#7e9fba');m.landmark={shape:'diamond-pyramid',center:[46,14],entrance:[46.5,19.5]};
+ }
+ function interior(){const m=MAP_DB[31];m.name='Red Pyramid';m.skyColor='#20171d';m.floorColor='#796153';m.slabs=[];m.maze=Array.from({length:25},()=>Array(17).fill(5));const carve=(x,y,w,h)=>{for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)m.maze[j][i]=0;};
+  carve(3,1,11,5);carve(6,5,5,19);carve(1,8,4,8);carve(12,8,4,8);carve(1,12,15,3);carve(1,18,5,4);carve(11,18,5,4);carve(4,19,9,2);
+  for(let y=0;y<25;y++)for(let x=0;x<17;x++){if(m.maze[y][x]===5)slab(m,x,y,0,4.8,5);else slab(m,x,y,y<=5?4.6:3.5,y<=5?4.8:3.7,5);}
+  floor(31,0,0,17,25,'#796355','#856c59');floor(31,7,5,3,19,'#9a7657','#a4805f');floor(31,4,1,9,4,'#815256','#915c5e');
+  for(const n of m.npcs){if(n.index===2&&n.role==='portal')n.deck=[77.5,80.5,4,2];if(n.sprite===-27&&n.index===9){n.x=14.5;n.y=9.5;}if(n.sprite===-27&&n.index===10){n.x=2.5;n.y=9.5;}}
+  for(const x of [1.4,3.6])for(const y of [8.5,10.5])decor(m,x,y,1165,'Bookshelf');decor(m,2.5,11.5,1163,'Book');
+  decor(m,15.5,10.5,1168,'Weapon rack');decor(m,12.5,8.5,1169,'Chest');decor(m,15.5,14.5,1171,'Crates');
+  for(const x of [1.5,3.5])decor(m,x,18.5,1170,'Bed');for(const y of [19,20])slab(m,13,y,0,.28,15);decor(m,13.5,19.5,1167,'Jug',.28);decor(m,15.5,21.5,1172,'Barrel');
+  for(const [x,y]of [[5.5,2.5],[11.5,2.5],[6.5,7.5],[10.5,7.5],[6.5,16.5],[10.5,16.5],[7.5,22.5],[9.5,22.5]])torch(m,x,y);
+  // Side plinths frame the Queen while leaving her and the Djinn reachable.
+  for(const x of [4,12])slab(m,x,2,0,.45,15);m.landmark={shape:'pyramid-interior',exit:[8.5,23.5]};
+ }
+ desert();sapphire();interior();MAP_DB[31].torchPools=Array.from({length:25},(_,y)=>Array.from({length:17},(_,x)=>Math.min(.8,MAP_DB[31].npcs.filter(n=>n.sprite===-205).reduce((sum,n)=>sum+Math.max(0,1-Math.hypot(x+.5-n.x,y+.5-n.y)/5)*.55,0))));for(const [id,q]of Object.entries(surfaces))BMGuildDecor.addSurface(Number(id),q);
+ // Color overrides are scoped to these maps and restored on every transition.
+ let previous=null;const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...args){this._landmarkLight=0;this._landmarkStone=false;if(previous){Object.assign(this.wallColors,previous.wall);Object.assign(this.parsedWallColors,previous.parsed);previous=null;}const result=load.call(this,id,...args);if([4,6,31].includes(Number(id))){this._landmarkLight=Number(id)===31?.4:.65;this._landmarkStone=Number(id)!==6;if(Number(id)===31)this._sectLight=MAP_DB[31].torchPools;previous={wall:{},parsed:{}};for(const [tile,color]of Object.entries(Number(id)===6?{9:'#255b94'}:Number(id)===31?{5:'#593d40'}:{5:'#9a4838',1:'#89674f'})){previous.wall[tile]=this.wallColors[tile];previous.parsed[tile]=this.parsedWallColors[tile];this.wallColors[tile]=color;this.parsedWallColors[tile]={r:parseInt(color.slice(1,3),16),g:parseInt(color.slice(3,5),16),b:parseInt(color.slice(5,7),16)};}}return result;};
+ return {surfaces};
+})();globalThis.BMDesertLandmarks=BMDesertLandmarks;
 
 BMContent.installEmbedded();await bootGame();BMMovementCourtyard.previewStart();BMCreator.previewStart();}catch(error){window.BattleMageStartup?.report(error,"Saved-game startup");if(window.BM_CREATOR_PREVIEW)parent.postMessage({type:"bm-creator-error",message:String(error.message||error)},"*");}})();
 </script>
