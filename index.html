@@ -2,7 +2,7 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-04-bm-classic-encounters"/>
+      <meta name="suncat-build" content="2026-11-05-bm-port-ring-loot"/>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage</title>
       <style>
         html,body {
@@ -43906,6 +43906,7 @@ render(scene, dt) {
                             }
                         }
                 // --- THE HUNTED DIRECTOR ---
+                        host.window.BMCursedRing?.active(scene);
                         if (scene.memory['hunted_active'] && scene.mapID !== 999 && scene.mapID !== -1 && host.startGame === 'explore') {
                             scene.memory['hunted_timer'] += dt; // dt is in seconds
                             
@@ -43914,7 +43915,7 @@ render(scene, dt) {
                                 scene.memory['hunted_waves_left']--;
                                 
                                 if (typeof host.MessageBox !== 'undefined') {
-                                    host.MessageBox.show(0.5, 2, 1, 9, 2, `Bounty hunters have tracked you down!`, 'system', 1, 0);
+                                    host.MessageBox.show(0.5, 2, 1, 9, 2, scene.memory.hunted_curse ? 'Wisps gather around the ring’s curse.' : 'Bounty hunters have tracked you down!', 'system', 1, 0);
                                 }
                                 if (typeof host.MusicEngine !== 'undefined') host.MusicEngine.play3DSFX('horn');
                                 
@@ -43960,14 +43961,16 @@ render(scene, dt) {
                                             'chasing', '#ff0000', mob.deck || [mob.sprite], 
                                             'battle', mob.isBoss || false, 'foe_wave'
                                         ), {
-                                            customDialogue: ["You can't run forever!"],
+                                            customDialogue: scene.memory.hunted_curse ? null : ["You can't run forever!"],
+                                            _ringWave: !!scene.memory.hunted_curse,
                                             deathActions: deathActions
                                         }));
+                                        if(scene.memory.hunted_curse)(scene.memory.hunted_curse_targets??=[]).push({mapID:scene.mapID,index:uniqueId});
                                     });
                                 // 4. Check hunted status
                                 if (scene.memory['hunted_waves_left'] <= 0) {
                                     scene.memory['hunted_active'] = false;
-                                    if (typeof host.MessageBox !== 'undefined') {
+                                    if (!scene.memory.hunted_curse && typeof host.MessageBox !== 'undefined') {
                                         void 0, (0, host.setTimeout)(() => host.MessageBox.show(0.5, 2, 1, 9, 2, `You have survived the bounty. They've given up.`, 'system', 1, 0), 6000);
                                     }
                                 }
@@ -45037,6 +45040,7 @@ render(scene, dt) {
                         scene.weather.resize(viewW,viewH);
                         scene.weather.update(dt);
                         scene.weather.draw(host.ctx,viewX,viewY);
+                        host.window.BMCursedRing?.draw(scene,host.ctx,viewX,viewY,viewW,viewH);
                         void 0, (0, host.drawSkillHUD)(scene.activeBtnsCache||[]);
                         if(host.window.settingsControlsMode ==='dpad'&&host.startGame!= 'dialogue'){
                             host.btnMove.show(5,5, 5, 1, 1, '', 'd_pad', 1, 0);
@@ -45486,6 +45490,7 @@ renderTopDown(scene, dt, simulationDone = false) {
                 // --- 7. OVERLAYS (Weather, Masking, UI) ---
                 // ==========================================
                 scene.weather.draw(host.ctx, viewX, viewY);
+                host.window.BMCursedRing?.draw(scene,host.ctx,viewX,viewY,viewW,viewH);
 
                 void 0, (0, host.drawShape)('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
                 void 0, (0, host.drawShape)('rec', 0, 0, 1, -10, 10, 30, 10, 0,0,0,0, '#000000', 1);
@@ -46909,7 +46914,7 @@ const BMWorldCards=(()=>{
 /* A nearby friendly can be addressed without bumping its collision box. */
 const BMInteract=(()=>{
  let button=null,near=null,next=0;
- function friendly(n){return n&&!n._dialogueConsumed&&!n.nonBlocking&&n.visible!==false&&!n.isDead&&!n.isDying&&!BMLock.hostile(n)&&n.type>=0&&n.type!==99&&n.role!=='summoned_minion'&&n.role!=='sign'&&(!!n.service||!!n._bmDirector||['dialogue','shop','reward','quest_giver','become_ally','portal_invite'].includes(n.role))&&!['portal','internal_portal','dropped_card','notification'].includes(n.role)&&!n.artisanNode;}
+ function friendly(n){return n&&!n._dialogueConsumed&&!n.nonBlocking&&n.visible!==false&&!n.isDead&&!n.isDying&&!BMLock.hostile(n)&&(n.type>=0||n._guildEntrance)&&n.type!==99&&n.role!=='summoned_minion'&&n.role!=='sign'&&(!!n.service||!!n._bmDirector||['dialogue','shop','reward','quest_giver','become_ally','portal_invite'].includes(n.role))&&!['portal','internal_portal','dropped_card','notification'].includes(n.role)&&!n.artisanNode;}
  function reachable(n){return friendly(n)&&Dungeon.npcs.includes(n)&&Math.hypot(n.x-Dungeon.x,n.y-Dungeon.y)<=2.1&&Math.abs(BMTerrainPhysics.feet(Dungeon,n)-BMPlayerMotion.feetZ)<=1.1&&BMLock.sight(n);}
  function find(){const selected=BMLock.target();if(reachable(selected))return selected;return Dungeon.npcs.filter(reachable).sort((a,b)=>Math.hypot(a.x-Dungeon.x,a.y-Dungeon.y)-Math.hypot(b.x-Dungeon.x,b.y-Dungeon.y))[0]||null;}
  function open(n=near){if(!BMTouch.live()||!reachable(n))return false;if(globalThis.BMGuildFinale?.interact(n))return true;if(globalThis.BMGuildStory?.interact(n))return true;if(globalThis.BMClassPaths?.interact(n))return true;BMTouch.cancel();BMLock.clear();Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;Dungeon.currentSpeaker=n;BMDialogueFlow.revisit(n,()=>{n.triggerInteraction(Dungeon);
@@ -47731,7 +47736,7 @@ window.BMPerformance=BMPerformance;
                                 return { text: ["I am the Guildmaster. Speak to the Clerk for your assignments."], endActions: [['close_dialogue', null]] };
                             }
                         },
-                        { index: 516330, x: 85.5, y:85.5, sprite: 72, role: 'dialogue', deck: [26,26,26,33,35,33], alignment: 'friendly', customDialogue: ["*You sense a dark aura*"], endActions: [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]] },
+                        { index: 516330, x: 85.5, y:85.5, sprite: 72, role: 'dialogue', deck: [26,26,26,33,35,33], alignment: 'friendly', customDialogue: ["*You sense a dark aura*"], endActions: [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}],"curse":true}],["play_sfx","loot"],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]] },
                     ]
                 },
 
@@ -48422,7 +48427,7 @@ window.BMPerformance=BMPerformance;
                         { index: 14, x: 1.5, y: 21.5, sprite: -27, role: 'dialogue', deck: [19], alignment: 'friendly' },
                         { index: 15, x: 1.5, y: 11.5, sprite: -27, role: 'dialogue', deck: [25], alignment: 'friendly' },
                         
-                        { index: 595418, x: 69.5, y: 33.5, sprite: 44, role: 'dialogue', deck: [26,26,26,33,35,33], alignment: 'friendly', customDialogue: ["*You sense a dark aura*"], endActions: [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}]}],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]] },
+                        { index: 595418, x: 69.5, y: 33.5, sprite: 44, role: 'dialogue', deck: [26,26,26,33,35,33], alignment: 'friendly', customDialogue: ["*You sense a dark aura*"], endActions: [["start_hunted",{"waves":3,"interval":300,"mobs":[{"sprite":23}],"curse":true}],["play_sfx","loot"],["give_card",{"card":72,"text":"*You hear a ghostly voice calling*"}],["disappear",null],["close_dialogue",null]] },
                         // Invasion State (Spawn only if Djinn is alive)
                         { index: 6, x: 76.5, y: 78.5, sprite: 79, role: 'battle', deck: [79,68,52,40,26,26,15,16], alignment: 'foe', spawnCondition: (d) => !d.memory['djinn_dead'], customDialogue: ["The King of Wands claims this desert!"] },
                         { index: 7, x: 78.5, y: 78.5, sprite: 79, role: 'battle', deck: [79,68,52,40,26,26,15,16], alignment: 'foe', spawnCondition: (d) => !d.memory['djinn_dead'], customDialogue: ["Burn the Queen's sanctuary to ash! Kee hee!"] },
@@ -59531,6 +59536,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                 const rule = STORY_COMBAT_RULES[`${mapID}:${data.index}`];
                 const type = data.type ?? data.sprite;
                 if([1133,1134].includes(Number(type)))BMPortableArt.prepareWorld();
+                if(Number(type)===72)window.BMCursedRing?.prepare();
                 const npc = new NPC(
                     data.index, data.x, data.y, type,
                     data.state ?? 'stationary', data.color ?? '#66ccff',
@@ -59593,7 +59599,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                 let npc = null;
                 if (this.mapID === targetMapID) {
                     for (const old of this.npcs.filter(n => n.index === index)) {
-                        if (old.cachedBillboard) CanvasPool.returnCanvas(old.cachedBillboard);
+                        if (old.cachedBillboard && !old._groundLoot) CanvasPool.returnCanvas(old.cachedBillboard);
                     }
                     this.npcs = this.npcs.filter(n => n.index !== index);
                     npc = this.buildNPC(data, targetMapID);
@@ -61606,6 +61612,8 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                             this.memory['hunted_interval'] = payload.interval; 
                             this.memory['hunted_timer'] = payload.interval;
                             this.memory['hunted_mobs'] = payload.mobs;
+                            this.memory.hunted_curse = payload.curse === true;
+                            this.memory.hunted_curse_targets = [];
                             this.requestSave();
                         break;
                         case 'shield_bash_npc': {
@@ -61703,6 +61711,8 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                             this.memory['hunted_active'] = false;
                             this.memory['hunted_timer'] = 0;
                             this.memory['hunted_waves_left'] = 0;
+                            this.memory.hunted_curse = false;
+                            this.memory.hunted_curse_targets = [];
                             if (typeof this.saveGame === 'function') this.requestSave();
                             break;
                         // --- COMBAT & EVENTS ---
@@ -90882,6 +90892,7 @@ function tintedAuraFrame(image,state,now) {
     return auraTintCanvas;
 }
 function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1) {
+    if(actor?._groundLoot&&actor.cachedBillboard){ctx.drawImage(actor.cachedBillboard,tX+x*tL/10,tY+y*tH/10,z*tL,z*tH);return null;}
     if(Number(index)===-27||actor?.role==='dropped_card')return drawPortrait(index,x,y,z,card,direction,frameOverride);
     const now=Date.now(),state=getActorAura(actor,now);
     let p=portraitPlacement(index,x,y,z,direction,frameOverride);
@@ -90984,7 +90995,7 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
                     }
 
                     if (hitNPC) {
-                        if (movingForward) {
+                        if (movingForward || hitNPC._guildEntrance) {
                             Dungeon.requestSave();
                             
                             let isEnemy = (hitNPC.alignment.startsWith('foe') && hitNPC.alignment !== 'foe_coward' && hitNPC.role !== 'summoned_minion') || hitNPC.role === 'battle';
@@ -92607,6 +92618,11 @@ globalThis.BattleMusic=BattleMusic;
 globalThis.BMAudioDiagnostics=()=>({buffers:BMAudioBuffers.diagnostics,samples:BMMusicSamples.diagnostics,preparation:BMMusicPreparation.diagnostics,budget:BMAudioBudget.diagnostics,sfx:BMAudioSFX.diagnostics,timing:BattleSerenadeCore.SourceLibrary.musicTiming,context:MusicEngine.ctx?.state});
 
 /* Each effect owns its delayed notes and graph until the last source finishes. */
+const BMLootSound={
+ prepare(c){const b=c.createBuffer(1,Math.ceil(c.sampleRate*.25),c.sampleRate),a=b.getChannelData(0);
+  for(let i=0;i<a.length;i++){const t=i/c.sampleRate;let v=0;for(const [start,hz]of [[0,1046.5],[.055,1568]]){const u=t-start;if(u>=0)v+=Math.min(1,u/.005)*Math.exp(-u*28)*Math.max(0,1-t/.25)*(Math.sin(u*hz*2*Math.PI)+.18*Math.sin(u*hz*4*Math.PI));}a[i]=v*.13;}return b;
+ }
+};
 const BMAudioSFX=(()=>{
  const groups=new Set();const stats={played:0,finished:0,cancelled:0,peak:0,errors:0};
  function play(engine,args){
@@ -92671,7 +92687,7 @@ const BMAudioSFX=(()=>{
         this.masterGain.connect(this.limiter);this.limiter.connect(this.ctx.destination);
       }
       try{if(this.ctx.state==='suspended')await this.ctx.resume();}catch(_){return false;}
-      await BMAudioBuffers.warm(this.ctx,2);this._sharedNoiseBuffer=BMAudioBuffers.get(this.ctx,2);this.unlocked=true;BattleMusic.attach(this);return true;
+      await BMAudioBuffers.warm(this.ctx,2);this._sharedNoiseBuffer=BMAudioBuffers.get(this.ctx,2);this._lootBuffer??=BMLootSound.prepare(this.ctx);this.unlocked=true;BattleMusic.attach(this);return true;
     },
     play3DSFX(...args){return BMAudioSFX.play(this,args);},
     sfxLater(fn,ms){return this._sfxLease?this._sfxLease.later(fn,ms):setTimeout(fn,ms);},
@@ -92684,7 +92700,7 @@ const BMAudioSFX=(()=>{
       
       // 1. Type-Specific Cooldown (Prevents overlapping phase-cancellation & CPU spikes)
       // Steps get a 200ms gap, standard attacks/blocks get an 80ms gap.
-      const throttleTime = (type === 'step') ? 200 : 80; 
+      const throttleTime = (type === 'step' || type === 'loot') ? 200 : 80; 
       
       if (this.sfxThrottles[type] && (now - this.sfxThrottles[type] < throttleTime)) {
           return; // Drop this sound, we literally just played it!
@@ -92766,6 +92782,11 @@ const BMAudioSFX=(()=>{
       // COMBINED SWITCH STATEMENT GOES HERE!
       // ==========================================
       switch(type) {
+        case 'loot': {
+          if(!this._lootBuffer)break;
+          const source=this.ctx.createBufferSource();source.buffer=this._lootBuffer;
+          source.connect(panner);panner.connect(distGain);distGain.connect(this.sfxInput||this.ctx.destination);source.start(t);break;
+        }
         case 'craftBubble':case 'craftSizzle':case 'craftSplash':case 'craftReel':case 'craftCut':case 'craftDig':case 'craftBite':
           BMCraftAudio.render(type,t,distGain,panner,this);break;
         case 'step':
@@ -101644,6 +101665,15 @@ const BMItemArt=(()=>{
     }
     prepareSpriteNormals(m);plants.set(id,m);return m;
   }
+  function animalMaterial(subject){const hide=/fur|hide|skin|leather|pelt/.test(String(subject)),key=hide?'hide':'meat';if(materials.has(key))return materials.get(key);
+    const m={vertices:[],faces:[],outwardRects:true},p=(shape,x,y,z,sx,sy,sz,c,rz=0)=>add3dShapeRigged(m,shape,{x,y,z,rx:0,ry:0,rz},sx,sy,sz,c);
+    if(hide){const outline=[[-.30,-.58],[.12,-.62],[.40,-.46],[.55,-.55],[.63,-.30],[.38,-.16],[.43,.20],[.61,.44],[.40,.60],[.20,.48],[-.16,.58],[-.37,.48],[-.57,.60],[-.65,.37],[-.43,.18],[-.40,-.17],[-.61,-.36],[-.49,-.54]],n=outline.length;
+     for(const z of [-.065,.065])for(const [x,y]of outline)m.vertices.push([x,y,z]);m.faces.push({indices:outline.map((_,i)=>i).reverse(),color:{r:.44,g:.27,b:.14}},{indices:outline.map((_,i)=>n+i),color:{r:.64,g:.44,b:.26}});
+     for(let i=0;i<n;i++)m.faces.push({indices:[i,(i+1)%n,(i+1)%n+n,i+n],color:{r:.31,g:.19,b:.10}});
+     for(let i=0;i<12;i++){const x=(i%3-1)*.21,y=Math.floor(i/3)*.24-.36;p('tri',x,y,-.075,.06,.10,.025,{r:.54+(i%2)*.07,g:.35,b:.19},.18);}
+    }else{const flesh={r:.62,g:.18,b:.16},fat={r:.88,g:.69,b:.54};p('arc',-.08,.03,0,.50,.34,.30,flesh);p('arc',.23,-.22,.04,.29,.24,.24,{r:.73,g:.25,b:.22});p('rec',.41,.20,.03,.31,.065,.07,fat,.42);for(const y of [.25,.36])p('arc',.65,y,.03,.10,.09,.085,fat);for(let i=0;i<3;i++)p('arc',-.30+i*.19,-.02,-.267,.035,.14,.015,fat,-.35);}
+    prepareSpriteNormals(m);materials.set(key,m);return m;
+  }
   function scrapMesh(){if(materials.has('scrap'))return materials.get('scrap');const m={vertices:[],faces:[],outwardRects:true};
     const p=(x,y,z,sx,sy,sz,c,rx,rz)=>add3dShapeRigged(m,'rec',{x,y,z,rx,ry:.2,rz},sx,sy,sz,c);
     p(-.17,.1,.04,.38,.10,.29,{r:.40,g:.46,b:.48},.3,-.42);p(.18,-.18,-.1,.30,.07,.17,{r:.64,g:.68,b:.67},-.35,.47);p(.05,.3,-.2,.34,.055,.12,{r:.49,g:.30,b:.18},-.3,-.2);
@@ -101751,6 +101781,7 @@ const BMItemArt=(()=>{
     item={...item};for(const key of ['spriteId','portraitId','spellId']){const n=BMArtwork.id(item[key]);if(n!==null)item[key]=n;}
     if(item.kind==='skillbook'||item.kind==='book')return {kind:'book',magic:item.kind==='skillbook'||item.magic===true};
     if(item.kind==='powder'){const id=item.herbId||String(item.key).split(':')[1],herb=BMHerbs.species.find(h=>h.id===id),color=herb?.color||'#d7c4a0';return {kind:'powder',color,glow:['glowcap','cavefern'].includes(id),mesh:powderMesh(color)};}
+    if(item.kind==='material'&&/meat|fur|hide|skin|leather|pelt/.test(String(item.key)))return {kind:'mesh',mesh:animalMaterial(item.key)};
     if(item.kind==='material'&&/tooth|teeth|fang|tusk|claw|thread|silk|string/.test(String(item.key)))return {kind:'mesh',mesh:materialMesh(item.key)};
     if(/metal.?scrap/i.test(String(item.key)+' '+String(item.name)))return {kind:'mesh',mesh:scrapMesh()};
     if(item.kind==='herb')return {kind:'mesh',mesh:herbMesh(item.herbId||String(item.key).split(':')[1]),glow:/glowcap|cavefern/.test(String(item.key))};
@@ -101776,8 +101807,8 @@ const BMItemArt=(()=>{
     if(item.kind==='fish'||item.fishIndex!==undefined)return {kind:'fish',id:item.fishIndex||0};
     if(/mushroom|glowcap/i.test(key+' '+name))return {kind:'mesh',mesh:herbMesh('glowcap'),glow:/glowcap/i.test(key+' '+name)};
     if(item.kind==='herb'||/material:grass/.test(key))return {kind:'mesh',mesh:herbMesh(item.herbId||'moonleaf'),glow:/cavefern/.test(key)};
-    if(/material:meat/.test(key))return {kind:'sprite',id:326};
-    if(/material:fur/.test(key))return {kind:'sprite',id:327};
+    if(/material:meat/.test(key))return {kind:'mesh',mesh:animalMaterial('meat')};
+    if(/material:fur/.test(key))return {kind:'mesh',mesh:animalMaterial('fur')};
     if(item.kind==='equipment'&&Number(item.spellId??1008)===1008)return {kind:'mesh',mesh:BMPortableArt.mesh(1008),scale:18};
     if(item.kind==='equipment')return portrait(item.spellId);
     if(item.kind==='artifact'&&Number.isFinite(item.spellId)&&(SPELL_REGISTRY[item.spellId]||CARD_MANIFEST_DB[item.spellId]))return portrait(item.spellId);
@@ -101821,7 +101852,8 @@ const BMItemArt=(()=>{
     ctx.restore();
   }
   function animated(art){if(art?.itemSprite)return false;if(art?.inventoryPreview)return art.previewReady?!!art.previewFit:art.kind!=='portrait';return !['portrait','boots','material','scroll'].includes(art.kind);}
-  return {bookMesh,powderMesh,materialMesh,herbMesh,resolve,portrait,preview,draw,animated};
+  function meshFor(art){const view=preparePreview({...art});return view.previewMesh||BMShopModels.mesh('misc');}
+  return {bookMesh,powderMesh,materialMesh,herbMesh,animalMaterial,meshFor,fitPreview,resolve,portrait,preview,draw,animated};
 })();
 
 /* Shared, local book data and reader. No HTML or executable dialogue actions. */
@@ -105018,7 +105050,7 @@ const BMStairs=(()=>{
    }
   }
   const guild=MAP_DB[d.mapID]?.guildBuilding;
-  if(guild){for(let x=47;x<=50;x++)add(x,31,(x-46)*.225,1,0);add(46,31,0,1,0,'UP');add(51,31,guild.floor,-1,0,'DN');}
+  if(guild){const a=guild.stairs,b=guild.landing,dx=Math.sign(b.x-a.x),dy=Math.sign(b.y-a.y);add(Math.floor(a.x),Math.floor(a.y),a.z,dx,dy,'UP');add(Math.floor(b.x),Math.floor(b.y),b.z,-dx,-dy,'DN');}
   caches.set(d,{revision:d.layerRevision,maze:d.maze,cells});return cells;
  }
  function marker(d,x,y){const a=catalog(d).get(x+','+y);return a?.filter(p=>Math.abs(p.z-(d.groundZ||0))<1.3).sort((a,b)=>Math.abs(a.z-(d.groundZ||0))-Math.abs(b.z-(d.groundZ||0)))[0];}
@@ -105033,18 +105065,19 @@ const BMStairs=(()=>{
 
 const BMGuildDecor=(()=>{
  const floorQuads=[],surfaces=new Map(),surfaceTiles=new Map();
- function addSurface(id,quads){surfaces.set(id,quads);const cells=new Map();for(const q of quads)for(let y=Math.ceil(q.y);y<q.y+q.h;y++)for(let x=Math.ceil(q.x);x<q.x+q.w;x++)cells.set(x+','+y,q.color);surfaceTiles.set(id,cells);}
+ function inside(points,x,y){let yes=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const a=points[i],b=points[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])yes=!yes;}return yes;}
+ function addSurface(id,quads){surfaces.set(id,id===0?[...floorQuads,...quads]:quads);const cells=new Map();for(const q of quads)for(let y=Math.floor(q.y);y<q.y+q.h;y++)for(let x=Math.floor(q.x);x<q.x+q.w;x++)if(q.points?inside(q.points,x+.5,y+.5):x+.5>=q.x&&x+.5<q.x+q.w&&y+.5>=q.y&&y+.5<q.y+q.h)cells.set(x+','+y,q.color);surfaceTiles.set(id,cells);}
  // Fewer than 100 cached room quads, no extra solid slabs or per-pixel textures.
  for(let y=16;y<33;y++){floorQuads.push({x:46,y,w:15,h:1,color:y%2?'#735039':'#6a4732'});for(let x=46+(y%2)*2;x<61;x+=4)floorQuads.push({x,y,w:.025,h:1,color:'#392b23'});}
  for(const [x,y,w,h,color]of [[51.5,17,4,5,'#603839'],[51.65,17.15,3.7,4.7,'#a7804c'],[51.8,17.3,3.4,4.4,'#4b3435']])floorQuads.push({x,y,w,h,color});
  function indoor(d,x,y){return d.mapID===0&&x>=46&&x<61&&y>=16&&y<33;}
  function tile(d,c,x,y,px,py,w,h,id){const shade=surfaceTiles.get(d.mapID)?.get(x+','+y);if(shade&&id===0){c.fillStyle=shade;c.fillRect(px,py,w+.5,h+.5);}if(!indoor(d,x,y)||![0,15].includes(id))return;if(id===15){c.fillStyle='#906240';c.fillRect(px,py,w+.5,h+.5);c.strokeStyle='#493521';c.lineWidth=1.5;c.strokeRect(px+1,py+1,w-2,h-2);for(const offset of [.3,.65]){c.beginPath();c.moveTo(px,py+h*offset);c.lineTo(px+w,py+h*offset);c.stroke();}return;}c.fillStyle=y%2?'#735039':'#6a4732';c.fillRect(px,py,w+.5,h+.5);c.strokeStyle='#38291f';c.lineWidth=1;c.strokeRect(px,py,w,h);if(x>=52&&x<55&&y>=17&&y<22){c.fillStyle='#6e3f3d';c.fillRect(px+1,py+1,w-2,h-2);}}
  function floor(d,c,{viewX,viewY,viewW,viewH,camX,camY,dirX,dirY,planeX,planeY,horizon,wallScale}){
-  const quads=d.mapID===0?[...floorQuads,...(surfaces.get(0)||[])]:surfaces.get(d.mapID);if(!quads)return;
+  const quads=surfaces.get(d.mapID)||(d.mapID===0?floorQuads:null);if(!quads)return;
   const det=planeX*dirY-dirX*planeY,inv=1/det,z=0;if(d.camZ<=z)return;
   const transform=(x,y)=>{const dx=x-camX,dy=y-camY;return [inv*(dirY*dx-dirX*dy),inv*(-planeY*dx+planeX*dy)];};
   c.save();c.beginPath();c.rect(viewX,viewY,viewW,viewH);c.clip();
-  for(const q of quads){if(camX<q.x-32||camX>q.x+q.w+32||camY<q.y-32||camY>q.y+q.h+32)continue;let points=[[q.x,q.y],[q.x+q.w,q.y],[q.x+q.w,q.y+q.h],[q.x,q.y+q.h]].map(([x,y])=>transform(x,y));
+  for(const q of quads){if(camX<q.x-32||camX>q.x+q.w+32||camY<q.y-32||camY>q.y+q.h+32)continue;let points=(q.points||[[q.x,q.y],[q.x+q.w,q.y],[q.x+q.w,q.y+q.h],[q.x,q.y+q.h]]).map(([x,y])=>transform(x,y));
    const clipped=[];for(let i=0;i<points.length;i++){const a=points[i],b=points[(i+1)%points.length],ina=a[1]>=.08,inb=b[1]>=.08;if(ina)clipped.push(a);if(ina!==inb){const t=(.08-a[1])/(b[1]-a[1]);clipped.push([a[0]+(b[0]-a[0])*t,.08]);}}
    if(clipped.length<3)continue;c.beginPath();clipped.forEach(([x,y],i)=>{const px=viewX+viewW/2*(1+x/y),py=viewY+horizon+wallScale*(d.camZ-z)/y;i?c.lineTo(px,py):c.moveTo(px,py);});c.closePath();c.fillStyle=q.color;c.fill();
   }c.restore();
@@ -105054,7 +105087,20 @@ const BMGuildDecor=(()=>{
 window.BMGuildDecor=BMGuildDecor;window.BMStairs=BMStairs;
 
 const BMGuildBuilding=(()=>{
- const floor=2.125,roof=3.25,bounds={left:45,right:61,back:15,front:33};
+ const floor=2.125,roof=4,bounds={left:45,right:61,back:15,front:33};
+ // A narrow, worn track bends around the ponds. Build its soft shoulders once.
+ function track(knots){const points=[],quads=[];
+  for(let i=0;i<knots.length-1;i++){const a=knots[Math.max(0,i-1)],b=knots[i],c=knots[i+1],d=knots[Math.min(knots.length-1,i+2)];
+   for(let j=0;j<3;j++){const t=j/3;points.push([0,1].map(k=>.5*(2*b[k]+(-a[k]+c[k])*t+(2*a[k]-5*b[k]+4*c[k]-d[k])*t*t+(-a[k]+3*b[k]-3*c[k]+d[k])*t*t*t)));}}
+  points.push(knots.at(-1));const normals=points.map((p,i)=>{const a=points[Math.max(0,i-1)],b=points[Math.min(points.length-1,i+1)],len=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return [-(b[1]-a[1])/len,(b[0]-a[0])/len];});
+  for(const [outer,inner,color]of [[1,-1,'#344324'],[.79,-.79,'#4c5030'],[.56,-.56,'#665c3d']])for(let i=0;i<points.length-1;i++){
+   const edge=(j,k)=>points[j].map((v,a)=>v+normals[j][a]*k*(.72+.07*Math.sin(j*1.9)));
+   const p=[edge(i,outer),edge(i+1,outer),edge(i+1,inner),edge(i,inner)],xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),x=Math.min(...xs),y=Math.min(...ys);
+   quads.push({x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y,points:p,color});
+  }return quads;
+ }
+ const road=track([[53.5,33],[53.5,37],[55,40.5],[61,41.7],[68,42.8],[76,41.5],[83,42],[88.8,43],[89.1,51],[88.7,60],[89.3,68],[89.5,76],[89.5,84],[89,88.5],[89,91.5]]);
+ road.push(...track([[89,84],[85,83.8],[80.5,84.2],[77.5,84.5]]));
  const tavernLines=['Experts come here to hunt and discuss ideas.','I come for the cheap ale.','*burp*'];
  function resident(n){
   if(!n||['ally','escort','escort_combat'].includes(n.alignment)||String(n.alignment).startsWith('foe')||n.summonTag)return false;
@@ -105083,6 +105129,8 @@ const BMGuildBuilding=(()=>{
   const slabs=[],add=(x,y,bottom,top,tile=1)=>slabs.push({x,y,bottom,top,tile});
   // Replace only the existing guild footprint; retain the surrounding Moors.
   for(let y=14;y<=34;y++)for(let x=44;x<=62;x++)m.maze[y][x]=0;
+  // The original building extended one tile farther east; remove its orphan wall.
+  for(let y=15;y<=34;y++)if(m.maze[y][63]===1)m.maze[y][63]=0;
   for(let y=15;y<=33;y++)for(let x=45;x<=61;x++){
    const edge=x===45||x===61||y===15||y===33,door=y===33&&x>=52&&x<=54;
    if(edge){
@@ -105091,15 +105139,15 @@ const BMGuildBuilding=(()=>{
     else add(x,y,0,roof);
     continue;
    }
-   const atrium=x>=51&&x<=55&&y>=23&&y<=27,stairs=y===31&&x>=47&&x<=55;
+   const atrium=x>=51&&x<=55&&y>=23&&y<=27,stairs=x===46&&y>=17&&y<=25;
    if(!atrium&&!stairs)add(x,y,2,floor);
-   add(x,y,3.125,roof);
+   add(x,y,roof-.125,roof);
   }
-  // Nine shallow steps meet the raised upper landing.
-  for(let x=47;x<=55;x++)add(x,31,0,(x-46)*floor/9);
+  // The same nine shallow steps now climb north along the west wall, behind Warrior.
+  for(let y=25;y>=17;y--)add(46,y,0,(26-y)*floor/9);
   // Solid balustrades leave a clear, generous gallery around the open hall.
   for(let y=22;y<=28;y++)for(let x=50;x<=56;x++)if(x===50||x===56||y===22||y===28)add(x,y,floor,floor+.55);
-  for(let x=47;x<=55;x++)for(const y of [30,32])add(x,y,floor,floor+.55);
+  for(let y=17;y<=25;y++)add(47,y,floor,floor+.55);
   // Library cases along the upper back wall, away from the staircase.
   for(const x of [49,50,51,55,56,57])add(x,16,floor,floor+.65,3);
   // Keep the former low chair tiles as tables; remove the larger table slabs.
@@ -105117,9 +105165,9 @@ const BMGuildBuilding=(()=>{
   const clerk=m.npcs.find(n=>n.index===201),original=clerk?.dialogueFactory;
   if(clerk){const spawn=clerk.onSpawn;clerk.onSpawn=(n,d)=>{spawn?.(n,d);Object.assign(n,{fixedWorldAngle:Math.PI/2,dirX:0,dirY:1});};}
   if(original)clerk.dialogueFactory=d=>{const q=original(d);return {...q,text:[...q.text,'Most trainers are here on the ground floor; the Knight guards the entrance outside. Hunter now teaches from his cabin in Savage Forest, through the eastern gap beyond Tintagel. The King, Queen, Elder and library are upstairs. Take the staircase on the left.']};};
-  m.guildBuilding={floor,roof,bounds,entrance:{x:53.5,y:34.5,z:0},stairs:{x:46.5,y:31.5,z:0},landing:{x:56.5,y:31.5,z:floor}};
+  m.guildBuilding={floor,roof,bounds,entrance:{x:53.5,y:34.5,z:0},stairs:{x:46.5,y:26.5,z:0},landing:{x:46.5,y:16.5,z:floor}};
  }
- install();return {floor,roof,bounds,resident,reconcile};
+ install();return {floor,roof,bounds,road,resident,reconcile};
 })();
 
 /* Authored settlements: existing story identities and atlas links stay intact. */
@@ -105528,6 +105576,8 @@ const BMClassArt=(()=>{
      for(const x of [-.33,0,.33]){p('rec',x,-.17,-.1,.045,.40,.025,iron);p('tri',x,-.61,-.1,.045,.08,.025,iron,Math.PI);p('rec',x,.25,-.1,.13,.025,.04,iron);p('rec',x,.39,-.1,.035,.12,.035,wood);}
     }else if(id===1166){const iron={r:.13,g:.12,b:.13};p('rec',0,.55,0,.23,.04,.23,iron);p('arc',0,.04,0,.035,.52,.035,iron);p('arc',0,-.48,0,.18,.07,.18,iron);}
     else if(id===1167){p('arc',0,.15,0,.20,.3,.20,{r:.18,g:.35,b:.29,a:.65});p('arc',0,-.18,0,.22,.04,.22,{r:.2,g:.16,b:.13});p('arc',0,.14,0,.12,.18,.12,{r:.42,g:.44,b:.22});}
+    else if(id===1171){const wood={r:.44,g:.29,b:.15},rim={r:.27,g:.17,b:.09};p('rec',0,.03,0,.46,.43,.40,wood);for(const x of [-.40,0,.40]){p('rec',x,.03,-.415,.025,.43,.025,rim);p('rec',x,.03,.415,.025,.43,.025,rim);}for(const y of [-.37,.43])p('rec',0,y,-.44,.47,.035,.025,rim);p('rec',0,.03,-.47,.025,.54,.025,rim,.8);}
+    else if(id===1172){const wood={r:.42,g:.27,b:.13},iron={r:.22,g:.23,b:.22};p('arc',0,0,0,.39,.49,.39,wood);for(const y of [-.37,.34])p('arc',0,y,0,.40,.035,.40,iron);p('arc',0,-.49,0,.32,.025,.32,{r:.53,g:.36,b:.18});}
     else if(id===1170){const wood={r:.24,g:.15,b:.1};p('rec',0,.25,0,.38,.06,.65,wood);for(const x of [-.32,.32])for(const z of [-.59,.59])p('rec',x,.39,z,.035,.16,.035,wood);p('rec',0,.14,0,.34,.06,.6,{r:.28,g:.27,b:.31});p('rec',0,.07,-.43,.3,.05,.15,{r:.65,g:.63,b:.56});}
     else if(id===1161){p('arc',0,.18,0,.055,.5,.055,stem);for(const [x,y,a]of [[-.23,-.05,-.6],[.23,-.3,.6],[-.18,-.46,-.6]]){p('arc',x,y,0,.29,.11,.12,{r:.24,g:.62,b:.39},a);p('rec',x,y-.035,-.1,.23,.015,.012,{r:.8,g:.91,b:.76},a);}}
     else{p('arc',0,.22,0,.13,.48,.13,{r:.84,g:.79,b:.65});p('arc',0,-.27,0,.56,.26,.49,{r:.27,g:.29,b:.49});for(const [x,z]of [[-.21,-.3],[.19,-.3],[.31,.1],[-.31,.1],[0,0]])p('arc',x,-.5,z,.07,.025,.07,{r:.44,g:.81,b:.96});}prepareSpriteNormals(mesh);}
@@ -105535,7 +105585,7 @@ const BMClassArt=(()=>{
   cache.set(id,result);return result;
  }
  function draw(id,angle=.2,pose=0,frame=0){const m=model(id),row=m.meshes[pose%m.meshes.length];render3dMesh(row[frame%row.length],m.x,m.y,m.scale,0,angle,0);}
- function bake(id){if(spriteCache[id])return;const saved={ctx,tX,tY,tL,tH};try{const dirs=[];for(let dir=0;dir<8;dir++){const frames=[];for(let frame=0;frame<(id===1160?4:1);frame++){const c=document.createElement('canvas');c.width=c.height=256;ctx=c.getContext('2d');tX=tY=0;tL=tH=256;draw(id,dir*Math.PI/4,0,frame);const pixels=ctx.getImageData(0,0,256,256).data;let bottom=255;while(bottom>0&&!Array.from({length:256},(_,x)=>pixels[(bottom*256+x)*4+3]).some(a=>a>8))bottom--;const ground=document.createElement('canvas');ground.width=ground.height=256;ground.getContext('2d').drawImage(c,0,255-bottom);frames.push(ground);}dirs.push(frames);}spriteCache[id]=dirs;SPRITE_CONFIGS[id]={...(SPRITE_CONFIGS[249]||{}),scale:id===1160?.8:id===1165?1.55:id===1166?1.1:id===1169?.55:id===1168?.75:id===1170?1.05:.28,hover:0,faceZ:.5,facePan:0};}finally{({ctx,tX,tY,tL,tH}=saved);}}
+ function bake(id){if(spriteCache[id])return;const saved={ctx,tX,tY,tL,tH};try{const dirs=[];for(let dir=0;dir<8;dir++){const frames=[];for(let frame=0;frame<(id===1160?4:1);frame++){const c=document.createElement('canvas');c.width=c.height=256;ctx=c.getContext('2d');tX=tY=0;tL=tH=256;draw(id,dir*Math.PI/4,0,frame);const pixels=ctx.getImageData(0,0,256,256).data;let bottom=255;while(bottom>0&&!Array.from({length:256},(_,x)=>pixels[(bottom*256+x)*4+3]).some(a=>a>8))bottom--;const ground=document.createElement('canvas');ground.width=ground.height=256;ground.getContext('2d').drawImage(c,0,255-bottom);frames.push(ground);}dirs.push(frames);}spriteCache[id]=dirs;SPRITE_CONFIGS[id]={...(SPRITE_CONFIGS[249]||{}),scale:id===1160?.8:id===1165?1.55:id===1166?1.1:id===1169?.55:id===1168?.75:id===1170?1.05:id===1171?.6:id===1172?.65:.28,hover:0,faceZ:.5,facePan:0};}finally{({ctx,tX,tY,tL,tH}=saved);}}
  function pupil(n){bake(1160);n._classArt=1160;}
  function resource(n,id){bake(id);n._classArt=id;}
  return {model,draw,pupil,resource};
@@ -105623,7 +105673,7 @@ const s=state(d),q=d.memory.guild_quest;if(q?.storyChapter===1){q.tName='Sect St
  function entries(){const s=state(),c=chapter(),out=[];if(Object.keys(s.met||{}).length||s.briefed)out.push({id:'guild-veterans',title:'The guild’s S-rank company',text:'Captain: Solgata, the black fairy. Dancer, Warrior, Rogue, Mage, Priest, Knight and Hunter. Their ordinary lessons continue between missions.',completed:!!s.briefed});if(ownQuest()||c.complete||active())out.push({id:'guild-stronghold',title:'FINALE I · Sect Stronghold',completed:!!c.rewardClaimed,text:(c.complete?'Sect Elder is defeated. Return to the guild.':`Go to the southeast port. Enter the storehouse at 95,88 and use the doorway against its north wall. Break both seal wardens, then confront Sect Elder. Wardens: ${WARDENS.filter(id=>(state().visit?.defeated||c.defeated||[]).includes(id)).length}/2.`)+'\n\nClues: '+(c.clues||[]).join(', ')+'\n\nThe entrance refuge and return sigil remain safe. Party helpers may enter; completion belongs to adventurers with this commission.'});return out;}
  function install(){
   for(const [id,p]of Object.entries(team)){const def=MAP_DB[id==8006?5:0].npcs.find(n=>n.index===Number(id));if(def){def.name=p.name;if(id==201){const factory=def.dialogueFactory;def.dialogueFactory=d=>({...factory(d),options:['Listen','Leave']});}else def.options=['Listen','Leave'];}}
-  MAP_DB[0].npcs.push({index:ENTRY,x:95.5,y:86.05,sprite:-35,name:'Storehouse doorway',role:'dialogue',alignment:'friendly',state:'stationary',companionEligible:false,isCinematic:true,spawnCondition:d=>d.memory.guild_quest?.type==='stronghold'&&d.memory.guild_quest.state===1||!!BMOnline.publicState()?.party?.guildChapter,onSpawn(n){n.nonBlocking=true;n.isTarget=true;}});
+  MAP_DB[0].npcs.push({index:ENTRY,x:95.5,y:86.05,sprite:-35,name:'Storehouse doorway',role:'dialogue',alignment:'friendly',state:'stationary',companionEligible:false,isCinematic:true,spawnCondition:d=>d.memory.guild_quest?.type==='stronghold'&&d.memory.guild_quest.state===1||!!BMOnline.publicState()?.party?.guildChapter,onSpawn(n){n._guildEntrance=true;n.nonBlocking=false;n.isTarget=true;}});
   MAP_DB[0].npcs.push({index:884130,x:50.5,y:17.5,sprite:185,name:'Solgata · S-rank captain',role:'dialogue',alignment:'friendly',state:'stationary',companionEligible:false,isCinematic:true,customDialogue:['Solgata watches over the guild beneath the oak crest.']});
   const quests=Explore.prototype.getBountyList;Explore.prototype.getBountyList=function(...a){const list=quests.apply(this,a);for(const q of list){if(q.id==='a_stronghold_1'){Object.assign(q,{title:'FINALE I · Sect Stronghold',desc:'Follow the southeast road to the port storehouse (95,88). Its north-wall doorway leads to the sect stronghold. Break the two wardens, examine the garrison and stop the commander.',isStory:true,status:state(this).chapter.rewardClaimed||this.memory.guild_rank==='S'?'completed':(this.memory.a_rank_progress||0)>=2?'available':'locked',generateBlueprint:blueprint});}else if(q.id==='a_finale'&&q.status!=='completed'){q.status=(state(this).chapter.complete||state(this).chapter.legacyReady)&&(this.memory.a_rank_progress||0)>=2?'available':'locked';q.lockReason='Complete the sect stronghold chapter.';}else if(['c_story_1','a_story_2'].includes(q.id)){const gen=q.generateBlueprint;q.generateBlueprint=()=>rival(gen());if(q.id==='c_story_1')q.desc='Meet Rogue, the guild’s undercover veteran, and expose Sect Elder’s local sect cell.';}}return list;};
   const turnIn=BMGuild.turnIn;BMGuild.turnIn=function(){const q=Dungeon.memory.guild_quest,isChapter=q?.type==='stronghold'&&q.storyChapter===1;if(isChapter&&(q.state!==2||!chapter().complete||chapter().rewardClaimed))return false;const paid=turnIn.apply(this,arguments);if(paid&&isChapter){chapter().rewardClaimed=true;save();}return paid;};
@@ -105695,7 +105745,7 @@ const BMGuildFinale=(()=>{
    [[201,53.5,20.5],[8001,50.5,28.5],[8002,57.5,27.5],[8003,59.5,29.5],[8004,47.5,27.5],[8005,55.5,34.5],[8006,48.5,31.5],[207,52.5,18.5,BMGuildBuilding.floor],[206,55.5,18.5,BMGuildBuilding.floor],[8007,57.5,16.5,BMGuildBuilding.floor],[884130,48.5,21.5],[8008,59.5,19.5],[2970,49.5,19.5]];
   m.npcs=positions.map(([i,x,y,z])=>castDef(i,x,y,z||0,s.stage));
   const pupil=MAP_DB[0].npcs.find(n=>n.name?.includes('Dancer’s Pupil'));if(pupil)m.npcs.push({...pupil,x:gather?51.5:52.5,y:gather?25.5:19.5,groundZ:0,spawnCondition:null,onSpawn(n){BMClassArt.pupil(n);n._guildCast=true;n._guildCherry=true;}});
-  m.npcs.push(crest(885150,53.5,gather?20.5:16.03,gather?.15:.64));if(!gather)m.npcs.push(crest(885151,53.5,34.03,1.25));
+  m.npcs.push(crest(885150,53.5,gather?20.5:16.03,gather?.15:.64));if(!gather)m.npcs.push(crest(885151,53.5,34.03,2.2));
   if(gather)m.npcs.push({index:885152,x:53.5,y:25.7,sprite:-205,name:'The company’s fire',role:'sign',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false});
   if(s.stage==='siege'){
    for(const [index,x,y,name]of [[ELDERS[0],49.5,18.5,'Sect Elder'],[ELDERS[1],59.5,18.5,'Sect Elder']])m.npcs.push({index,x,y,groundZ:BMGuildBuilding.floor,sprite:5,name,role:'battle',alignment:'foe',state:'stationary',isBoss:true,level:12,deck:[26,50,28],onSpawn(n){n._guildElder=true;n.isRanged=true;n.innateSpells=[26];n.respawnTime=Infinity;if(s.defeated.includes(index))Object.assign(n,{isDead:true,visible:false});}});
@@ -105703,7 +105753,7 @@ const BMGuildFinale=(()=>{
   }
   if(!gather)m.npcs.push({index:PORTAL,x:57.5,y:17.5,groundZ:BMGuildBuilding.floor,sprite:1164,name:'Held invasion portal',role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn:n=>BMClassArt.resource(n,1164)});
   m.npcs.push({index:EXIT,x:54.5,y:37.5,sprite:1164,name:'Road to Tintagel',role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn:n=>BMClassArt.resource(n,1164)});
-  geometry(m,d);MAP_DB[id]=m;d.defaultSpawns[id]=m.spawn;BMGuildDecor.addSurface(id,[{x:46,y:16,w:15,h:17,color:gather?'#594c41':'#735039'}]);return m;
+  geometry(m,d);MAP_DB[id]=m;d.defaultSpawns[id]=m.spawn;BMGuildDecor.addSurface(id,[...BMGuildBuilding.road,{x:46,y:16,w:15,h:17,color:gather?'#594c41':'#735039'}]);return m;
  }
  function makeSanctum(id=ids()[1],d=Dungeon){const maze=Array.from({length:24},(_,y)=>Array.from({length:24},(_,x)=>!x||!y||x===23||y===23?1:0));const m={name:'The Mastermind’s Sanctum',maze,slabs:[],guildPersonal:true,skyColor:'#171322',floorColor:'#4c4556',biome:'None',weather:'clear',spawn:{x:12.5,y:20.5,dir:0},npcs:[]};
   for(const [id,x,y]of [[884130,12.5,12.5],[201,10.5,14.5],[8001,14.5,14.5],[8004,8.5,14.5]])m.npcs.push(castDef(id,x,y));
@@ -105749,7 +105799,7 @@ const BMGuildFinale=(()=>{
  function revive(d){if(!active(d))return false;const m=MAP_DB[d.mapID],p=m.spawn;Object.assign(d,{x:p.x,y:p.y,targetMapX:p.x,targetMapY:p.y,isSlidingToTile:false,isDead:false,isDying:false,currentWardTime:d.maxWards*d.timePerWard,groundZ:0});d.currentSpeaker=d.currentEnemy=null;d.projectiles=[];d._respawnProtectedUntil=Date.now()+10000;BMPlayerMotion.reset();startGame=preGame='explore';save();return true;}
  function entries(){const s=state();if(!s.stage)return [];return [{id:'guild-finale',title:s.stage==='gathering'?'The oak and its branches':s.stage==='siege'?'FINALE II · The Falling Oak':'FINALE III · Beyond the Breach',completed:s.stage==='gathering',text:s.stage==='siege'?`The trainers hold the ground floor. Take the western stairs and defeat both sect elders upstairs (${s.defeated.length}/2). Their volleys can damage the hall. The road outside remains safe.`:s.stage==='peace'?'The assault has stopped. Speak to the King upstairs, then follow Solgata through the portal held by the card reader.':s.stage==='mastermind'?'Enter the Mastermind’s sanctum through the guild portal. Solgata and the advance team need your help.':'The survivors remain together in the ruins. Speak to Solgata to gather everyone again. Priest: snow mountain. Mage and Dancer: desert. Knight: Brittany. Warrior: Germany, when its road opens. Rogue: Tintagel. Solgata: Avalon. King and Queen: a room in Tintagel castle. These are plans; nobody has dispersed.'}];}
  function install(){crestArt();
-  MAP_DB[0].npcs.push(crest(885150,53.5,16.03,.64),crest(885151,53.5,34.03,1.25));
+  MAP_DB[0].npcs.push(crest(885150,53.5,16.03,.64),crest(885151,53.5,34.03,2.2));
   const m=MAP_DB[2];m.slabs=m.slabs.filter(s=>!(s.x===25&&[23,24].includes(s.y)&&s.bottom<1.5));m.slabs.push({x:25,y:23,bottom:0,top:1,tile:15},{x:25,y:24,bottom:0,top:.25,tile:15});
   for(const id of [301,302]){const n=m.npcs.find(n=>n.index===id);Object.assign(n,{x:25.5,y:25.5,groundZ:0,homeX:25.5,homeY:25.5});}
   m.emperorThrone={back:{x:25,y:23},seat:{x:25,y:24},emperor:{x:25.5,y:25.5}};
@@ -105778,12 +105828,29 @@ const BMGuildFinale=(()=>{
 globalThis.BMGuildFinale=BMGuildFinale;BMGuildFinale.install();
 
 
+const BMWorldItemArt=(()=>{
+ const cache=new Map();let cards,coins;
+ function stamp(mesh,size=128,angle=.55){const saved={ctx,tX,tY,tL,tH};try{const c=document.createElement('canvas');c.width=c.height=size;ctx=c.getContext('2d');tX=tY=0;tL=tH=size;ctx.lineWidth=.45;const f=BMItemArt.fitPreview(mesh);render3dMesh(f.mesh,f.x,f.y,f.scale,.25,angle,0);
+  const data=ctx.getImageData(0,0,size,size).data;let bottom=0;for(let i=3;i<data.length;i+=4)if(data[i]>8)bottom=Math.floor((i/4)/size);const ground=document.createElement('canvas');ground.width=ground.height=size;ground.getContext('2d').drawImage(c,0,size-1-bottom);return ground;
+ }finally{({ctx,tX,tY,tL,tH}=saved);}}
+ function token(card){if(card?cards:coins)return card?cards:coins;const m={vertices:[],faces:[],outwardRects:true};const p=(shape,x,y,z,sx,sy,sz,c,rz=0)=>add3dShapeRigged(m,shape,{x,y,z,rx:0,ry:0,rz},sx,sy,sz,c);
+  if(card){for(let i=0;i<3;i++){p('rec',i*.09,0,i*.055,.39,.55,.022,{r:.73,g:.60,b:.32},i*.08);p('rec',i*.09,0,i*.055-.027,.34,.49,.006,{r:.06,g:.07,b:.37},i*.08);}p('rec',.09,0,-.034,.12,.12,.01,{r:.85,g:.7,b:.38},Math.PI/4);cards=m;}
+  else{for(let i=0;i<4;i++)p('arc',(i%2)*.32-.16,-i*.09,0,.28,.05,.28,{r:.72,g:.76,b:.8});coins=m;}prepareSpriteNormals(m);return m;
+ }
+ function loot(p){const items=p.items.slice(0,3),key=JSON.stringify([items.map(i=>[i.key,i.spriteId,i.spellId,i.fishIndex]),!!p.cards.length,!!p.silver]);if(cache.has(key))return cache.get(key);
+  const parts=items.map(item=>BMItemArt.meshFor(BMItemArt.resolve(item)));if(p.cards.length)parts.unshift(token(true));if(p.silver&&parts.length<3)parts.push(token(false));if(!parts.length)parts.push(BMShopModels.mesh('misc'));
+  const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),list=parts.slice(0,3);list.forEach((m,i)=>{const art=stamp(m,96),size=list.length===1?116:80;g.drawImage(art,list.length===1?6:[0,48,23][i],list.length===1?12:[34,36,48][i],size,size);});
+  if(cache.size>=48)cache.delete(cache.keys().next().value);cache.set(key,c);return c;
+ }
+ return {stamp,loot,get cached(){return cache.size;}};
+})();globalThis.BMWorldItemArt=BMWorldItemArt;
+
 /* Lightweight loot receipts and classic interaction choices. */
 const BMGroundLoot=(()=>{
  const BAG=-210,IMPACT=-209;let serial=0,last=0,busy=new Set(),retryAt=new Map(),reported=new Set();
  const identity=d=>String(d.mapID)+':'+(d.mapID===999?d.customMapInstance||'':'');
  const store=d=>{d.memory??={};return d.memory.groundLoot??={version:1,piles:[]};};
- function art(){const c=document.createElement('canvas');c.width=c.height=96;const g=c.getContext('2d');g.fillStyle='#533725';g.beginPath();g.ellipse(48,83,29,8,0,0,7);g.fill();g.fillStyle='#bb8b48';g.beginPath();g.moveTo(35,28);g.lineTo(60,28);g.bezierCurveTo(68,48,84,61,71,79);g.quadraticCurveTo(48,93,25,79);g.bezierCurveTo(12,60,29,45,35,28);g.fill();g.fillStyle='#dcc485';g.fillRect(31,26,34,6);g.fillStyle='#855b31';g.fillRect(43,34,5,40);g.fillStyle='#f2de9a';g.beginPath();g.arc(57,59,7,0,7);g.fill();spriteCache[BAG]=c;SPRITE_CONFIGS[BAG]={scale:.27,hover:0,faceZ:.7,facePan:0};}
+ function art(){spriteCache[BAG]=BMWorldItemArt.stamp(BMShopModels.mesh('misc'));SPRITE_CONFIGS[BAG]={scale:.27,hover:0,faceZ:.7,facePan:0};}
  function drop(d,n,payload={}){
   const key=payload.mapKey||identity(d),records=store(d).piles;
   if(payload.id&&records.some(p=>p.id===payload.id))return records.find(p=>p.id===payload.id);
@@ -105797,11 +105864,11 @@ const BMGroundLoot=(()=>{
   p.cards.push(...cards);p.silver+=Math.max(0,Number(payload.silver)||0);sync(d);d.requestSave();return p;
  }
  function sync(d=Dungeon){const records=store(d).piles.filter(p=>p.mapKey===identity(d)&&Math.hypot(p.x-d.x,p.y-d.y)<32);const ids=new Set(records.map(p=>p.id));d.npcs=d.npcs.filter(n=>!n._groundLoot||ids.has(n._groundLoot));
-  const drawn=new Map(d.npcs.filter(n=>n._groundLoot).map(n=>[n._groundLoot,n]));for(const p of records){let n=drawn.get(p.id);if(!n){n=new NPC('loot:'+p.id,p.x,p.y,p.cards.length?-27:BAG,'stationary','#dfbd67',p.cards.length?[p.cards[0]]:[],'decoration',false,'friendly');Object.assign(n,{_groundLoot:p.id,nonBlocking:true,hideMinimap:true,companionEligible:false,isCinematic:true,groundZ:p.z});d.npcs.push(n);}n.type=p.cards.length?-27:BAG;n.deck=p.cards.length?[p.cards[0]]:[];n.groundZ=p.z;}
+  const drawn=new Map(d.npcs.filter(n=>n._groundLoot).map(n=>[n._groundLoot,n]));for(const p of records){let n=drawn.get(p.id);if(!n){n=new NPC('loot:'+p.id,p.x,p.y,BAG,'stationary','#dfbd67',p.cards.length?[p.cards[0]]:[],'decoration',false,'friendly');Object.assign(n,{_groundLoot:p.id,nonBlocking:true,hideMinimap:true,companionEligible:false,isCinematic:true,groundZ:p.z});d.npcs.push(n);}n.type=BAG;n.cachedBillboard=BMWorldItemArt.loot(p);n.deck=p.cards.length?[p.cards[0]]:[];n.groundZ=p.z;}
  }
  function collect(p,d=Dungeon){const rows=store(d).piles,at=rows.indexOf(p);if(at<0)return false;const summary=[];
   for(const item of p.items){BMInventory.add(item,item.count);summary.push(item.name+' × '+item.count);}for(const id of p.cards){d.extra.push(new Card(id,0));summary.push((CARD_MANIFEST_DB[id]?.name||'Card')+' card');}if(p.silver){BMCurrency.add(p.silver);summary.push(p.silver+' silver');}
-  rows.splice(at,1);d.npcs=d.npcs.filter(n=>n._groundLoot!==p.id);BMActivity.record('loot_pickup','Picked up '+summary.join(', ')+'.',{pile:p.id,mapID:p.mapID,items:p.items,cards:p.cards});chatLog.push({text:'Loot: '+summary.join(', '),color:'#e6dcbd'});if(chatLog.length>100)chatLog.shift();d.requestSave();return true;
+  rows.splice(at,1);d.npcs=d.npcs.filter(n=>n._groundLoot!==p.id);BMActivity.record('loot_pickup','Picked up '+summary.join(', ')+'.',{pile:p.id,mapID:p.mapID,items:p.items,cards:p.cards});chatLog.push({text:'Loot: '+summary.join(', '),color:'#e6dcbd'});if(chatLog.length>100)chatLog.shift();MusicEngine.play3DSFX('loot');d.requestSave();return true;
  }
  function pickup(p){if(busy.has(p.id)||(retryAt.get(p.id)||0)>Date.now())return;if(!p.server){collect(p);return;}if(!socket?.connected||!socket._bmGroundLoot)return;
   busy.add(p.id);socket.timeout(3500).emit('online_loot_pickup',{id:p.id},(err,result)=>{busy.delete(p.id);if(err||!result?.ok){retryAt.set(p.id,Date.now()+5000);if(result?.error&&!reported.has(p.id)){reported.add(p.id);chatLog.push({text:'[ONLINE]: '+result.error,color:'#d6b3ff'});}return;}retryAt.delete(p.id);if(!err&&result?.ok){collect(p);Promise.resolve(BMStorage.flush()).then(()=>socket.emit('online_loot_ack',{id:p.id})).catch(()=>{});}});
@@ -105924,20 +105991,52 @@ const BMCompactMenus=(()=>{
 })();
 
 globalThis.BMCompactMenus=BMCompactMenus;
+const BMCursedRing=(()=>{
+ let vignette=null;
+ function active(d){const m=d.memory||{};
+  if(m.hunted_curse===undefined&&m.hunted_active&&m.hunted_mobs?.length&&m.hunted_mobs.every(v=>v.sprite===23)&&m['0_516330']?.permanent)m.hunted_curse=true;
+  if(!m.hunted_curse)return false;
+  const old=m.hunted_curse_targets||[],alive=old.filter(t=>t.mapID===d.mapID&&(d.npcs||[]).some(n=>n.index===t.index&&!n.isDead&&n.visible!==false));
+  if(alive.length!==old.length)m.hunted_curse_targets=alive;
+  if(!m.hunted_active&&!alive.length){m.hunted_curse=false;d.requestSave?.();return false;}return true;
+ }
+ function draw(d,c,x,y,w,h){if(!active(d)||d.isDying||d.isDead)return;
+  if(!vignette){vignette=document.createElement('canvas');vignette.width=vignette.height=128;const g=vignette.getContext('2d'),v=g.createRadialGradient(64,64,25,64,64,88);v.addColorStop(0,'rgba(55,0,90,0)');v.addColorStop(.55,'rgba(57,6,78,.17)');v.addColorStop(1,'rgba(67,0,96,.65)');g.fillStyle=v;g.fillRect(0,0,128,128);}
+  c.save();c.globalAlpha=.82+.10*Math.sin(performance.now()/1400);c.drawImage(vignette,x,y,w,h);c.restore();
+ }
+ let frames;function prepare(){if(!frames){const source=BMInventoryModels.mesh(72),mesh={vertices:source.vertices.map(([x,y,z])=>[x,-z,y]),faces:source.faces.map(f=>({indices:f.indices,color:f.color})),outwardRects:true};frames=[];for(let i=0;i<8;i++)frames.push([BMWorldItemArt.stamp(mesh,128,i*Math.PI/4)]);}spriteCache[72]=frames;SPRITE_CONFIGS[72]={scale:.085,hover:0,faceZ:.5,facePan:0};BMBodySizes.heights[72]=.4;}
+ return {active,draw,prepare};
+})();globalThis.BMCursedRing=BMCursedRing;
+
 const BMPort=(()=>{
  const m=MAP_DB[0],revealed=d=>!!d.memory.guildStory?.chapter?.clues?.length||!!d.memory.guildStory?.chapter?.complete;
  const NPCS=[
   [886001,86.5,79.5,2,'Card merchant',['Welcome, traveller. Dark cards are hard to find inland. Have a look; a card is only a tool.'],['So you found the storehouse. I sell cards. Who buys them is their own affair.'],[5,56,57,82,86,12,26,92]],
-  [886002,92.5,88.5,252,'Storekeeper',['Keep to the road after sunset. Our north storeroom is private. The guild can put you up if you need a bed.'],['Those marching orders were never meant to leave the storeroom. You had better speak to your guild.']],
+  [886002,93.5,89.5,252,'Storekeeper',['Keep to the road after sunset. Our north storeroom is private. The guild can put you up if you need a bed.'],['Those marching orders were never meant to leave the storeroom. You had better speak to your guild.']],
   [886003,89.5,83.5,312,'Port resident',['The ships bring good business. We look after one another here.'],['Sect Elder promised the port would be spared. We were told the guild would never discover the passage.']],
   [886004,93.5,81.5,258,'Dock worker',['Another guild traveller? The sailors will know which ships are ready.'],['I carried their crates. I did not ask what was inside. The seal on those orders is ours.']],
-  [886005,89.5,90.5,252,'Sailor',['Strange things happen on the roads at night. Stay near the port until dawn—or make for the guild before dark.','We carry plenty of guild travellers to other lands. Their hall is the safest place nearby.'],['The guild was right about this place. We will keep the gangway clear for anyone who needs shelter.']]
+  [886005,77.5,82.5,252,'Sailor',['Strange things happen on the roads at night. Stay near the port until dawn—or make for the guild before dark.','We carry plenty of guild travellers to other lands. Their hall is the safest place nearby.'],['The guild was right about this place. We will keep the gangway clear for anyone who needs shelter.']]
  ];
  function install(){
   for(const [id,x,y,sprite,name,before,after,stock]of NPCS){m.npcs=m.npcs.filter(n=>n.index!==id);const close=[['close_dialogue',null]];m.npcs.push({index:id,x,y,sprite,name,role:'dialogue',state:'stationary',alignment:'friendly',companionEligible:false,dialogueFactory:d=>({text:revealed(d)?after:before,options:stock?['Shop','Leave']:null,yesActions:stock?[['open_shop',stock]]:close,noActions:close,endActions:close}),onSpawn(n){n._portResident=true;n.serviceStock=stock;}});}
-  const boat=m.npcs.find(n=>n.index===516330);if(boat){const factory=boat.dialogueFactory;if(factory)boat.dialogueFactory=d=>{const v=factory(d);return {...v,text:['We carry guild travellers overseas. Strange happenings have made these roads unsafe at night. The nearby guild is your best shelter.',...v.text]};};else boat.customDialogue=['We carry guild travellers overseas. Strange happenings have made these roads unsafe at night. The nearby guild is your best shelter.',...(boat.customDialogue||[])];}
-  m.slabs??=[];for(const [x,y]of [[85,78],[86,78],[87,78],[92,86],[93,86]])m.slabs.push({x,y,bottom:0,top:.25,tile:15});
-  BMGuildDecor.addSurface(0,[{x:92,y:86,w:6,h:4,color:'#6c5740'},{x:85,y:77,w:3,h:5,color:'#73573d'},{x:88,y:83,w:2,h:10,color:'#796b52'},{x:90,y:88,w:2,h:1,color:'#796b52'}]);
+  // Side counters leave the shop's two doors and the storehouse passage clear.
+  m.slabs??=[];for(const [x,y]of [[85,80],[87,80],[92,86],[93,86],[78,85]])m.slabs.push({x,y,bottom:0,top:.25,tile:15});
+  const floors=[...BMGuildBuilding.road];
+  for(const [x,y,w,h,colors]of [[76,81,3,6,['#62503a','#6a553e']],[85,78,3,4,['#69533c','#725b43']],[92,86,6,4,['#55534b','#5e5b51']]]){
+   for(let row=0;row<h;row++){floors.push({x,y:y+row,w,h:1,color:colors[row%2]});for(let col=0;col<w;col+=2)floors.push({x:x+col+(row%2)*.45,y:y+row,w:.025,h:1,color:'#352d23'});}
+  }
+  for(const [x,y,w,h]of [[75,84,1,1],[77,87,1,2],[86,77,1,1],[86,82,1,1],[90,88,2,1]])floors.push({x,y,w,h,color:'#65533c'});
+  floors.push({x:77.1,y:83.2,w:1.1,h:2.1,color:'#494b50'});BMGuildDecor.addSurface(0,floors);
+  let serial=886100;
+  const decor=(x,y,sprite,name,z=0)=>m.npcs.push({index:serial++,x,y,sprite,name,role:'decoration',state:'stationary',alignment:'friendly',isCinematic:true,companionEligible:false,hideMinimap:true,nonBlocking:true,groundZ:z,onSpawn(n){Object.assign(n,{hideMinimap:true,nonBlocking:true,groundZ:z,fixedWorldAngle:Math.PI/2});BMClassArt.resource(n,sprite);}});
+  // Sailor's home faces the original ship; keep both exits clear.
+  decor(76.45,81.8,1170,'Bed');decor(78.55,81.35,1169,'Sea chest');decor(78.5,85.5,1163,'Chart',.25);decor(76.45,86.45,1172,'Water barrel');
+  // Card merchant's records and stock stay against the side walls.
+  decor(85.35,78.5,1165,'Shelf');decor(87.5,80.5,1163,'Ledger',.25);decor(87.55,81.4,1169,'Card chest');
+  // Stored cargo leaves the middle aisle and the sect doorway unobstructed.
+  for(const [x,y]of [[92.5,86.5],[93.5,86.5]])decor(x,y,1171,'Crate',.25);
+  decor(97.5,86.5,1172,'Barrel');decor(97.5,89.5,1171,'Crate');decor(92.5,89.5,1169,'Chest');
+  m.portBuildings={sailor:{left:75,top:80,right:79,bottom:87},shop:{left:84,top:77,right:88,bottom:82},storehouse:{left:91,top:85,right:98,bottom:90}};
  }
  install();return {revealed,NPCS};
 })();globalThis.BMPort=BMPort;
