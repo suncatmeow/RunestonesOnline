@@ -1,18 +1,21 @@
 {
   "application": "BattleMage Runestones",
-  "version": "55",
-  "serverVersion": "1.9.8",
+  "version": "58",
+  "serverVersion": "1.10.1",
   "date": "2026-11-06",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
-  "releaseNotes": "FRONTIER-JOURNAL-v55.md",
-  "futurePlan": "FUTURE-PASSES-v55.md",
-  "distribution": "versioned-zip",
-  "changes": [
-    "Germany\u2013Transylvania\u2013Greece roads and caravan quest",
-    "Reversible dated journal collections with original source preservation",
-    "Dated gathering and alchemy evidence in narrator context",
-    "Previous older / Next newer navigation"
+  "releaseNotes": [
+    "ATLAS-OVERWORLD-v58.md",
+    "JOURNAL-PROSE-v58.md"
   ],
-  "supersedes": "BattleMage Runestones v54 / server 1.9.7"
+  "futurePlan": "FUTURE-PASSES-v58.md",
+  "distribution": "versioned-zip",
+  "supersedes": "BattleMage Runestones v57 / server 1.10.0",
+  "changes": [
+    "Connected 39-region 100x100 overworld atlas with reciprocal roads and coastal waters",
+    "Expanded Kraken Sea and continental regions; free Gibraltar ferry and extended ship travel",
+    "Separate prose and Logs tabs, with complete export controls below entries",
+    "Prose chapter review and bounded revision; repeated/weak drafts retain sources and wait durably for fresh evidence"
+  ]
 }

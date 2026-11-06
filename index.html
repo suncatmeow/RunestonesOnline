@@ -2,7 +2,7 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-06-bm-v55-frontier-journal"/>
+      <meta name="suncat-build" content="2026-11-06-bm-v58-connected-atlas"/>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage</title>
       <style>
         html,body {
@@ -41955,7 +41955,7 @@ drawColumn(scene, stripX, hitCount, viewX, viewY, viewW, viewH, width, camX, cam
                         let baseB = parsed ? parsed.b : 19;
                         const stageLight=host.BMCherryPerformance?.light(scene,hit.mapX+.5,hit.mapY+.5)||0;
                         const torchLight=(scene._sectLight?.[hit.mapY]?.[hit.mapX]||0)+stageLight;
-                        baseR+=torchLight*70;baseG+=torchLight*34;baseB+=torchLight*5;
+                        const stageTint=host.BMCherryPerformance?.theme(scene)==='cosmic'?host.BMCherryPerformance.color(scene).map(v=>v*.4):[70,34,5];baseR+=(torchLight-stageLight)*70+stageLight*stageTint[0];baseG+=(torchLight-stageLight)*34+stageLight*stageTint[1];baseB+=(torchLight-stageLight)*5+stageLight*stageTint[2];
 
                     // --- SAFELY ANCHORED 3D ROOFS ---
                         if (heightMult < 15.0 && wallID !== 91 && wallID !== 88 && (hit.baseZ===undefined||draw_camZ>=floorZ+heightMult)) {
@@ -44824,7 +44824,7 @@ render(scene, dt) {
                         // 5. Drunk (Camera Wobble)
                         // Note: If you want Drunk to physically sway the 3D camera, you can apply this math 
                         // directly to your raycaster's pitch/yaw right before it renders the walls!
-                        if (activeEffects.drunk) {
+                        if (activeEffects.drunk && !host.window.BMDrinking?.active(scene)) {
                             host.ctx.fillStyle = `rgba(139, 69, 19, 0.1)`; // Slight sepia tint
                             host.ctx.fillRect(0, 0, host.canvas.width, host.canvas.height);
                         }
@@ -44948,7 +44948,9 @@ render(scene, dt) {
                         scene.weather.resize(viewW,viewH);
                         scene.weather.update(dt);
                         scene.weather.draw(host.ctx,viewX,viewY);
+                        host.BMCherryPerformance?.atmosphere(scene,host.ctx,viewX,viewY,viewW,viewH);
                         host.window.BMCursedRing?.draw(scene,host.ctx,viewX,viewY,viewW,viewH);
+                        host.window.BMDrinking?.draw(scene,host.ctx,viewX,viewY,viewW,viewH);
                         void 0, (0, host.drawSkillHUD)(scene.activeBtnsCache||[]);
                         if(host.window.settingsControlsMode ==='dpad'&&host.startGame!= 'dialogue'){
                             host.btnMove.show(5,5, 5, 1, 1, '', 'd_pad', 1, 0);
@@ -45399,7 +45401,9 @@ renderTopDown(scene, dt, simulationDone = false) {
                 // --- 7. OVERLAYS (Weather, Masking, UI) ---
                 // ==========================================
                 scene.weather.draw(host.ctx, viewX, viewY);
-                host.window.BMCursedRing?.draw(scene,host.ctx,viewX,viewY,viewW,viewH);
+                host.BMCherryPerformance?.atmosphere(scene,host.ctx,viewX,viewY,viewW,viewH);
+                        host.window.BMCursedRing?.draw(scene,host.ctx,viewX,viewY,viewW,viewH);
+                        host.window.BMDrinking?.draw(scene,host.ctx,viewX,viewY,viewW,viewH);
 
                 void 0, (0, host.drawShape)('rec', 0, 0, 1, -10, -10, 30, 10, 0,0,0,0, '#000000', 1);
                 void 0, (0, host.drawShape)('rec', 0, 0, 1, -10, 10, 30, 10, 0,0,0,0, '#000000', 1);
@@ -45529,6 +45533,7 @@ return { ExplorationScene };
 /* END PORTABLE MODULE createExplorationScene */
 
 const BMExplorationHost = {
+get BMCherryPerformance(){return globalThis.BMCherryPerformance;},
 get BMGaze(){return BMGaze;},
 get BMGroundLoot(){return globalThis.BMGroundLoot;},
 get BMWorldCards(){return BMWorldCards;},
@@ -53471,7 +53476,7 @@ const SUNCAT_LIFE_CLIENT = (() => {
                     case 'combat': return SUNCAT_FIELD.command(a,d);
                     case 'lifeInspect':return SUNCAT_LIFE_CLIENT.inspect(a.actor,d);
                     case 'lifeAction':return SUNCAT_LIFE_CLIENT.act(a,d);
-                    case 'npcInspect': return {npc:this.publicNPC(this.conversationNPC(d,a),d)};
+                    case 'npcInspect': {const n=this.conversationNPC(d,a);return {npc:this.publicNPC(n,d),knowledge:BMNPCKnowledge.facts(n,d.mapID,a.progress||{})};}
                     case 'npcSpeak': return this.speakToNPC(d,{...a,conversationId:packet.id});
                     case 'spawn': return this.spawn(d,a,true);
                     case 'gift':
@@ -62195,7 +62200,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                     // --- TRAINING, SKILLS & ITEMS ---
                         case 'classic_talk': BMClassicChoices.talk(payload);break;
                         case 'road_encounter': BMRoadEncounters.action(payload,this);break;
-                        case 'class_paths': BMClassPaths.open(payload);break;
+                        case 'class_paths': BMClassPaths.open(typeof payload==='object'?payload?.patron:payload,typeof payload==='object'?payload?.path:null);break;
                         case 'train': {
                             isBlocking=true;BMLearning.open(typeof payload==='object'?payload.trainer:payload);break;
                         }
@@ -70144,6 +70149,7 @@ const BMChatComposer=(()=>{
                     }
                     // --- ATLAS OVERLAY INPUT INTERCEPT ---
                     if (Dungeon.isViewingWorld) {
+                        if(globalThis.BMAtlas58?.click(gridPos.x,gridPos.y))return;
                         // --- ATLAS / WORLD MAP INTERCEPT ---
                         
                             
@@ -91042,7 +91048,7 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
                             if (targetX >= Dungeon.maze[0].length && atlasPos.x < Dungeon.atlas[0].length - 1 && Dungeon.atlas[atlasPos.y][atlasPos.x + 1] !== null) canTransition = true; // East
                         }
                         
-                        const southernEdge=globalThis.BMFrontierRoads?.edge(Dungeon,targetX,targetY)??globalThis.BMRhineRoads?.edge(Dungeon,targetX,targetY)??globalThis.BMSouthernRoads?.edge(Dungeon,targetX,targetY);if(southernEdge!==null&&southernEdge!==undefined)canTransition=southernEdge;
+                        const southernEdge=globalThis.BMAtlas58?.edge(Dungeon,targetX,targetY)??globalThis.BMLevantRoad?.edge(Dungeon,targetX,targetY)??globalThis.BMAegeanRoad?.edge(Dungeon,targetX,targetY)??globalThis.BMFrontierRoads?.edge(Dungeon,targetX,targetY)??globalThis.BMRhineRoads?.edge(Dungeon,targetX,targetY)??globalThis.BMSouthernRoads?.edge(Dungeon,targetX,targetY);if(southernEdge!==null&&southernEdge!==undefined)canTransition=southernEdge;
                         if((Dungeon.mapID===2&&targetX>=Dungeon.maze[0].length||Dungeon.mapID===5&&targetX<0)&&(targetY<44||targetY>46))return;
                         // If they stepped off but there's no map there, block them.
                         if (!canTransition) {
@@ -91719,8 +91725,9 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
                 return crypto.randomUUID();
             }
             function beginNpcConversation(npc) {
+                if (npc._storyConversation?.mapID === Dungeon.mapID && Dungeon.currentSpeaker === npc && Date.now() - (npc._storyConversation.lastAt || 0) < 120000) return;
                 npc._storyConversation = {
-                    id: newStoryId(),
+                    mapID: Dungeon.mapID, lastAt: Date.now(), id: newStoryId(),
                     seen: new Set(),
                     sequence: 0
                 };
@@ -91736,7 +91743,7 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
 
                 if (!npc._storyConversation) beginNpcConversation(npc);
 
-                const conversation = npc._storyConversation;
+                const conversation = npc._storyConversation;conversation.lastAt=Date.now();
                 const key = JSON.stringify([kind, position, text]);
 
                 // The render loop may show the same line thousands of times.
@@ -92144,7 +92151,7 @@ const BattleMusic = (() => {
     else if(s.settingsOpen)base=makeScene('settings','warm','settings',{duck:.65,overlay:s.pre==='explore'||s.pre==='tactics'});
     else if(m==='tarot')base=makeScene('tarot','mystical','tarot',{duck:.72,overlay:s.pre==='explore'||s.pre==='tactics'});
     else if(tactical&&s.tactics?.state==='GAME_OVER')base=makeScene(s.tactics.playerWon?'victory':'defeat',s.tactics.playerWon?'victory':'defeat','tactics:'+s.tactics.musicEncounterId,{urgent:true});
-    else if(m==='dialogue'&&!tacticsLoot)base=makeScene('dialogue',normalizeProfile(d.currentSpeaker?.musicProfile)||p,owner,{duck:.72});
+    else if(['dialogue','npc_chat'].includes(m)&&!tacticsLoot)base=makeScene('dialogue',normalizeProfile(d.currentSpeaker?.musicProfile)||p,owner,{duck:.72});
     else if(m==='shop')base=makeScene('shop',normalizeProfile(d.currentSpeaker?.musicProfile)||(!['warm','martial'].includes(p)?p:'shop'),owner,{duck:.8});
     else if(m==='guild_menu')base=makeScene('guild',normalizeProfile(d.currentSpeaker?.musicProfile)||(!['warm','martial'].includes(p)?p:'guild'),String(window.currentGuildBranch||worldId)+'|'+owner,{duck:.8});
     else if(activeWorld){
@@ -96361,7 +96368,7 @@ const BMInventory=(()=>{
     const equipment=new Set([...Object.keys(BMArtisanData.gear).map(Number),6,17,21,22,27,30,31,36,45,50,64,66,72,84,92,1005,1006,1007]);
     const treasures=new Set([10,38,43,44,69,73]);
     const fishEffect=index=>['ward','cleanse','stats'][Number(index)]||'ward';
-    const descriptions={int:'Gain +1 INT for 60 seconds.',con:'Gain +1 CON for 60 seconds.',agi:'Gain +1 AGI for 60 seconds.',strength:'Gain +1 STR for 60 seconds.',ward:'Restore 1 ward.',cleanse:'Clear all debuffs.',stats:'Gain +1 to all stats for 60 seconds.',medicine:'Restore 1 ward and clear all debuffs.',elixir:'Restore 1 ward, clear all debuffs, and gain +1 to all stats for 60 seconds.',restorative:'Restore 1 ward, clear all debuffs, and gain +1 to all stats for 60 seconds.'};
+    const descriptions={beer:'Drink one beer. Roll CON against 1d6; a failed check causes temporary drunkenness. Higher CON resists more often.',int:'Gain +1 INT for 60 seconds.',con:'Gain +1 CON for 60 seconds.',agi:'Gain +1 AGI for 60 seconds.',strength:'Gain +1 STR for 60 seconds.',ward:'Restore 1 ward.',cleanse:'Clear all debuffs.',stats:'Gain +1 to all stats for 60 seconds.',medicine:'Restore 1 ward and clear all debuffs.',elixir:'Restore 1 ward, clear all debuffs, and gain +1 to all stats for 60 seconds.',restorative:'Restore 1 ward, clear all debuffs, and gain +1 to all stats for 60 seconds.'};
     function consumableEffect(item){
         // Resolve by species so fish cooked in earlier saves also receive just their own effect.
         const index=item.fishIndex??(/^cooked:([0-2])$/.exec(item.key||'')?.[1]);
@@ -96369,7 +96376,7 @@ const BMInventory=(()=>{
     }
     const quality=item=>Number.isFinite(item.quality)?Math.max(.1,Math.min(1,item.quality)):null;
     const wardAmount=item=>quality(item)===null?Dungeon.timePerWard:quality(item)>=.99?Dungeon.maxWards*Dungeon.timePerWard:quality(item)>=.62?Dungeon.timePerWard*2:Dungeon.timePerWard;
-    const description=item=>{const effect=consumableEffect(item),q=quality(item);if(q===null)return descriptions[effect];
+    const description=item=>{const effect=consumableEffect(item),q=quality(item);if(q===null||effect==='beer')return descriptions[effect];
         const lines=[];if(['strength','int','con','agi'].includes(effect))return 'Gain +1 '+({strength:'STR',int:'INT',con:'CON',agi:'AGI'}[effect])+' for '+Math.round(30+30*q)+' seconds.';if(['ward','medicine','elixir','restorative'].includes(effect))lines.push(q>=.99?'Restore all wards.':q>=.62?'Restore 2 wards.':'Restore 1 ward.');
         if(['cleanse','medicine','elixir','restorative'].includes(effect))lines.push('Clear all debuffs.');
         if(['stats','elixir','restorative'].includes(effect))lines.push('Gain +1 to all stats for '+Math.round(30+30*q)+' seconds.');
@@ -97303,7 +97310,7 @@ const BMShell=(()=>{
         #bm-shell .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
         #bm-shell .card{border:1px solid #3c3326;border-radius:12px;padding:16px;background:#0e0d0a;margin-bottom:12px;overflow-wrap:anywhere}
         #bm-shell .entry{display:block;width:100%;text-align:left;padding:16px;margin:0 0 12px;border-left:3px solid #7c6a46}#bm-shell .entry.unread{border-left-color:#c7a5df}
-        #bm-shell .new-label{color:#ffdf93;font-weight:700}#bm-shell .journal-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}#bm-shell .journal-filters label{display:block}#bm-shell .journal-filters span{display:block;color:#aaa293;font-size:13px;margin-bottom:4px}#bm-shell .journal-filters select{width:100%;max-width:100%}
+        #bm-shell .new-label{color:#ffdf93;font-weight:700}#bm-shell .journal-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}#bm-shell .journal-filters label.setting{display:block;margin:0;min-width:0}#bm-shell .journal-filters span{display:block;color:#aaa293;font-size:13px;margin-bottom:4px}#bm-shell .journal-filters select{width:100%;max-width:100%;font-size:14px;padding:8px}
         #bm-shell .entry small{display:block;color:#aca38f;margin-bottom:6px}#bm-shell .entry strong{display:block;color:#dfcd9c;font:19px/1.4 Georgia,serif;margin-bottom:7px}
         #bm-shell .prose{white-space:pre-wrap;line-height:1.8;max-width:76ch;font-size:16px;overflow-wrap:anywhere}
         #bm-shell footer{border-top:1px solid #393123;padding-top:10px;display:flex;justify-content:space-between;align-items:center;gap:12px}#bm-shell footer p{margin:0}
@@ -97341,7 +97348,7 @@ const BMShell=(()=>{
         footer=el('footer',inner);
     }
     function clear(){nav.replaceChildren();body.replaceChildren();footer.replaceChildren();art.length=0;lastFrame=0;}
-    function tabs(items,current,onChange){for(const [id,name]of items){const b=button(nav,name,()=>{sound();selected=null;limit=100;listScroll=0;onChange(id);invalidate();});b.setAttribute('aria-pressed',String(id===current));}}
+    function tabs(items,current,onChange,target=nav){for(const [id,name]of items){const b=button(target,name,()=>{sound();selected=null;limit=100;listScroll=0;onChange(id);invalidate();});b.setAttribute('aria-pressed',String(id===current));}}
     function foot(label='Close',fn=exit){el('p',footer,'Swipe or scroll to read.','muted');button(footer,label,()=>{sound();fn();});}
     function surface(parent,kind,data){const c=el('canvas',parent);c.width=kind==='card'?384:['model','actor'].includes(kind)?384:192;c.height=kind==='card'?576:kind==='card-thumb'?288:c.width;c.setAttribute('aria-hidden','true');art.push({c,kind,data});return c;}
     function studio(){
@@ -97838,7 +97845,7 @@ const BMShell=(()=>{
                     el('p',card,BMInventory.description(item),'muted');const treasureButton=button(card,item.kind==='scroll'?'Cast scroll':'Use treasure',()=>{BMItemRules.castItem(item.key);invalidate();},'primary');treasureButton.disabled=typeof LogresFrontiers!=='undefined'&&item.key==='quest:djinn_lamp';
                 }else if(item.kind==='consumable'){
                     el('p',card,BMInventory.description(item),'muted');
-                    button(card,'Consume one',()=>{BMInventory.consume(item.key);invalidate();},'primary');
+                    button(card,item.effect==='beer'?'Drink beer':'Consume one',()=>{BMInventory.consume(item.key);invalidate();},'primary');
                 }else el('p',card,globalThis.BMMaterials?.definition(item)?BMMaterials.describe(item,BMCraftMastery.rank('smithing')>BMCraftMastery.rank('alchemy')?'smithing':'alchemy'):BMInventory.description(item),'muted');
             }
             if(itemTab==='misc'&&Dungeon.memory.fishingRecord?.catches)el('p',body,`Fishing record: ${Dungeon.memory.fishingRecord.catches} total catches · Best ${Dungeon.memory.fishingRecord.bestCm||0} cm. Earlier catches were recorded only as totals; new catches fill the stacks above.`,'muted');
@@ -97861,11 +97868,12 @@ const BMShell=(()=>{
     const entryTitle=e=>e.title||((e.entryType||'record').replace(/^./,x=>x.toUpperCase()))+(e.timestamp?' · '+e.timestamp:'');
     function journal(){
         if(journalTab==='settings'){heading.textContent='Settings';settings();foot('Back to game');return;}
-        if(!['record','suncat'].includes(journalTab)){legacyJournal();return;}
-        BMJournal.acknowledgeNotices();
-        heading.textContent='Journal & quests';
-        playerNav(journalTab===' quest '?'quests':journalTab===' story '?'lore':'journal');if(['record','suncat'].includes(journalTab))tabs([['record','Your journal'],['suncat','Suncat']],journalTab,id=>{journalTab=id;});
-        BMJournal.render(body,journalTab==='suncat'?'suncat':'player');foot();BMJournal.footer(footer,journalTab==='suncat'?'suncat':'player');
+        if(!['record','suncat','logs'].includes(journalTab)){legacyJournal();return;}
+        BMJournal.acknowledgeNotices();heading.textContent='Journal';playerNav('journal');
+        const journalTabs=el('div',nav,null,'row');journalTabs.style.flexBasis='100%';journalTabs.setAttribute('role','group');journalTabs.setAttribute('aria-label','Journal view');
+        tabs([['record','Your journal'],['suncat','Suncat'],['logs','Logs']],journalTab,id=>{journalTab=id;},journalTabs);
+        const stream=journalTab==='logs'?BMJournal.logStream:journalTab==='suncat'?'suncat':'player';
+        BMJournal.render(body,stream);foot();BMJournal.footer(footer,stream);
     }
     function legacyJournal(){
         heading.textContent='Journal & quests';
@@ -97932,7 +97940,7 @@ const BMShell=(()=>{
         BMTouch.cancel();
         if(previousState!==startGame){if(startGame==='deck_menu'){BMLearning.clear();if(BMMenuBadges.levelPending())activeDeckTab='player';}if(startGame==='shop')BMShop.enter();if(startGame==='guild_menu')BMActivity.record('guild_visit',BMRegionalGuilds.isDesk(window.currentGuildBranch)?'Visited '+BMRegionalGuilds.name(window.currentGuildBranch)+'.':`Visited the ${window.isAvalonBoard?'Avalon':'adventurers’'} guild.`);selected=null;limit=100;listScroll=0;if(startGame===3)menuPage='home';else if(startGame==='options'||startGame==='options2')menuPage='options';previousState=startGame;key='';}
         mode=startGame===1?'studio':scenes.has(startGame)?'menu':startGame==='shop'?'shop':startGame==='journal'?'journal':['tarot','grimoire','guild_menu','trainer','wilderness_guild','wilderness_encounter','class_paths'].includes(startGame)?startGame:'inventory';
-        const next=[mode,mode==='conversation'?(typeof Logres!=='undefined'?BMActivityView.identity(Logres.view):Dungeon.currentSpeaker?.index??''):'',mode==='trainer'?(Dungeon.currentSpeaker?.index??''):'',mode==='inventory'&&selected?String(selected.key??selected.uid??selected.index??selected):'',mode==='menu'?menuPage:'',mode==='inventory'?activeDeckTab+itemTab:'',mode==='journal'?journalTab+filter+storyViewMode:'',selected?'detail':'list',mode==='journal'?BMJournal.viewKey(journalTab==='suncat'?'suncat':'player'):'',mode==='shop'?activeShopTab+'|'+BMShop.category+'|'+(BMShop.selected?.index??'list'):'',mode==='guild_menu'?(window.activeGuildTab||'')+'|'+(window.guildSubState||''):''].join('|');
+        const next=[mode,mode==='conversation'?(typeof Logres!=='undefined'?BMActivityView.identity(Logres.view):Dungeon.currentSpeaker?.index??''):'',mode==='trainer'?(Dungeon.currentSpeaker?.index??''):'',mode==='inventory'&&selected?String(selected.key??selected.uid??selected.index??selected):'',mode==='menu'?menuPage:'',mode==='inventory'?activeDeckTab+itemTab:'',mode==='journal'?journalTab+filter+storyViewMode:'',selected?'detail':'list',mode==='journal'?BMJournal.viewKey(journalTab==='logs'?BMJournal.logStream:journalTab==='suncat'?'suncat':'player'):'',mode==='shop'?activeShopTab+'|'+BMShop.category+'|'+(BMShop.selected?.index??'list'):'',mode==='guild_menu'?(window.activeGuildTab||'')+'|'+(window.guildSubState||''):''].join('|');
         const noticeVersion=(mode==='inventory'||mode==='journal'&&journalTab!=='settings')?'|'+BMMenuBadges.levelPending()+'|'+BMMenuBadges.unreadChapters():'';
         if(next+noticeVersion!==key){const restore=BMMenuScroll.before(body,next);clear();key=next+noticeVersion;if(['trainer','shop','guild_menu','wilderness_guild','wilderness_encounter','class_paths'].includes(mode)&&!(mode==='guild_menu'&&Dungeon.currentSpeaker?.index===201))speakerHeader();if(mode==='studio')studio();else if(mode==='menu')menu();else if(mode==='journal')journal();else if(mode==='shop')shop();else if(mode==='tarot')tarot();else if(mode==='grimoire')gallery();else if(mode==='guild_menu')guild();else if(mode==='wilderness_guild')wildernessGuild();else if(mode==='wilderness_encounter')wildernessEncounter();else if(mode==='trainer')trainer();else if(mode==='class_paths'){heading.textContent='Classes';BMClassPaths.render(body,{el,button,portrait,invalidate});foot('Return',()=>BMClassPaths.close());}else inventory();BMStatLabels.decorate(body);BMCompactMenus.fit(root,body,footer);BMMenuScroll.after(body,next,restore);}
         const now=performance.now();
@@ -98546,6 +98554,7 @@ BMEngine.sync(startGame);
         BMMastery.trackBattle();
         BMShell.sync();
         BMWorldTalk.tick();
+        globalThis.BMNPCChat?.tick();
         BMCamp.tick();
 
         //TIMER
@@ -101252,7 +101261,8 @@ const BMJournalDesk=(()=>{
     if(!online())return requested?'Chapter request saved · Waiting for connection':'Offline · Your saved journal is available';
     if(!row)return 'Checking journal…';
     const now=latest?latest.serverNow+Date.now()-receivedAt:Date.now(),seconds=Math.max(0,Math.ceil((row.nextAt-now)/1000)),time=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
-    if(row.status==='writing')return 'Writing chapter…';
+    if(row.status==='writing')return 'Writing prose chapter…';
+    if(row.status==='material')return 'Waiting for fresh material · Your prose chapter request is saved';
     if(row.status==='narration_off')return 'Narration is off · Turn it on in Settings to write';
     if(row.status==='paused')return 'Writing paused · Waiting for narration capacity';
     if(row.status==='retry'&&seconds)return 'Retrying in '+time+' · Your records are saved';
@@ -101287,14 +101297,22 @@ const BMJournalDesk=(()=>{
       if(downloadURL)URL.revokeObjectURL(downloadURL);downloadURL=URL.createObjectURL(new Blob([content],{type:format==='backup'?'application/json':'text/plain;charset=utf-8'}));
       const a=document.createElement('a');a.href=downloadURL;a.download=filename;document.body.append(a);a.click();a.remove();notice=server?'Journal download ready.':'Downloaded the journal saved on this device. Connect for server-only records.';
     }catch(e){notice='Export could not finish: '+e.message;}updateLabels();}
-  function render(parent,stream,make,button){const box=make('section',parent,undefined,'card');box.setAttribute('aria-label','Journal actions');const row=make('div',box,undefined,'row');row.style.flexWrap='wrap';
-    const writeButton=button(row,'Write chapter now',()=>write(stream));writeButton.dataset.journalWrite=stream;
-    button(row,'Export journal',()=>{exportOpen=!exportOpen;});button(row,'Download backup',()=>download('backup'));
+  function render(parent,stream,make,button,section='write'){
+    if(section==='export'){
+      const box=make('details',parent,undefined,'card');box.dataset.journalExport='';make('summary',box,'Export & backup');
+      const label=make('label',box,undefined,'setting');make('span',label,'Include');const select=make('select',label);select.setAttribute('aria-label','Journals to export');
+      for(const [value,title]of [['both','Both journals and logs'],['player','Your journal and logs'],['suncat',"Suncat’s journal and logs"]]){const option=make('option',select,title);option.value=value;}
+      select.value=scope;select.onchange=()=>scope=select.value;
+      make('p',box,'Includes original logs, dates, quantities and skill milestones, even when hidden from the reading tabs.','muted');
+      button(box,'Download readable journal',()=>download('text'));button(box,'Download backup',()=>download('backup'));
+      const noticeNode=make('p',box,notice,'muted');noticeNode.dataset.journalNotice='';noticeNode.setAttribute('role','status');return;
+    }
+    const box=make('section',parent,undefined,'card');box.setAttribute('aria-label','Chapter actions');
+    const writeButton=button(box,'Write chapter now',()=>write(stream));writeButton.dataset.journalWrite=stream;
     const status=make('p',box,statusText(stream),'muted');status.dataset.journalStatus=stream;status.setAttribute('role','status');
     const message=make('p',box,notice,'muted');message.dataset.journalNotice='';message.setAttribute('role','status');
-    if(exportOpen){const label=make('label',box,undefined,'setting');make('span',label,'Include');const select=make('select',label);select.setAttribute('aria-label','Journals to export');for(const [value,title]of [['both','Both journals'],['player','Your journal'],['suncat',"Suncat’s journal"]]){const option=make('option',select,title);option.value=value;}select.value=scope;select.onchange=()=>scope=select.value;
-      make('p',box,'Includes all entries, including read entries and anything hidden by filters.','muted');button(box,'Download readable journal',()=>download('text'));button(box,'Download journal backup',()=>download('backup'));}
-    updateLabels();void refresh();}
+    updateLabels();void refresh();
+  }
   function install(socket){if(transport===socket)return;transport=socket;recoveryToken=local().status?.checkpoint||null;socket.on('journal_desk_status',accept);socket.on('disconnect',updateLabels);socket.on('connect',()=>{lastPoll=0;recoveryToken=local().status?.checkpoint||recoveryToken;});}
   setInterval(()=>{updateLabels();if(online()){if(latest?.canRecover&&recoveryToken&&transport.id!==recoverySocket){accept(latest);return;}if(Object.keys(local().requests||{}).length)void flush();else if(document.querySelector('[data-journal-status]'))void refresh();}},10000);
   setInterval(()=>{if(document.querySelector('[data-journal-status]'))updateLabels();},1000);
@@ -101334,7 +101352,7 @@ const BMJournalOrganizer=(()=>{
  const date=e=>{const t=stamp(e);return t?new Date(t).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'Undated';};
  const ordered=values=>values.map((e,i)=>({e,i})).sort((a,b)=>stamp(b.e)-stamp(a.e)||b.i-a.i).map(v=>v.e);
  function sources(e,stream){const ids=new Set(e.organizer?.sourceIds||[]);return ordered(all(stream).filter(v=>!v.organizer&&(ids.has(v.id)||(v.memoryAliases||[]).some(id=>ids.has(id)))));}
- function visible(stream,originals=state(stream).showOriginals){const entries=all(stream),covered=new Set(entries.filter(e=>e.organizer?.active).flatMap(e=>e.organizer.sourceIds));return ordered(entries.filter(e=>e.organizer?e.organizer.active:originals||!(covered.has(e.id)||(e.memoryAliases||[]).some(id=>covered.has(id)))));}
+ function visible(stream,originals=state(stream).showOriginals){const entries=all(stream);if(!originals)globalThis.BMJournalReading?.group(entries,stream);const covered=new Set(entries.filter(e=>e.organizer?.active).flatMap(e=>e.organizer.sourceIds));return ordered(entries.filter(e=>e.organizer?e.organizer.active&&(!originals||!e.organizer.automatic):originals||!(covered.has(e.id)||(e.memoryAliases||[]).some(id=>covered.has(id)))));}
  function persist(stream){BMStorage.setItem(stream==='suncat'?'suncat_chronicle':'runestones_chronicle',JSON.stringify(all(stream)));Dungeon.requestSave();BMJournal.changed();BMShell.invalidate();}
  function renderText(group,kind){if(kind==='chapters')return group.map((e,i)=>[(e.title||'Chapter '+(i+1)),date(e),body(e)].filter(Boolean).join('\n\n')).join('\n\n────────\n\n');
   const rows=new Map();for(const e of group){const text=body(e)+(e.system_events?.length?'\n'+e.system_events.join('\n'):''),row=rows.get(text);if(row){row.count++;row.last=e;}else rows.set(text,{text,count:1,first:e,last:e});}
@@ -101356,11 +101374,11 @@ const BMJournalOrganizer=(()=>{
   s.notice=made?'Organized '+covered+' original entries into '+made+' '+(kind==='chapters'?'volume(s).':'dated log(s).')+' Originals are preserved.':'These entries are already organized. No new copies were made.';
   if(made)persist(stream);return made>0;
  }
- function unpack(entry,stream){if(!entry.organizer)return;entry.organizer.active=false;state(stream).notice='Original entries are visible again. The collection remains in your backup.';persist(stream);}
- function controls(parent,stream,make,button){const s=state(stream);button(parent,'Organize journal',()=>{s.open=!s.open;});if(!s.open)return;
-  const box=make('section',parent,undefined,'card');make('p',box,'Combine older entries without deleting originals. Repeating the same selection creates no extra copies.','muted');
+ function unpack(entry,stream){if(!entry.organizer)return;if(entry.organizer.automatic){state(stream).showOriginals=true;state(stream).notice='Showing original entries. Turn off Show original entries to return to the grouped view.';BMJournal.changed();BMShell.invalidate();return;}entry.organizer.active=false;state(stream).notice='Original entries are visible again. The collection remains in your backup.';persist(stream);}
+ function controls(parent,stream,make,button,section='prose'){const s=state(stream);button(parent,section==='logs'?'Organize logs':'Organize chapters',()=>{s.open=!s.open;});if(!s.open)return;
+  const box=make('section',parent,undefined,'card');make('p',box,section==='logs'?'Group routine activity by date while keeping every original record.':'Collect existing chapters into chronological volumes without rewriting their prose.','muted');
   for(const [key,label]of [['from','From date'],['to','Through date']]){const row=make('label',box,undefined,'setting');make('span',row,label+' (optional)');const input=make('input',row);input.type='date';input.value=s[key];input.setAttribute('aria-label',label);input.style.minWidth='0';input.style.maxWidth='100%';input.onchange=()=>s[key]=input.value;}
-  button(box,'Condense records',()=>organize(stream,'records'));button(box,'Combine chapters',()=>organize(stream,'chapters'));
+  if(section==='logs')button(box,'Condense records',()=>organize(stream,'records'));else button(box,'Combine chapters',()=>organize(stream,'chapters'));
   make('p',box,'Dated logs retain each activity day, recorded quantities and skill milestones. Chapters keep their original prose in chronological volumes of up to eight chapters. Long selections continue in further collections.','muted');
   const label=make('label',box,undefined,'setting');make('span',label,'Show original entries');const check=make('input',label);check.type='checkbox';check.checked=s.showOriginals;check.setAttribute('aria-label','Show original entries');check.onchange=()=>{s.showOriginals=check.checked;BMJournal.changed();BMShell.invalidate();};
   const notice=make('p',box,s.notice,'muted');notice.setAttribute('role','status');
@@ -101369,7 +101387,7 @@ const BMJournalOrganizer=(()=>{
 })();
 
 const BMJournal=(()=>{
-  const views=new Map(),ids=new WeakMap();let serial=0,revision=0;
+  const views=new Map(),ids=new WeakMap();let serial=0,revision=0,logStream='player';
   // Legacy condensed/epic types are the same authored chapter/retrospective kinds.
   // A generic isCore flag is not evidence that a record is a chapter.
   const kind=e=>({volume:'chapter',record_bundle:'record',chapter:'chapter',condensed:'chapter',retrospective:'retrospective',epic:'retrospective',reflection:'reflection'})[String(e.entryType||'').trim().toLowerCase()]||'record';
@@ -101378,7 +101396,7 @@ const BMJournal=(()=>{
   const isNew=e=>condensed(e)&&unread(e)&&e.chapterNoticeSeen!==true;
   const entries=stream=>stream==='suncat'?suncatChronicle:playerChronicle;
   const key=e=>{if(e.id)return String(e.id);if(!ids.has(e))ids.set(e,'local-entry-'+ ++serial);return ids.get(e);};
-  const state=stream=>{if(!views.has(stream))views.set(stream,{kind:'ALL',read:'ALL',selected:null,limit:100});return views.get(stream);};
+  const state=stream=>{const id=stream+(journalTab==='logs'?':logs':':prose');if(!views.has(id))views.set(id,{kind:'ALL',read:'ALL',selected:null,limit:100});return views.get(id);};
   const text=e=>String(e.playerChronicle||e.text||'').replace(/^\[(RECORD|CHAPTER|RETROSPECTIVE)\]\s*/i,'');
   const type=e=>({reflection:'Reflection',retrospective:'Retrospective',chapter:'Chapter',record:'Record'})[kind(e)];
   function title(e){
@@ -101399,12 +101417,12 @@ const BMJournal=(()=>{
       if(changed){revision++;persist(stream);}
     }
   }
-  function markRead(entry,stream){if(!unread(entry))return;entry.isRead=true;revision++;persist(stream);}
+  function markRead(entry,stream){if(!unread(entry))return;entry.isRead=true;if(entry.organizer?.automatic)for(const source of BMJournalOrganizer.sources(entry,stream))source.isRead=true;revision++;persist(stream);}
   function begin(tab='record'){views.clear();revision++;BMMenuScroll.resetJournal();journalTab=tab;window.journalFullscreenIndex=-1;}
-  function viewKey(stream){const s=state(stream);return [stream,s.kind,s.read,s.selected?key(s.selected):'list'].join('|');}
+  function viewKey(stream){const s=state(stream);return [journalTab,stream,s.kind,s.read,s.selected?key(s.selected):'list'].join('|');}
   // A reading session keeps its filtered order even as unread entries become read.
-  function selection(stream){const s=state(stream);return BMJournalOrganizer.visible(stream).filter(e=>(s.kind==='ALL'||(s.kind==='CHAPTERS')===condensed(e))&&(s.read==='ALL'||(s.read==='UNREAD')===unread(e)));}
-  function openEntry(entry,stream,sequence=null){const s=state(stream);s.sequence=sequence||selection(stream);if(!s.sequence.includes(entry))s.sequence=[entry];s.selected=entry;markRead(entry,stream);BMMenuScroll.freshEntry();}
+  function selection(stream){const s=state(stream);return BMJournalOrganizer.visible(stream).filter(e=>(journalTab==='logs'?kind(e)==='record':kind(e)!=='record')&&(s.kind==='ALL'||s.kind==='CHAPTERS'&&condensed(e)||s.kind==='REFLECTIONS'&&kind(e)==='reflection')&&(s.read==='ALL'||(s.read==='UNREAD')===unread(e)));}
+  function openEntry(entry,stream,sequence=null){if(kind(entry)==='record'&&journalTab!=='logs'){journalTab='logs';logStream=stream;}const s=state(stream);s.sequence=sequence||selection(stream);if(!s.sequence.includes(entry))s.sequence=[entry];s.selected=entry;markRead(entry,stream);BMMenuScroll.freshEntry();}
   function readerTools(parent,stream,make,button){
     const s=state(stream),ordered=(s.sequence||[s.selected]).filter(e=>entries(stream).includes(e)),index=ordered.indexOf(s.selected),row=make('div',parent,undefined,'row');
     const copy=make('button',row,'Copy entry');copy.type='button';copy.setAttribute('aria-label','Copy journal entry');const feedback=make('p',parent,'','muted');feedback.setAttribute('role','status');
@@ -101423,6 +101441,8 @@ const BMJournal=(()=>{
   function render(parent,stream='player'){
     const s=state(stream),make=(tag,p,value,cls)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=value;if(cls)e.className=cls;p.append(e);return e;};
     const button=(p,label,fn)=>{const b=make('button',p,label);b.type='button';b.onclick=()=>{fn();BMShell.invalidate();};return b;};
+    const logs=journalTab==='logs';
+    if(logs){const row=make('label',parent,undefined,'setting');make('span',row,'Logs for');const select=make('select',row);select.setAttribute('aria-label','Logs for');for(const[value,label]of [['player','You'],['suncat','Suncat']]){const option=make('option',select,label);option.value=value;}select.value=stream;select.onchange=()=>{logStream=select.value;BMMenuScroll.freshEntry();BMShell.invalidate();};}
     if(s.selected){
       button(parent,'← Back to entries',()=>{s.selected=null;s.sequence=null;s.collectionParent=null;});
       if(s.collectionParent)button(parent,'Back to collection',()=>{const p=s.collectionParent;s.collectionParent=null;openEntry(p,stream);});readerTools(parent,stream,make,button);
@@ -101435,13 +101455,12 @@ const BMJournal=(()=>{
       if(s.selected.source==='suncat_memory_reflection')for(const id of s.selected.sourceEntryIds||[]){
         const source=entries(stream).find(e=>e.id===id||e.memoryAliases?.includes(id));if(source)button(box,'Read source: '+title(source),()=>{openEntry(source,stream);});
       }
-      return;
+      BMJournalDesk.render(parent,stream,make,button,'export');return;
     }
-    BMJournalDesk.render(parent,stream,make,button);
-    BMJournalOrganizer.controls(parent,stream,make,button);
-    if(stream==='suncat'&&typeof BMSuncatJournal!=='undefined')make('p',parent,'NPC conversations saved on this device appear here alongside Suncat’s reflections.','muted');
+    if(!logs)BMJournalDesk.render(parent,stream,make,button);
+    if(logs)make('p',parent,'Activity, conversations and detailed records. Original dates and progression evidence are preserved.','muted');
     const filters=make('div',parent,undefined,'journal-filters');
-    for(const [field,label,options]of [['kind','Entry type',[['ALL','All entries'],['CHAPTERS','Chapters & retrospectives'],['RECORDS','Records']]],['read','Reading status',[['ALL','All statuses'],['UNREAD','Unread'],['READ','Read']]]]){
+    for(const [field,label,options]of [...(logs?[]:[['kind','Entry type',[['ALL','All prose'],['CHAPTERS','Chapters & retrospectives'],['REFLECTIONS','Reflections']]]]),['read','Reading status',[['ALL','All statuses'],['UNREAD','Unread'],['READ','Read']]]]){
       const row=make('label',filters,undefined,'setting');make('span',row,label);const select=make('select',row);select.setAttribute('aria-label',label);
       for(const [value,label]of options){const option=make('option',select,label);option.value=value;}select.value=s[field];select.onchange=()=>{s[field]=select.value;s.limit=100;BMShell.invalidate();};
     }
@@ -101456,7 +101475,9 @@ const BMJournal=(()=>{
       if(entry.recovered)make('small',b,'Recovered account');
     }
     if(list.length>s.limit)button(parent,'Load more entries',()=>s.limit+=100);
-    if(!list.length)make('p',parent,'No entries match these filters.','card');
+    if(!list.length)make('p',parent,logs?'No logs match these filters.':'No prose entries yet for these filters. Activity records are in Logs.','card');
+    BMJournalOrganizer.controls(parent,stream,make,button,logs?'logs':'prose');
+    BMJournalDesk.render(parent,stream,make,button,'export');
   }
   function footer(parent,stream='player'){
     const s=state(stream);if(!s.selected)return;
@@ -101471,7 +101492,7 @@ const BMJournal=(()=>{
     }
     parent.insertBefore(row,parent.firstChild);
   }
-  return {changed(){revision++;},footer,condensed,unread,isNew,acknowledgeNotices,begin,viewKey,render,markRead,get revision(){return revision;}};
+  return {get logStream(){return logStream;},changed(){revision++;},footer,condensed,unread,isNew,acknowledgeNotices,begin,viewKey,render,markRead,get revision(){return revision;}};
 })();
 
 const BMMenuBadges=(()=>{
@@ -105392,7 +105413,7 @@ const BMGuildDecor=(()=>{
    if(clipped.length<3)continue;c.beginPath();clipped.forEach(([x,y],i)=>{const px=viewX+viewW/2*(1+x/y),py=viewY+horizon+wallScale*(d.camZ-z)/y;i?c.lineTo(px,py):c.moveTo(px,py);});c.closePath();c.fillStyle=globalThis.BMCherryPerformance?.floorColor(d,q)||q.color;c.fill();
   }c.restore();
  }
- return {floor,tile,indoor,addSurface,color:(id,x,y)=>surfaceTiles.get(id)?.get(x+','+y)};
+ return {floor,tile,indoor,addSurface,appendSurface:(id,quads)=>addSurface(id,[...(surfaces.get(id)||[]),...quads]),color:(id,x,y)=>surfaceTiles.get(id)?.get(x+','+y)};
 })();
 window.BMGuildDecor=BMGuildDecor;window.BMStairs=BMStairs;
 
@@ -105484,6 +105505,7 @@ const BMGuildBuilding=(()=>{
 /* Authored settlements: existing story identities and atlas links stay intact. */
 const BMTavern=(()=>{
  const meals=[
+  {key:'drink:tavern_beer',name:'Beer',effect:'beer',price:3},
   {key:'dish:mushroom_stew',name:'Mushroom stew',effect:'ward',price:8},
   {key:'dish:grass_porridge',name:'Porridge',effect:'ward',price:6},
   {key:'dish:tavern_roast',name:'Roast meat supper',effect:'ward',price:10},
@@ -105618,7 +105640,7 @@ const BMSettlements=(()=>{
  }
  const load=Explore.prototype.loadMap;
  Explore.prototype.loadMap=function(...args){
-  if(+args[0]===5){const built=this.memory?.guildFinale?.stage==='gathering';if(built!==forestMode){forestMode=built;const layout=built?cabinGround:wildGround;MAP_DB[5].maze=layout.maze;MAP_DB[5].slabs=layout.slabs;BMGuildDecor.addSurface(5,layout.floors);}}
+  if(+args[0]===5){const built=this.memory?.guildFinale?.stage==='gathering';if(built!==forestMode){forestMode=built;const layout=built?cabinGround:wildGround;MAP_DB[5].maze=layout.maze;MAP_DB[5].slabs=layout.slabs;BMGuildDecor.addSurface(5,layout.floors);globalThis.BMAtlas58?.restoreBorders(5);}}
   const r=load.apply(this,args);reconcile(this);return r;};
  const loadGame=Explore.prototype.loadGame;
  Explore.prototype.loadGame=function(...args){const r=loadGame.apply(this,args);reconcile(this);return r;};
@@ -105754,7 +105776,7 @@ const BMClassPaths=(()=>{
   mage:{name:'Mage',map:2,id:8403,where:'Northern trading house, Tintagel',intro:'Observe first. Describe precisely. A patron cannot recommend an apprentice who mistakes a guess for a discovery.'},
   broker:{name:'Rogue',map:2,id:8404,where:'Tintagel tavern',intro:'No grand speeches. Recover a misplaced ledger without hurting anyone, and perhaps we can discuss an apprenticeship.'},
   hunter:{name:'Hunter',map:5,id:8006,where:'Cabin beyond Tintagel’s eastern tree gap',intro:'The forest teaches anyone who pays attention. Bring back what I ask for, and leave enough for what lives here.'},
-  pupil:{name:'Dancer’s Pupil',map:2,id:8405,where:'Tintagel tavern',intro:'She is too busy running the guild to teach every step herself. I can help. First learn where to place your feet; then learn where to place everyone’s attention.'},
+  pupil:{name:'Cherry',map:2,id:8405,where:'Tintagel tavern',intro:'I do not teach strangers. You know my teacher? Prove it. People will say anything to get into my good graces. Bring me a signed recommendation from Dancer at the Travelers’ Guild, and then we can talk about lessons.'},
   patient:{name:'Injured courier',map:2,id:8406,where:'Tintagel market square',intro:'The road can wait. My leg cannot. Did the priest send you?'}
  };
  const visit=(key,text)=>({kind:'visit',key,text}),node=(key,text)=>({kind:'node',key,text}),trial=(key,text,style='combat')=>({kind:'trial',key,text,style});
@@ -105765,7 +105787,7 @@ const BMClassPaths=(()=>{
   {id:'apprentice',name:'Apprentice',from:['none'],patron:'mage',base:'mage',sprite:261,stats:{2:4},level:0,growth:[2],skills:[22],desc:'Double INT training gains. Study the town’s ward marks and learn Meditation.',steps:[node('glyphCourt','Observe the ward stone outside the court.'),node('glyphGate','Observe the ward stone beside the eastern tree gap.'),visit('mage','Bring your observations to Mage.')]},
   {id:'rogue',name:'Rogue',from:['none'],patron:'broker',base:'rogue',sprite:258,stats:{3:4},level:0,growth:[3],skills:[41],desc:'Double AGI training gains. Earn the local ring’s trust and learn Loot / lockpicking.',steps:[node('ledger','Recover the hidden ledger behind Tintagel’s western storehouse.'),visit('broker','Return the sealed ledger to the Rogue.')]},
   {id:'hunter',name:'Hunter',from:['none'],patron:'hunter',base:'hunter',sprite:264,stats:{3:4},level:0,growth:[3],skills:[53,234],desc:'Double AGI training gains. Learn Camp and Squirrel from the Hunter at his forest cabin.',steps:[node('moonleaf','Find the marked silver-veined moonleaf west of the cabin.'),node('glowcap','Find the blue-flecked mushroom east of the cabin.'),visit('hunter','Bring both specimens to Hunter.')]},
-  {id:'dancer',name:'Dancer',from:['none'],patron:'pupil',base:'rogue',sprite:249,stats:{3:4},level:0,growth:[3],skills:[1180],desc:'Double AGI training gains. Captivating Dance briefly distracts nearby ordinary enemies; stronger minds resist.',steps:[visit('clerk','Ask the busy guild dancer to introduce her pupil.'),trial('pupil','Practice Dancer’s Pupil’s three travelling steps in the rehearsal room.','dance'),visit('pupil','Return to Dancer’s Pupil for your first complete dance.')]},
+  {id:'dancer',name:'Dancer',from:['none'],patron:'pupil',base:'rogue',sprite:249,stats:{3:4},level:0,growth:[3],skills:[1180],desc:'Cherry will not teach a stranger. Earn her teacher’s signed recommendation and complete Cherry’s first lesson. Double AGI training gains; learn Charm using AGI and INT.',steps:[visit('clerk','Ask Dancer for a letter of recommendation. She is busy running the guild and sends new pupils to her apprentice Cherry.'),node('danceParcel','Collect Dancer’s costume parcel beside the Tintagel market courier (24,46).'),visit('clerk','Bring the costume parcel back to Dancer to receive her signed letter for Cherry.'),visit('pupil','Present Dancer’s signed recommendation to Cherry at the Tintagel village inn.'),trial('pupil','Learn Cherry’s three travelling steps in the rehearsal room.','dance'),visit('pupil','Return to Cherry to finish your first lesson, learn Charm, and choose the Dancer class.')]},
   {id:'knight',name:'Knight',from:['squire'],patron:'knight',base:'knight',sprite:158,stats:{0:6,1:6},level:5,growth:[0,1],skills:[65],desc:'Advance your shield training and learn Shield Bash.',steps:[visit('noble','Seek Noble’s endorsement of your service as a squire.'),trial('knight','Complete the Knight’s second trial.'),visit('knight','Swear your oath before the Knight.')]},
   {id:'mage',name:'Mage',from:['apprentice'],patron:'mage',base:'mage',sprite:261,stats:{2:6},level:5,growth:[2],skills:[26],lesson:26,desc:'Learn Fireball and demonstrate your practical control in a warded trial.',steps:[trial('mage','Complete the mage’s practical examination.'),visit('mage','Present yourself for Mage’s formal recommendation.')]},
   {id:'priest',name:'Priest',from:['acolyte'],patron:'priest',base:'priest',sprite:255,stats:{1:6,2:6},level:5,growth:[1,2],skills:[12,28],desc:'Learn Bind and Defence; advance from individual care to protecting others.',steps:[node('glowcap','Gather a blue-flecked mushroom for the chapel’s medicine stores.'),visit('patient','Check on the recovering courier.'),visit('priest','Return to take your vows.')]},
@@ -105777,16 +105799,16 @@ const BMClassPaths=(()=>{
   {id:'ranger',name:'Ranger',from:['hunter'],patron:'hunter',base:'hunter',sprite:264,stats:{2:8,3:10},level:12,growth:[2,3],skills:[191,60],prestige:true,desc:'Double INT and AGI training gains. Learn Wolf and Pixie through the Hunter’s advanced instruction.',steps:[node('glowcap','Identify the rare mushroom beside the forest cabin.'),trial('hunter','Complete the woodland proving course.'),visit('hunter','Return to Hunter for your ranger’s recognition.')]},
   {id:'archmage',name:'Archmage',from:['mage','battle-mage'],patron:'mage',base:'mage',sprite:330,stats:{2:12},level:15,growth:[2],skills:[93,1001],prestige:true,tier:2,desc:'Double INT training gains. Learn Lightning and Drain. Requires Avalon Gold tier.',steps:[node('glyphCourt','Revisit the court ward with an experienced eye.'),node('glyphGate','Revisit the boundary ward at the forest gap.'),trial('mage','Complete the final arcane examination.'),visit('mage','Return to Mage for recognition.')]}
  ];
- const nodes={moonleaf:{map:5,id:8421,x:8.5,y:52.5,sprite:1161,name:'Silver-veined moonleaf',text:'You take one mature leaf and leave the roots undisturbed.'},glowcap:{map:5,id:8422,x:24.5,y:52.5,sprite:1162,name:'Blue-flecked mushroom',text:'You identify the blue flecks and collect one sound specimen.'},ledger:{map:2,id:8423,x:12.5,y:56.5,sprite:1163,name:'Hidden ledger',text:'The ledger is sealed. You recover it without opening the binding.'},glyphCourt:{map:2,id:8424,x:31.5,y:37.5,sprite:1164,name:'Court ward stone',text:'The inner line turns inward: the ward gathers and holds mana.'},glyphGate:{map:2,id:8425,x:94.5,y:44.5,sprite:1164,name:'Boundary ward stone',text:'The outer line turns outward: the ward releases mana along the boundary.'}};
- let previous='explore',selectedPatron=null,notice='',skip=null;
+ const nodes={danceParcel:{map:2,id:8450,x:24.5,y:46.5,sprite:1163,name:'Dancer’s costume parcel',text:'You collect the wrapped ribbons and costume repairs. Bring the sealed parcel back to Dancer at the guild.'},moonleaf:{map:5,id:8421,x:8.5,y:52.5,sprite:1161,name:'Silver-veined moonleaf',text:'You take one mature leaf and leave the roots undisturbed.'},glowcap:{map:5,id:8422,x:24.5,y:52.5,sprite:1162,name:'Blue-flecked mushroom',text:'You identify the blue flecks and collect one sound specimen.'},ledger:{map:2,id:8423,x:12.5,y:56.5,sprite:1163,name:'Hidden ledger',text:'The ledger is sealed. You recover it without opening the binding.'},glyphCourt:{map:2,id:8424,x:31.5,y:37.5,sprite:1164,name:'Court ward stone',text:'The inner line turns inward: the ward gathers and holds mana.'},glyphGate:{map:2,id:8425,x:94.5,y:44.5,sprite:1164,name:'Boundary ward stone',text:'The outer line turns outward: the ward releases mana along the boundary.'}};
+ let previous='explore',selectedPatron=null,notice='',skip=null,selectedPath=null;
  const cls=()=>String(Dungeon.playerClass||'none').toLowerCase(),def=id=>paths.find(p=>p.id===id||p.name.toLowerCase()===String(id).toLowerCase());
- function state(d=Dungeon){d.memory??={};const s=d.memory.classPaths??={version:2,paths:{},patrons:{}};s.paths??={};s.patrons??={};if(!s.branch&&String(d.playerClass||'none').toLowerCase()!=='none')s.branch=branch(d.playerClass);return s;}
+ function state(d=Dungeon){d.memory??={};const s=d.memory.classPaths??={version:2,paths:{},patrons:{}};s.paths??={};s.patrons??={};const r=s.paths.dancer;if(r&&r.routeVersion!==2){r.stage=r.completed||r.finalized?6:r.stage>=2?5:r.stage===1?4:0;r.routeVersion=2;if(s.trial?.path==='dancer')s.trial.stage=r.stage;}if(!s.branch&&String(d.playerClass||'none').toLowerCase()!=='none')s.branch=branch(d.playerClass);return s;}
  function branch(value){const id=String(value||'none').toLowerCase();if(id==='battle-mage'||id==='archmage')return 'mage';if(['squire','knight','royal knight','dragon knight','royal-knight','dragon-knight'].includes(id))return 'knight';if(['acolyte','priest','high priest','high-priest'].includes(id))return 'priest';if(['apprentice','mage'].includes(id))return 'mage';if(['warrior','centurion'].includes(id))return 'warrior';if(['hunter','ranger'].includes(id))return 'hunter';if(['rogue','assassin'].includes(id))return 'rogue';return id;}
- function rec(id){return state().paths[id]??={tracked:false,accepted:false,stage:0,receipts:[],finalized:false};}
+ function rec(id){return state().paths[id]??={tracked:false,accepted:false,stage:0,receipts:[],finalized:false,routeVersion:2};}
  function save(){Dungeon.syncStoryNPCs(Object.values(nodes).filter(n=>n.map===Dungeon.mapID).map(n=>n.id));Dungeon.requestSave();BMShell.invalidate();}
  function learn(ids){Dungeon.spellsLearned??={};for(const id of ids)Dungeon.spellsLearned[id]=true;Dungeon.updateSkills();}
  function familiar(key){return Number(state().patrons[key]||0);}
- function patronLocation(key){const coast=globalThis.BMTintagelCoast;if(coast?.settled(Dungeon)){if(key==='priest')return globalThis.BMPriestJourney?.arrived(Dungeon)?'Egypt’s healing house, west of the river':'The frozen village by the ice cave';if(key==='mage')return (Dungeon.memory.regionalGuilds?.mage?.stage||0)<2?'The inn at Ger':'Old Observatory, northeast of Ger';if(key==='knight')return 'The ruined keep, Brittany';if(key==='broker')return coast.phase(Dungeon)===2?'Rogue’s refuge, Tintagel slums':'Tintagel village inn';if(key==='clerk')return Dungeon.mapID===2&&Dungeon.npcs.some(n=>n.index===201&&n.x===41.5)||Dungeon.mapID!==2&&coast.phase()===2?'Tintagel guild hall':'Tintagel tavern';}return patrons[key].where;}
+ function patronLocation(key){const coast=globalThis.BMTintagelCoast;if(coast?.settled(Dungeon)){if(key==='priest')return globalThis.BMPriestJourney?.arrived(Dungeon)?'Kemet’s healing house, west of the river':'The frozen village by the ice cave';if(key==='mage')return (Dungeon.memory.regionalGuilds?.mage?.stage||0)<2?'The inn at Ger':'Old Observatory, northeast of Ger';if(key==='knight')return 'The ruined keep, Brittany';if(key==='broker')return coast.phase(Dungeon)===2?'Rogue’s refuge, Tintagel slums':'Tintagel village inn';if(key==='clerk')return Dungeon.mapID===2&&Dungeon.npcs.some(n=>n.index===201&&n.x===41.5)||Dungeon.mapID!==2&&coast.phase()===2?'Tintagel guild hall':'Tintagel tavern';}return patrons[key].where;}
  function at(key){const p=patrons[key];if(key==='priest'&&globalThis.BMTintagelCoast?.settled(Dungeon))return [6,43].includes(Dungeon.mapID)&&Dungeon.npcs.some(n=>n.index===8004&&BMInteract.reachable(n));if(key==='mage'&&globalThis.BMTintagelCoast?.settled(Dungeon))return [4,34].includes(Dungeon.mapID)&&Dungeon.npcs.some(n=>n.index===8003&&BMInteract.reachable(n));if(key==='knight'&&globalThis.BMTintagelCoast?.settled(Dungeon))return Dungeon.mapID===33&&Dungeon.memory.regionalGuilds?.knight?.stage>=8&&Dungeon.npcs.some(n=>n.index===8005&&BMInteract.reachable(n));if(key==='hunter'){
   if(Dungeon.mapID===0&&!globalThis.BMBranches?.post(Dungeon))return Dungeon.npcs.some(n=>n.index===8006&&BMInteract.reachable(n));
   if(Dungeon.mapID===5&&globalThis.BMBranches?.post(Dungeon)&&!Dungeon.memory.hunterLodge?.rank)return false;}if(Dungeon.mapID===2&&globalThis.BMTintagelCoast?.settled(Dungeon)&&['clerk','broker'].includes(key))return Dungeon.npcs.some(n=>n.index===(key==='clerk'?201:8002)&&BMInteract.reachable(n));if(!p||Dungeon.mapID!==p.map)return false;return Dungeon.npcs.some(n=>n.index===p.id&&BMInteract.reachable(n));}
@@ -105810,13 +105832,13 @@ const BMClassPaths=(()=>{
  }
  function advance(p,detail){const r=rec(p.id);if(!r.accepted||r.completed)return false;const step=p.steps[r.stage];r.receipts.push({step:r.stage,text:detail||step.text});r.stage++;
   if(r.stage===p.steps.length){r.completed=true;state().patrons[p.patron]=familiar(p.patron)+1;learn(p.skills);notice=p.name+' training complete. Your recommendation and lessons are saved. Return to your patron when you meet the promotion requirements.';}
-  else notice=p.name+': '+p.steps[r.stage].text;
+  else notice=p.id==='dancer'&&r.stage===3?'Dancer signs your recommendation. Take the letter to Cherry at the village inn.':p.id==='dancer'&&r.stage===4?'Cherry: That is my teacher’s hand. Very well—you have earned a lesson. Let us begin with three travelling steps.':p.name+': '+p.steps[r.stage].text;
   BMActivity.record('class_quest',p.name+': '+(detail||step.text),{path:p.id,step:r.stage,complete:!!r.completed});save();return true;
  }
  function progress(id){const p=def(id),r=p&&rec(p.id),s=p?.steps[r?.stage];if(!r?.accepted||r.completed||!s||s.kind==='node'||!at(s.key))return false;if(s.kind==='trial')return enterTrial(p.id);return advance(p);}
  function promote(id){const p=def(id);if(!p||!status(p).ok)return false;const old=Dungeon.playerClass;Dungeon.playerClass=p.name;state().branch=branch(p.name);rec(p.id).finalized=true;learn(p.skills);notice='You are now a '+p.name+'. Your other letters, lessons and quest progress are kept.';BMActivity.record('class_promotion','Advanced from '+old+' to '+p.name+' through '+patrons[p.patron].name+'.',{from:old,to:p.name,path:p.id});save();return true;}
  function entries(){return paths.filter(p=>rec(p.id).tracked||rec(p.id).accepted).map(p=>{const r=rec(p.id);return {id:'class-path:'+p.id,title:'CLASS PATH · '+p.name,completed:!!r.finalized,text:[p.desc,'Patron: '+patrons[p.patron].name+' · '+patronLocation(p.patron),r.finalized?'Promotion earned.':r.completed?'Training complete; recommendation earned.':r.accepted?p.steps[r.stage].text:'Visit your patron to begin.',...r.receipts.map(v=>'✓ '+v.text),...status(p).reasons].join('\n\n')};});}
- function open(key=null){if(key==='patient'){const n=Dungeon.npcs.find(n=>n.index===patrons.patient.id&&Dungeon.mapID===patrons.patient.map);if(n&&at('patient'))return courier(n);return false;}previous=['deck_menu','guild_menu'].includes(startGame)?startGame:'explore';selectedPatron=key;notice='';BMWorldTalk.dismiss();BMTouch.cancel();startGame='class_paths';if(!key)Dungeon.currentSpeaker=null;save();}
+ function open(key=null,path=null){selectedPath=path;if(key==='patient'){const n=Dungeon.npcs.find(n=>n.index===patrons.patient.id&&Dungeon.mapID===patrons.patient.map);if(n&&at('patient'))return courier(n);return false;}previous=['deck_menu','guild_menu'].includes(startGame)?startGame:'explore';selectedPatron=key;notice='';BMWorldTalk.dismiss();BMTouch.cancel();startGame='class_paths';if(!key)Dungeon.currentSpeaker=null;save();}
  function close(){BMWorldTalk.dismiss();startGame=previous;Dungeon.currentSpeaker=null;BMShell.invalidate();}
  function render(body,{el,button,portrait,invalidate}){
   if(startGame!=='class_paths')selectedPatron=null;
@@ -105824,15 +105846,15 @@ const BMClassPaths=(()=>{
   if(notice)el('p',body,notice,'status');if(inTrial())button(body,'Leave training',()=>leaveTrial(false));
   if(selectedPatron){if(selectedPatron==='knight')button(body,'Practice',()=>enterTrial(null));button(body,'All classes',()=>{selectedPatron=null;invalidate();});}
   const list=paths.filter(p=>!selectedPatron||p.patron===selectedPatron||p.steps[0]?.kind==='visit'&&p.steps[0].key===selectedPatron||rec(p.id).accepted&&!rec(p.id).completed&&p.steps[rec(p.id).stage]?.key===selectedPatron);
-  const focus=list.find(p=>{const r=rec(p.id);return r.accepted&&!r.completed;})||list.find(p=>!p.prestige&&p.from.includes(cls()))||list[0];
+  const focus=list.find(p=>p.id===selectedPath)||list.find(p=>{const r=rec(p.id);return r.accepted&&!r.completed;})||list.find(p=>!p.prestige&&p.from.includes(cls()))||list[0];
   for(const p of list){const r=rec(p.id),s=p.steps[r.stage],st=status(p),panel=el('details',body,null,'card class-task');panel.open=!!selectedPatron&&p===focus;
-   const summary=el('summary',panel);el('strong',summary,p.name);el('span',summary,r.finalized?' · Current / learned':r.completed?' · Letter earned':r.accepted?' · In progress':' · Recommendation','status');
-   el('p',panel,p.desc,'class-benefit');
+   const summary=el('summary',panel);el('strong',summary,p.name);el('span',summary,r.finalized?' · Current / learned':r.completed?(p.id==='dancer'?' · Lesson complete':' · Letter earned'):r.accepted?' · In progress':' · Recommendation','status');
+   el('p',panel,p.desc,'class-benefit');if(p.id==='dancer'){el('p',panel,dancerMessage(selectedPatron||'pupil'),'prose');el('p',panel,'Teacher: Dancer · '+patronLocation('clerk')+' → Apprentice: Cherry · Tintagel village inn','muted');}
    if(!selectedPatron)el('p',panel,patrons[p.patron].name+' · '+patronLocation(p.patron),'muted');
-   el('p',panel,r.completed?'Recommendation earned. Keep this letter even if you choose another class.':r.accepted?s.text:(selectedPatron&&p.steps[0]?.kind==='visit'&&p.steps[0].key===selectedPatron&&p.steps[1]?p.steps[1].text:p.steps[0].text),'prose');
+   el('p',panel,r.completed?(p.id==='dancer'?'First lesson complete. You know Charm; choose Dancer below to join the class.':'Recommendation earned. Keep this letter even if you choose another class.'):r.accepted?s.text:(selectedPatron&&p.steps[0]?.kind==='visit'&&p.steps[0].key===selectedPatron&&p.steps[1]?p.steps[1].text:p.steps[0].text),'prose');
    if(r.accepted&&!r.completed)el('p',panel,'Step '+(r.stage+1)+' of '+p.steps.length,'status');
-   if(!r.accepted){const b=button(panel,'Ask for recommendation',()=>accept(p.id),'primary');b.disabled=!(at(p.patron)||p.steps[0]?.kind==='visit'&&at(p.steps[0].key));if(b.disabled)el('p',panel,'Visit '+patrons[p.patron].name+' to begin.','muted');}
-   else if(s&&s.kind!=='node'){const b=button(panel,s.kind==='trial'?'Start trial':'Continue task',()=>progress(p.id),'primary');b.disabled=!at(s.key);if(b.disabled)el('p',panel,'Next: '+patronLocation(s.key),'muted');}
+   if(!r.accepted){const b=button(panel,p.id==='dancer'?(at('clerk')?'Help with costume parcel':'Seek Dancer’s letter'):'Ask for recommendation',()=>accept(p.id),'primary');b.disabled=!(at(p.patron)||p.steps[0]?.kind==='visit'&&at(p.steps[0].key));if(b.disabled)el('p',panel,'Visit '+patrons[p.patron].name+' to begin.','muted');}
+   else if(s&&s.kind!=='node'){const b=button(panel,p.id==='dancer'?({0:'Ask Dancer for work',2:'Deliver parcel · Receive letter',3:'Present recommendation',4:'Begin dance lesson',5:'Finish lesson'}[r.stage]||'Continue task'):s.kind==='trial'?'Start trial':'Continue task',()=>progress(p.id),'primary');b.disabled=!at(s.key);if(b.disabled)el('p',panel,'Next: '+patronLocation(s.key),'muted');}
    if(!r.finalized)button(panel,r.tracked?'Untrack':'Track',()=>track(p.id));
    const req=el('details',panel,null,'class-requirements');el('summary',req,'Choose '+p.name+' · Requirements');
    el('p',req,p.from.map(v=>v==='none'?'Unclassed':v).join(' / ')+' · Level '+p.level+' · '+Object.entries(p.stats).map(([i,n])=>['STR','CON','INT','AGI'][i]+' '+n).join(' · ')+(p.prestige?' · Guild finale':'')+(p.tier?' · Avalon '+BMGuild.tiers[p.tier]:''),'muted');
@@ -105841,6 +105863,13 @@ const BMClassPaths=(()=>{
    if(st.ok){const b=button(panel,'Choose '+p.name,()=>{const box=el('div',panel,null,'card');el('p',box,'Join the '+branch(p.name)+' class tree? You keep every recommendation and learned skill.');button(box,'Cancel',()=>box.remove());button(box,'Become '+p.name,()=>promote(p.id),'primary');b.disabled=true;},'primary');}
   }
  }
+ function dancerMessage(key){
+  const r=rec('dancer');
+  if(r.completed||r.finalized)return key==='clerk'?'Cherry tells me your first lesson went well. Keep practising; teaching her helped me understand my own steps, too.':'You have earned your first dance and Charm. Choose Dancer below when you are ready to join the class.';
+  if(key==='clerk')return !r.accepted||r.stage===0?'You want to become a dancer? I am too busy keeping this guild running to take another pupil. My apprentice Cherry teaches at the village inn. Teaching what she knows will help her learn, too. She will want my letter. Collect my costume parcel from the market and bring it here first—S-rank or no, I still need a hand.':r.stage===1?'My costume parcel is waiting beside the courier in Tintagel market. Bring it back, and I will sign your recommendation.':r.stage===2?'The ribbons and repairs—thank you. Hand me the parcel and I will write Cherry a proper recommendation.':'You have my signed letter. Take it to Cherry at the village inn; she will teach your first steps.';
+  return r.stage<3?'I do not teach strangers. Oh, you know my teacher? Prove it. So many people will say anything to get into my good graces. Visit Dancer at the Travelers’ Guild in Tintagel and earn her signed recommendation. She may need a hand with her work first.':r.stage===3?'A letter from my teacher? Let me see her signature before we begin.':r.stage===4?'That is her hand, all right. I will teach you. Start with three travelling steps, then return to me. Charm needs nimble feet and a quick mind—AGI and INT together.':'You have the steps. Finish your lesson with me, then choose Dancer below to join the class.';
+ }
+ function dancerTalk(n,key='pupil'){if(!at(key))return false;return BMClassicDialogue.show({speaker:n,text:dancerMessage(key),options:[{label:key==='clerk'?'Recommendation':'Dance lessons',action:()=>open(key,'dancer')}]});}
  function courier(n){
   const ready=()=>paths.filter(p=>{const r=state().paths[p.id],step=r&&p.steps[r.stage];return r?.accepted&&!r.completed&&step?.kind==='visit'&&step.key==='patient';});
   const waiting=ready(),dressing=waiting.some(p=>p.id==='acolyte');
@@ -105857,7 +105886,7 @@ const BMClassPaths=(()=>{
  function interact(n){if(skip===n){skip=null;return false;}if(n._classTrialExit){leaveTrial(true);return true;}if(n._classTrialMark){markTrial(n);return true;}
   const nodeKey=Object.keys(nodes).find(k=>nodes[k].id===n.index&&nodes[k].map===Dungeon.mapID);if(nodeKey){let did=false;for(const p of paths){const r=rec(p.id),s=p.steps[r.stage];if(r.accepted&&!r.completed&&s?.kind==='node'&&s.key===nodeKey){advance(p,nodes[nodeKey].text);did=true;}}if(did&&n.interactionVerb==='Take')BMInteract.report(nodes[nodeKey].name+' · '+nodes[nodeKey].text);talk(n,did?nodes[nodeKey].text:'You recognize this place. A patron may have a task for you here.',[]);return true;}
   const key=Object.keys(patrons).find(k=>patrons[k].id===n.index&&patrons[k].map===Dungeon.mapID);if(!key)return false;
-  if(key==='patient')return courier(n);
+  if(key==='patient')return courier(n);if(key==='pupil')return dancerTalk(n,key);
   BMTouch.cancel();BMLock.clear();Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;
   n.customDialogue=[patrons[key].intro];n.options=['Listen','Leave'];n.yesActions=[['class_paths',key]];n.noActions=[['close_dialogue',null]];n.endActions=[['close_dialogue',null]];
   n.startDialogue(Dungeon);return true;
@@ -105866,13 +105895,13 @@ const BMClassPaths=(()=>{
  function installPeople(){
   const people=[['noble',27.5,33.5,312],['priest',5.5,66.5,255],['mage',70.5,22.5,261],['broker',8.5,54.5,258],['pupil',8.5,57.5,1160],['patient',22.5,46.5,252]];
   for(const [key,x,y,sprite]of people){const p=patrons[key];MAP_DB[p.map].npcs.push({index:p.id,x,y,sprite,name:p.name,role:'dialogue',state:'stationary',alignment:'defender',companionEligible:false,customDialogue:[p.intro],onSpawn(n){n.isCinematic=true;if(key==='pupil')BMClassArt.pupil(n);}});}
-  for(const [key,v]of Object.entries(nodes))MAP_DB[v.map].npcs.push({index:v.id,x:v.x,y:v.y,sprite:v.sprite,name:v.name,interactionVerb:['moonleaf','glowcap','ledger'].includes(key)?'Take':'Use',role:'dialogue',state:'stationary',alignment:'friendly',companionEligible:false,isCinematic:true,spawnCondition:d=>paths.some(p=>{const r=state(d).paths[p.id];return r?.accepted&&!r.completed&&p.steps[r.stage]?.key===key;}),onSpawn(n){if(v.sprite>=1161)BMClassArt.resource(n,v.sprite);}});
+  for(const [key,v]of Object.entries(nodes))MAP_DB[v.map].npcs.push({index:v.id,x:v.x,y:v.y,sprite:v.sprite,name:v.name,interactionVerb:['moonleaf','glowcap','ledger','danceParcel'].includes(key)?'Take':'Use',role:'dialogue',state:'stationary',alignment:'friendly',companionEligible:false,isCinematic:true,spawnCondition:d=>paths.some(p=>{const r=state(d).paths[p.id];return r?.accepted&&!r.completed&&p.steps[r.stage]?.key===key;}),onSpawn(n){if(v.sprite>=1161)BMClassArt.resource(n,v.sprite);}});
  }
  function trialMap(d=Dungeon){const t=state(d).trial;if(!t)return;const N=24,maze=Array.from({length:N},(_,y)=>Array.from({length:N},(_,x)=>!x||!y||x===N-1||y===N-1?1:0));
   const npcs=[{index:8490,x:12.5,y:20.5,sprite:1164,name:'Return sigil',role:'dialogue',state:'stationary',alignment:'friendly',isCinematic:true,companionEligible:false,onSpawn(n){n._classTrialExit=true;BMClassArt.resource(n,1164);}}];
   for(const [i,x,y]of [[0,7.5,16.5],[1,16.5,11.5],[2,7.5,6.5]])npcs.push({index:8491+i,x,y,sprite:1164,name:(t.style==='dance'?'Dance step ':'Training standard ')+(i+1),role:'dialogue',state:'stationary',alignment:'friendly',isCinematic:true,companionEligible:false,onSpawn(n){n._classTrialMark=i+1;BMClassArt.resource(n,1164);}});
   if(t.style!=='dance')for(let i=0;i<3;i++)npcs.push({index:8495+i,x:9.5+i*3,y:8.5+i*3,sprite:252,name:'Warded sparring partner '+(i+1),role:'battle',state:'wandering',alignment:'foe',level:t.advanced?8:0,deck:[50],onSpawn(n){n._classTrialFoe=true;if(!t.advanced){n.stat=[[1,4,0],[1,4,0],[1,4,0],[1,4,0]];n.maxWards=1;n.currentWardTime=3;n.innateSpells=[];}n.xp=0;n.rewardCard=null;n.customDialogue=null;n.endActions=[];if(t.defeated.includes(n.index))Object.assign(n,{isDead:true,visible:false});}});
-  MAP_DB[t.map]={name:t.style==='dance'?'Dancer’s Pupil’s rehearsal room':'The Knight’s warded proving ground',maze,npcs,spawn:{x:12.5,y:19.5,dir:0},skyColor:'#506e81',floorColor:'#68734b',biome:'None',weather:'clear',slabs:[]};d.defaultSpawns[t.map]={x:12.5,y:19.5,dir:0};
+  MAP_DB[t.map]={name:t.style==='dance'?'Cherry’s rehearsal room':'The Knight’s warded proving ground',maze,npcs,spawn:{x:12.5,y:19.5,dir:0},skyColor:'#506e81',floorColor:'#68734b',biome:'None',weather:'clear',slabs:[]};d.defaultSpawns[t.map]={x:12.5,y:19.5,dir:0};
  }
  function inTrial(d=Dungeon){return !!state(d).trial&&state(d).trial.map===d.mapID;}
  function enterTrial(id){if(state().trial)return false;if(BMOnline.publicState()?.self?.combatUntil>Date.now()){notice='Finish player combat before entering training.';BMShell.invalidate();return false;}const p=id?def(id):null,r=p&&rec(p.id),step=p?.steps[r?.stage],key=step?.key||'knight';if(!at(key)||p&&(!r.accepted||step?.kind!=='trial'||p.prestige&&!finale()))return false;
@@ -105895,7 +105924,7 @@ const BMClassPaths=(()=>{
   // A return sigil remains available even when all training objectives are unfinished.
   BMGuild.promote=promote;BMGuild.classList=()=>paths;BMGuild.classStatus=p=>status(p).reasons.join(' · ');
  }
- return {paths,patrons,nodes,state,record:rec,status,track,accept,progress,promote,entries,open,close,render,interact,install,at,permanent,familiar,enterTrial,leaveTrial,trialMap,inTrial,trainingClass:c=>String(c).toLowerCase()==='battle-mage'?'mage':def(c)?.base,growth:c=>String(c).toLowerCase()==='battle-mage'?[]:def(c)?.growth};
+ return {dancerTalk,dancerMessage,paths,patrons,nodes,state,record:rec,status,track,accept,progress,promote,entries,open,close,render,interact,install,at,permanent,familiar,enterTrial,leaveTrial,trialMap,inTrial,trainingClass:c=>String(c).toLowerCase()==='battle-mage'?'mage':def(c)?.base,growth:c=>String(c).toLowerCase()==='battle-mage'?[]:def(c)?.growth};
 })();
 globalThis.BMClassPaths=BMClassPaths;
 
@@ -105941,16 +105970,16 @@ globalThis.BMClassArt=BMClassArt;
 /* A short, resisted distraction: no conversion, damage, recruitment or boss lock. */
 const BMDancer=(()=>{
  const id=1180;
- SPELL_REGISTRY[id]={type:'debuff',name:'Captivating Dance',cooldown:18000,castStat:3,defStat:2,range:3.5,duration:180,bind:true,votType:'stun',tickRate:1,visual:'aura',auraColor:'#e77fa9',sprite2D:249,sfx:'buff2'};
- BM_EXTRA_CARD_DEFS[id]={name:'Captivating Dance',type:2,power:3,sprite:249,tarot:6,suit:'Cups',rank:'Three',stats:[4,4,4,6],classes:['Dancer'],desc:'A burst of dance distracts ordinary nearby enemies for six seconds if your AGI defeats their INT. Range 3.5 tiles; 18-second cooldown. Bosses and story actors are immune. It deals no damage and does not recruit enemies.'};
- CARD_MANIFEST_DB[id]={name:'Captivating Dance',type:'spell',power:3,classes:['Dancer'],tarotCard:6};
+ SPELL_REGISTRY[id]={type:'debuff',name:'Charm',cooldown:18000,castStat:3,defStat:2,range:3.5,duration:180,bind:true,votType:'stun',tickRate:1,visual:'aura',auraColor:'#e77fa9',sprite2D:249,sfx:'buff2'};
+ BM_EXTRA_CARD_DEFS[id]={name:'Charm',type:2,power:3,sprite:249,tarot:6,suit:'Cups',rank:'Three',stats:[4,4,4,6],classes:['Dancer'],desc:'A captivating dance charms ordinary nearby enemies for six seconds if the average of your AGI and INT rolls defeats their INT. Range 3.5 tiles; 18-second cooldown. Bosses and story actors are immune. It deals no damage and does not recruit enemies.'};
+ CARD_MANIFEST_DB[id]={name:'Charm',type:'spell',power:3,classes:['Dancer'],tarotCard:6};
  const cast=Explore.prototype.castSpell;
  Explore.prototype.castSpell=function(spell,...args){if(Number(spell)!==id)return cast.call(this,spell,...args);if(!this.spellsLearned?.[id]||startGame!=='explore'||BMRefuge.inside(this)||this.isDead||this.isDying||(this.skillCooldowns?.[id]||0)>Date.now())return false;
-  this.skillCooldowns??={};this.skillCooldowns[id]=Date.now()+18000;const power=this.rollStat(3);let affected=0;
+  this.skillCooldowns??={};this.skillCooldowns[id]=Date.now()+18000;const power=(this.rollStat(3)+this.rollStat(2))/2;let affected=0;
   for(const n of this.npcs){if(n.isDead||n.isBoss||n.isCinematic||n.isTarget||n.role!=='battle'||!String(n.alignment).startsWith('foe')||BMDialogueFlow.scripted(n)||Math.hypot(n.x-this.x,n.y-this.y)>3.5||!BMTerrainPhysics.canHit(this,this,n,id))continue;
    if(BMOnline.shared(n)){BMOnline.hit(n,this,id);continue;}if(power<=resolveStatRoll(n,2))continue;n.applySpell(id,1);n.isSliding=false;n.isAggroDashing=false;n.combatCooldown=30;affected++;
   }
-  MusicEngine.play3DSFX('buff2');for(let i=0;i<16;i++){const a=i*Math.PI/8;spawnParticle(this.x+Math.cos(a)*1.1,this.y+Math.sin(a)*1.1,'#e77fa9','sparkle');}BMActivity.record('skill_used','Performed Captivating Dance.',{skillId:id,affected});this.requestSave();return true;
+  MusicEngine.play3DSFX('buff2');for(let i=0;i<16;i++){const a=i*Math.PI/8;spawnParticle(this.x+Math.cos(a)*1.1,this.y+Math.sin(a)*1.1,'#e77fa9','sparkle');}BMActivity.record('skill_used','Performed Charm through a captivating dance.',{skillId:id,affected});this.requestSave();return true;
  };
  return {id};
 })();
@@ -106627,7 +106656,7 @@ const BMClassicChoices=(()=>{
  function talk(lines){const n=Dungeon.currentSpeaker;if(!n)return;hide();n.customDialogue=Array.isArray(lines)?lines:[String(lines)];n.options=null;n.choiceActions=null;n.yesActions=null;n.noActions=null;n.endActions=[['close_dialogue',null]];Dungeon.isProcessingActions=false;Dungeon.actionQueue=[];n.startDialogue(Dungeon);}
  function install(){const render=Explore.prototype.render;Explore.prototype.render=function(...a){if(startGame!=='dialogue'||shown!==this.currentSpeaker)hide();return render.apply(this,a);};
   for(const id of [201,8001,8002,8003,8004,8005]){const n=MAP_DB[0].npcs.find(n=>n.index===id);if(!n)continue;const original=n.dialogueFactory,yes=n.yesActions;
-   n.dialogueFactory=d=>{const old=original?.(d)||{text:n.customDialogue||[],yesActions:yes},who=BMGuildStory.trainerInfo(n),key=id===201?'clerk':id===8005?'knight':null;const choices=id===201?['Guild','Talk','Dance','Leave']:['Learn','Talk',...(key?['Classes']:[]),'Leave'];const actions=id===201?[[['open_guild_menu','moors']],[['classic_talk',[who.text,BMClassPaths.patrons.clerk.intro]]],[['classic_talk','Dancer’s Pupil teaches at the Tintagel tavern. Ask her for a recommendation to become a Dancer.']],[['close_dialogue',null]]]:[old.yesActions||[['open_trainer',n.deck]],[['classic_talk',who?.text||old.text]],...(key?[[['class_paths',key]]]:[]),[['close_dialogue',null]]];return {...old,text:[id===201?'Welcome. How can I help?':id===8002?'Money is all that matters.':'Ready to learn?'],options:choices,choiceActions:actions,yesActions:actions[0],noActions:actions[1],endActions:[['close_dialogue',null]]};};
+   n.dialogueFactory=d=>{const old=original?.(d)||{text:n.customDialogue||[],yesActions:yes},who=BMGuildStory.trainerInfo(n),key=id===201?'clerk':id===8005?'knight':null;const choices=id===201?['Guild','Talk','Dance','Leave']:['Learn','Talk',...(key?['Classes']:[]),'Leave'];const actions=id===201?[[['open_guild_menu','moors']],[['classic_talk',[who.text,BMClassPaths.patrons.clerk.intro]]],[['class_paths',{patron:'clerk',path:'dancer'}]],[['close_dialogue',null]]]:[old.yesActions||[['open_trainer',n.deck]],[['classic_talk',who?.text||old.text]],...(key?[[['class_paths',key]]]:[]),[['close_dialogue',null]]];return {...old,text:[id===201?'Welcome. How can I help?':id===8002?'Money is all that matters.':'Ready to learn?'],options:choices,choiceActions:actions,yesActions:actions[0],noActions:actions[1],endActions:[['close_dialogue',null]]};};
   }
  }
  return {draw,touch,key,choose,hide,talk,install};
@@ -106638,7 +106667,7 @@ const BMClassicDialogue=(()=>{
  let session=null;
  const fields=['customDialogue','options','choiceActions','yesActions','noActions','endActions','rewardCard','dialogueFactory'];
  function pages(text){const out=[];for(let part of (Array.isArray(text)?text:[String(text||'…')]))for(let line of String(part).split(/\n\s*\n/)){while(line.length>150){let cut=line.lastIndexOf(' ',150);if(cut<60)cut=150;out.push(line.slice(0,cut).trim());line=line.slice(cut).trim();}if(line)out.push(line);}return out.length?out:['…'];}
- function paint(){const s=session;if(!s)return;const all=s.data.options||[],many=all.length>3,at=s.page*2;
+ function paint(){const s=session;if(!s)return;const all=[...(s.data.options||[]),...(globalThis.BMNPCChat?.eligible(s.n)?[{label:'Chat',chat:true,action:()=>BMNPCChat.open(s.n)}]:[])],many=all.length>3,at=s.page*2;
   s.choices=many?all.slice(at,at+2):all.slice();if(many)s.choices.push({label:at+2<all.length?'More':'First choices',action:()=>{s.page=at+2<all.length?s.page+1:0;paint();},navigation:true});
   s.choices.push({label:s.data.closeLabel||'Leave',action:s.onClose,close:true});
   Object.assign(s.n,{customDialogue:s.lines,options:s.choices.map(o=>o.label),choiceActions:null,yesActions:null,noActions:null,endActions:[],rewardCard:null});
@@ -106651,12 +106680,12 @@ const BMClassicDialogue=(()=>{
   session={n,data,onClose,owner:Dungeon,map:Dungeon.mapID,page:0,lines:pages(data.text),saved:Object.fromEntries(fields.map(k=>[k,n[k]])),view:window.gameViewMode,camera:Dungeon.cameraMode};
   Dungeon.savedViewMode=window.gameViewMode;Dungeon.savedCameraMode=Dungeon.cameraMode;window.gameViewMode='3d';Dungeon.cameraMode='first_person';Dungeon.dCounter=0;Dungeon.currentSpeaker=n;const dx=Dungeon.x-n.x,dy=Dungeon.y-n.y,len=Math.hypot(dx,dy);if(len>0){n.dirX=dx/len;n.dirY=dy/len;}beginNpcConversation(n);BMTouch.cancel();BMLock.clear();window.activeMoveKey=null;paint();BMShell.invalidate();return true;
  }
- function choose(i){const s=session,o=s?.choices[i];if(!s||!o||o.disabled||Dungeon.isDying||Dungeon.isDead)return false;if(o.navigation){o.action();return true;}
+ function choose(i){const s=session,o=s?.choices[i];if(!s||!o||o.disabled||Dungeon.isDying||Dungeon.isDead)return false;if(o.navigation){o.action();return true;}if(o.chat)return o.action();
   dismiss();Dungeon.currentSpeaker=s.n;Dungeon.dCounter=0;startGame='explore';o.action?.();
   if(startGame==='explore'&&Dungeon.currentSpeaker===s.n){Dungeon.currentSpeaker=null;BMDialogueFlow.closed(s.n);}return true;
  }
  function advance(close=false){if(!session)return false;if(Dungeon.dCounter<session.lines.length-1)Dungeon.dCounter++;else if(close||!session.data.options?.length)choose(session.choices.length-1);return true;}
- function tick(){if(session&&(session.owner!==Dungeon||session.map!==Dungeon.mapID||startGame!=='dialogue'||Dungeon.isDying||Dungeon.isDead))dismiss();}
+ function tick(){if(session&&(session.owner!==Dungeon||session.map!==Dungeon.mapID||!['dialogue','npc_chat'].includes(startGame)||Dungeon.isDying||Dungeon.isDead))dismiss();}
  window.addEventListener('keydown',e=>{if(!session||e.key!=='Escape'||e.target?.matches('input,textarea'))return;e.preventDefault();e.stopImmediatePropagation();choose(session.choices.length-1);},true);
  return {show,dismiss,choose,advance,tick,pages,disabled:(n,i)=>session?.n===n&&!!session.choices[i]?.disabled,owns:n=>session?.n===n,get active(){return !!session;},get index(){return session?Dungeon.dCounter:undefined;}};
 })();globalThis.BMClassicDialogue=BMClassicDialogue;
@@ -107365,7 +107394,7 @@ const BMTintagelCoast=(()=>{
  // Timber crossing over the existing river. Banks and stream above and below remain untouched.
  for(let y=29;y<=31;y++)for(let x=58;x<=66;x++)if([92,93,94,95].includes(m.maze[y][x])){m.maze[y][x]=0;floor(x,y,1,1,x%2?'#836744':'#715a40');}
  lane('Forest road',[[64.3,30.6],[70.1,32.5],[74.6,37.5],[80,41.4],[88,44.6],[94,45.5],[99.6,45.5]],1.55);
- lane('Village road',[[21,44.8],[26.5,49.7],[34.4,52.5],[43,56.6],[51.5,56.5],[59,60.9],[66.5,65],[72,70.3],[77.7,73.2],[78.6,75.5]],1.85);
+ lane('Village road',[[21,44.8],[26.5,49.7],[34.4,52.5],[43,56.6],[51.5,56.5],[59,60.9],[65.5,65],[65.5,84.5],[76,84.5],[85.5,84.5]],1.85);
  lane('Slum lane',[[10,60.5],[12.5,62.8],[17.8,64.5],[21.2,67.5],[23.9,70.2],[27.5,70.7]],1.26,'#756a52');
  lane('Cottages',[[17.8,64.5],[17.7,69.5],[18,75.3],[16.7,78.6],[12,78.6],[12,77.4]],1.22);
  // A few small dwellings make the lanes legible at walking height.
@@ -107462,7 +107491,7 @@ const BMTintagelCoast=(()=>{
   BMGuildDecor.addSurface(2,[...extras,...BMSettlements.floors(2).filter(q=>!q.road),...finishes]);
  }
  function settleTalk(n){if(Dungeon.mapID!==2||!settled(Dungeon))return false;if(n.index===ledger)return readLedger(n);if(!n._tintagelSettler||n.index===2970)return false;const w=works(),id=n.index,options=[],opt=(label,action)=>options.push({label,action});let text='';
-  if(id===201){text=shown===2?'F-rank work? Don’t be lazy. Leave those jobs to the younger ones. They need the experience. '+(Dungeon.memory.gerWell?'Your report from Ger reached the Queen.':'The Witch Queen has asked for you personally.'):'I am helping at the village inn until our hall opens. Queen knows how the building is coming along.';if(shown===2)opt('Guild desk',()=>Dungeon.executeActions([['open_guild_menu','moors']]));if(shown===2)opt('Class paths',()=>BMClassPaths.open('clerk'));opt('Guild news',()=>BMRegionalGuilds.directions(n,Dungeon));}
+  if(id===201){text=shown===2?'F-rank work? Don’t be lazy. Leave those jobs to the younger ones. They need the experience. '+(Dungeon.memory.gerWell?'Your report from Ger reached the Queen.':'The Witch Queen has asked for you personally.'):'I am helping at the village inn until our hall opens. Queen knows how the building is coming along.';if(shown===2)opt('Guild desk',()=>Dungeon.executeActions([['open_guild_menu','moors']]));if(shown===2)opt('Class paths',()=>BMClassPaths.open('clerk'));opt('Become a dancer',()=>BMClassPaths.dancerTalk(n,'clerk'));opt('Guild news',()=>BMRegionalGuilds.directions(n,Dungeon));}
   if(id===8008){text='Hot meals are ready. I buy herbs and kitchen ingredients, too.';opt('Meals',()=>Dungeon.executeActions([['open_shop',{...BMTavern.stock(),tab:'browse'}]]));opt('Sell ingredients',()=>Dungeon.executeActions([['open_shop',{...BMTavern.stock(),tab:'sell'}]]));}
   if(id===8002){text=shown===2?'Come in. Quietly. The children have just fallen asleep.':'I can hear what the collectors are planning from this table. My kids are in the slums, southwest of the market.';if(refuge().safe){opt('Lessons',()=>Dungeon.executeActions([['train','rogue_trainer']]));opt('Rogue class',()=>BMClassPaths.open('broker'));}opt('The refuge',()=>aid(n));}
   if(id===207){text=shown===2?'Welcome home. Dancer keeps the commissions by the door.':'The Queen is overseeing construction. Dancer and Barkeep are at the village inn to the southeast.';opt('The company',()=>BMClassicDialogue.show({speaker:n,text:'Hunter has gone east to Savage Forest. Rogue watches the children in the slums. Ask at the village inn if you need a bed.'}));}
@@ -107708,7 +107737,7 @@ const BMBranches=(()=>{
    if(n.index===613||n.index===890089)return hermitTalk(n);
    if(n.index>=890070&&n.index<=890072){const h=lodge(d);if(h.task==='trail'&&!h.marks.includes(n.index)){h.marks.push(n.index);d.requestSave();}return show(n,'Trail marked. '+h.marks.length+' of 3.');}
   }
-  if(d.mapID===2&&n.index===8405){const options=[opt('Request a song',()=>BMCherryPerformance.menu(n)),opt('Dance lessons',()=>BMClassPaths.open('pupil'))];if(!closed(d))options.unshift(opt('Shop',()=>shop(n,drinks())));return show(n,night(d)?'You caught my evening set. There is stew left if you are hungry.':'Pull up a chair. I sing here after dark.',options);}
+  if(d.mapID===2&&n.index===8405){const options=[opt('Request a song',()=>BMCherryPerformance.menu(n)),opt('Dance lessons',()=>BMClassPaths.dancerTalk(n,'pupil'))];if(!closed(d))options.unshift(opt('Shop',()=>shop(n,drinks())));return show(n,night(d)?'You caught my evening set. There is stew left if you are hungry.':'Pull up a chair. I sing here after dark.',options);}
   if(d.mapID===4&&n.index===887002)return show(n,'Welcome to Ger. Leave the sand at the door. The musicians have already started.',[opt('Shop',()=>shop(n,drinks()))]);
   if(d.mapID===2&&n.index>=890050&&n.index<=890052||d.mapID===4&&n.index>=890060&&n.index<=890062)return patrons(n);
   if((d.mapID===0||d.mapID===2||MAP_DB[d.mapID]?.guildPersonal)&&[890040,890041,890042].includes(n.index))return show(n,'Where are you riding?',stopList.filter((s,i)=>890040+i!==n.index).map(([label,id,x,y])=>opt(label,()=>warp(d,id,x,y))));
@@ -108177,7 +108206,7 @@ const BMRegionalGuilds=(()=>{
   const rows=[...deliveries,item('rogue',rank(d,'rogue')===3,rogueDirections(d)),item('knight',rank(d,'knight')===3,knightLead(d)),item('mage',rank(d,'mage')===3,mageLead(d))];
   if(BMAvalonCrossing.ready(d))rows.push(BMAvalonCrossing.entry(d));
   rows.push({id:'frozen-chapel',title:'Priest · The winter names',completed:d.memory.frozenChapel===3,text:BMFrozenCoast.lead(d)});
-  if(!d.memory.hunterLodge?.task&&!rank(d,'hunter'))rows.push(item('hunter',false,'Follow the east road into Savage Forest. Find Hunter by his cabin and help him mark the trails.'));return [...rows,...(globalThis.BMWarriorJourney?.entries(d)||[]),...(globalThis.BMPriestJourney?.entries(d)||[]),...(globalThis.BMFrontierRoads?.entries(d)||[])];
+  if(!d.memory.hunterLodge?.task&&!rank(d,'hunter'))rows.push(item('hunter',false,'Follow the east road into Savage Forest. Find Hunter by his cabin and help him mark the trails.'));return [...rows,...(globalThis.BMWarriorJourney?.entries(d)||[]),...(globalThis.BMPriestJourney?.entries(d)||[]),...(globalThis.BMFrontierRoads?.entries(d)||[]),...(globalThis.BMAegeanRoad?.entries(d)||[]),...(globalThis.BMLevantRoad?.entries(d)||[])];
  }
   // Regional desks share the main guild layout. Their errands and ranks belong to the local guild.
  const desks={
@@ -108327,7 +108356,7 @@ const BMFrozenCoast=(()=>{
  function surge(d,x){if(d.mapID!==SEA||x>=5||clear(d))return false;wave(d);return true;}
  function hasShip(d){return !!(d.memory.iceQueenShip||d.memory['8_4']?.permanent||(d.memory.spawned_8||[]).some(n=>[6,7].includes(n.index)&&(n.role==='portal'||n.deck?.includes(55))));}
  function repair(d){if(!d.memory.iceQueenShip&&hasShip(d))d.memory.iceQueenShip=true;}
- function sailing(d){return d.mapID===SEA&&d.memory.coastTravel!=='swim'&&!!d.memory.iceQueenShip&&BMSwimming.water(d);}
+ function sailing(d){return (d.mapID===SEA||globalThis.BMAtlas58?.positions.has(d.mapID))&&d.memory.coastTravel!=='swim'&&!!d.memory.iceQueenShip&&BMSwimming.water(d);}
  function syncHull(d){if(sailing(d)){if(playerSprite<243||playerSprite>245){d.memory.landPlayerSprite=playerSprite;playerSprite=243;}}else if(playerSprite>=243&&playerSprite<=245){const s=d.memory.landPlayerSprite;playerSprite=Number.isFinite(s)&&(s<243||s>245)?s:106;}}
  function depart(d,mode,p){if(mode==='ship'&&!hasShip(d))return false;d.memory.coastTravel=mode;if(!visit(d,SEA,p))return false;report(mode==='ship'?'Aboard the Queen’s ship. Turn side-on and tap Fire to shoot from both sides.':'You slip into the water. The western narrows lead to Avalon.');return true;}
  let nextShot=0;
@@ -108409,7 +108438,7 @@ const BMFrozenCoast=(()=>{
  function priest(n,d){
   const greet=(text,choices=[])=>n.index===896002?show(n,text,choices):show(n,text,[...choices,opt('Class path',()=>BMClassPaths.open('priest')),opt('Lessons',()=>d.executeActions([['train','priest_trainer']]))]);
   if(!clear(d))return greet('We broke up the last grain chest for firewood. The dead are in the cairn north of here. Please stay out of it. I heard someone walking below last night.');
-  const s=chapelStage(d);if(s>=3&&globalThis.BMPriestJourney?.ready(d))return greet(n.index===896002?'Priest writes from the healing house in Egypt. I keep the lamp lit and the names safe here.':'The chapel keeper will tend the memorial while I travel south. Find me at the healing house in Egypt, west of the river. From Ger, follow the eastern caravan road.');if(s===0)return greet('The grain boat arrived this morning. We have food for the living now. Help me give the dead their names. The winter roll is in the northern cairn.',[opt('Help with the chapel',()=>{if(chapelStage(d)!==0)return;d.memory.frozenChapel=1;report(lead(d));d.requestSave();})]);
+  const s=chapelStage(d);if(s>=3&&globalThis.BMPriestJourney?.ready(d))return greet(n.index===896002?'Priest writes from the healing house in Kemet. I keep the lamp lit and the names safe here.':'The chapel keeper will tend the memorial while I travel south. Find me at the healing house in Kemet, west of the river. From Ger, follow the eastern caravan road.');if(s===0)return greet('The grain boat arrived this morning. We have food for the living now. Help me give the dead their names. The winter roll is in the northern cairn.',[opt('Help with the chapel',()=>{if(chapelStage(d)!==0)return;d.memory.frozenChapel=1;report(lead(d));d.requestSave();})]);
   if(s===2)return greet('I remember her. She used to count the sacks twice and slip the boat boys an extra roll. May I hang the names where their families can read them?',[opt('Hang the winter roll',()=>{if(chapelStage(d)!==2)return;d.memory.frozenChapel=3;seatPriest(n,d);sync(d);report('The winter names hang in the chapel. The fire is lit.');d.requestSave();})]);
   return greet(s===1?'The cairn is north of my house. Bring back the names you find there.':'A sailor told me of physicians in the southern ports. I’d like to work beside them one day. For now, there are people here who need me.');}
  bind(SNOW,8004,priest);bind(SNOW,896002,priest);
@@ -109020,7 +109049,7 @@ const BMCherryPerformance=(()=>{
   const at=p.ctx.currentTime;if(lastPlayer===p)r.elapsed+=Math.max(0,Math.min(1,at-lastAudio));lastPlayer=p;lastAudio=at;
   if(r.elapsed>=r.duration&&c.scene.performanceTurn===show?.turn){const line=p.lyricCues?.findLast(c=>c.start<=at&&c.end+.2>=at);if(!line)ended(c.scene,p);}
  }
- function scene(d,mode){pulse(d);if(!inside(d)||!scheduled(d)){show=null;return null;}if(!['explore','dialogue','shop','guild_menu','gambler','pause','journal','grimoire','deck_menu','player','trainer','class_paths'].includes(mode))return null;
+ function scene(d,mode){pulse(d);if(!inside(d)||!scheduled(d)){show=null;return null;}if(!['explore','dialogue','npc_chat','shop','guild_menu','gambler','pause','journal','grimoire','deck_menu','player','trainer','class_paths'].includes(mode))return null;
   const r=request(d),wanted=songs[r?.song]||songs.taliesin,identity=r?.id||'evening',online=BMOnline.connected();
   if(!show||show.identity!==identity)show={identity,mode:wanted.classicId?(online?'classic':'fallback'):'requested',turn:++showSerial};
   // Latch the local song through reconnection. Only its ending can return to a classic.
@@ -109043,15 +109072,51 @@ const BMCherryPerformance=(()=>{
   d.saveGame();BMClassicDialogue.dismiss();d.currentSpeaker=null;startGame=preGame='explore';BattleMusic.followScene();Promise.resolve(MusicEngine.init()).then(ok=>{if(ok===false)failed({requestId:d.memory.cherryRequest?.id});},()=>failed({requestId:d.memory.cherryRequest?.id}));BattleMusic.tick();BMInteract.report('Cherry: '+songs[key].name+' — this one is for you.');return true;
  }
  function menu(n,message){const r=request(Dungeon);return BMClassicDialogue.show({speaker:n,text:message||(r?'Now requested: '+songs[r.song]?.name+'.':'Pick a song — 5 silver. Offline, Taliesin and Twilight become vocal Serenade songs. If we reconnect, I finish the current song first. The evening set ends at dawn.'),options:r?[]:Object.entries(songs).map(([k,s])=>({label:s.name+' · 5 silver',action:()=>order(k,n)}))});}
- function light(d,x,y){if(!inside(d,x,y)||!glow)return 0;return glow*Math.max(.10,.88*Math.max(0,1-Math.hypot((x-76)*.65,y-71.6)/8),.38*Math.max(0,1-Math.hypot(x-70,y-77)/5),.38*Math.max(0,1-Math.hypot(x-80,y-77)/5));}
- function ambience(d,x,y){return inside(d,x,y)?1-glow*.27:1;}
+ function light(d,x,y){if(d.isDead||d.isDying||!inside(d,x,y)||!glow)return 0;return glow*Math.max(.10,.88*Math.max(0,1-Math.hypot((x-76)*.65,y-71.6)/8),.38*Math.max(0,1-Math.hypot(x-70,y-77)/5),.38*Math.max(0,1-Math.hypot(x-80,y-77)/5));}
+ function ambience(d,x,y){return inside(d,x,y)?1-glow*.60:1;}
  function timeRate(d){if(BMOnline.connected())return .1;if(!night(d))return .1;return inside(d)? .0175:.035;}
- function tick(d,dt){pulse(d);if(!Number.isFinite(dt)||dt<=0)return;const target=ready(d)?1:0;glow+=(target-glow)*(1-Math.exp(-Math.min(dt,.1)/1.4));}
- function floorColor(d,q){const x=q.x+q.w/2,y=q.y+q.h/2;if(!inside(d,x,y)||glow<.01||!/^#[0-9a-f]{6}$/i.test(q.color))return q.color;const v=parseInt(q.color.slice(1),16),k=ambience(d,x,y),l=light(d,x,y);return 'rgb('+[v>>16,v>>8&255,v&255].map((v,i)=>Math.round(Math.min(255,v*k+l*[48,25,6][i]))).join(',')+')';}
- return {inside,timeRate,tick,light,ambience,floorColor,scene,scheduled,ready,started,ended,failed,pulse,menu,order,songs,finish};
+ function tick(d,dt){pulse(d);if(!Number.isFinite(dt)||dt<=0)return;const step=Math.min(dt,.1),target=!d.isDead&&!d.isDying&&ready(d)?1:0;glow+=(target-glow)*(1-Math.exp(-step/1.4));cosmic+=((target&&inside(d)&&theme(d)==='cosmic'?1:0)-cosmic)*(1-Math.exp(-step/1.8));stageTime+=step;if(spaceLayer&&!reducedMotion)for(const p of spaceLayer.particles){p.life+=step*.10;if(p.life>=1){p.life=0;p.x=Math.random()*spaceLayer.width;p.y=Math.random()*spaceLayer.height;}}}
+ function floorColor(d,q){const x=q.x+q.w/2,y=q.y+q.h/2;if(!inside(d,x,y)||glow<.01||!/^#[0-9a-f]{6}$/i.test(q.color))return q.color;const v=parseInt(q.color.slice(1),16),k=ambience(d,x,y),l=light(d,x,y);return 'rgb('+[v>>16,v>>8&255,v&255].map((v,i)=>Math.round(Math.min(255,v*k+l*color(d)[i]*.25))).join(',')+')';}
+  let cosmic=0,stageTime=0,spaceLayer=null;
+ const reducedMotion=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+ function theme(d){const s=BattleMusic.current?.scene;return request(d)?.song==='twilight'||s?.performance==='cherry'&&s.classicId===55?'cosmic':'warm';}
+ function color(d){if(theme(d)!=='cosmic')return [255,178,82];const t=reducedMotion?0:stageTime*.13;return [150+55*Math.sin(t),125+40*Math.sin(t+2),220+30*Math.sin(t+4)];}
+ function atmosphere(d,c,x,y,w,h){if(!inside(d)||d.isDead||d.isDying||glow<.015||w<=0||h<=0)return false;
+  c.save();c.beginPath();c.rect(x,y,w,h);c.clip();
+  c.fillStyle='rgba(2,1,9,'+(glow*.14)+')';c.fillRect(x,y,w,h);
+  const t=reducedMotion?0:stageTime,colors=color(d),amount=glow*(.5+.5*cosmic);
+  for(let i=0;i<3;i++){const px=x+w*(.22+i*.28+Math.sin(t*.16+i)*.07),py=y+h*(.19+Math.cos(t*.13+i*2)*.07),r=Math.max(30,w*.48),g=c.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,'rgba('+colors.map((v,k)=>Math.round(k===i?Math.min(255,v+30):v)).join(',')+','+(amount*(.13+.09*cosmic))+')');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.fillRect(x,y,w,h);}
+  if(cosmic>.015){if(!spaceLayer){spaceLayer=new WeatherSystem(w);spaceLayer.setMode('space');spaceLayer.particles=spaceLayer.particles.slice(0,64);for(const p of spaceLayer.particles)p.decay=.003+Math.random()*.003;}
+   if(spaceLayer.width!==w||spaceLayer.height!==h){const ox=spaceLayer.width||w,oy=spaceLayer.height||h;for(const p of spaceLayer.particles){p.x*=w/ox;p.y*=h/oy;}spaceLayer.resize(w,h);}
+   c.globalAlpha=cosmic*.9;spaceLayer.draw(c,x,y);c.globalAlpha=1;
+  }c.restore();return true;
+ }
+
+ return {atmosphere,color,theme,inside,timeRate,tick,light,ambience,floorColor,scene,scheduled,ready,started,ended,failed,pulse,menu,order,songs,finish};
 })();globalThis.BMCherryPerformance=BMCherryPerformance;
 
 /* Southern roads. Atlas legend numbers are labels, never engine map IDs. */
+/* Drinking is an inventory action. Its overlay composes after all weather. */
+const BMDrinking=(()=>{
+ const reduced=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+ let buffer=null;
+ const active=d=>(d.activeBuffs||[]).find(b=>b.name==='Drunk'&&b.source==='tavern_beer'&&b.duration>0&&b.drinkExpiresAt>Date.now());
+ function consume(key){const d=Dungeon,item=BMInventory.entries()[key];if(!item||item.effect!=='beer'||item.kind!=='consumable'||d.isDead||d.isDying||d.isLoading)return false;
+  if(!BMInventory.takeMany({[key]:1}))return false;
+  const con=resolveStatRoll(d,1),dc=1+Math.floor(Math.random()*6),resisted=con>=dc,now=Date.now();d.activeBuffs??=[];
+  if(!resisted){let b=active(d);if(b){b.duration=Math.min(3600,b.duration+1800);b.drinkExpiresAt=now+Math.min(120000,b.drinkExpiresAt-now+60000);}else{b={name:'Drunk',source:'tavern_beer',type:'debuff',duration:1800,drinkExpiresAt:now+60000};d.activeBuffs.push(b);}markAuraTick(b,d);}
+  const message='Drank a beer. CON '+con+' vs '+dc+' · '+(resisted?'You hold your drink.':'You feel the room sway.');BMActivity.record('beer_consumed',message,{item:key,quantity:1,conRoll:con,difficulty:dc,resisted});BMInteract.report(message);BMInventory.refreshSkills();d.saveGame();return true;
+ }
+ const nativeConsume=BMInventory.consume;BMInventory.consume=function(key){return BMInventory.entries()[key]?.effect==='beer'?consume(key):nativeConsume(key);};
+ function tick(d){for(const b of d.activeBuffs||[])if(b.source==='tavern_beer'&&b.drinkExpiresAt<=Date.now())b.duration=0;}
+ function draw(d,c,x,y,w,h){tick(d);if(d.isDead||d.isDying||!active(d)||w<=0||h<=0)return false;
+  c.save();c.beginPath();c.rect(x,y,w,h);c.clip();
+  if(!reduced&&c.canvas){buffer??=document.createElement('canvas');const bw=Math.ceil(w),bh=Math.ceil(h);if(buffer.width!==bw||buffer.height!==bh){buffer.width=bw;buffer.height=bh;}const b=buffer.getContext('2d');b.clearRect(0,0,bw,bh);b.drawImage(c.canvas,x,y,w,h,0,0,bw,bh);const t=performance.now()/1000;c.globalAlpha=.16;c.drawImage(buffer,x+Math.sin(t*.9)*6,y+Math.cos(t*.7)*3,w,h);c.globalAlpha=1;}
+  c.fillStyle='rgba(143,84,37,.09)';c.fillRect(x,y,w,h);c.restore();return true;
+ }
+ return {active,consume,tick,draw};
+})();globalThis.BMDrinking=BMDrinking;
+
 const BMSouthernRoads=(()=>{
  const DESERT=42,EGYPT=43,ARABIA=44,TRANSYLVANIA=45,GREECE=46;
  const maps=new Map(),surfaces=new Map(),handlers=new Map(),defs=new Map();
@@ -109061,11 +109126,11 @@ const BMSouthernRoads=(()=>{
   const m={name,legendIndex:legend,outdoors:true,biome,weather,floorColor:floor,skyColor:sky,spawn:{x:3.5,y:77.5,dir:1},slabs:[],npcs:[],maze:Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>x===0||y===0||x===99||y===99?10:0))};
   MAP_DB[id]=m;maps.set(id,m);surfaces.set(id,[]);return m;
  }
- const desert=region(DESERT,'Eastern Desert · The caravan road',23,'#bd986b','#a8c3d2','Desert');
- const egypt=region(EGYPT,'Egypt · The river and the healing house',22,'#bfa77b','#aac8d7','Desert');
+ const desert=region(DESERT,'Deshret · The Red Land',23,'#bd986b','#a8c3d2','Desert');
+ const egypt=region(EGYPT,'Kemet · The river and the healing house',22,'#bfa77b','#aac8d7','Desert');
  const arabia=region(ARABIA,'Arabia · The oasis physicians',21,'#bd9063','#a5becf','Desert');
  const transylvania=region(TRANSYLVANIA,'Transylvania · The Carpathian valleys',14,'#3e4b3b','#8b969c','Sylvan','rain');
- const greece=region(GREECE,'Greece · The southern coast',13,'#8c9162','#9bc8e1','Coast');
+ const greece=region(GREECE,'Hellas · The southern coast',13,'#8c9162','#9bc8e1','Coast');
  transylvania.terrainOnly=greece.terrainOnly=true;
  function patch(id,x,y,w,h,color){surfaces.get(id).push({x,y,w,h,color});}
  function rock(id,x,y,h=2.4){const m=maps.get(id);if(x<1||y<1||x>98||y>98)return;m.maze[y][x]=10;m.slabs.push({x,y,bottom:0,top:h,tile:10});}
@@ -109132,7 +109197,7 @@ const BMSouthernRoads=(()=>{
  for(const [id,x,y,sprite,name]of [[896100,35.5,34.5,1170,'Clinic bed'],[896101,42.5,34.5,1170,'Clinic bed'],[896102,41.5,39.5,1165,'Case records'],[896103,34.5,40.5,1169,'Healers’ supply chest'],[896104,26.5,48.5,1170,'River house bed'],[896105,38.5,60.5,1169,'River house chest']])prop(EGYPT,id,x,y,sprite,name);
  for(const [id,x,y,sprite,name]of [[896110,65.5,35.5,1170,'Resting place'],[896111,73.5,35.5,1165,'Physicians’ books'],[896112,64.5,41.5,1169,'Oasis supply chest'],[896113,58.5,53.5,1170,'Caravan bed'],[896114,74.5,54.5,1169,'Caravan chest']])prop(ARABIA,id,x,y,sprite,name);
  prop(DESERT,896120,30.5,66.5,1171,'Caravan crate');prop(DESERT,896121,31.5,68.5,1172,'Supply barrel');prop(DESERT,896122,24.5,65.5,1169,'Caravan chest');
- actor(DESERT,896123,26.5,67.5,252,'Caravan guide');bind(DESERT,896123,(n,d)=>show(n,'Ger lies west. Eastward, follow the road between the stone ridges until you reach Egypt’s river. The bridge leads onward to Arabia. The water here is a welcome place to stop.'));
+ actor(DESERT,896123,26.5,67.5,252,'Caravan guide');bind(DESERT,896123,(n,d)=>show(n,'Ger lies west. We call these dunes Deshret—the Red Land. Eastward, follow the road between the stone ridges until you reach Kemet’s river. The bridge leads onward to Arabia. The water here is a welcome place to stop.'));
  for(const [id,m]of maps){BMGuildDecor.addSurface(id,surfaces.get(id));BMLayers.invalidate(m);}
  // Shared border coordinates: walking and swimming retain the position along the crossing.
  const links=new Map();
@@ -109154,7 +109219,7 @@ const BMSouthernRoads=(()=>{
   // New regions have only authored exits; their unused edges never fall through to an unrelated atlas cell.
   if(maps.has(this.mapID))return;return transition.call(this,tx,ty);
  };
- for(const [map,id,x,y,label]of [[4,896130,96.5,76.5,'East · Egypt via the caravan road'],[DESERT,896131,3.5,76.5,'West · Ger'],[DESERT,896132,96.5,71.5,'East · Egypt'],[EGYPT,896133,3.5,71.5,'West · Ger through the Eastern Desert'],[EGYPT,896134,96.5,53.5,'East · Arabia'],[ARABIA,896135,3.5,53.5,'West · Egypt']]){
+ for(const [map,id,x,y,label]of [[4,896130,96.5,76.5,'East · Kemet via the caravan road'],[DESERT,896131,3.5,76.5,'West · Ger'],[DESERT,896132,96.5,71.5,'East · Kemet'],[EGYPT,896133,3.5,71.5,'West · Ger through Deshret'],[EGYPT,896134,96.5,53.5,'East · Arabia'],[ARABIA,896135,3.5,53.5,'West · Kemet']]){
   actor(map,id,x,y,1163,label,{interactionVerb:'Read',onSpawn(n){BMClassArt.resource(n,1163);}});bind(map,id,(n,d)=>show(n,label+'. Continue along the road through the gap.'));
  }
  let palette=null;
@@ -109187,14 +109252,14 @@ const BMPriestJourney=(()=>{
  function lead(d){
   if(!ready(d))return 'Priest’s southern studies begin after the Kraken’s defeat and the company settles in Tintagel.';
   const s=q(d);return [
-   'Priest studies at Egypt’s healing house, west of the river (38,39). From Ger, follow the eastern road (99,77), cross the Eastern Desert and enter Egypt.',
+   'Priest studies at Kemet’s healing house, west of the river (38,39). From Ger, follow the eastern road (99,77), cross Deshret, the Red Land, and enter Kemet.',
    'Collect the two study specimens in the healing-house garden (29,36 and 29,39), then speak to the River Physician. Specimens: '+s.specimens.length+' / 2.',
-   'Examine both patients in Egypt’s healing house. Match the treatment to the ailment: restore a broken ward or cleanse lingering poison. Treated: '+s.treated.filter(id=>id!==896212).length+' / 2. Report to the River Physician.',
+   'Examine both patients in Kemet’s healing house. Match the treatment to the ailment: restore a broken ward or cleanse lingering poison. Treated: '+s.treated.filter(id=>id!==896212).length+' / 2. Report to the River Physician.',
    'Carry the physician’s introduction east across the river, through the Sinai road into Arabia. Meet the Oasis Physician at the study house (69,39). Read both case records inside.',
    'Examine the caravan guard in the Arabian study house. Follow the case notes: cleanse the lingering ailment, then restore the ward.',
-   'The Arabian case is complete. Return to Priest at Egypt’s healing house and establish the guild together.',
-   'Priest’s Guild is open at Egypt’s healing house. Talk, take supply jobs, train or follow the Priest class path. Each INT point spent earns one extra training step.'
-  ][stage(d)]||'Return to Priest in Egypt.';
+   'The Arabian case is complete. Return to Priest at Kemet’s healing house and establish the guild together.',
+   'Priest’s Guild is open at Kemet’s healing house. Talk, take supply jobs, train or follow the Priest class path. Each INT point spent earns one extra training step.'
+  ][stage(d)]||'Return to Priest in Kemet.';
  }
  function work(n,d){
   if(!ready(d))return show(n,lead(d));
@@ -109203,7 +109268,7 @@ const BMPriestJourney=(()=>{
   if(stage(d)===5)return show(n,'You brought back more than a letter. The physicians have agreed to share their cases, and we have a room where travellers can learn. Will you help me open this guild?',[
    opt('Establish Priest’s Guild',()=>{
     if(stage(d)!==5)return;
-    const book={key:'book:southern_physicians',name:'Notes of the Southern Physicians',kind:'book',text:'Records from Egypt and Arabia.\n\nExamine before choosing a spell. A depleted ward and a lingering ailment need different care. Cleansing removes an ailment; a healing preparation restores a ward. Where both are present, clear the ailment before rebuilding protection.\n\nThese are records of the world’s magical wards, gathered for the new Priest’s Guild.'};
+    const book={key:'book:southern_physicians',name:'Notes of the Southern Physicians',kind:'book',text:'Records from Kemet and Arabia.\n\nExamine before choosing a spell. A depleted ward and a lingering ailment need different care. Cleansing removes an ailment; a healing preparation restores a ward. Where both are present, clear the ailment before rebuilding protection.\n\nThese are records of the world’s magical wards, gathered for the new Priest’s Guild.'};
     if(!BMInventory.add(book))return;
     (d.memory.regionalGuilds??={}).priest={rank:1,stage:1};s.rewardClaimed=true;change(d,6);d.updateSkills();d.saveGame();report('Priest’s Guild established · physicians’ notes received · +1 INT training step.');
    })]);
@@ -109247,7 +109312,7 @@ const BMPriestJourney=(()=>{
  R.actor(A,MASTER,69.5,39.5,255,'Oasis Physician');
  R.bind(A,MASTER,(n,d)=>{
   if(stage(d)===3&&q(d).notes.length===2)return show(n,'You have read both records. One patient has two problems. I will stay beside you while you put the sequence into practice.',[opt('Begin the supervised case',()=>{if(stage(d)===3&&q(d).notes.length===2)change(d,4);})]);
-  return show(n,stage(d)<3?'We exchange teaching records with the healing house in Egypt. Their students come east along the caravan road.':stage(d)===3?'Read the two case records by the eastern shelves, then return to me. We will work through the next case together.':stage(d)>=5?'Take our completed record back to Priest in Egypt. Tell him our school will share its work with his guild.':lead(d));
+  return show(n,stage(d)<3?'We exchange teaching records with the healing house in Kemet. Their students come east along the caravan road.':stage(d)===3?'Read the two case records by the eastern shelves, then return to me. We will work through the next case together.':stage(d)>=5?'Take our completed record back to Priest in Kemet. Tell him our school will share its work with his guild.':lead(d));
  });
  for(const [id,x,y,key,title,text]of [[896214,72.5,37.5,'ailments','Case record · Lingering effects','A ward can remain strong while an ailment persists. Examine both separately. Cleansing clears the lingering effect.'],[896215,72.5,40.5,'sequence','Case record · Two conditions','When an ailment and depleted ward occur together, clear the ailment first. Then restore the ward and check the result.']]){
   R.actor(A,id,x,y,1163,title,{interactionVerb:'Read',onSpawn(n){BMClassArt.resource(n,1163);}});
@@ -109364,23 +109429,23 @@ const BMFrontierRoads=(()=>{
  const transition=Explore.prototype.handleAtlasTransition;Explore.prototype.handleAtlasTransition=function(x,y){const side=sideAt(this,x,y),link=links.get(this.mapID+'/'+side);if(!link)return transition.call(this,x,y);if(!edge(this,x,y))return;
   const offset=(['east','west'].includes(side)?this.y:this.x)-link.center,m=MAP_DB[link.map],p=link.arrival+offset;return R.enter(this,link.map,{x:link.side==='west'?1.5:link.side==='east'?m.maze[0].length-1.5:p,y:link.side==='north'?1.5:link.side==='south'?m.maze.length-1.5:p,dir:{west:1,east:3,north:2,south:0}[link.side]});};
  function sign(map,id,x,y,name,text){for(let yy=Math.floor(y)-1;yy<=Math.floor(y)+1;yy++)for(let xx=Math.floor(x)-1;xx<=Math.floor(x)+1;xx++)clear(map,xx,yy);R.actor(map,id,x,y,1163,name,{interactionVerb:'Read',onSpawn:n=>BMClassArt.resource(n,1163)});R.bind(map,id,n=>show(n,text));}
- sign(GERMANY,898001,29.5,24,'East · Carpathian road','The road east reaches the Carpathian valleys. A roadwatch camp keeps the western approach open; the southern road continues toward Greece.');
+ sign(GERMANY,898001,29.5,24,'East · Carpathian road','The road east reaches the Carpathian valleys. A roadwatch camp keeps the western approach open; the southern road continues toward Hellas.');
  sign(TRANSYLVANIA,898002,3.5,30,'West · Germania','West through the wooded pass to the Germanic settlement and the Rhine crossing.');
- sign(TRANSYLVANIA,898003,49.8,94,'South · Greece','The southern road descends toward Greece. Keep to the marked path through the pass.');
+ sign(TRANSYLVANIA,898003,49.8,94,'South · Hellas','The southern road descends toward Hellas. Keep to the marked path through the pass.');
  sign(GREECE,898004,50,4,'North · Carpathian valleys','North through the pass to the Carpathian roadwatch camp.');
  sign(TRANSYLVANIA,898005,47,6,'Northern gate','The northern gate is barred. Beyond the watch towers, the old courts keep their own hours.');
  R.actor(TRANSYLVANIA,898010,34.5,33.5,252,'Roadwatch quartermaster');R.actor(TRANSYLVANIA,898011,29.5,35.5,306,'Roadwatch scout');R.actor(GREECE,898020,43.5,31.5,32,'Southern caravan steward');
  for(const [map,id,x,y,sprite,name]of [[45,898030,29.5,30.5,1170,'Roadwatch bed'],[45,898031,36.5,36.5,1172,'Water barrel'],[45,898032,36.5,31.5,1169,'Roadwatch supplies chest'],[46,898033,37.5,27.5,1170,'Caravan bed'],[46,898034,49.5,27.5,1165,'Road records'],[46,898035,48.5,33.5,1169,'Southern caravan chest']])R.prop(map,id,x,y,sprite,name);
- function lead(d){return ['The roadwatch quartermaster has a missing supply parcel. Find the camp on the western Carpathian road (34,33).','Clear the wolves around the broken caravan east of the southern road (69,64), then recover its sealed parcel.','Carry the sealed parcel south through the pass to the caravan steward in Greece (43,31).','The caravan supplies reached Greece. The roadwatch and southern caravan camp can provision your next journey.'][stage(d)];}
+ function lead(d){return ['The roadwatch quartermaster has a missing supply parcel. Find the camp on the western Carpathian road (34,33).','Clear the wolves around the broken caravan east of the southern road (69,64), then recover its sealed parcel.','Carry the sealed parcel south through the pass to the caravan steward in Hellas (43,31).','The caravan supplies reached Hellas. The roadwatch and southern caravan camp can provision your next journey.'][stage(d)];}
  R.bind(TRANSYLVANIA,898010,(n,d)=>show(n,lead(d),[opt('Talk',()=>show(n,'We keep this road open for anyone willing to travel it in peace. Farther north, the old houses prize ancestry, fine stones and careful introductions. Here, dry boots and a full provision sack count for more.')),
-  opt('Road job',()=>stage(d)===0?show(n,'Wolves scattered our last caravan. Recover the sealed parcel from the broken cart and deliver it to the southern camp in Greece. The steward will pay 65 silver and give you three moonleaf herbs.',[opt('Accept delivery',()=>{if(stage(d)!==0)return;state(d).stage=1;BMActivity.record('quest_accepted','Accepted the roadwatch supply delivery.',{quest:'frontier-parcel'});save(d,lead(d));})]):show(n,lead(d))),
+  opt('Road job',()=>stage(d)===0?show(n,'Wolves scattered our last caravan. Recover the sealed parcel from the broken cart and deliver it to the southern camp in Hellas. The steward will pay 65 silver and give you three moonleaf herbs.',[opt('Accept delivery',()=>{if(stage(d)!==0)return;state(d).stage=1;BMActivity.record('quest_accepted','Accepted the roadwatch supply delivery.',{quest:'frontier-parcel'});save(d,lead(d));})]):show(n,lead(d))),
   ...(BMRegionalGuilds.rank(d,'warrior')>0?[opt('Guild',()=>BMRegionalGuilds.openDesk(n,'warrior'))]:[]),opt('Supplies',()=>supplies(n,d))]));
  R.bind(TRANSYLVANIA,898011,n=>show(n,'Follow the southern road past the river bend. The broken cart lies down the eastern spur. Beyond our northern gate, the high houses admit guests by invitation. Keep bright jewelry covered if you do not intend to attract attention.'));
  function supplies(n,d){return show(n,'Travel provisions: moonleaf costs 4 silver; three cuts of raw meat cost 9 silver.',[opt('Moonleaf · 4 silver',()=>buy(n,d,{key:'herb:moonleaf',name:'Moonleaf',kind:'herb',herbId:'moonleaf'},1,4)),opt('Raw meat ×3 · 9 silver',()=>buy(n,d,{key:'material:meat',name:'Raw meat',kind:'material'},3,9))]);}
  function buy(n,d,item,count,price){if(!BMCurrency.spend(price))return show(n,'You do not have enough silver.');if(!BMInventory.add(item,count)){BMCurrency.add(price);return show(n,'There is no room for those supplies.');}BMActivity.record('trade','Bought '+count+' '+item.name+' for '+price+' silver.',{item:item.key,quantity:count,silver:price});save(d);supplies(n,d);}
  R.bind(GREECE,898020,(n,d)=>show(n,stage(d)===2?'The roadwatch seal is intact. Those supplies were overdue.':lead(d),[
-  ...(stage(d)===2?[opt('Deliver parcel · 65 silver + 3 moonleaf',()=>{const q=state(d);if(q.stage!==2||q.claimed)return;if(!Number.isSafeInteger(BMCurrency.balance()+65)||!BMInventory.add({key:'herb:moonleaf',name:'Moonleaf',kind:'herb',herbId:'moonleaf'},3))return;q.stage=3;q.claimed=true;BMCurrency.add(65);BMActivity.record('quest_completed','Delivered the roadwatch parcel in Greece: 65 silver and three moonleaf herbs.',{quest:'frontier-parcel',silver:65,herbs:3});save(d,'The caravan supply delivery is complete.');show(n,'Your payment, and fresh moonleaf for the next road.');})]:[]),
-  opt('Talk',()=>show(n,'The northern trail returns to the Carpathian valleys. Merchants speak of roads across the eastern sea toward Anatolia and the southern lands; our caravan does not travel them yet.')),opt('Supplies',()=>supplies(n,d))]));
+  ...(stage(d)===2?[opt('Deliver parcel · 65 silver + 3 moonleaf',()=>{const q=state(d);if(q.stage!==2||q.claimed)return;if(!Number.isSafeInteger(BMCurrency.balance()+65)||!BMInventory.add({key:'herb:moonleaf',name:'Moonleaf',kind:'herb',herbId:'moonleaf'},3))return;q.stage=3;q.claimed=true;BMCurrency.add(65);BMActivity.record('quest_completed','Delivered the roadwatch parcel in Hellas: 65 silver and three moonleaf herbs.',{quest:'frontier-parcel',silver:65,herbs:3});save(d,'The caravan supply delivery is complete.');show(n,'Your payment, and fresh moonleaf for the next road.');})]:[]),
+  opt('Talk',()=>show(n,'The northern trail returns to the Carpathian valleys. Our coast road leads to the Aegean landing (76,65). The boatman crosses to Anatolia whenever you are ready. Ask the landing clerk about courier work.')),opt('Supplies',()=>supplies(n,d))]));
  R.actor(TRANSYLVANIA,898040,69.5,64.5,1171,'Sealed caravan parcel',{interactionVerb:'Recover',onSpawn:n=>BMClassArt.resource(n,1171)});
  R.bind(TRANSYLVANIA,898040,(n,d)=>{if(stage(d)===0)return show(n,'A roadwatch seal is stamped on this parcel. The quartermaster at the western camp will know its destination.');if(stage(d)>=2)return show(n,'The sealed parcel has already been recovered.');if(WOLVES.some(id=>!state(d).defeated.includes(id)&&d.npcs.some(n=>n.index===id&&!n.isDead)))return show(n,'Wolves still prowl around the cart. Clear them before opening the wreckage.');return show(n,'The sealed parcel survived beneath the broken boards.',[opt('Take sealed parcel',()=>{if(stage(d)!==1)return;state(d).stage=2;BMActivity.record('quest_item','Recovered the sealed caravan parcel.',{quest:'frontier-parcel'});save(d,lead(d));})]);});
  for(const [id,x,y]of [[898201,65.5,60.5],[898202,72.5,60.5],[898203,74.5,65.5]])R.actor(TRANSYLVANIA,id,x,y,191,'Caravan wolf',{role:'battle',alignment:'foe',state:'wandering',isCinematic:false,level:2,deck:[191,50],customDialogue:null,spawnCondition:d=>!state(d).defeated.includes(id),onSpawn(n){Object.assign(n,{nonBlocking:false,_talkThrough:false,_frontierWolf:true,spawnX:x,spawnY:y});}});
@@ -109393,6 +109458,265 @@ const BMFrontierRoads=(()=>{
 })();globalThis.BMFrontierRoads=BMFrontierRoads;
 
 /* The inn keeper's opponent owns a separate, persistent blackjack table. */
+/* On-demand Aegean ferry and the first Anatolian caravan road. */
+const BMAegeanRoad=(()=>{
+ const HELLAS=46,ANATOLIA=48,R=BMSouthernRoads,patches=new Map([[HELLAS,[]],[ANATOLIA,[]]]);
+ const NPC={hellasBoat:899001,anatoliaBoat:899002,clerk:899010,innkeeper:899011,watchkeeper:899012};
+ const landings={46:{x:73.5,y:65.5,dir:3},48:{x:23.5,y:62.5,dir:1}};
+ const m={name:'Anatolia · The Aegean road',outdoors:true,biome:'Coast',weather:'clear',floorColor:'#a29b70',skyColor:'#a2c9dd',spawn:{...landings[48]},slabs:[],npcs:[],maze:Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>!x||!y||x===99||y===99?10:0))};
+ if(MAP_DB[ANATOLIA])throw Error('The Anatolian map ID is already occupied.');MAP_DB[ANATOLIA]=m;
+ function paint(id,x,y,w,h,color){patches.get(id).push({x,y,w,h,color});}
+ function clear(id,x,y){const a=MAP_DB[id];if(x<0||y<0||x>=a.maze[0].length||y>=a.maze.length)return;a.maze[y][x]=0;a.slabs=a.slabs.filter(s=>s.x!==x||s.y!==y);}
+ function yard(id,x,y,w,h,color){for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)clear(id,xx,yy);paint(id,x,y,w,h,color);}
+ function road(id,points,width=1.4){for(let i=1;i<points.length;i++){const [x,y]=points[i-1],[a,b]=points[i],dx=a-x,dy=b-y,len=dx*dx+dy*dy||1;
+  for(let yy=Math.max(1,Math.floor(Math.min(y,b)-width));yy<=Math.min(98,Math.ceil(Math.max(y,b)+width));yy++)for(let xx=Math.max(1,Math.floor(Math.min(x,a)-width));xx<=Math.min(98,Math.ceil(Math.max(x,a)+width));xx++){const t=Math.max(0,Math.min(1,((xx+.5-x)*dx+(yy+.5-y)*dy)/len));if(Math.hypot(xx+.5-x-t*dx,yy+.5-y-t*dy)<=width){clear(id,xx,yy);paint(id,xx,yy,1,1,'#c0ac86');}}}}
+ function house(x,y,w,h,door){yard(ANATOLIA,x,y,w,h,'#b1a18a');for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){const wall=xx===x||xx===x+w-1||yy===y||yy===y+h-1,entry=yy===y+h-1&&xx===door;if(wall&&!entry)m.slabs.push({x:xx,y:yy,bottom:0,top:1.65,tile:1});if(entry)m.slabs.push({x:xx,y:yy,bottom:1.3,top:1.65,tile:1});m.slabs.push({x:xx,y:yy,bottom:1.65,top:1.82,tile:15});}}
+ for(let y=1;y<99;y++)for(let x=1;x<99;x++){
+  const shore=16+Math.round(3*Math.sin(y*.085));
+  if(x<shore)m.maze[y][x]=x<shore-4?94:92;
+  else if(y<16+4*Math.sin(x*.11)||x>87+4*Math.cos(y*.09)){m.maze[y][x]=10;m.slabs.push({x,y,bottom:0,top:1.7+(x+y)%5*.25,tile:10});}
+  else if(x>25&&x<81&&y>21&&y<90&&(x*23+y*19)%131<3)m.maze[y][x]=3;
+ }
+ for(let y=0;y<100;y++)for(let x=0;x<100;x++)if(!x||!y||x===99||y===99)m.slabs.push({x,y,bottom:0,top:2.8,tile:10});
+ // Water stays beside the piers; moored hulls never occupy the walking line.
+ road(HELLAS,[[59,69],[67,65.5],[76,65.5]]);yard(HELLAS,68,61,7,8,'#b5aa8b');yard(HELLAS,74,64,6,3,'#8d7356');
+ road(ANATOLIA,[[21,62.5],[32,59],[45,55.5],[60,56],[75,49.5]]);
+ yard(ANATOLIA,19,58,8,11,'#b5aa8b');yard(ANATOLIA,12,61,9,3,'#8d7356');
+ yard(ANATOLIA,41,43,15,16,'#b2a888');road(ANATOLIA,[[47.5,51],[47.5,56]],1);house(44,45,8,8,47);
+ yard(ANATOLIA,70,44,13,13,'#b0a181');road(ANATOLIA,[[75,51],[76.5,49]],1);house(73,44,7,7,76);
+ // Locals maintain the surviving gate masonry; the farther pass remains closed.
+ for(const [x0,y0]of [[83,42],[83,53]])for(let y=y0;y<y0+3;y++)for(let x=x0;x<x0+3;x++){clear(ANATOLIA,x,y);m.slabs.push({x,y,bottom:0,top:2.25,tile:1});if((x+y)%2===0)m.slabs.push({x,y,bottom:2.25,top:2.6,tile:1});}
+ for(let y=45;y<53;y++)m.slabs.push({x:84,y,bottom:0,top:1.7,tile:15});
+ const skiff=MAP_DB[2].npcs.find(n=>n.sprite===1185);
+ for(const [id,map,x,y]of [[899020,HELLAS,78.5,68.5],[899021,ANATOLIA,11.5,65.5]])if(skiff)R.actor(map,id,x,y,1185,'Aegean ferry',{role:'decoration',onSpawn(n,d){skiff.onSpawn(n,d);n.fixedWorldAngle=Math.PI/2;n.hideMinimap=true;}});
+ for(const [map,id,x,y,sprite,name]of [[HELLAS,899030,69.5,62.5,1171,'Landing stores'],[HELLAS,899031,69.5,67.5,1172,'Fresh water barrel'],[HELLAS,899032,70.5,62.5,1169,'Hellas landing chest'],[ANATOLIA,899033,24.5,59.5,1171,'Ferry stores'],[ANATOLIA,899034,24.5,66.5,1172,'Landing water barrel'],[ANATOLIA,899035,45.5,46.5,1170,'Inn bed'],[ANATOLIA,899036,50.5,46.5,1170,'Inn bed'],[ANATOLIA,899037,50.5,49.5,1165,'Caravan records'],[ANATOLIA,899038,45.5,49.5,1169,'Roadside inn chest'],[ANATOLIA,899039,74.5,45.5,1170,'Watch bed'],[ANATOLIA,899040,78.5,46.5,1169,'Watch supplies chest']])R.prop(map,id,x,y,sprite,name);
+ const show=(n,text,options=[])=>BMClassicDialogue.show({speaker:n,text,options}),opt=(label,action)=>({label,action});
+ const state=d=>d.memory.aegeanRoad??={stage:0};
+ const stage=d=>d.memory.aegeanRoad?.stage||0;
+ function save(d,text){d.requestSave();BMShell.invalidate();if(text)BMInteract.report(text);}
+ function near(d,map,n){return d.mapID===map&&!d.isDead&&!d.isDying&&!d.isLoading&&n&&d.npcs.includes(n)&&!n.isDead&&Math.hypot(d.x-n.x,d.y-n.y)<=3&&Math.abs((d.groundZ||0)-(n.groundZ||0))<.8;}
+ function lead(d){return ['The landing clerk on Hellas’s eastern shore (72,63) is sending a route book across the Aegean. Follow the coast road from the southern caravan camp.','Take the free ferry to Anatolia, then carry the route book east along the road to the ridge watchkeeper (76,48).','The watchkeeper has signed the route book. Bring the receipt to the roadside innkeeper (48,50) for 70 silver and two moonleaf herbs.','The Aegean route book is delivered. The ferries and roadside inn remain open for your travels.'][stage(d)];}
+ function ferry(n,d){const from=d.mapID,to=from===HELLAS?ANATOLIA:HELLAS;if(!near(d,from,n)||![HELLAS,ANATOLIA].includes(from)||n.index!==(from===HELLAS?NPC.hellasBoat:NPC.anatoliaBoat))return false;
+  if(BMOnline.publicState()?.self?.combatUntil>Date.now()||d.currentEnemy&&!d.currentEnemy.isDead){show(n,'Settle your fight before coming aboard.');return false;}
+  if(!R.enter(d,to,landings[to]))return false;
+  BMActivity.record('ferry_crossing','Took the Aegean ferry from '+(from===HELLAS?'Hellas to Anatolia.':'Anatolia to Hellas.'),{fromMap:from,toMap:to,route:'aegean',fare:0});save(d,'You step ashore in '+(to===HELLAS?'Hellas.':'Anatolia.'));return true;
+ }
+ for(const [map,id,x,y]of [[HELLAS,NPC.hellasBoat,76.5,65.5],[ANATOLIA,NPC.anatoliaBoat,20.5,62.5]]){
+  R.actor(map,id,x,y,32,'Aegean boatman');R.bind(map,id,(n,d)=>show(n,map===HELLAS?'Across the water lies Anatolia. We cross whenever a traveller is ready; the landing fund covers your fare.':'The boat returns to Hellas whenever you are ready. No fare is charged.',[opt(map===HELLAS?'Sail to Anatolia · Free':'Sail to Hellas · Free',()=>ferry(n,d)),opt('Ask directions',()=>show(n,map===HELLAS?'The landing clerk keeps the route books by the shore. In Anatolia, follow the marked road inland to the inn and ridge watch.':'The road east leads to the inn, then the ridge watch. Continue through the ridge gate into the Levant; the southern road there reaches Arabia, with Kemet to its west.'))]));
+ }
+ R.actor(HELLAS,NPC.clerk,72.5,63.5,252,'Landing clerk');
+ R.bind(HELLAS,NPC.clerk,(n,d)=>show(n,lead(d),[opt('Talk',()=>show(n,'These pages list wells, shelters and the physicians who receive travellers. The route now joins our Aegean crossings to the schools of Arabia and Kemet through the Levant waystation.')),...(stage(d)===0?[opt('Take the route book',()=>{if(!near(d,HELLAS,n)||stage(d)!==0)return;state(d).stage=1;BMActivity.record('quest_accepted','Accepted the Aegean route-book delivery.',{quest:'aegean-route-book'});save(d,lead(d));show(n,lead(d));})]:[])]));
+ R.actor(ANATOLIA,NPC.innkeeper,48.5,50.5,258,'Roadside innkeeper');R.actor(ANATOLIA,NPC.watchkeeper,76.5,48.5,306,'Ridge watchkeeper');
+ const moonleaf={key:'herb:moonleaf',name:'Moonleaf',kind:'herb',herbId:'moonleaf'};
+ function buy(n,d,item,count,price){if(!near(d,ANATOLIA,n))return false;if(!BMCurrency.spend(price))return show(n,'You do not have enough silver.');if(!BMInventory.add(item,count)){BMCurrency.add(price);return show(n,'There is no room for those supplies.');}BMActivity.record('trade','Bought '+count+' '+item.name+' for '+price+' silver.',{item:item.key,quantity:count,silver:price});save(d,'Supplies packed for the road.');supplies(n,d);}
+ function supplies(n,d){return show(n,'Fresh provisions for the road. The next ferry has no fare.',[opt('Moonleaf · 4 silver',()=>buy(n,d,moonleaf,1,4)),opt('Raw meat ×3 · 9 silver',()=>buy(n,d,{key:'material:meat',name:'Raw meat',kind:'material'},3,9)),opt('Fish · 5 silver',()=>buy(n,d,{key:'fish:0',name:BMFishSprites.species[0].name,kind:'fish',fishIndex:0},1,5))]);}
+ function claim(n,d){const q=state(d);if(!near(d,ANATOLIA,n)||q.stage!==2||q.claimed)return false;if(!Number.isSafeInteger(BMCurrency.balance()+70)||!BMInventory.add(moonleaf,2))return show(n,'Make room for the travel herbs before taking your payment.');BMCurrency.add(70);q.stage=3;q.claimed=true;BMActivity.record('quest_completed','Delivered the Aegean route book and collected the innkeeper’s payment: 70 silver and two moonleaf.',{quest:'aegean-route-book',silver:70,herbs:2});save(d,'The Aegean route-book delivery is complete.');return show(n,'Signed and received. Seventy silver, and fresh moonleaf for your next journey.');}
+ R.bind(ANATOLIA,NPC.innkeeper,(n,d)=>show(n,'Come in from the road. The ridge watch keeps a copy of every caravan route; I settle the couriers’ accounts here.',[opt('Talk',()=>show(n,'People heading south speak of the healing houses of Kemet. Beyond the Nile’s green banks they cross Deshret—the Red Land. The pass beyond our watch now reaches the Levant waystation. Its southern road leads into Arabia, and Kemet lies west from there.')),...(stage(d)===2?[opt('Present receipt · 70 silver + 2 moonleaf',()=>claim(n,d))]:[]),opt('Supplies',()=>supplies(n,d)),opt('Delivery directions',()=>show(n,lead(d)))]));
+ R.bind(ANATOLIA,NPC.watchkeeper,(n,d)=>show(n,stage(d)===1?'A fresh route book from Hellas? We need reliable records before sending anyone farther south.':'We mend the old walls and keep this road open. Beyond the ridge gate, the southern road is open to the Levant waystation. Its southern road continues into Arabia.',[opt('Missing caravan',()=>BMLevantRoad.offer(n,d)),...(stage(d)===1?[opt('Deliver the route book',()=>{if(!near(d,ANATOLIA,n)||stage(d)!==1)return;state(d).stage=2;BMActivity.record('quest_item','Delivered the route book to the Anatolian ridge watch and received a signed receipt.',{quest:'aegean-route-book'});save(d,lead(d));show(n,'Your receipt. The innkeeper back along the road will pay you.');})]:[]),opt('Talk',()=>show(n,'Our grandparents inherited these walls. We keep the ridge pass open to the Levant. Ask me about the overdue medicine shipment if you are heading east.'))]));
+ // Give the existing caravan steward an onward direction without disturbing the v55 delivery.
+ function sign(map,id,x,y,name,text){yard(map,Math.floor(x)-1,Math.floor(y)-1,3,3,map===HELLAS?'#b5aa8b':'#b0a181');R.actor(map,id,x,y,1163,name,{interactionVerb:'Read',onSpawn:n=>BMClassArt.resource(n,1163)});R.bind(map,id,n=>show(n,text));}
+ sign(HELLAS,899050,47.5,35.5,'East · Aegean landing','Follow the southern coast road, then the eastern branch to the Aegean landing (76,65). A free ferry crosses to Anatolia.');
+ sign(HELLAS,899051,64.5,69.5,'East · Aegean ferry','East to the landing. Speak to the boatman to cross to Anatolia.');
+ sign(ANATOLIA,899052,26.5,63.5,'East · Inn and ridge watch','The inn stands along the road (48,50). Continue east to the ridge watch (76,48). West: the ferry back to Hellas.');
+ sign(ANATOLIA,899053,55.5,55.5,'East · Ridge watch','The ridge watch keeps the old gate. Bring route books there; courier payments are made at the inn.');
+ for(const [id,x,y,type,name]of [[899101,36.5,70.5,194,'Coastal boar'],[899102,65.5,66.5,191,'Ridge wolf']]){yard(ANATOLIA,Math.floor(x)-1,Math.floor(y)-1,3,3,'#92976d');R.actor(ANATOLIA,id,x,y,type,name,{role:'battle',alignment:'foe',state:'wandering',isCinematic:false,level:2,deck:[type,50],customDialogue:null,onSpawn(n){n.nonBlocking=false;n._talkThrough=false;}});}
+ for(const [id,quads]of patches){BMGuildDecor.appendSurface(id,quads);BMLayers.invalidate(MAP_DB[id]);}
+ const load=Explore.prototype.loadMap;let palette=null;Explore.prototype.loadMap=function(id,...args){if(palette){Object.assign(this.wallColors,palette.wall);Object.assign(this.parsedWallColors,palette.parsed);palette=null;}if(+id===ANATOLIA)this.defaultSpawns[id]={...landings[48]};const result=load.call(this,id,...args);if(this.mapID===ANATOLIA){palette={wall:{},parsed:{}};for(const [tile,color]of Object.entries({1:'#c7b89a',10:'#aaa28c'})){palette.wall[tile]=this.wallColors[tile];palette.parsed[tile]=this.parsedWallColors[tile];this.wallColors[tile]=color;this.parsedWallColors[tile]=this.parseColor(color);}this._landmarkLight=.45;this._landmarkStone=true;}return result;};
+ const transition=Explore.prototype.handleAtlasTransition;Explore.prototype.handleAtlasTransition=function(x,y){if(this.mapID===ANATOLIA)return;return transition.call(this,x,y);};
+ const kill=Explore.prototype.killNPC;Explore.prototype.killNPC=function(n,...args){if(Object.values(NPC).includes(n?.index))return false;return kill.call(this,n,...args);};
+ function entries(d){return stage(d)||[HELLAS,ANATOLIA].includes(d.mapID)?[{id:'aegean-route-book',title:'Across the Aegean · Route book',text:lead(d),completed:stage(d)===3}]:[];}
+ return {HELLAS,ANATOLIA,NPC,landings,stage,lead,entries,ferry,claim,edge:d=>d.mapID===ANATOLIA?false:null};
+})();globalThis.BMAegeanRoad=BMAegeanRoad;
+
+/* Shared read-only NPC knowledge. Progress is a player report, never a quest mutation. */
+const BMNPCKnowledge=(()=>{
+ const clamp=(v,max)=>Number.isSafeInteger(v)&&v>=0&&v<=max?v:0;
+ function progress(p={}){p=p&&typeof p==='object'&&!Array.isArray(p)?p:{};return {aegean:clamp(p.aegean,3),caravan:clamp(p.caravan,3),priest:clamp(p.priest,6),dancer:clamp(p.dancer,6),frontier:clamp(p.frontier,3)};}
+ const caravan=[
+  'The ridge watchkeeper in Anatolia (76,48) needs someone to check a delayed shipment. Ask about the missing caravan to accept the job.',
+  'Follow the ridge road through its gate, then take the southern pass into the Levant. Ask the well keeper at the waystation (45,48) about the cart, then follow the eastern spur to the broken cart (67,61). Two jackals guard the cargo. Recover the sealed medicine crate after clearing them.',
+  'Bring the sealed medicine crate to the caravan receiver inside the Levant waystation (49,47). The delivery pays 85 silver and three moonleaf herbs.',
+  'The medicine shipment has reached the waystation and the reward has been collected. The southern road remains open into Arabia.'
+ ];
+ const aegean=[
+  'The landing clerk in Hellas (72,63) offers a route book to carry across the free Aegean ferry.',
+  'Carry the route book to the ridge watchkeeper in Anatolia (76,48). He will sign a receipt.',
+  'Take the signed receipt to the Anatolian innkeeper (48,50) for 70 silver and two moonleaf herbs.',
+  'The route book is delivered and paid. Both ferry crossings remain free.'
+ ];
+ const priest=[
+  'Priest begins the southern studies at Kemet’s healing house (38,40), once the Kraken is defeated and the company has settled in Tintagel.',
+  'Collect both labelled garden specimens west of the healing house (29,36 and 29,39), then speak to the River Physician.',
+  'Examine each patient. The ferryman needs a restored ward; the garden keeper needs cleansing. Use the practice treatments, then report to the River Physician.',
+  'Carry the introduction east to the Oasis Physician in Arabia (69,39). Read both case records inside the study house.',
+  'Examine the Arabian caravan guard. Cleanse the lingering poison first, then restore the depleted ward.',
+  'Return to Priest in Kemet. The completed Arabian case lets you establish the guild together.',
+  'The Priest’s Guild is established. Its desk offers supply jobs and training.'
+ ];
+ function facts(n,map,p={}){
+  p=progress(p);const name=String(n.name||'Resident'),id=Number(n.index),out={name,voice:'A local inhabitant; courteous, plain spoken, willing to admit uncertainty.',local:[],quest:[],rumors:[],limits:'Only the supplied facts are known. Do not infer unknown quests, private thoughts, rewards, places or prior meetings.'};
+  const is=(...ids)=>ids.includes(id),has=s=>new RegExp(s,'i').test(name);
+  if(map===2){out.local.push('Tintagel’s village inn has a stage and a southern entrance onto the forecourt. The village stable is east of the inn. The east road leads into Savage Forest.');out.rumors.push('Travellers speak of Deshret, the Red Land, far to the south. This is a secondhand story, not a quest or a claim that the speaker has visited.');}
+  if(map===5){out.local.push('This is Savage Forest, east of Tintagel. Hunter keeps a cabin near its western side.');out.rumors.push('Travellers warn of goblins below the forest. Ask a local guide about the cavern entrance.');}
+  if([45,46,48,49].includes(map)){out.local.push(({45:'The Carpathian road runs west toward Germania and south toward Hellas. The northern gate is closed.',46:'The eastern Aegean landing offers a free ferry to Anatolia. Follow the coast road to the boatman (76,65).',48:'The road links the western ferry, roadside inn (48,50), ridge watch (76,48) and southern pass into the Levant.',49:'The northern pass returns to Anatolia. The waystation (49,47) offers rest and supplies. The southern road reaches Arabia; Kemet lies west from Arabia.'})[map]);}
+  if([42,43,44].includes(map))out.local.push(({42:'Deshret is called the Red Land. Follow the caravan road east to Kemet or west to Ger.',43:'Kemet’s healing house stands west of the river. The bridge and eastern road lead to Arabia; the western road crosses Deshret toward Ger.',44:'The study house is at the oasis (69,39). The western road reaches Kemet. The northern pass leads through the Levant toward Anatolia.'})[map]);
+  if(has('hunter')||id===8006){out.voice='A practical hunter who notices tracks and habits; no expertise in distant politics.';out.quest.push('My guild supply jobs ask for two boar tusks or three pixie mushrooms. Hunt boars south of the cabin and gather their drops. Pixies carry mushrooms. Use my Guild desk to accept and deliver a job; asking about it does not accept it.');out.local.push('Boars and pixies provide useful supplies. Pick up what a defeated creature drops.');out.rumors=['Other hunters warn of deeper forest dangers. I cannot vouch for distant kingdoms.'];}
+  if(is(8405)||has('^Cherry$')){out.voice='Cherry, a spirited tavern performer and the Dancer’s apprentice. Warm with patrons, firm about lessons.';out.local.push('My stage is in Tintagel’s village inn. I perform at night; paid requests are chosen through my performance menu.');out.quest.push(p.dancer>=6?'You have completed my Dancer lesson. Use the class menu for your earned progression.':p.dancer>=4?'With the recommendation accepted, finish the three travelling steps in my rehearsal, return through its sigil and speak to me about the lesson.':'I do not teach strangers. Ask my teacher, Dancer, for a recommendation. Help with her costume parcel beside the Tintagel market courier (24,46), return it to her, and bring her letter to me. S-rank alone does not replace her word.');out.rumors=['A visiting performer spoke of the Red Land far to the south. I know the song and the story, not the desert roads.'];}
+  if(id===201||has('^Dancer$')){out.voice='Dancer, a busy teacher who expects students to help and then learn by teaching.';out.quest.push('Cherry is my apprentice. I can recommend you after you help retrieve my costume parcel beside Tintagel’s market courier (24,46). Return it to me for the letter, then take it to Cherry. Use the Dance or class-path choices to begin.');}
+  if(is(899001,899002,899010,899011,899012)){out.quest.push(aegean[p.aegean]);out.rumors.push('Caravan travellers call the southern desert Deshret, the Red Land. Kemet lies beyond the desert, on its river.');}
+  if(is(899012,900010,900011)){out.quest.push(caravan[p.caravan]);}
+  if(is(899012)){out.voice='The ridge watchkeeper, a careful keeper of inherited fortifications; knows his road and dispatches.';out.local.push('Local families maintain these old walls. Beyond the ridge gate, the road turns south to the Levant; keep to the marked pass.');}
+  if(is(900010)){out.voice='The caravan receiver, concerned with cargo, seals and fair payment. Knows routes through the Levant and Arabia.';out.local.push('The crate contains medicine for caravans using this stop. Recovery pays 85 silver and three moonleaf, once, through the delivery choice.');out.rumors.push('Caravans from Kemet bring news of physicians sharing their teachings with a northern priest. Ask at the healing house; I am no physician.');}
+  if(is(900011)){out.voice='The well keeper, observant and practical; knows nearby tracks, water and the missing driver’s report.';out.local.push('The driver returned on foot. His cart broke at the eastern bend (67,61). Two jackals have settled by it. A footpath bends south from the well toward the cart; the open road returns here.');out.rumors=['I hear of Kemet from drivers who refill their skins here. Their healers are collecting case records; I have never studied there.'];}
+  if((id===8004&&map===43)||has('River Physician|Oasis Physician')){out.voice='A patient teacher of magical wards and cleansing, careful to distinguish observation from assumption.';out.quest.push(priest[p.priest]);out.local.push('Examine before treating. Restoring a ward and cleansing an ailment are different magical actions. When both are needed, cleanse first.');out.rumors=['Our correspondence links the healing houses of Kemet and Arabia. Ask the receiving physician about the next study; I will not guess at someone else’s case.'];}
+  if(is(898010,898011,898020)){out.quest.push(['Ask the roadwatch quartermaster in the western Carpathian camp about a missing supply parcel.','Clear the wolves at the broken caravan (69,64) in the Carpathian valleys and recover its sealed parcel.','Deliver the parcel to the southern caravan steward in Hellas (43,31) for 65 silver and three moonleaf.','The roadwatch parcel has been delivered and paid.'][p.frontier]);out.rumors.push('The old courts beyond the closed northern gate prize fine stones and careful introductions. That gate is not open to travellers yet.');}
+  if(!out.quest.length)out.quest.push('I cannot speak for another person’s commission. Ask the person who gave you that task; their quest choices show what is still needed.');
+  if(Array.isArray(n.publicDialogue)){const spoken=n.publicDialogue.filter(v=>typeof v==='string').join(' ').slice(0,2000);if(spoken)out.local.push(spoken);}
+  if(!out.local.length)out.local.push('I can discuss what I have told you here, but I do not know every road or everyone else’s business.');
+  if(!out.rumors.length)out.rumors.push('I have no fresh rumour I can vouch for. Ask a traveller or an innkeeper.');
+  if(has('guard|watch')&&!is(899012))out.voice='A watchful local guard; direct about roads and danger, reluctant to speculate.';
+  if(has('merchant|innkeeper|provisioner|receiver'))out.voice+=' Speaks in concrete terms about provisions and travellers.';
+  return out;
+ }
+ function topic(message){return /quest|task|job|help|deliver|reward|crate|parcel|book|letter|recommend|teach|lesson|specimen|patient|tusk|mushroom/i.test(message)?'quest':/rumou?r|faraway|red land|deshret|gossip|heard|vampire/i.test(message)?'rumors':/around|where|road|way|route|near|local|danger|town|inn|ferry|pass|gate|water|cart/i.test(message)?'local':null;}
+ function answer(f,message){const t=topic(message);if(t==='quest'&&f.quest[0].startsWith('I cannot')&&f.spokenHere)return f.spokenHere+' Use my existing choices to act on this; I can only explain what I know.';return t?f[t].join(' '):'I can tell you about '+(f.quest[0].startsWith('I cannot')?'this area':'my work and this area')+'. Ask me about a task, the local roads, or a rumour. I would rather admit what I do not know than send you astray.';}
+ return {facts,progress,topic,answer,caravan};
+})();
+
+/* v57: continuous town streets; never cut through an authored building. */
+const BMTintagelAccess=(()=>{
+ const m=MAP_DB[2],quads=[],paths=[[[21,44.8],[26.5,49.7],[34.4,52.5],[43,56.6],[51.5,56.5],[59,60.9],[65.5,65],[65.5,84.5],[76,84.5],[85.5,84.5]],[[76,80.5],[76,84.5],[78.5,88.5],[78.5,94]],[[85.5,74.5],[85.5,84.5],[85.5,90.5],[78.5,90.5]]];
+ const buildings=BMSettlements.buildings.filter(b=>b.mapID===2);
+ function protectedTile(x,y){return buildings.some(b=>x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom&&!(y===b.bottom&&x>=b.doorX&&x<b.doorX+2));}
+ for(const points of paths)for(let i=1;i<points.length;i++){const [x,y]=points[i-1],[a,b]=points[i],dx=a-x,dy=b-y,len=dx*dx+dy*dy||1;
+  for(let yy=Math.floor(Math.min(y,b)-1.6);yy<=Math.ceil(Math.max(y,b)+1.6);yy++)for(let xx=Math.floor(Math.min(x,a)-1.6);xx<=Math.ceil(Math.max(x,a)+1.6);xx++){const t=Math.max(0,Math.min(1,((xx+.5-x)*dx+(yy+.5-y)*dy)/len));if(Math.hypot(xx+.5-x-t*dx,yy+.5-y-t*dy)>1.6||protectedTile(xx,yy))continue;m.maze[yy][xx]=0;m.slabs=m.slabs.filter(s=>s.x!==xx||s.y!==yy||s.bottom>=1.05);quads.push({x:xx,y:yy,w:1,h:1,color:'#948467'});}}
+ BMGuildDecor.appendSurface(2,quads);BMLayers.invalidate(m);return {paths,protectedTile};
+})();globalThis.BMTintagelAccess=BMTintagelAccess;
+
+/* The Levant waystation: a short adventure and the northern connection to Arabia. */
+const BMLevantRoad=(()=>{
+ const MAP=49,R=BMSouthernRoads,patches=new Map(),links=new Map(),JACKALS=[900101,900102];
+ const m=MAP_DB[MAP]={name:'Levant · The caravan waystation',outdoors:true,biome:'Desert',weather:'clear',floorColor:'#b7a17a',skyColor:'#bdd2dc',spawn:{x:2.5,y:50.5,dir:1},slabs:[],npcs:[],maze:Array.from({length:100},()=>Array(100).fill(0))};
+ function clear(id,x,y){const a=MAP_DB[id];a.maze[y][x]=0;a.slabs=(a.slabs||[]).filter(s=>s.x!==x||s.y!==y);}
+ function floor(id,x,y,w,h,color='#c6b08a'){if(!patches.has(id))patches.set(id,[]);patches.get(id).push({x,y,w,h,color});}
+ function yard(id,x,y,w,h){for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)clear(id,xx,yy);floor(id,x,y,w,h);}
+ function road(id,points,width=1.6){const a=MAP_DB[id];for(let i=1;i<points.length;i++){const[x,y]=points[i-1],[b,c]=points[i],dx=b-x,dy=c-y,l=dx*dx+dy*dy||1;for(let yy=Math.max(0,Math.floor(Math.min(y,c)-width));yy<Math.min(a.maze.length,Math.ceil(Math.max(y,c)+width));yy++)for(let xx=Math.max(0,Math.floor(Math.min(x,b)-width));xx<Math.min(a.maze[0].length,Math.ceil(Math.max(x,b)+width));xx++){const t=Math.max(0,Math.min(1,((xx+.5-x)*dx+(yy+.5-y)*dy)/l));if(Math.hypot(xx+.5-x-t*dx,yy+.5-y-t*dy)<=width){clear(id,xx,yy);floor(id,xx,yy,1,1);}}}}
+ for(let y=0;y<100;y++)for(let x=0;x<100;x++){
+  if(!x||!y||x===99||y===99||y<12+3*Math.sin(x*.12)||x>88+3*Math.sin(y*.09)){m.maze[y][x]=10;m.slabs.push({x,y,bottom:0,top:2.2+(x+y)%5*.2,tile:10});}
+  else if(x<10&&y>65)m.maze[y][x]=x<6?94:92;
+  else if(x>13&&y>20&&(x*17+y*13)%197<2)m.maze[y][x]=3;
+ }
+ road(48,[[76,51.5],[81,49.5],[100,49.5]]);road(MAP,[[0,50.5],[24,51],[42,53],[53,55],[52.5,100]]);
+ road(MAP,[[45,50],[52,55],[60,58],[67,61]],1.3);yard(MAP,39,40,17,14);yard(MAP,63,58,11,9);
+ road(44,[[49.5,0],[49.5,17],[60,24],[60,49],[49,49]]);
+ // Roads and clearings precede the furnished house so roofs and walls remain complete.
+ for(let y=43;y<=50;y++)for(let x=47;x<=54;x++){const wall=x===47||x===54||y===43||y===50,door=y===50&&(x===50||x===51);if(wall&&!door)m.slabs.push({x,y,bottom:0,top:1.8,tile:1});if(door)m.slabs.push({x,y,bottom:1.3,top:1.8,tile:1});m.slabs.push({x,y,bottom:1.8,top:1.95,tile:15});}
+ for(const [x,y]of [[21,43],[21,55]])for(let yy=y;yy<y+3;yy++)for(let xx=x;xx<x+3;xx++){clear(MAP,xx,yy);m.slabs.push({x:xx,y:yy,bottom:0,top:2.4,tile:1});}
+ function link(a,side,c,b,other,d){links.set(a+'/'+side,{map:b,side:other,center:c,arrival:d});links.set(b+'/'+other,{map:a,side,center:d,arrival:c});}
+ link(48,'east',49.5,MAP,'west',50.5);link(MAP,'south',52.5,44,'north',49.5);
+ const sideAt=(d,x,y)=>x<0?'west':x>=d.maze[0].length?'east':y<0?'north':y>=d.maze.length?'south':null;
+ function edge(d,x,y){const side=sideAt(d,x,y),l=links.get(d.mapID+'/'+side);if(l)return Math.abs((['west','east'].includes(side)?y:x)+.5-l.center)<=1.01;return d.mapID===MAP?false:null;}
+ const transition=Explore.prototype.handleAtlasTransition;Explore.prototype.handleAtlasTransition=function(x,y){const l=links.get(this.mapID+'/'+sideAt(this,x,y));if(!l)return this.mapID===MAP?undefined:transition.call(this,x,y);if(!edge(this,x,y))return;const s=sideAt(this,x,y),offset=(['west','east'].includes(s)?this.y:this.x)-l.center,a=MAP_DB[l.map],p=l.arrival+offset;return R.enter(this,l.map,{x:l.side==='west'?1.5:l.side==='east'?a.maze[0].length-1.5:p,y:l.side==='north'?1.5:l.side==='south'?a.maze.length-1.5:p,dir:{west:1,east:3,north:2,south:0}[l.side]});};
+ const state=d=>d.memory.levantCaravan??={stage:0,defeated:[]};const stage=d=>d.memory.levantCaravan?.stage||0;
+ const show=(n,text,options=[])=>BMClassicDialogue.show({speaker:n,text,options}),opt=(label,action)=>({label,action});
+ const near=(d,n)=>n&&d.npcs.includes(n)&&!n.isDead&&!d.isDead&&!d.isDying&&Math.hypot(d.x-n.x,d.y-n.y)<=2.5&&d.checkLineOfSight(n.x,n.y);
+ const save=d=>{d.requestSave();BMShell.invalidate();};
+ function lead(d){return BMNPCKnowledge.caravan[stage(d)];}
+ function offer(n,d){return show(n,stage(d)?lead(d):'A medicine shipment is overdue at the Levant waystation. Follow the road south beyond the ridge gate and ask the well keeper about the cart. Recover its sealed crate and bring it to the receiver: 85 silver and three moonleaf herbs.',stage(d)?[]:[opt('Accept caravan job',()=>{if(!near(d,n)||stage(d))return;state(d).stage=1;BMActivity.record('quest_accepted','Accepted the delayed medicine shipment job from the Anatolian ridge watchkeeper.',{quest:'levant-medicine'});save(d);show(n,lead(d));})]);}
+ function claim(n,d){const q=state(d);if(d.mapID!==MAP||n.index!==900010||!near(d,n)||q.stage!==2||q.claimed)return false;if(!Number.isSafeInteger(BMCurrency.balance()+85)||!BMInventory.add({key:'herb:moonleaf',name:'Moonleaf',kind:'herb',herbId:'moonleaf'},3))return false;q.stage=3;q.claimed=true;BMCurrency.add(85);BMActivity.record('quest_completed','Delivered the sealed medicine crate at the Levant waystation. Received 85 silver and three moonleaf herbs.',{quest:'levant-medicine',silver:85,item:'herb:moonleaf',quantity:3});save(d);show(n,'The seal is intact. These medicines will travel with the next caravan. Your payment, as promised.');return true;}
+ R.actor(MAP,900010,49.5,47.5,32,'Caravan receiver');R.actor(MAP,900011,45.5,48.5,252,'Well keeper');
+ R.bind(MAP,900010,(n,d)=>show(n,lead(d),[...(stage(d)===2?[opt('Deliver crate · 85 silver + 3 moonleaf',()=>claim(n,d))]:[]),opt('Supplies',()=>d.executeActions([['open_shop',{items:[{key:'herb:moonleaf',kind:'herb',herbId:'moonleaf',name:'Moonleaf',price:4},{key:'material:meat',kind:'material',name:'Raw meat',price:3}],tab:'browse'}]])),opt('Southward road',()=>show(n,'Follow the southern road into Arabia. Its oasis study house lies southeast of the pass. From Arabia, the western road crosses to Kemet, then Deshret and Ger.'))]));
+ R.bind(MAP,900011,(n,d)=>show(n,'The driver came back on foot. His cart broke at the eastern bend (67,61); two jackals are keeping it company. Follow the spur southeast from here. The main road south reaches Arabia.',[opt('About the shipment',()=>show(n,lead(d)))]));
+ for(const [id,x,y,sprite,name]of [[900020,48.5,44.5,1170,'Waystation bed'],[900021,53.5,45.5,1169,'Waystation chest'],[900022,42.5,45.5,1172,'Water barrel'],[900023,42.5,47.5,1171,'Provisions crate'],[900024,68.5,64.5,1169,'Lost traveller’s chest']])R.prop(MAP,id,x,y,sprite,name);
+ // A broken wagon sits beside the recoverable crate, with its detached wheel on the sand.
+ function cartArt(){if(spriteCache[1246])return;const mesh={vertices:[],faces:[],outwardRects:true},oak={r:.48,g:.31,b:.17},iron={r:.25,g:.26,b:.25};const part=(shape,x,y,z,sx,sy,sz,color,rx=0,ry=0,rz=0)=>add3dShapeRigged(mesh,shape,{x,y,z,rx,ry,rz},sx,sy,sz,color);
+  for(const x of [-.3,-.15,0,.15,.3])part('rec',x,-.32,0,.07,.06,.62,oak,0,0,.12);
+  for(const side of [-1,1]){part('rec',side*.36,-.51,0,.035,.18,.62,oak);part('rec',side*.26,-.24,-.88,.025,.025,.36,oak);}
+  part('rec',0,-.5,.61,.36,.18,.035,oak);part('rec',0,-.23,.38,.48,.035,.035,iron);
+  for(const [x,z]of [[-.43,.38],[.43,.38],[-.43,-.38]]){for(let k=0;k<12;k++){const a=k*Math.PI/6;part('rec',x,-.23+Math.cos(a)*.21,z+Math.sin(a)*.21,.035,.023,.061,iron,-a);}for(let k=0;k<3;k++)part('rec',x,-.23,z,.025,.014,.19,oak,k*Math.PI/3);}
+  for(let k=0;k<12;k++){const a=k*Math.PI/6;part('rec',.75+Math.cos(a)*.21,-.04,-.5+Math.sin(a)*.21,.061,.025,.023,iron,0,-a);}
+  prepareSpriteNormals(mesh);spriteCache[1246]=Array.from({length:8},(_,i)=>[BMWorldItemArt.stamp(mesh,160,i*Math.PI/4,0)]);SPRITE_CONFIGS[1246]={scale:1.9,hover:0,faceZ:.45,facePan:0};
+ }
+ R.actor(MAP,900026,69.5,60.5,1246,'Broken caravan cart',{role:'decoration',onSpawn(n){cartArt();Object.assign(n,{fixedWorldAngle:Math.PI/2,_regionalLandmark:true,hideMinimap:true});}});
+ m.slabs.push({x:69,y:60,bottom:0,top:.65,tile:15,bounds:[69.1,60.1,69.9,60.9]});
+ const well=MAP_DB[2].npcs.find(n=>n.name==='Island well');if(well)R.actor(MAP,900025,43.5,43.5,well.sprite,'Waystation well',{role:'decoration',onSpawn:(n,d)=>well.onSpawn(n,d)});
+ R.actor(MAP,900030,67.5,61.5,1171,'Sealed medicine crate',{interactionVerb:'Recover',onSpawn:n=>BMClassArt.resource(n,1171)});
+ R.bind(MAP,900030,(n,d)=>{if(stage(d)!==1)return show(n,stage(d)>=2?'The medicine crate has already been recovered.':'The waystation receiver recognises this seal. Ask the ridge watchkeeper in Anatolia about the delayed shipment.');if(JACKALS.some(id=>!state(d).defeated.includes(id)))return show(n,'Two jackals prowl around the wreckage. Clear them before recovering the medicine.');return show(n,'The medicine crate is sealed and undamaged.',[opt('Recover sealed crate',()=>{if(!near(d,n)||stage(d)!==1||JACKALS.some(id=>!state(d).defeated.includes(id)))return;state(d).stage=2;BMActivity.record('quest_item','Recovered the sealed medicine crate from the broken caravan in the Levant.',{quest:'levant-medicine'});save(d);show(n,lead(d));})]);});
+ for(const [id,x,y]of [[900101,65.5,59.5],[900102,71.5,63.5]])R.actor(MAP,id,x,y,191,'Caravan jackal',{role:'battle',alignment:'foe',state:'wandering',isCinematic:false,level:2,deck:[191,50],customDialogue:null,spawnCondition:d=>!state(d).defeated.includes(id),onSpawn(n){Object.assign(n,{nonBlocking:false,_talkThrough:false,spawnX:x,spawnY:y});}});
+ const kill=Explore.prototype.killNPC;Explore.prototype.killNPC=function(n,respawn,reason='combat',...args){if([900010,900011,900030].includes(n?.index))return false;const q=this.mapID===MAP&&JACKALS.includes(n?.index),alive=q&&!n.isDead;if(q&&['despawn','dialogue','story_event'].includes(reason))return false;const result=kill.call(this,n,q?true:respawn,reason,...args);if(alive&&n.isDead){if(!state(this).defeated.includes(n.index))state(this).defeated.push(n.index);save(this);}return result;};
+ const load=Explore.prototype.loadMap;let palette=null;Explore.prototype.loadMap=function(id,...args){if(palette){Object.assign(this.wallColors,palette.wall);Object.assign(this.parsedWallColors,palette.parsed);palette=null;}if(+id===MAP)this.defaultSpawns[id]=m.spawn;const r=load.call(this,id,...args);if(this.mapID===MAP){this.npcs=this.npcs.filter(n=>!JACKALS.includes(n.index)||!state(this).defeated.includes(n.index));palette={wall:{},parsed:{}};for(const[t,c]of Object.entries({1:'#c7b18c',10:'#ad9b80'})){palette.wall[t]=this.wallColors[t];palette.parsed[t]=this.parsedWallColors[t];this.wallColors[t]=c;this.parsedWallColors[t]=this.parseColor(c);}this._landmarkLight=.58;this._landmarkStone=true;}return r;};
+ for(const [map,id,x,y,text]of [[48,900050,93.5,47.5,'East · Levant waystation. The ridge pass is open.'],[MAP,900051,4.5,48.5,'West · Anatolia and the Aegean ferry.'],[MAP,900052,54.5,94.5,'South · Arabia. Keep to the marked pass.'],[44,900053,51.5,4.5,'North · Levant waystation and Anatolia.']]){R.actor(map,id,x,y,1163,text,{interactionVerb:'Read',onSpawn:n=>BMClassArt.resource(n,1163)});R.bind(map,id,n=>show(n,text));}
+ for(const [id,q]of patches){BMGuildDecor.appendSurface(id,q);BMLayers.invalidate(MAP_DB[id]);}
+ function entries(d){return stage(d)||[48,MAP].includes(d.mapID)?[{id:'levant-medicine',title:'The delayed caravan · Medicine shipment',text:lead(d),completed:stage(d)===3}]:[];}
+ return {MAP,edge,links,entries,lead,offer,claim,state,JACKALS};
+})();globalThis.BMLevantRoad=BMLevantRoad;
+
+/* Conversations share the JRPG services; prose never executes game actions. */
+const BMNPCChat=(()=>{
+ let root,log,input,status,send,active=null,inviteButton,timer=null;const fallbackDelay=14000;
+ const el=(tag,p,text)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;p?.append(e);return e;};
+ function eligible(n){return n instanceof NPC&&BMInteract.friendly(n)&&n.type>=0&&(n.type<1100||n.index===8405)&&!n._container&&!n.artisanNode&&!n.interactionVerb&&!['reward','become_ally','portal_invite'].includes(n.role)&&!/^suncat$/i.test(n.name||'');}
+ function progress(d=Dungeon){return BMNPCKnowledge.progress({aegean:d.memory.aegeanRoad?.stage||0,caravan:d.memory.levantCaravan?.stage||0,priest:d.memory.priestJourney?.stage||0,dancer:d.memory.classPaths?.paths?.dancer?.stage||0,frontier:d.memory.frontierRoad?.stage||0});}
+ const key=(n,d=Dungeon)=>d.mapID+':'+n.index;
+ function facts(n,d=Dungeon){const f=BMNPCKnowledge.facts(n,d.mapID,progress(d));if(n===d.currentSpeaker&&Array.isArray(n.customDialogue))f.spokenHere=n.customDialogue.filter(s=>typeof s==='string').join(' ').slice(0,2000);return f;}
+ function history(n,d=Dungeon){return ((d.memory.npcChats??={})[key(n,d)]??={name:n.name,turns:[]});}
+ function reachable(s=active){return !!s&&s.owner===Dungeon&&s.map===Dungeon.mapID&&!Dungeon.isDead&&!Dungeon.isDying&&Dungeon.npcs.includes(s.n)&&!s.n.isDead&&Math.hypot(Dungeon.x-s.n.x,Dungeon.y-s.n.y)<=2.5&&Dungeon.checkLineOfSight(s.n.x,s.n.y);}
+ function build(){if(root)return;const style=el('style',document.head);style.textContent='#bm-npc-chat{position:fixed;inset:0;z-index:15000;background:#0b100d;color:#e4d5a3;font:16px/1.45 system-ui;box-sizing:border-box;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));height:100dvh;display:flex;flex-direction:column;gap:10px}#bm-npc-chat[hidden],#bm-npc-chat-invite[hidden]{display:none}#bm-npc-chat button,#bm-npc-chat input,#bm-npc-chat-invite{font:inherit;color:#e4d5a3;border:1px solid #9e8952;border-radius:9px;background:#1c2923;padding:10px;min-height:44px;box-sizing:border-box}#bm-npc-chat header{display:flex;justify-content:space-between;align-items:center;gap:8px}#bm-npc-chat h2{font:24px Georgia;margin:0}#bm-npc-chat nav{display:flex;flex-wrap:wrap;gap:6px}#bm-npc-chat nav button{flex:1;font-size:14px}#bm-npc-chat .transcript{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}#bm-npc-chat .turn{padding:10px 12px;margin:8px 0;background:#14201b;border:1px solid #3d4936;border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere}#bm-npc-chat .player{background:#1f222c}#bm-npc-chat form{display:flex;gap:8px}#bm-npc-chat input{flex:1;min-width:0}#bm-npc-chat .status{font-size:13px;color:#b1b7a7;min-height:20px}#bm-npc-chat-invite{position:fixed;z-index:1100;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);font:16px system-ui;padding:10px 24px}';
+  root=el('section',document.body);root.id='bm-npc-chat';root.hidden=true;root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-label','NPC conversation');
+  const header=el('header',root);el('h2',header,'Conversation');const back=el('button',header,'Back');back.type='button';back.onclick=()=>close();
+  const topics=el('nav',root);topics.setAttribute('aria-label','Conversation topics');for(const [label,text]of [['Your quest','Can you explain your quest in more detail?'],['Around here','What should I know about the area around here?'],['Rumors','Have you heard any rumors?']]){const b=el('button',topics,label);b.type='button';b.onclick=()=>ask(text);}
+  log=el('div',root);log.className='transcript';log.setAttribute('role','log');log.setAttribute('aria-live','polite');status=el('div',root);status.className='status';status.setAttribute('role','status');
+  const form=el('form',root);input=el('input',form);input.placeholder='Ask something…';input.setAttribute('aria-label','Ask this NPC');input.maxLength=400;input.autocomplete='off';send=el('button',form,'Ask');send.type='submit';form.onsubmit=e=>{e.preventDefault();ask(input.value);};
+  for(const t of ['pointerdown','pointerup','touchstart','touchend','click','wheel'])root.addEventListener(t,e=>e.stopPropagation());root.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'){e.preventDefault();close();}if(e.key==='Tab'){const f=[...root.querySelectorAll('button,input')].filter(e=>!e.disabled),i=f.indexOf(document.activeElement);if(e.shiftKey&&i===0){e.preventDefault();f.at(-1).focus();}else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0].focus();}}});
+ }
+ function fit(){if(active&&root){const keyboard=navigator.virtualKeyboard?.boundingRect?.height||0;root.style.height=Math.max(180,Math.min(window.visualViewport?.height||innerHeight,innerHeight-keyboard))+'px';}}
+ window.visualViewport?.addEventListener('resize',fit);window.addEventListener('resize',fit);navigator.virtualKeyboard?.addEventListener('geometrychange',fit);
+ function render(){if(!active)return;root.querySelector('h2').textContent=active.n.name;log.replaceChildren();const turns=history(active.n).turns;for(const t of turns){const a=el('div',log,(playerName||'You')+': '+t.message);a.className='turn player';const b=el('div',log,active.n.name+': '+t.reply);b.className='turn';}if(!turns.length)el('p',log,'Ask about their work, local roads, or something you have heard.');if(active.pending){const b=el('div',log,(playerName||'You')+': '+active.pending.message);b.className='turn player';}send.disabled=!!active.pending;root.querySelectorAll('nav button').forEach(b=>b.disabled=!!active.pending);log.scrollTop=log.scrollHeight;}
+ function open(n=Dungeon.currentSpeaker){if(!eligible(n)||!['explore','dialogue'].includes(startGame)||!BMInteract.reachable(n))return false;build();active={owner:Dungeon,n,map:Dungeon.mapID,previous:startGame,focus:document.activeElement,id:newStoryId(),pending:null};Dungeon.currentSpeaker=n;startGame='npc_chat';BMTouch.cancel();BMLock.clear();window.activeMoveKey=null;root.hidden=false;fit();if(inviteButton)inviteButton.hidden=true;status.textContent='';render();root.querySelector('header button').focus();return true;}
+ function close(){const s=active;if(!s)return;active=null;clearTimeout(timer);timer=null;root.hidden=true;input.blur();if(s.owner===Dungeon){if(Dungeon.mapID===s.map&&!Dungeon.isDead&&!Dungeon.isDying){Dungeon.currentSpeaker=s.n;startGame=s.previous;}else if(startGame==='npc_chat'){startGame='explore';Dungeon.currentSpeaker=null;}}s.focus?.focus?.();BMShell.invalidate();}
+ function finish(s,id,reply,source){if(active!==s||s.pending?.id!==id)return false;if(!reachable(s)){close();return false;}clearTimeout(timer);timer=null;const pending=s.pending;s.pending=null;const turn={id,at:new Date().toISOString(),message:pending.message,reply:String(reply).trim().slice(0,1500),source};if(!turn.reply)return false;const h=history(s.n);h.turns.push(turn);h.turns=h.turns.slice(-12);BMActivity.record('npc_conversation',(playerName||'Player')+' → '+s.n.name+': '+turn.message+'\n'+s.n.name+': '+turn.reply,{conversationId:s.id,npcIndex:s.n.index,npcName:s.n.name,exchange:turn,interpretationSource:source,readOnly:true});Dungeon.requestSave();status.textContent=source==='local'?'Using local dialogue. Quest choices are available under Back.':'Quest choices are available under Back.';render();return true;}
+ function ask(raw){const s=active,message=String(raw||'').trim().slice(0,400);if(!s||s.pending||!message||!reachable(s))return false;const id='npc_'+newStoryId(),f=facts(s.n);s.pending={id,message};input.value='';status.textContent='Listening…';render();const local=()=>finish(s,id,BMNPCKnowledge.answer(f,message),'local');
+  if(typeof socket==='undefined'||!socket?.connected){local();return true;}timer=setTimeout(local,fallbackDelay);
+  try{BMActivity.join();socket.emit('request_npc_conversation',{requestId:id,mapID:s.map,npcIndex:s.n.index,npcType:s.n.type,message,progress:progress(),displayedDialogue:f.spokenHere||'',position:{x:Dungeon.x,y:Dungeon.y},npcPosition:{x:s.n.x,y:s.n.y},history:history(s.n).turns.slice(-6).map(t=>({message:t.message,reply:t.reply}))},r=>{if(r?.ok&&r.requestId===id&&typeof r.reply==='string')finish(s,id,r.reply,r.source==='local'?'local':'online');else local();});}catch{local();}return true;
+ }
+ function tick(){if(active){if(!reachable()||startGame!=='npc_chat')close();return;}const n=Dungeon.currentSpeaker,wanted=startGame==='dialogue'&&!BMClassicDialogue.owns(n)&&eligible(n)&&BMInteract.reachable(n);if(!wanted){if(inviteButton)inviteButton.hidden=true;return;}if(!inviteButton){build();inviteButton=el('button',document.body,'Chat');inviteButton.id='bm-npc-chat-invite';inviteButton.type='button';inviteButton.onclick=()=>open();for(const t of ['pointerdown','pointerup','touchstart','touchend','click'])inviteButton.addEventListener(t,e=>e.stopPropagation());}inviteButton.hidden=false;}
+ return {eligible,progress,facts,open,close,ask,tick,history,finish,get active(){return active;}};
+})();globalThis.BMNPCChat=BMNPCChat;
+
+/* Automatic reading groups keep every original, timestamp and source event intact. */
+const BMJournalReading=(()=>{
+ const cache=new Map(),text=e=>String(e.text||e.playerChronicle||'').replace(/^\[(RECORD|CHAPTER|RETROSPECTIVE|SUNCAT CHAPTER \d+)\]\s*/i,'').trim(),time=e=>Date.parse(e.timestamp)||0;
+ const hash=s=>{let h=2166136261;for(const c of s)h=Math.imul(h^c.charCodeAt(0),16777619);return(h>>>0).toString(36);};
+ const routine=new Set(['herb_gathered','fish_caught','alchemy_started','alchemy_result','cooking_started','cooking_result','sewing_started','sewing_result','craft_attainment','trade','loot','npc_defeated','item_pickup']);
+ function group(entries,stream){
+  const signature=entries.length+':'+entries.slice(-4).map(e=>e.id+':'+text(e).length).join('|');if(cache.get(stream)===signature)return;
+  const covered=new Set(entries.filter(e=>e.organizer?.active&&!e.organizer.automatic).flatMap(e=>e.organizer.sourceIds||[]));
+  const raw=entries.filter(e=>!e.organizer&&!covered.has(e.id)).sort((a,b)=>time(a)-time(b)),groups=new Map();let previous=null,conversation=null;
+  for(const e of raw){if(!e.id)e.id='journal-source:'+hash((e.timestamp||'')+'|'+text(e));const event=e.sourceEvent,dialogue=event?.details?.dialogue;
+   const day=time(e)?new Date(time(e)).toISOString().slice(0,10):'undated';let key=null,kind=null,title=null;
+   if(dialogue?.conversationId){const npc=dialogue.npc?.id||dialogue.npc?.name||event.npc?.id||'',map=event.mapID;
+    if(!previous||previous.npc!==npc||previous.map!==map||time(e)-previous.time>5*60000)conversation=dialogue.conversationId;
+    previous={npc,map,time:time(e)};key='conversation:'+conversation;kind='conversation';title='Conversation with '+(dialogue.npc?.name||event.npc?.name||'a resident');
+   }else if(event?.kind==='npc_conversation'&&event.details?.conversationId){key='chat:'+event.details.conversationId;kind='conversation';title='Conversation with '+(event.details.npcName||'a resident');previous=null;}
+   else{previous=null;if(event&&routine.has(event.kind)){key='activity:'+day;kind='records';title='Activity log · '+day;}
+    else if(['chapter','condensed','reflection'].includes(e.entryType)){key='repeated:'+hash(text(e).toLowerCase().replace(/\s+/g,' '));kind=e.entryType==='reflection'?'reflection':'chapters';title='Repeated '+(kind==='chapters'?'chapter':'reflection')+' · '+day;}}
+   if(key){if(!groups.has(key))groups.set(key,{kind,title,entries:[]});groups.get(key).entries.push(e);}
+  }
+  const active=new Set();for(const [key,g]of groups){if(g.entries.length<2)continue;const id='reading:'+stream+':'+key,ids=g.entries.map(e=>e.id),first=g.entries[0],last=g.entries.at(-1);active.add(id);
+   const same=entries.find(e=>e.id===id);if(same&&JSON.stringify(same.organizer?.sourceIds)===JSON.stringify(ids)){same.organizer.active=true;continue;}
+   const date=e=>time(e)?new Date(time(e)).toLocaleString():'Date not recorded';let body='';
+   if(g.kind==='conversation'){let speaker='',parts=[];const flush=()=>{if(parts.length){body+=speaker+': '+parts.join(' ')+'\n\n';parts=[];}};for(const e of g.entries){const d=e.sourceEvent?.details?.dialogue;if(!d){flush();speaker='';body+=text(e)+'\n\n';continue;}const who=d.kind==='player_choice'?'Choice':d.npc?.name||'NPC';if(who!==speaker){flush();speaker=who;}parts.push(d.text);}flush();body='Conversation · '+date(first)+' – '+date(last)+'\n\n'+body;}
+   else if(g.kind==='records'){const rows=new Map();for(const e of g.entries){const key=text(e);if(!rows.has(key))rows.set(key,[]);rows.get(key).push(e);}body=BMJournalHabits.text(BMJournalHabits.fromEntries(g.entries))+'\n\nDATED RECORDS\n\n'+[...rows].map(([line,records])=>date(records[0])+(records.length>1?' – '+date(records.at(-1))+' · '+records.length+' occurrences':'')+' · '+line).join('\n\n');}
+   else body='The same text appears in '+g.entries.length+' original entries, dated '+date(first)+' – '+date(last)+'. Every original is retained below.\n\n'+text(first);
+   const entry={id,title:g.title,timestamp:last.timestamp,text:body,entryType:g.kind==='chapters'?'volume':g.kind==='reflection'?'reflection':'record_bundle',isRead:g.entries.every(e=>e.isRead),organizer:{automatic:true,version:1,kind:g.kind,active:true,sourceIds:ids}};
+   if(same)Object.assign(same,entry);else entries.push(entry);
+  }
+  for(const e of entries)if(e.organizer?.automatic&&!active.has(e.id))e.organizer.active=false;
+  cache.set(stream,entries.length+':'+entries.slice(-4).map(e=>e.id+':'+text(e).length).join('|'));
+ }
+ return {group,invalidate:()=>cache.clear()};
+})();globalThis.BMJournalReading=BMJournalReading;
+
 const BMGambler=(()=>{
  const LIMIT=1000,copy=v=>JSON.parse(JSON.stringify(v));let root,body,header,notice='',owner=null,tab='silver',selection={kind:'silver',count:0},confirmLeave=false;
  const el=(tag,p,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;p?.append(e);return e;};
@@ -109478,6 +109802,159 @@ const BMGambler=(()=>{
  const sync=BMShell.sync;BMShell.sync=function(...args){const r=sync.apply(this,args);if(root&&!live())root.hidden=true;return r;};
  return {open,select,deal,hit,stand,leave,score,value,inventory,itemValue,cardValue,offer,describe,limit:LIMIT,get round(){return owner?table().round:null;}};
 })();globalThis.BMGambler=BMGambler;
+
+/* v58: one physical scale, one atlas, and reciprocal terrain seams. */
+const BMAtlas58=(()=>{
+ const SIZE=100,R=BMSouthernRoads,grid=[
+  [10,9,6,null,null,null,null,null,null],
+  [null,50,3,null,null,null,null,null,null],
+  [null,51,2,5,null,null,null,null,null],
+  [null,52,0,null,null,null,null,null,null],
+  [null,53,63,33,47,38,45,null,null],
+  [null,54,62,14,39,null,46,58,48],
+  [null,55,64,22,40,57,60,61,49],
+  [null,56,65,-2,59,4,42,43,44]
+ ];
+ const positions=new Map(),seas=new Set([9,50,51,52,53,54,55,56,57,58,60,61,62,63,64,65]),expanded=new Map(),surfaces=new Map(),seams=[],roads=[],thumbs=new Map();
+ const names={0:'Moors',2:'Tintagel',3:'Steppes',4:'Ger',5:'Savage Forest',6:'Snow Mountain',9:'Kraken Sea',10:'Avalon',14:'Armorica',22:'Iberia',33:'Brittany',38:'Germania',39:'Gaul',40:'La Rioja',42:'Deshret',43:'Kemet',44:'Arabia',45:'Carpathian Valleys',46:'Hellas',47:'Rhine',48:'Anatolia',49:'Levant','-2':'Gibraltar',50:'Northern Sound',51:'Tintagel Sea',52:'Western Channel',53:'Outer Channel',54:'Western Sea',55:'Iberian Sea',56:'Southern Sea',57:'Western Mediterranean',58:'Aegean Sea',59:'North African Coast',60:'Middle Mediterranean',61:'Eastern Mediterranean',62:'Bay of Biscay',63:'Channel',64:'Iberian Coast',65:'Atlantic Strait'};
+ for(let y=0;y<grid.length;y++)for(let x=0;x<grid[y].length;x++)if(grid[y][x]!==null)positions.set(grid[y][x],{x,y});
+ const opposite={north:'south',south:'north',east:'west',west:'east'},offset={north:[0,-1],south:[0,1],west:[-1,0],east:[1,0]};
+ const water=t=>[92,93,94,95].includes(t),desert=id=>[4,42,43,44,49,59].includes(id);
+ const point=(side,t,depth=0)=>side==='west'?[depth,t]:side==='east'?[99-depth,t]:side==='north'?[t,depth]:[t,99-depth];
+ const beside=(id,side)=>{const p=positions.get(id),v=offset[side];return p?grid[p.y+v[1]]?.[p.x+v[0]]??null:null;};
+ function put(id,x,y,tile){if(x<0||y<0||x>=100||y>=100)return;const m=MAP_DB[id];m.maze[y][x]=tile;if(m.slabs?.length)m.slabs=m.slabs.filter(s=>s.x!==x||s.y!==y);}
+ function paint(id,x,y,color){if(!surfaces.has(id))surfaces.set(id,[]);surfaces.get(id).push({x,y,w:1,h:1,color});}
+ function region(id){MAP_DB[id]={name:names[id],outdoors:true,mapKind:'overworld',biome:seas.has(id)?'Sea':'Desert',weather:id===50?'snow':'clear',floorColor:seas.has(id)?'#285970':'#b59a75',skyColor:'#abc5d7',spawn:{x:50.5,y:50.5,dir:1},slabs:[],npcs:[],maze:Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>seas.has(id)?94:y<65-x*.52+2*Math.sin(x*.08)?94:0))};}
+ for(const id of positions.keys()){if(!MAP_DB[id])region(id);const m=MAP_DB[id];m.outdoors=true;m.mapKind='overworld';const old=m.maze,h=old.length,w=old[0].length;
+  if(w!==100||h!==100){expanded.set(id,{w,h});m.maze=Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>{
+   if(x<w&&y<h){const t=old[y][x];if((x===w-1||y===h-1||id!==9&&(x===0||y===0))&&[19,25].includes(t))return id===9?94:0;return t;}
+   if(id===9)return 94;
+   if(id===33&&x<3+Math.round(2*Math.sin(y*.12)))return 92;
+   if((x*17+y*29)%97<5)return [38,33].includes(id)?3:25;
+   return 0;
+  }));}
+ }
+ // Sea charts retain the Kraken's island, actors and campaign flags at their saved coordinates.
+ // Place the shore in the neighboring water region when a settlement already reaches a land edge.
+ function join(a,side,b){const other=opposite[side],ma=MAP_DB[a],mb=MAP_DB[b],bothSea=seas.has(a)&&seas.has(b),coast=seas.has(a)!==seas.has(b);const profile=[];
+  for(let t=0;t<100;t++){
+   const [ax,ay]=point(side,t),[bx,by]=point(other,t);let tile;
+   if(bothSea)tile=94;
+   else if(coast){const land=seas.has(a)?b:a,ls=seas.has(a)?other:side,[lx,ly]=point(ls,t),m=MAP_DB[land];const[px,py]=point(ls,t,3);tile=water(m.maze[ly][lx])||water(m.maze[py][px])?94:0;
+    const sea=seas.has(a)?a:b,ss=seas.has(a)?side:other,depth=6+Math.round(2*Math.sin(t*.12+land));
+    for(let d=0;d<depth+4;d++){const[x,y]=point(ss,t,d);put(sea,x,y,tile===0&&d<depth?0:d<depth+2?92:94);if(tile===0&&d<depth)paint(sea,x,y,m.floorColor||'#64734a');}
+   }else{
+    const ca=ma.maze[ay][ax],cb=mb.maze[by][bx];tile=a===40&&b===59?94:water(ca)||water(cb)?94:([5,999,38,45].includes(a)||[5,999,38,45].includes(b))?3:0;
+   }
+   put(a,ax,ay,tile);put(b,bx,by,tile);profile.push(tile);
+   // A four-tile transition strip joins old edge walls to the shared outline.
+   if(!coast&&!bothSea)for(let d=1;d<=3;d++)for(const[id,s]of [[a,side],[b,other]]){const[x,y]=point(s,t,d);if(!(MAP_DB[id].npcs||[]).some(n=>Math.hypot(n.x-x-.5,n.y-y-.5)<2.5))put(id,x,y,tile);}
+  }seams.push({a,side,b,other,profile});
+ }
+ for(const[id]of positions)for(const side of ['east','south']){const b=beside(id,side);if(b!==null)join(id,side,b);}
+ // Corner agreement is shared by every region meeting at that physical point.
+ const corners=new Map();for(const[id,p]of positions)for(const[x,y,dx,dy]of [[0,0,0,0],[99,0,1,0],[0,99,0,1],[99,99,1,1]]){const k=(p.x+dx)+','+(p.y+dy);if(!corners.has(k))corners.set(k,[]);corners.get(k).push({id,x,y});}for(const list of corners.values())if(list.length>1){const tile=list.some(p=>water(MAP_DB[p.id].maze[p.y][p.x]))?94:0;for(const p of list)put(p.id,p.x,p.y,tile);}
+ function road(id,points,width=1.55){roads.push({id,points});const m=MAP_DB[id];for(let i=1;i<points.length;i++){const[x,y]=points[i-1],[a,b]=points[i],dx=a-x,dy=b-y,l=dx*dx+dy*dy||1;
+  for(let yy=Math.max(0,Math.floor(Math.min(y,b)-width));yy<Math.min(100,Math.ceil(Math.max(y,b)+width));yy++)for(let xx=Math.max(0,Math.floor(Math.min(x,a)-width));xx<Math.min(100,Math.ceil(Math.max(x,a)+width));xx++){const u=Math.max(0,Math.min(1,((xx+.5-x)*dx+(yy+.5-y)*dy)/l));if(Math.hypot(xx+.5-x-u*dx,yy+.5-y-u*dy)>width)continue;put(id,xx,yy,0);paint(id,xx,yy,desert(id)?'#c6b08a':'#a09475');}}
+ }
+ const passages=[];
+ function pass(a,side,b,c,ap,bp){if(beside(a,side)!==b)throw Error('Atlas passage mismatch '+a+'/'+b);const o=opposite[side],entry=point(side,c,-.5),exit=point(o,c,-.5);road(a,[...ap,entry]);road(b,[exit,...bp]);passages.push({a,side,b,center:c});}
+ // Old destinations retain their local coordinates. New paths cross the added landscape.
+ pass(6,'south',3,50.5,[[50.5,91.5]],[[50.5,8.5]]);
+ pass(3,'south',2,50.5,[[50.5,85.5]],[[50.5,8.5],[45.5,13.5]]);
+ pass(2,'south',0,65.5,[[65.5,91.5]],[[65.5,9.5]]);
+ pass(2,'east',5,45.5,[[94.5,45.5]],[[6.5,45.5]]);
+ pass(33,'east',47,52.5,[[30.5,22.5],[42,26],[72,43],[90,52.5]],[[8,52.5]]);
+ pass(33,'south',14,50.5,[[30.5,22.5],[42,26],[50.5,60],[50.5,90]],[[50.5,12.5]]);
+ pass(47,'east',38,52.5,[[91,52.5]],[[5.5,52.5],[5.5,25.5]]);
+ pass(47,'south',39,32.5,[[32.5,90]],[[32.5,6.5],[39.5,6.5]]);
+ pass(38,'east',45,28.5,[[25.5,25.5],[40,28.5],[90,28.5]],[[9,28.5]]);
+ pass(45,'south',46,48.5,[[48.5,92]],[[48.5,8]]);
+ pass(14,'east',39,60.5,[[80,60.5]],[[8,60.5],[12.5,36.5]]);
+ pass(14,'south',22,50.5,[[50.5,85.5]],[[50.5,10.5]]);
+ pass(39,'south',40,12.5,[[12.5,36.5],[12.5,70],[12.5,92]],[[12.5,4.5],[14.5,4.5]]);
+ pass(22,'east',40,60.5,[[78,60.5]],[[10,60.5],[14.5,49.5]]);
+ pass(22,'south',-2,50.5,[[50.5,89.5]],[[50.5,12.5],[50.5,27.5]]);
+ pass(-2,'east',59,77.5,[[50.5,78.5],[80,77.5]],[[12,77.5],[50,65],[90,77.5]]);
+ pass(59,'east',4,77.5,[[90,77.5]],[[12,77.5],[27.5,77.5]]);
+ pass(4,'east',42,77.5,[[92,77.5]],[[8,77.5]]);
+ pass(42,'east',43,72.5,[[92,72.5]],[[8,72.5]]);
+ pass(43,'east',44,54.5,[[92,54.5]],[[8,54.5]]);
+ pass(48,'south',49,52.5,[[76,51.5],[84,49.5],[84,74],[67,88],[52.5,94]],[[52.5,15],[45,34],[45,48.5]]);
+ pass(49,'south',44,52.5,[[52.5,92]],[[52.5,12],[49.5,17]]);
+ // The southern Rioja shore faces water; the atlas never creates a second Iberian land bridge.
+ for(let y=89;y<100;y++)for(let x=0;x<100;x++)put(40,x,y,y<92?92:94);
+ // A true strait: northern and southern approaches meet separate shores, never a land bridge.
+ for(let y=32;y<=65;y++)for(let x=0;x<100;x++)put(-2,x,y,y<36||y>61?92:94);
+ road(-2,[[50.5,12],[50.5,29.5]]);road(-2,[[50.5,68.5],[50.5,78.5]]);
+ for(const top of [27,67])for(let y=top;y<top+4;y++)for(let x=49;x<55;x++){put(-2,x,y,0);paint(-2,x,y,'#b5a180');}
+ for(let y=32;y<=65;y++)for(let d=0;d<12;d++){put(65,99-d,y,94);put(59,d,y,y<65-d*.52?94:0);}
+ // Ensure a continuous swimmable approach at each sea/land seam without cutting a settlement.
+ for(const s of seams)if(seas.has(s.a)!==seas.has(s.b)){
+  const land=seas.has(s.a)?s.b:s.a,side=seas.has(s.a)?s.other:s.side;let best=null,score=Infinity;
+  for(let t=8;t<92;t++){const[x,y]=point(side,t,6),near=(MAP_DB[land].npcs||[]).some(n=>Math.hypot(n.x-x,n.y-y)<5);if(!near&&!water(MAP_DB[land].maze[y][x])&&Math.abs(t-50)<score){best=t;score=Math.abs(t-50);}}
+  if(best===null)continue;
+  // These beaches are small passages; all the remaining outlines follow the preserved shoreline.
+  for(let t=best-2;t<=best+2;t++)for(let d=0;d<=7;d++){const[x,y]=point(side,t,d);put(land,x,y,d<3?92:0);if(d>=3)paint(land,x,y,'#b3a27e');}
+  const sea=seas.has(s.a)?s.a:s.b,ss=opposite[side];for(let t=best-2;t<=best+2;t++)for(let d=0;d<=10;d++){const[x,y]=point(ss,t,d);put(sea,x,y,d<3?92:94);}
+ }
+ // Reconcile final edge tiles after roads and straits, preserving matched road positions.
+ for(const s of seams)for(let t=0;t<100;t++){const[x,y]=point(s.side,t),[xx,yy]=point(s.other,t),a=MAP_DB[s.a].maze[y][x],b=MAP_DB[s.b].maze[yy][xx];let tile=a===b?a:water(a)||water(b)?92:a===0||b===0?0:a;put(s.a,x,y,tile);put(s.b,xx,yy,tile);s.profile[t]=tile;}
+ // The forest boundary is bark, with only the established road opening.
+ for(let y=0;y<100;y++)if(y<44||y>46){put(2,99,y,3);put(5,0,y,3);}
+ for(const list of corners.values())if(list.length>1){const tile=list.some(p=>water(MAP_DB[p.id].maze[p.y][p.x]))?94:0;for(const p of list)put(p.id,p.x,p.y,tile);}
+ const forestBorder=[];for(let t=0;t<100;t++)for(const side of ['north','south','east','west']){const[x,y]=point(side,t);forestBorder.push({x,y,tile:MAP_DB[5].maze[y][x]});}
+ function restoreBorders(id){if(id!==5)return;for(const p of forestBorder)put(5,p.x,p.y,p.tile);BMLayers.invalidate(MAP_DB[5]);}
+ const ferry=(map,id,x,y,label,to,arrival)=>{R.actor(map,id,x,y,32,label);R.bind(map,id,(n,d)=>BMClassicDialogue.show({speaker:n,text:'The ferry leaves whenever you are ready. Passage is free. You may also swim the strait.',options:[{label:'Cross the strait',action:()=>{if(!BMInteract.reachable(n)||d.currentEnemy&&!d.currentEnemy.isDead)return;R.enter(d,to,arrival);}}]}));};
+ ferry(-2,901001,52.5,28.5,'Northern ferry keeper',-2,{x:50.5,y:69.5,dir:2});ferry(-2,901002,52.5,69.5,'Southern ferry keeper',-2,{x:50.5,y:28.5,dir:0});
+ function sign(id,index,x,y,label,text){R.actor(id,index,x,y,1163,label,{interactionVerb:'Read',onSpawn:n=>BMClassArt.resource(n,1163)});R.bind(id,index,n=>BMClassicDialogue.show({speaker:n,text}));}
+ sign(59,901010,50.5,67.5,'Coastal caravan road','West leads to the Gibraltar ferry and Iberia. East follows the coast to Ger, Deshret, Kemet and Arabia.');
+ sign(33,901011,49,61,'South · Armorica','The south road reaches Armorica. From there continue through Iberia to Gibraltar, or east through Gaul and La Rioja.');
+ // Redirect the previous east-facing Levant signs to the actual southern pass.
+ const an=MAP_DB[48].npcs.find(n=>n.index===900050);if(an)Object.assign(an,{x:54.5,y:94.5,name:'South · Levant waystation'});
+ R.bind(48,900050,n=>BMClassicDialogue.show({speaker:n,text:'South · Levant waystation. Follow the road through the ridge gate, then turn south.'}));
+ const lv=MAP_DB[49].npcs.find(n=>n.index===900051);if(lv)Object.assign(lv,{x:54.5,y:4.5,name:'North · Anatolia and the Aegean ferry'});
+ R.bind(49,900051,n=>BMClassicDialogue.show({speaker:n,text:'North · Anatolia and the Aegean ferry. The southern road continues to Arabia.'}));
+ const edgeSide=(d,x,y)=>x<0?'west':x>=100?'east':y<0?'north':y>=100?'south':null;
+ const passable=(id,x,y)=>{const m=MAP_DB[id],t=m.maze[y]?.[x];return t!==undefined&&(t===0||water(t)||t>0&&t%2===0)&&!(m.slabs||[]).some(s=>s.x===x&&s.y===y&&s.bottom<.9&&s.top>0);};
+ function edge(d,x,y){if(!positions.has(d.mapID))return null;const side=edgeSide(d,x,y);if(!side)return null;const next=beside(d.mapID,side);if(next===null)return false;const t=Math.floor(side==='east'||side==='west'?y:x);if(t<0||t>=100)return false;
+  if(d.mapID===9&&side==='west'&&!d.memory.kraken_dead)return false;
+  if((d.mapID===2&&side==='east'||d.mapID===5&&side==='west')&&(t<44||t>46))return false;
+  const[a,b]=point(side,t),[c,e]=point(opposite[side],t);const[f,g]=point(opposite[side],t,1);return passable(d.mapID,a,b)&&passable(next,c,e)&&passable(next,f,g);
+ }
+ function transition(d,x,y){if(!edge(d,x,y))return false;const side=edgeSide(d,x,y),next=beside(d.mapID,side),t=Math.max(.5,Math.min(99.5,side==='east'||side==='west'?d.y:d.x));const p=side==='east'?{x:1.5,y:t,dir:1}:side==='west'?{x:98.5,y:t,dir:3}:side==='south'?{x:t,y:1.5,dir:2}:{x:t,y:98.5,dir:0};
+  if(!passable(next,Math.floor(p.x),Math.floor(p.y)))return false;
+  const result=R.enter(d,next,p);if(result){d.currentAngle=d.dir*Math.PI/2;d.currentCamZ=.55;d.isViewingWorld=d.isViewingAtlas=false;MusicEngine.followScene();}return result;
+ }
+ const prior=Explore.prototype.handleAtlasTransition;Explore.prototype.handleAtlasTransition=function(x,y){return positions.has(this.mapID)?transition(this,x,y):prior.call(this,x,y);};
+ // Old quest travel markers remain shortcuts; every overland connection also has a physical road.
+ const priorLoad=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...args){this.atlas=grid;for(const[mid]of positions)if(MAP_DB[mid].spawn)this.defaultSpawns[mid]=MAP_DB[mid].spawn;return priorLoad.call(this,id,...args);};
+ Dungeon.atlas=grid;
+ // Existing saved coordinates and quest locations remain valid on the expanded maps.
+ const defaults=new Map([[9,{x:30.5,y:7.5,dir:3}],[33,{x:6.5,y:22.5,dir:1}],[38,{x:5.5,y:25.5,dir:0}],[39,{x:39.5,y:6.5,dir:2}],[40,{x:14.5,y:4.5,dir:2}],[-2,{x:50.5,y:28.5,dir:2}],[59,{x:50.5,y:65.5,dir:1}]]);
+ for(const[id,p]of defaults){MAP_DB[id].spawn=p;Dungeon.defaultSpawns[id]=p;}
+ for(const[id,q]of surfaces)BMGuildDecor.appendSurface(id,q);for(const id of positions.keys())BMLayers.invalidate(MAP_DB[id]);
+ // Keep authored arrivals when clear; migrate only blocked positions to nearby open ground.
+ for(const[id]of positions){const m=MAP_DB[id],p=m.spawn||Dungeon.defaultSpawns[id]||{x:50.5,y:50.5,dir:0};if(BMLayers.placement(m,p.x,p.y,0))continue;let safe=null;for(let r=1;r<100&&!safe;r++)for(let y=Math.max(0,Math.floor(p.y)-r);y<=Math.min(99,Math.floor(p.y)+r)&&!safe;y++)for(let x=Math.max(0,Math.floor(p.x)-r);x<=Math.min(99,Math.floor(p.x)+r);x++){if(Math.max(Math.abs(x-Math.floor(p.x)),Math.abs(y-Math.floor(p.y)))!==r)continue;if(!seas.has(id)&&water(m.maze[y][x]))continue;if(BMLayers.placement(m,x+.5,y+.5,0)&&!(m.npcs||[]).some(n=>Math.hypot(n.x-x-.5,n.y-y-.5)<.7)){safe={x:x+.5,y:y+.5,dir:p.dir??0};break;}}if(safe){m.spawn=safe;Dungeon.defaultSpawns[id]=safe;}}
+ // Regenerate the small terrain images only when first opening the chart, not every game frame.
+ const colors={0:'#64754b',3:'#30472f',1:'#897b65',25:'#7d776c',10:'#8b8170',92:'#398aa1',93:'#245d85',94:'#234d72',95:'#2b6a86'};
+ function thumbnail(id){if(thumbs.has(id))return thumbs.get(id);const m=MAP_DB[id],c=document.createElement('canvas');c.width=c.height=100;const q=c.getContext('2d');for(let y=0;y<100;y++)for(let x=0;x<100;x++){const t=m.maze[y][x];q.fillStyle=t===0?(BMGuildDecor.color(id,x,y)||m.floorColor||'#64754b'):(colors[t]||Dungeon.wallColors[t]||'#776f5e');q.fillRect(x,y,1,1);}thumbs.set(id,c);return c;}
+ let selected=null;const layout={x:.3,y:1.2,size:1.04};
+ function render(d){const u=tL/10,v=tH/10,c=ctx;c.save();c.textAlign='left';drawShape('rec',0,0,1,0,0,10,10,0,0,0,0,'#071018',1);drawText(.3,.1,7,.35,'WORLD ATLAS','#e4d095',1,'left');drawText(8.25,.1,1.45,.35,'Close','#e4d095',1,'center');
+  for(const[id,p]of positions){const x=tX+(layout.x+p.x*layout.size)*u,y=tY+(layout.y+p.y*layout.size)*v,w=layout.size*u,h=layout.size*v;c.imageSmoothingEnabled=false;c.drawImage(thumbnail(id),x,y,w,h);c.strokeStyle=id===selected?'#ffe397':'rgba(226,211,165,.27)';c.lineWidth=id===selected?2:1;c.strokeRect(x+.5,y+.5,w-1,h-1);
+   if(!seas.has(id)){c.fillStyle='rgba(6,12,14,.75)';c.fillRect(x,y+h-11,w,11);c.fillStyle='#efdfb6';c.font='9px sans-serif';c.textAlign='center';c.textBaseline='alphabetic';c.fillText(names[id],x+w/2,y+h-2,w-2);}
+  }
+  const current=positions.get(MAP_DB[d.mapID]?.atlasMapID??d.mapID);if(current){const x=tX+(layout.x+(current.x+d.x/100)*layout.size)*u,y=tY+(layout.y+(current.y+d.y/100)*layout.size)*v;c.fillStyle='#66f8ed';c.beginPath();c.arc(x,y,3.5,0,Math.PI*2);c.fill();}
+  c.textAlign='left';drawText(.3,.58,9.4,.25,d.isTeleporting?'Choose a region to teleport':'Tap a region for its name · Roads cross at matching borders','#b9ccd2',1,'left');
+  drawText(.3,9.58,9.4,.24,selected!==null?(names[selected]+' · 100 × 100'+(seas.has(selected)?' · Swim / sail':' · Overworld')):(names[d.mapID]||d.mapname),'#e4d095',1,'left');c.restore();
+ }
+ function click(x,y){const d=Dungeon;if(!d.isViewingWorld)return false;if(y<.55&&x>8||y<layout.y||y>=layout.y+grid.length*layout.size){d.isViewingWorld=d.isTeleporting=false;return true;}
+  const gx=Math.floor((x-layout.x)/layout.size),gy=Math.floor((y-layout.y)/layout.size),id=grid[gy]?.[gx];if(id===undefined||id===null)return true;selected=id;
+  if(d.isTeleporting){const p=MAP_DB[id].spawn||d.defaultSpawns[id]||{x:50.5,y:50.5,dir:0};if(R.enter(d,id,p)){d.isViewingWorld=d.isViewingAtlas=d.isTeleporting=false;d.currentAngle=d.dir*Math.PI/2;MusicEngine.play3DSFX('warp');}}return true;
+ }
+ BMWorldRenderer.renderWorldOverlay=render;
+ return {get selected(){return selected;},grid,positions,seas,names,expanded,seams,passages,roads,restoreBorders,edge,transition,beside,point,passable,render,click,thumbnail,layout,invalidate:()=>thumbs.clear()};
+})();globalThis.BMAtlas58=BMAtlas58;
 
 BMContent.installEmbedded();await bootGame();BMMovementCourtyard.previewStart();BMCreator.previewStart();}catch(error){window.BattleMageStartup?.report(error,"Saved-game startup");if(window.BM_CREATOR_PREVIEW)parent.postMessage({type:"bm-creator-error",message:String(error.message||error)},"*");}})();
 </script>

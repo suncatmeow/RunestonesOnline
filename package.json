@@ -1,11 +1,11 @@
 {
   "name": "battlemage-server",
-  "version": "1.9.8",
+  "version": "1.10.1",
   "private": true,
-  "description": "Battle Mage: continental frontier roads and reversible dated journal collections",
+  "description": "Battle Mage: connected 100x100 atlas, prose chapters and separate logs",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/multiplayer.cjs && node --test --test-concurrency=1 tests/runestones-server.cjs tests/tintagel-server.cjs tests/class-paths-server.cjs tests/guild-story-server.cjs tests/dragonflight-server.cjs tests/summoner86.cjs tests/recovery87.cjs tests/flow88.cjs tests/loading91.cjs tests/attack-cadence-server.cjs tests/suncat-life.cjs tests/ground-loot-server.cjs tests/stronghold-chests-server.cjs tests/road-encounters-server.cjs && node tests/material-workshop.cjs && node --test tests/desert-landmarks-server.cjs && npm run test:journal && npm run test:frontier",
+    "test": "node tests/multiplayer.cjs && node --test --test-concurrency=1 tests/runestones-server.cjs tests/tintagel-server.cjs tests/class-paths-server.cjs tests/guild-story-server.cjs tests/dragonflight-server.cjs tests/summoner86.cjs tests/recovery87.cjs tests/flow88.cjs tests/loading91.cjs tests/attack-cadence-server.cjs tests/suncat-life.cjs tests/ground-loot-server.cjs tests/stronghold-chests-server.cjs tests/road-encounters-server.cjs && node tests/material-workshop.cjs && node --test tests/desert-landmarks-server.cjs && npm run test:journal && npm run test:frontier && npm run test:aegean && npm run test:conversation && npm run test:atlas",
     "test:dragonflight": "node --test tests/dragonflight-server.cjs",
     "test:summoner": "node --test tests/summoner86.cjs",
     "test:recovery": "node --test tests/recovery87.cjs",
@@ -19,8 +19,11 @@
     "test:loot": "node --test tests/ground-loot-server.cjs",
     "test:stronghold": "node --test tests/stronghold-chests-server.cjs",
     "test:materials": "node tests/material-workshop.cjs",
-    "test:journal": "node --test tests/journal-scheduling.cjs tests/journal-desk.cjs tests/journal-habits.cjs",
-    "test:frontier": "node --test tests/frontier-roads-server.cjs"
+    "test:journal": "node --test tests/journal-scheduling.cjs tests/journal-desk.cjs tests/journal-habits.cjs tests/journal-reflection.cjs tests/journal-prose.cjs",
+    "test:frontier": "node --test tests/frontier-roads-server.cjs",
+    "test:aegean": "node --test tests/aegean-server.cjs tests/class-paths-server.cjs",
+    "test:conversation": "node --test tests/npc-conversation.cjs tests/npc-dialogue-socket.cjs tests/levant-server.cjs",
+    "test:atlas": "node --test tests/atlas-server.cjs"
   },
   "engines": {
     "node": ">=20"
