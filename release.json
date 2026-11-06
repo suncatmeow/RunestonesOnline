@@ -1,21 +1,23 @@
 {
   "application": "BattleMage Runestones",
-  "version": "59",
-  "serverVersion": "1.10.2",
+  "version": "61",
+  "serverVersion": "1.10.4",
   "date": "2026-11-06",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "releaseNotes": [
+    "COASTLINES-v61.md",
     "ATLAS-AUDIO-v59.md",
     "JOURNAL-PROSE-v58.md"
   ],
-  "futurePlan": "FUTURE-PASSES-v59.md",
+  "futurePlan": "FUTURE-PASSES-v61.md",
   "distribution": "versioned-zip",
-  "supersedes": "BattleMage Runestones v58 / server 1.10.1",
+  "supersedes": "BattleMage Runestones v60 / server 1.10.3",
   "changes": [
-    "54 connected 100x100 overworld regions; North African coast south of Gibraltar and Ger farther south",
-    "Alpine route into Italia, wider Deshret, Nile Delta and Sinai land connection",
-    "Full-screen portrait/landscape atlas with pan, pinch/zoom, selection and explicit Teleport",
-    "Prompt Cherry score disposal with fading and smoother, better balanced movement/combat effects"
+    "Shared coastal water without filler sea maps; 34 charted 100x100 overworld regions",
+    "Southern Armorica to Basque Coast to the northwestern entrance of Eastern Iberia",
+    "Western Iberia / Olisipo and coastal passage to Tingis in Ger",
+    "Original Gibraltar restored except 126 bridge tiles; ferries and direct Ger border",
+    "Old-save migration, matching server terrain and region-specific NPC knowledge"
   ]
 }

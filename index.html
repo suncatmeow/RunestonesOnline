@@ -2,7 +2,7 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-06-bm-v58-connected-atlas"/>
+      <meta name="suncat-build" content="2026-11-06-bm-v61-basque-coasts"/>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage</title>
       <style>
         html,body {
@@ -57064,6 +57064,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
 
                 try {
                     const data = JSON.parse(json);
+                    globalThis.BMAtlas?.migrateSave(data);
                     console.log("Loading Save:", data);
 
                     // 1. Restore Simple Variables
@@ -105806,7 +105807,7 @@ const BMClassPaths=(()=>{
  function save(){Dungeon.syncStoryNPCs(Object.values(nodes).filter(n=>n.map===Dungeon.mapID).map(n=>n.id));Dungeon.requestSave();BMShell.invalidate();}
  function learn(ids){Dungeon.spellsLearned??={};for(const id of ids)Dungeon.spellsLearned[id]=true;Dungeon.updateSkills();}
  function familiar(key){return Number(state().patrons[key]||0);}
- function patronLocation(key){const coast=globalThis.BMTintagelCoast;if(coast?.settled(Dungeon)){if(key==='priest')return globalThis.BMPriestJourney?.arrived(Dungeon)?'Kemet’s healing house, west of the river':'The frozen village by the ice cave';if(key==='mage')return (Dungeon.memory.regionalGuilds?.mage?.stage||0)<2?'The inn at Ger':'Old Observatory, northeast of Ger';if(key==='knight')return 'The ruined keep, Brittany';if(key==='broker')return coast.phase(Dungeon)===2?'Rogue’s refuge, Tintagel slums':'Tintagel village inn';if(key==='clerk')return Dungeon.mapID===2&&Dungeon.npcs.some(n=>n.index===201&&n.x===41.5)||Dungeon.mapID!==2&&coast.phase()===2?'Tintagel guild hall':'Tintagel tavern';}return patrons[key].where;}
+ function patronLocation(key){const coast=globalThis.BMTintagelCoast;if(coast?.settled(Dungeon)){if(key==='priest')return globalThis.BMPriestJourney?.arrived(Dungeon)?'Kemet’s healing house, west of the river':'The frozen village by the ice cave';if(key==='mage')return (Dungeon.memory.regionalGuilds?.mage?.stage||0)<2?'The inn at Ger':'Old Observatory, northeast of Ger';if(key==='knight')return 'The ruined keep, Northern Armorica';if(key==='broker')return coast.phase(Dungeon)===2?'Rogue’s refuge, Tintagel slums':'Tintagel village inn';if(key==='clerk')return Dungeon.mapID===2&&Dungeon.npcs.some(n=>n.index===201&&n.x===41.5)||Dungeon.mapID!==2&&coast.phase()===2?'Tintagel guild hall':'Tintagel tavern';}return patrons[key].where;}
  function at(key){const p=patrons[key];if(key==='priest'&&globalThis.BMTintagelCoast?.settled(Dungeon))return [6,43].includes(Dungeon.mapID)&&Dungeon.npcs.some(n=>n.index===8004&&BMInteract.reachable(n));if(key==='mage'&&globalThis.BMTintagelCoast?.settled(Dungeon))return [4,34].includes(Dungeon.mapID)&&Dungeon.npcs.some(n=>n.index===8003&&BMInteract.reachable(n));if(key==='knight'&&globalThis.BMTintagelCoast?.settled(Dungeon))return Dungeon.mapID===33&&Dungeon.memory.regionalGuilds?.knight?.stage>=8&&Dungeon.npcs.some(n=>n.index===8005&&BMInteract.reachable(n));if(key==='hunter'){
   if(Dungeon.mapID===0&&!globalThis.BMBranches?.post(Dungeon))return Dungeon.npcs.some(n=>n.index===8006&&BMInteract.reachable(n));
   if(Dungeon.mapID===5&&globalThis.BMBranches?.post(Dungeon)&&!Dungeon.memory.hunterLodge?.rank)return false;}if(Dungeon.mapID===2&&globalThis.BMTintagelCoast?.settled(Dungeon)&&['clerk','broker'].includes(key))return Dungeon.npcs.some(n=>n.index===(key==='clerk'?201:8002)&&BMInteract.reachable(n));if(!p||Dungeon.mapID!==p.map)return false;return Dungeon.npcs.some(n=>n.index===p.id&&BMInteract.reachable(n));}
@@ -106071,7 +106072,7 @@ const BMGuildFinale=(()=>{
   8002:{name:'Rogue',sprite:258,destination:'Tintagel',siege:'Keep low. The elders think their soldiers have you pinned. Take the stairs while they are watching me.',after:'I have mouths to feed in Tintagel. If anyone with a guild badge asks which lane I took, you forgot.'},
   8003:{name:'Mage',sprite:261,destination:'Desert',siege:'Channel your mana between their volleys! The elders upstairs are sustaining the assault.',after:'The observatory in the desert has no roof left, but the marks on its floor are star positions. I want to see what else the sand has covered.'},
   8004:{name:'Priest',sprite:255,destination:'Snow mountain',siege:'Breathe. Let your wards settle. We will keep the wounded safe; you must reach the elders!',after:'When the Kraken cut off the grain ships, the Queen’s people went hungry through the winter. I would raise a chapel near their graves: a place to remember the dead and shelter whoever comes next.'},
-  8005:{name:'Knight',sprite:306,destination:'Brittany',siege:'The doorway is mine! Through the hall, up the western stairs. Strike at their command!',after:'Brittany could use an open gate and a knight who answers it. When the time comes, I will ride there under this oak. Not before everyone here can stand.'},
+  8005:{name:'Knight',sprite:306,destination:'Northern Armorica',siege:'The doorway is mine! Through the hall, up the western stairs. Strike at their command!',after:'Northern Armorica could use an open gate and a knight who answers it. When the time comes, I will ride there under this oak. Not before everyone here can stand.'},
   8006:{name:'Hunter',sprite:264,destination:'Savage Forest',siege:'I followed their trail from the eastern woods. Their leaders are above us. Take them down; I will cover the wounded.',after:'The forest will still be there tomorrow. My cabin can shelter anyone who needs it. For now, I am staying with the company.'},
   207:{name:'King',sprite:309,destination:'Tintagel guild hall',siege:'Two elders hold the breach! We will hold their guard. Break both elders and their army will falter!',after:'The Queen and I will build our main hall in Tintagel. A desk for Dancer, a hearth for Bartender, and doors open to travellers.'},
   206:{name:'Queen',sprite:312,destination:'Tintagel guild hall',siege:'The card reader is holding their portal. Defeat the elders before they can collapse it!',after:'We will keep the register in our own guild hall in Tintagel. While the frame goes up, the tavern can be our desk.'},
@@ -106212,7 +106213,7 @@ const BMGuildFinale=(()=>{
   if(a==='registry'){Dungeon.currentSpeaker=null;startGame='explore';Dungeon.executeActions([['open_guild_menu','avalon']]);return;}
   if(a==='services'){startGame='explore';Dungeon.currentSpeaker=null;Dungeon.executeActions([['open_guild_menu','moors']]);return;}
  }
- function gather(){if(state().stage!=='gathering')return;meetingView??={view:window.gameViewMode,camera:Dungeon.cameraMode};BMTouch.cancel();BMLock.clear();Object.assign(Dungeon,{x:meeting.x,y:meeting.y,groundZ:0,targetMapX:meeting.x,targetMapY:meeting.y,isSlidingToTile:false});BMPlayerMotion.reset();let lines=[[884130,state().wasSRank?'Solgata: Everyone is accounted for. Sit with us. You have kept your place beneath this oak.':'Solgata: Everyone is accounted for. Sit with us. You have earned your S-rank license—and your place beneath this oak.'],[207,'King: The hall is gone. The guild is here. We buried the fallen oak beside its roots; we will tend what grows from it.'],[8004,'Priest: When the wounded can travel, I will go north. The Kraken kept the grain ships from the Ice Queen’s people. I will raise a little chapel by their graves and keep a lamp for the living.'],[8003,'Mage: A school in the desert. The old observatories must still have something to teach us.'],[201,'Dancer: The desert can wait. I am going to Tintagel with Bartender and Drunk. We will have a roof, a warm meal, and somewhere to dance.'],[8005,'Knight: Brittany. An open gate, an honest watch. That is where I could be useful.'],[8001,'Warrior: I heard there is a tribe of warriors to the east. Perhaps I will seek them out. Until then, these hands are needed here.'],[8002,'Rogue: I know a back room in Tintagel. There are children waiting for me. If the thieves’ guild asks, you have not seen me.'],[884130,'Solgata: Avalon has healing springs. Perhaps our next weary travellers could find a welcome beside them.'],[206,'Queen: We will build our main guild hall in Tintagel. Dancer can keep the desk; Bartender, the kitchen. Until the roof goes on, the tavern will do.'],[884130,'Solgata: '+partingWords[0]],[884130,partingWords[1]]];if(state().solgataMissing)lines=lines.map(([id,text])=>id===884130?[207,text.startsWith('Solgata: Everyone')?(state().wasSRank?'King: Sit with us. You have kept your place beneath this oak.':'King: Sit with us. You have earned your S-rank license—and your place beneath this oak.'):text.startsWith('Solgata: Avalon')?'King: Solgata spoke of Avalon’s springs. We have not found her since the portal battle. We will keep looking.':text.replace(/^Solgata:/,'King:')]:[id,text]);lines.splice(5,0,[8008,'Bartender: I will open the tavern in Tintagel. There will be a place for every one of you.'],[2970,'Drunk: Experts come here to hunt and discuss ideas. I suppose I can discuss them in Tintagel. *burp*']);scene(lines,'gathered');}
+ function gather(){if(state().stage!=='gathering')return;meetingView??={view:window.gameViewMode,camera:Dungeon.cameraMode};BMTouch.cancel();BMLock.clear();Object.assign(Dungeon,{x:meeting.x,y:meeting.y,groundZ:0,targetMapX:meeting.x,targetMapY:meeting.y,isSlidingToTile:false});BMPlayerMotion.reset();let lines=[[884130,state().wasSRank?'Solgata: Everyone is accounted for. Sit with us. You have kept your place beneath this oak.':'Solgata: Everyone is accounted for. Sit with us. You have earned your S-rank license—and your place beneath this oak.'],[207,'King: The hall is gone. The guild is here. We buried the fallen oak beside its roots; we will tend what grows from it.'],[8004,'Priest: When the wounded can travel, I will go north. The Kraken kept the grain ships from the Ice Queen’s people. I will raise a little chapel by their graves and keep a lamp for the living.'],[8003,'Mage: A school in the desert. The old observatories must still have something to teach us.'],[201,'Dancer: The desert can wait. I am going to Tintagel with Bartender and Drunk. We will have a roof, a warm meal, and somewhere to dance.'],[8005,'Knight: Northern Armorica. An open gate, an honest watch. That is where I could be useful.'],[8001,'Warrior: I heard there is a tribe of warriors to the east. Perhaps I will seek them out. Until then, these hands are needed here.'],[8002,'Rogue: I know a back room in Tintagel. There are children waiting for me. If the thieves’ guild asks, you have not seen me.'],[884130,'Solgata: Avalon has healing springs. Perhaps our next weary travellers could find a welcome beside them.'],[206,'Queen: We will build our main guild hall in Tintagel. Dancer can keep the desk; Bartender, the kitchen. Until the roof goes on, the tavern will do.'],[884130,'Solgata: '+partingWords[0]],[884130,partingWords[1]]];if(state().solgataMissing)lines=lines.map(([id,text])=>id===884130?[207,text.startsWith('Solgata: Everyone')?(state().wasSRank?'King: Sit with us. You have kept your place beneath this oak.':'King: Sit with us. You have earned your S-rank license—and your place beneath this oak.'):text.startsWith('Solgata: Avalon')?'King: Solgata spoke of Avalon’s springs. We have not found her since the portal battle. We will keep looking.':text.replace(/^Solgata:/,'King:')]:[id,text]);lines.splice(5,0,[8008,'Bartender: I will open the tavern in Tintagel. There will be a place for every one of you.'],[2970,'Drunk: Experts come here to hunt and discuss ideas. I suppose I can discuss them in Tintagel. *burp*']);scene(lines,'gathered');}
  function interact(n){const s=state();if(globalThis.BMTintagelCoast?.settleTalk(n))return true;if(!active()){if(Dungeon.mapID===0&&n.index===884130&&Dungeon.memory.guild_rank==='S'&&!s.stage&&(Dungeon.memory.guild_quest?.state||0)===0){talk(n,['Solgata: We need our company together. The sect has turned its forces toward the guild.','You already hold S-rank. Will you answer our call?'],{labels:['Answer the guild’s call','Not yet'],yes:[close,action('legacy')],no:[close]});return true;}return false;}
   if(n._guildStandard){
    const show=text=>BMClassicDialogue.show({speaker:n,text});
@@ -106229,7 +106230,7 @@ const BMGuildFinale=(()=>{
   if(n._guildCherry){talk(n,s.stage==='gathering'?'Dancer’s Pupil: Dancer says the desert has dances we have never seen. I want to learn them. For now, I can help everyone here catch their breath.':'Dancer’s Pupil: Dancer is drawing their attention. I am keeping the wounded behind the counter!');return true;}
   if(n._guildCast){const who=cast[n.index];if(!who)return false;
    if(s.stage==='gathering'&&s.settledInTintagel&&[8001,8003,8004,8005].includes(n.index)){
-    const plans={8001:'I am still needed here. When the work is done, I will look for the warrior band to the east.',8003:'There are old observatories beyond Ger. I want to see what their builders left behind.',8004:'The people up north have graves and no one left to tend them. I mean to go there.',8005:'I have heard there is still a watch in Brittany. I am going to offer them my sword.'};
+    const plans={8001:'I am still needed here. When the work is done, I will look for the warrior band to the east.',8003:'There are old observatories beyond Ger. I want to see what their builders left behind.',8004:'The people up north have graves and no one left to tend them. I mean to go there.',8005:'I have heard there is still a watch in Northern Armorica. I am going to offer them my sword.'};
     return BMClassicDialogue.show({speaker:n,text:plans[n.index],options:n.index===8001?[{label:'Gather the company',action:gather}]:[]});
    }
    if(s.stage==='gathering'){if(n.index===884130||n.index===207&&s.solgataMissing)talk(n,who.after,{labels:['Gather the company','Stay a while'],yes:[close,action('gather')],no:[close]});else if(n.index===201)talk(n,who.after,{labels:['Guild services','Stay a while'],yes:[close,action('services')],no:[close]});else if(n.index===206)talk(n,who.after,{labels:['S-class registry','Stay a while'],yes:[close,action('registry')],no:[close]});else if([8001,8002,8003,8004,8005,8006,8007,8008].includes(n.index))talk(n,who.after,{labels:[n.index===8008?'Meals and ingredients':n.index===8007?'Card reading':'Lessons','Stay a while'],yes:[close,action({usual:n.index})],no:[close]});else talk(n,who.after);}
@@ -106304,7 +106305,7 @@ const BMGuildFinale=(()=>{
   volley++;
  }
  function revive(d){if(!active(d))return false;const m=MAP_DB[d.mapID],p=m.spawn;Object.assign(d,{x:p.x,y:p.y,targetMapX:p.x,targetMapY:p.y,isSlidingToTile:false,isDead:false,isDying:false,currentWardTime:d.maxWards*d.timePerWard,groundZ:0});d.currentSpeaker=d.currentEnemy=null;d.projectiles=[];d._respawnProtectedUntil=Date.now()+10000;BMPlayerMotion.reset();startGame=preGame='explore';save();return true;}
- function entries(){const s=state();if(!s.stage)return [];return [{id:'guild-finale',title:s.stage==='gathering'?'The oak and its branches':s.stage==='siege'?'FINALE II · The Falling Oak':'FINALE III · Beyond the Breach',completed:s.stage==='gathering',text:s.stage==='siege'?`The trainers hold the ground floor. Take the western stairs and defeat both sect elders upstairs (${s.defeated.length}/2). Their volleys can damage the hall. The road outside remains safe.`:s.stage==='peace'?'The assault has stopped. Speak to the King upstairs, then follow Solgata through the portal held by the card reader.':s.stage==='mastermind'?'Enter the Mastermind’s sanctum through the guild portal. Solgata went ahead alone. Cross the held portal to help her.':'The survivors meet in the ruins. Speak to Warrior by the fire to gather those who remain. After the meeting, Dancer, Bartender and Drunk settle in Tintagel; Rogue shelters children in the slums, out of sight of the local thieves’ guild. Priest: snow mountain. Mage: desert. Knight: Brittany. Warrior: a tribe of warriors to the east. Rogue: Tintagel. Solgata: Avalon. King and Queen: building the main guild hall in Tintagel. The other roads remain plans for later.'}];}
+ function entries(){const s=state();if(!s.stage)return [];return [{id:'guild-finale',title:s.stage==='gathering'?'The oak and its branches':s.stage==='siege'?'FINALE II · The Falling Oak':'FINALE III · Beyond the Breach',completed:s.stage==='gathering',text:s.stage==='siege'?`The trainers hold the ground floor. Take the western stairs and defeat both sect elders upstairs (${s.defeated.length}/2). Their volleys can damage the hall. The road outside remains safe.`:s.stage==='peace'?'The assault has stopped. Speak to the King upstairs, then follow Solgata through the portal held by the card reader.':s.stage==='mastermind'?'Enter the Mastermind’s sanctum through the guild portal. Solgata went ahead alone. Cross the held portal to help her.':'The survivors meet in the ruins. Speak to Warrior by the fire to gather those who remain. After the meeting, Dancer, Bartender and Drunk settle in Tintagel; Rogue shelters children in the slums, out of sight of the local thieves’ guild. Priest: snow mountain. Mage: desert. Knight: Northern Armorica. Warrior: a tribe of warriors to the east. Rogue: Tintagel. Solgata: Avalon. King and Queen: building the main guild hall in Tintagel. The other roads remain plans for later.'}];}
  const finaleLines=[
   {text:'Mastermind: You send your greatest champions, Guild... and their wards break like glass.',sprite:106},
   {text:'Solgata: *The last ward flickers.* Rookie… stay behind me. I cannot hold this much longer.',sprite:185},
@@ -107877,7 +107878,7 @@ const BMRegionalGuilds=(()=>{
  });
 
  const BRITTANY=33, haven=2, sea=92;
- const shore={name:'Brittany · The ruined keep',biome:'Coast',skyColor:'#92a4b1',floorColor:'#525840',spawn:{x:6.5,y:22.5,dir:1},npcs:[],slabs:[],maze:[]};
+ const shore={name:'Northern Armorica · The ruined keep',biome:'Coast',skyColor:'#92a4b1',floorColor:'#525840',spawn:{x:6.5,y:22.5,dir:1},npcs:[],slabs:[],maze:[]};
  MAP_DB[BRITTANY]=shore;
  for(let y=0;y<28;y++){const row=[];for(let x=0;x<38;x++){
   const beach=3+Math.round(1.35*Math.sin(y*.32));
@@ -107925,8 +107926,8 @@ const BMRegionalGuilds=(()=>{
   BMPlayerMotion.reset();BMTouch.cancel();startGame='explore';d.requestSave();return true;
  }
  for(const [map,id,x,y] of [[haven,891010,38.5,19.6],[BRITTANY,891011,6.6,21.2]]){
-  actor(map,id,x,y,32,'Boatman');bind(map,id,(n,d)=>map===haven?show(n,'The next boat makes for Brittany. For Ger, take the southbound ship at this same quay.',[
-   option('Sail to Brittany',()=>regionalTravel(d,BRITTANY,{x:6.5,y:22.5,dir:1})),option('Sail to Ger',()=>regionalTravel(d,4,{x:27.5,y:77.5,dir:2}))]):
+  actor(map,id,x,y,32,'Boatman');bind(map,id,(n,d)=>map===haven?show(n,'The next boat makes for Northern Armorica. For Ger, take the southbound ship at this same quay.',[
+   option('Sail to Northern Armorica',()=>regionalTravel(d,BRITTANY,{x:6.5,y:22.5,dir:1})),option('Sail to Ger',()=>regionalTravel(d,4,{x:27.5,y:77.5,dir:2}))]):
    show(n,'Taking the ebb back to Haven. Coming aboard?',[option('Sail to Haven',()=>regionalTravel(d,haven,{x:36.5,y:18.5,dir:2}))]));
  }
  // Two expedition sites beyond Ger. Their outer landmarks sit on open sand in the shared desert.
@@ -108075,14 +108076,14 @@ const BMRegionalGuilds=(()=>{
  function waitForVisit(d,r){r.away=false;r.elapsed=0;d.requestSave();}
  function ready(r){return r.away&&r.elapsed>=waitSeconds;}
  const knightLeads=[
-  'Sail from Haven to Brittany. Meet Knight at the gate of the ruined keep.',
-  'Pick up the spare gate hinge from the cargo at the Brittany quay.',
+  'Sail from Haven to Northern Armorica. Meet Knight at the gate of the ruined keep.',
+  'Pick up the spare gate hinge from the cargo at the Northern Armorica quay.',
   'Fit the hinge to the broken gate on the south side of the keep.',
   'Tell Knight the gate is hanging straight.',
-  'Give Knight a watch to earn. Spend a minute exploring and visit Brittany again.',
+  'Give Knight a watch to earn. Spend a minute exploring and visit Northern Armorica again.',
   'Recover the old watch pennon at the east end of the ruined court.',
   'Carry the pennon back to Knight, now standing watch by the east road.',
-  'Give the recruits time to arrive. Spend a minute exploring and visit Brittany again.',
+  'Give the recruits time to arrive. Spend a minute exploring and visit Northern Armorica again.',
   'Meet Knight and his recruits inside the keep to join the Knights of the Lake.',
   'Make the round from the quay bell to the east watchpost. Return to Knight.',
   'Ring the shield at the roadside tower. Defeat the answering knight and report back.',
@@ -108116,7 +108117,7 @@ const BMRegionalGuilds=(()=>{
    case 3:return show(n,'Hear that? It shuts with one hand. Last night it took three of us. I am on gate duty till morning. Stop by next time your ship comes in.',[option('Finish the repair',()=>startWait(d,3,4))]);
    case 4:if(ready(r))return show(n,'She gave me the watch. I can see our ships from here, but they need a signal on shore. Our old pennon is somewhere in the east end of the court.',[option('Find the pennon',()=>change(d,'knight',4,5,knightLeads[5]))]);break;
    case 6:return show(n,'That blue shows all the way to sea. Two deckhands asked if I would teach them. Let me clear the training yard. Come and meet them when you next put in.',[option('Raise the pennon',()=>startWait(d,6,7))]);
-   case 7:if(ready(r)){change(d,'knight',7,8,'The Knights of the Lake have opened their doors in Brittany.');return knightWork(n,d);}break;
+   case 7:if(ready(r)){change(d,'knight',7,8,'The Knights of the Lake have opened their doors in Northern Armorica.');return knightWork(n,d);}break;
    case 8:return show(n,'Look at them. Neither one could hold a shield last week. The Knights of the Lake have room for a third. Will you take the first watch as a Squire?', [option('Join as Squire',()=>{if(change(d,'knight',8,9,knightLeads[9]))promote(d,'knight',1);})]);
    case 9:if(r.marks?.length===2)return show(n,'The quay can signal the tower now. You have earned your place as a Man-at-arms. Take the hammer at the tower and call out its keeper.',[option('Accept the challenge',()=>{if(change(d,'knight',9,10,knightLeads[10]))promote(d,'knight',2);})]);break;
    case 10:if(r.won)return show(n,'He took that shield inside when he heard who had beaten him. Kneel a moment. Rise, Knight of the Lake.',[option('Take the oath',()=>{if(change(d,'knight',10,11))promote(d,'knight',3);})]);break;
@@ -108921,10 +108922,10 @@ const BMWarriorJourney=(()=>{
   bind(map,id,(n,d)=>{const route=globalThis.BMRhineRoads?.route(id);return show(n,condition(d)?(route?.name||name)+'. The road ahead is clear.':lead(d),condition(d)?[opt('Travel',()=>{if(condition(d))enter(d,route?.map??to,route?.arrival??arrival);})]:[]);});
  }
  way(33,895090,30.5,23.5,'East to the warrior tribes',CAMP,camp.spawn);
- way(CAMP,895091,5.5,26.5,'West to Brittany',33,{x:30.5,y:22.5,dir:0});
+ way(CAMP,895091,5.5,26.5,'West to Northern Armorica',33,{x:30.5,y:22.5,dir:0});
  way(CAMP,895092,25.5,26.5,'Southwest through Gaul',GAUL,gaul.spawn);
  way(GAUL,895093,39.5,5.5,'Return to the northern tribe',CAMP,{x:25.5,y:24.5,dir:0});
- way(GAUL,895094,5.5,7.5,'Road to Brittany',33,{x:30.5,y:22.5,dir:0});
+ way(GAUL,895094,5.5,7.5,'Road to Northern Armorica',33,{x:30.5,y:22.5,dir:0});
  way(GAUL,895095,12.5,36.5,'Pyrenean pass · La Rioja',RIOJA,rioja.spawn);
  way(RIOJA,895096,14.5,3.5,'North through the Pyrenees',GAUL,{x:12.5,y:34.5,dir:0});
  way(RIOJA,895097,14.5,49.5,'Serpent cave',DEN,den.spawn,d=>stage(d)>=5);
@@ -108950,7 +108951,7 @@ const BMWarriorJourney=(()=>{
  function lead(d){
   if(!ready(d))return 'Warrior is helping the survivors. His eastern journey begins after Tintagel’s new guild hall opens.';
   const trail=[
-   'Take the boat from Haven to Brittany. Take the eastern road beyond the keep (30,23), cross the Rhine on its stone bridge, then follow the wooded eastern bank to the Germanic warrior tribe. Speak to Warrior, then the chief.',
+   'Take the boat from Haven to Northern Armorica. Take the eastern road beyond the keep (30,23), cross the Rhine on its stone bridge, then follow the wooded eastern bank to the Germanic warrior tribe. Speak to Warrior, then the chief.',
    'Examine the broken cattle-pen gate east of the chief’s longhouse.',
    'Return west across the Rhine, then take the southern road through Gaul. Examine the hoofprints on the west bank of the muddy ford (18,21).',
    'Follow the road south through the Pyrenean pass. Speak to the woman outside the houses in Nájera.',
@@ -109367,7 +109368,7 @@ const BMRhineRoads=(()=>{
  R.actor(RHINE,897001,43.5,51,306,'Local watchkeeper');R.bind(RHINE,897001,(n,d)=>BMClassicDialogue.show({speaker:n,text:'These walls were old when our grandparents settled here. We mend them, keep the bridge clear and shelter travellers. Gaul is behind you. Across the Rhine lie the Germanic settlements. Warrior is staying with the tribe beyond the eastern woods.'}));
  R.actor(RHINE,897002,34.5,41.5,32,'Bridge keeper');R.bind(RHINE,897002,(n,d)=>BMClassicDialogue.show({speaker:n,text:'The river carries traders both ways. The southern road stays on the Gaul bank, then runs toward the Pyrenees. To find the tribe, cross our stone bridge and keep east through the woods.'}));
  R.prop(RHINE,897010,31.5,39.5,1170,'Watch bed');R.prop(RHINE,897011,37.5,39.5,1165,'Bridge records');R.prop(RHINE,897012,31.5,42.5,1169,'Watch supplies chest');R.prop(RHINE,897013,36.5,46.5,1172,'Travel water barrel');
- for(const [id,x,y,name,text]of [[897020,53.5,53.5,'Rhine · Gaul bank','The Rhine. Gaul lies west; the Germanic bank lies east. The stone bridge crosses ahead.'],[897021,69.5,53.5,'Germanic bank','You have crossed the Rhine. Follow the eastern woodland road to Warrior’s settlement.'],[897022,32.5,78.5,'South · Gaul and the Pyrenees','South along the western bank, through Gaul and toward the Pyrenean pass.'],[897023,3.5,54.5,'West · Brittany','The western road returns to Brittany and the coastal boat to Haven.']]){
+ for(const [id,x,y,name,text]of [[897020,53.5,53.5,'Rhine · Gaul bank','The Rhine. Gaul lies west; the Germanic bank lies east. The stone bridge crosses ahead.'],[897021,69.5,53.5,'Germanic bank','You have crossed the Rhine. Follow the eastern woodland road to Warrior’s settlement.'],[897022,32.5,78.5,'South · Gaul and the Pyrenees','South along the western bank, through Gaul and toward the Pyrenean pass.'],[897023,3.5,54.5,'West · Northern Armorica','The western road returns to Northern Armorica and the coastal boat to Haven.']]){
   R.actor(RHINE,id,x,y,1163,name,{interactionVerb:'Read',onSpawn(n){BMClassArt.resource(n,1163);}});R.bind(RHINE,id,(n,d)=>BMClassicDialogue.show({speaker:n,text}));
  }
  BMGuildDecor.addSurface(RHINE,floors);
@@ -109555,12 +109556,14 @@ const BMNPCKnowledge=(()=>{
   p=progress(p);const name=String(n.name||'Resident'),id=Number(n.index),out={name,voice:'A local inhabitant; courteous, plain spoken, willing to admit uncertainty.',local:[],quest:[],rumors:[],limits:'Only the supplied facts are known. Do not infer unknown quests, private thoughts, rewards, places or prior meetings.'};
   const is=(...ids)=>ids.includes(id),has=s=>new RegExp(s,'i').test(name);
   if(map===2){out.local.push('Tintagel’s village inn has a stage and a southern entrance onto the forecourt. The village stable is east of the inn. The east road leads into Savage Forest.');out.rumors.push('Travellers speak of Deshret, the Red Land, far to the south. This is a secondhand story, not a quest or a claim that the speaker has visited.');}
+  if([4,14,39,85,86,87,88].includes(map))out.local.push(({4:'This is Ger. Tingis is its port on the Moroccan side of the strait. The road north enters Gibraltar directly. Its ferry crosses to the Iberian shore. A harbour pilot in Tingis offers passage to Olisipo in Western Iberia.',14:'Northern Armorica lies south of the Moors across the sea. The ruined keep is near the northern coast; the southeastern forest and lake are inland. The road south reaches Southern Armorica; east lies the Rhine.',39:'Southern Armorica follows the gulf coast. Take the southern trail into the Basque coast and passes, then continue south into the northwestern corner of Eastern Iberia. The eastern road leads through the Gaul foothills.',85:'Western Iberia is Lusitania. Olisipo is its Atlantic port. The inland road goes east to Eastern Iberia. The harbour pilot sails south to Tingis in Ger.',86:'The cliffside town stands above the gulf, between Southern Armorica to the north and Eastern Iberia to the south. The southbound trail enters Eastern Iberia at its northwestern edge. The festival square is a local gathering place.',87:'The Black Forest road joins the Rhine to the west and Germania to the east. The southern trail reaches the Alpine foothills.',88:'These foothills connect Gaul to the west, Black Forest to the north and the Alpine passes to the east. Italia lies south of the Alpine passes.'})[map]);
   if(map===5){out.local.push('This is Savage Forest, east of Tintagel. Hunter keeps a cabin near its western side.');out.rumors.push('Travellers warn of goblins below the forest. Ask a local guide about the cavern entrance.');}
   if([45,46,48,49].includes(map)){out.local.push(({45:'The Carpathian road runs west toward Germania and south toward Hellas. The northern gate is closed.',46:'The eastern Aegean landing offers a free ferry to Anatolia. Follow the coast road to the boatman (76,65).',48:'The road links the western ferry, roadside inn (48,50), ridge watch (76,48) and southern pass into the Levant.',49:'The northern pass returns to Anatolia. The waystation (49,47) offers rest and supplies. The southern road crosses the Southern Levant and Sinai. From Sinai go south to Arabia or west through the Nile Delta to Kemet.'})[map]);}
   if([42,43,44].includes(map))out.local.push(({42:'Deshret is called the Red Land. Follow the caravan road east to Kemet or west to Ger.',43:'Kemet’s healing house stands west of the river. The northern road follows the Nile into the delta; turn east through Sinai and south to Arabia. The western road crosses Eastern Deshret, the Great Dunes and Deshret toward Ger.',44:'The study house is at the oasis (69,39). The northern road reaches Sinai. Turn west there to the Nile Delta and Kemet, or continue north through the Levant toward Anatolia.'})[map]);
   if(has('hunter')||id===8006){out.voice='A practical hunter who notices tracks and habits; no expertise in distant politics.';out.quest.push('My guild supply jobs ask for two boar tusks or three pixie mushrooms. Hunt boars south of the cabin and gather their drops. Pixies carry mushrooms. Use my Guild desk to accept and deliver a job; asking about it does not accept it.');out.local.push('Boars and pixies provide useful supplies. Pick up what a defeated creature drops.');out.rumors=['Other hunters warn of deeper forest dangers. I cannot vouch for distant kingdoms.'];}
-  if(is(8405)||has('^Cherry$')){out.voice='Cherry, a spirited tavern performer and the Dancer’s apprentice. Warm with patrons, firm about lessons.';out.local.push('My stage is in Tintagel’s village inn. I perform at night; paid requests are chosen through my performance menu.');out.quest.push(p.dancer>=6?'You have completed my Dancer lesson. Use the class menu for your earned progression.':p.dancer>=4?'With the recommendation accepted, finish the three travelling steps in my rehearsal, return through its sigil and speak to me about the lesson.':'I do not teach strangers. Ask my teacher, Dancer, for a recommendation. Help with her costume parcel beside the Tintagel market courier (24,46), return it to her, and bring her letter to me. S-rank alone does not replace her word.');out.rumors=['A visiting performer spoke of the Red Land far to the south. I know the song and the story, not the desert roads.'];}
-  if(id===201||has('^Dancer$')){out.voice='Dancer, a busy teacher who expects students to help and then learn by teaching.';out.quest.push('Cherry is my apprentice. I can recommend you after you help retrieve my costume parcel beside Tintagel’s market courier (24,46). Return it to me for the letter, then take it to Cherry. Use the Dance or class-path choices to begin.');}
+  if(is(8405)||has('^Cherry$')){out.voice='Cherry, a spirited tavern performer and the Dancer’s apprentice. Warm with patrons, firm about lessons.';out.local.push('My teacher learned her first steps in the cliffside town on the Basque Coast. I learned from her; that does not mean I grew up in her hometown.');out.local.push('My stage is in Tintagel’s village inn. I perform at night; paid requests are chosen through my performance menu.');out.quest.push(p.dancer>=6?'You have completed my Dancer lesson. Use the class menu for your earned progression.':p.dancer>=4?'With the recommendation accepted, finish the three travelling steps in my rehearsal, return through its sigil and speak to me about the lesson.':'I do not teach strangers. Ask my teacher, Dancer, for a recommendation. Help with her costume parcel beside the Tintagel market courier (24,46), return it to her, and bring her letter to me. S-rank alone does not replace her word.');out.rumors=['A visiting performer spoke of the Red Land far to the south. I know the song and the story, not the desert roads.'];}
+  if(id===201||has('^Dancer$')){out.voice='Dancer, a busy teacher who expects students to help and then learn by teaching.';out.local.push('I grew up in the cliffside town on the Basque Coast and learned its festival dances. Cherry learned from me here in Tintagel.');out.quest.push('Cherry is my apprentice. I can recommend you after you help retrieve my costume parcel beside Tintagel’s market courier (24,46). Return it to me for the letter, then take it to Cherry. Use the Dance or class-path choices to begin.');}
+  if(id===901864){out.voice='A village dance keeper who preserves local festival steps and knows the Dancer from her youth.';out.local.push('Dancer, now teaching in Tintagel, learned her first steps here. Cherry is her apprentice. I cannot grant the recommendation or teach their class lesson.');}
   if(is(899001,899002,899010,899011,899012)){out.quest.push(aegean[p.aegean]);out.rumors.push('Caravan travellers call the southern desert Deshret, the Red Land. Kemet lies beyond the desert, on its river.');}
   if(is(899012,900010,900011)){out.quest.push(caravan[p.caravan]);}
   if(is(899012)){out.voice='The ridge watchkeeper, a careful keeper of inherited fortifications; knows his road and dispatches.';out.local.push('Local families maintain these old walls. Beyond the ridge gate, the road turns south to the Levant; keep to the marked pass.');}
@@ -109580,6 +109583,7 @@ const BMNPCKnowledge=(()=>{
  function answer(f,message){const t=topic(message);if(t==='quest'&&f.quest[0].startsWith('I cannot')&&f.spokenHere)return f.spokenHere+' Use my existing choices to act on this; I can only explain what I know.';return t?f[t].join(' '):'I can tell you about '+(f.quest[0].startsWith('I cannot')?'this area':'my work and this area')+'. Ask me about a task, the local roads, or a rumour. I would rather admit what I do not know than send you astray.';}
  return {facts,progress,topic,answer,caravan};
 })();
+
 
 /* v57: continuous town streets; never cut through an authored building. */
 const BMTintagelAccess=(()=>{
@@ -109801,34 +109805,43 @@ const BMGambler=(()=>{
  return {open,select,deal,hit,stand,leave,score,value,inventory,itemValue,cardValue,offer,describe,limit:LIMIT,get round(){return owner?table().round:null;}};
 })();globalThis.BMGambler=BMGambler;
 
-/* v59: geographical regions and a touch atlas; preserves v58 identities. one physical scale, one atlas, and reciprocal terrain seams. */
+/* v61: compressed coastal boundaries, Basque south approach, western Iberia and authored Gibraltar. */
 const BMAtlas58=(()=>{
  const SIZE=100,R=BMSouthernRoads,grid=[
-  [10,9,6,null,null,null,null,null,null],
-  [null,50,3,null,null,null,null,null,null],
-  [null,51,2,5,null,null,null,null,null],
-  [null,52,0,null,null,null,null,null,null],
-  [null,53,63,33,47,38,45,null,null],
-  [null,54,62,14,39,66,46,58,48],
-  [null,55,64,22,40,67,60,61,49],
-  [null,56,65,-2,57,68,69,70,71],
-  [null,null,79,59,75,76,77,78,72],
-  [null,null,80,4,42,73,74,43,44]
+  [10,9,6,null,null,null,null,null],
+  [null,null,3,null,null,null,null,null],
+  [null,null,2,5,null,null,null,null],
+  [null,null,0,null,null,null,null,null],
+  [null,null,14,47,87,38,45,null],
+  [null,null,39,81,88,66,46,48],
+  [null,null,86,null,null,67,null,49],
+  [null,85,22,null,null,null,null,71],
+  [null,null,-2,null,null,null,78,72],
+  [null,null,4,42,73,74,43,44],
+  [null,null,null,null,null,83,null,null]
  ];
- const positions=new Map(),seas=new Set([9,50,51,52,53,54,55,56,57,58,60,61,62,63,64,65,68,69,70,75,76,77,79,80]),expanded=new Map(),surfaces=new Map(),seams=[],roads=[],thumbs=new Map();
- const names={0:'Moors',2:'Tintagel',3:'Steppes',4:'Ger',5:'Savage Forest',6:'Snow Mountain',9:'Kraken Sea',10:'Avalon',14:'Armorica',22:'Iberia',33:'Brittany',38:'Germania',39:'Gaul',40:'La Rioja',42:'Deshret',43:'Kemet',44:'Arabia',45:'Carpathian Valleys',46:'Hellas',47:'Rhine',48:'Anatolia',49:'Levant','-2':'Gibraltar',50:'Northern Sound',51:'Tintagel Sea',52:'Western Channel',53:'Outer Channel',54:'Western Sea',55:'Iberian Sea',56:'Southern Sea',57:'Western Mediterranean',58:'Aegean Sea',59:'North African Coast',60:'Middle Mediterranean',61:'Eastern Mediterranean',62:'Bay of Biscay',63:'Channel',64:'Iberian Coast',65:'Atlantic Strait',66:'Alpine Passes',67:'Italia',68:'Tyrrhenian Sea',69:'Ionian Sea',70:'Southern Mediterranean',71:'Southern Levant',72:'Sinai',73:'Great Dunes',74:'Eastern Deshret',75:'African Waters',76:'Libyan Sea',77:'Delta Waters',78:'Nile Delta',79:'Atlantic Coast',80:'Southern Atlantic'};
+ const authored=new Map([14,22,-2].map(id=>[id,{maze:MAP_DB[id].maze.map(row=>row.slice()),slabs:(MAP_DB[id].slabs||[]).map(s=>({...s}))}]));
+ // These entered places belong to the existing regions. Keep their quest IDs and local coordinates.
+ Object.assign(MAP_DB[33],{name:'Armorica · The ruined keep',atlasMapID:14,mapKind:'dwelling',outdoors:true});
+ Object.assign(MAP_DB[40],{name:'Iberia · La Rioja',atlasMapID:22,mapKind:'dwelling',outdoors:true});
+ const positions=new Map(),seas=new Set([9]),expanded=new Map(),surfaces=new Map(),seams=[],roads=[],thumbs=new Map();
+ const names={0:'Moors',2:'Tintagel',3:'Steppes',4:'Ger',5:'Savage Forest',6:'Snow Mountain',9:'Kraken Sea',10:'Avalon',14:'Northern Armorica',22:'Eastern Iberia',33:'Armorica · Ruined keep',38:'Germania',39:'Southern Armorica',40:'Iberia · La Rioja',42:'Deshret',43:'Kemet',44:'Arabia',45:'Carpathian Valleys',46:'Hellas',47:'Rhine',48:'Anatolia',49:'Levant','-2':'Gibraltar',50:'Northern Sound',51:'Tintagel Sea',52:'Western Channel',53:'Outer Channel',54:'Western Sea',55:'Iberian Sea',56:'Southern Sea',57:'Western Mediterranean',58:'Aegean Sea',59:'North African Coast',60:'Middle Mediterranean',61:'Eastern Mediterranean',62:'Bay of Biscay',63:'Channel',64:'Iberian Mediterranean',65:'Alboran Sea',66:'Alpine Passes',67:'Italia',68:'Tyrrhenian Sea',69:'Ionian Sea',70:'Southern Mediterranean',71:'Southern Levant',72:'Sinai',73:'Great Dunes',74:'Eastern Deshret',75:'African Waters',76:'Libyan Sea',77:'Delta Waters',78:'Nile Delta',79:'Atlantic Coast',80:'Southern Atlantic',81:'Gaul Foothills',82:'Northern Libyan Sea',83:'Libyan Desert',84:'Balearic Sea',85:'Western Iberia · Lusitania',86:'Basque Coast',87:'Black Forest',88:'Alpine Foothills'};
  for(let y=0;y<grid.length;y++)for(let x=0;x<grid[y].length;x++)if(grid[y][x]!==null)positions.set(grid[y][x],{x,y});
  const opposite={north:'south',south:'north',east:'west',west:'east'},offset={north:[0,-1],south:[0,1],west:[-1,0],east:[1,0]};
- const water=t=>[92,93,94,95].includes(t),desert=id=>[4,42,43,44,49,59,71,72,73,74,78].includes(id);
+ const water=t=>[92,93,94,95].includes(t),desert=id=>[4,42,43,44,49,59,71,72,73,74,78,83].includes(id);
  const point=(side,t,depth=0)=>side==='west'?[depth,t]:side==='east'?[99-depth,t]:side==='north'?[t,depth]:[t,99-depth];
  const beside=(id,side)=>{const p=positions.get(id),v=offset[side];return p?grid[p.y+v[1]]?.[p.x+v[0]]??null:null;};
- function put(id,x,y,tile){if(x<0||y<0||x>=100||y>=100)return;const m=MAP_DB[id];m.maze[y][x]=tile;if(m.slabs?.length)m.slabs=m.slabs.filter(s=>s.x!==x||s.y!==y);}
+ function put(id,x,y,tile){if(authored.has(id)&&!(id===22&&(x===0||y===0||x===99||y===99||x<24&&y<16)))return;if(x<0||y<0||x>=100||y>=100)return;const m=MAP_DB[id];m.maze[y][x]=tile;if(m.slabs?.length)m.slabs=m.slabs.filter(s=>s.x!==x||s.y!==y);}
  function paint(id,x,y,color){if(!surfaces.has(id))surfaces.set(id,[]);surfaces.get(id).push({x,y,w:1,h:1,color});}
  function region(id){
-  const sea=seas.has(id),alpine=id===66,italia=id===67,delta=id===78;
-  const m=MAP_DB[id]={name:names[id],outdoors:true,mapKind:'overworld',terrainOnly:true,biome:sea?'Sea':alpine?'Mountain':italia?'Coast':'Desert',weather:alpine?'snow':'clear',floorColor:sea?'#285970':alpine?'#959b92':italia?'#839164':delta?'#8a9464':'#b59a75',skyColor:alpine?'#b7c6ce':'#abc5d7',spawn:{x:50.5,y:50.5,dir:2},slabs:[],npcs:[],maze:[]};
+  const sea=seas.has(id),alpine=id===66,italia=id===67,delta=id===78,gaul=[81,85,86,87,88].includes(id);
+  const m=MAP_DB[id]={name:names[id],outdoors:true,mapKind:'overworld',terrainOnly:true,biome:sea?'Sea':alpine?'Mountain':italia?'Coast':gaul?'Forest':'Desert',weather:alpine?'snow':'clear',floorColor:sea?'#285970':alpine?'#959b92':italia?'#839164':delta?'#8a9464':gaul?'#63764b':'#b59a75',skyColor:alpine?'#b7c6ce':'#abc5d7',spawn:{x:50.5,y:50.5,dir:2},slabs:[],npcs:[],maze:[]};
   m.maze=Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>{
    if(sea)return 94;
+   if(id===85){const coast=10+3*Math.sin(y*.075),north=5+2*Math.sin(x*.09);if(x<coast||y<north||y>96&&x<75)return 93;if(x<38&&Math.abs(y-(65+2*Math.sin(x*.12)))<2.5+(38-x)*.13)return 92;return (x*17+y*31)%127<5?25:0;}
+   if(id===86){const coast=68-68*Math.pow(Math.min(1,y/70),1.7);if(x<coast)return 93;return x>82&&y>23&&y<70&&(x+y)%9<4?25:(x*17+y*31)%101<6?3:0;}
+   if(id===87)return (x*17+y*31)%101<55?3:0;
+   if(gaul)return (x*17+y*31)%101<9?3:0;
    if(alpine){const ridge=Math.sin(x*.085+y*.045)+.55*Math.cos(y*.13);return ridge>.05?25:0;}
    if(italia){const outline=[[4,0],[94,0],[89,19],[75,34],[76,49],[91,68],[99,75],[98,81],[85,78],[78,73],[82,85],[75,96],[58,98],[48,95],[55,88],[66,86],[63,76],[50,60],[38,45],[28,35],[16,26],[8,24]];let land=false;for(let i=0,j=outline.length-1;i<outline.length;j=i++){const[a,b]=outline[i],[c,d]=outline[j];if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)land=!land;}return !land?94:(x>40+y*.28&&x<47+y*.28&&(x*13+y*29)%17<6)?25:0;}
    if(id===59)return x<7+2*Math.sin(y*.08)||y<18&&x>72+y*.6?94:0;
@@ -109839,7 +109852,7 @@ const BMAtlas58=(()=>{
   if(alpine)for(let y=0;y<100;y++)for(let x=0;x<100;x++)if(m.maze[y][x]===25){m.slabs.push({x,y,bottom:0,top:2.7+1.5*(.5+.5*Math.sin(x*.12)),tile:25});paint(id,x,y,'#c1c9c9');}
   if(id===73||id===74)for(let y=0;y<100;y++)for(let x=0;x<100;x++)if(Math.sin(x*.10+y*.15)>.55)paint(id,x,y,id===73?'#c6a574':'#b69672');
  }
- for(const id of positions.keys()){if(!MAP_DB[id])region(id);const m=MAP_DB[id];m.outdoors=true;m.mapKind='overworld';const old=m.maze,h=old.length,w=old[0].length;
+ for(const id of positions.keys()){if(!MAP_DB[id])region(id);const m=MAP_DB[id];m.outdoors=true;if(id===14||id===22||id===39)m.name=names[id];m.mapKind='overworld';const old=m.maze,h=old.length,w=old[0].length;
   if(w!==100||h!==100){expanded.set(id,{w,h});m.maze=Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>{
    if(x<w&&y<h){const t=old[y][x];if((x===w-1||y===h-1||id!==9&&(x===0||y===0))&&[19,25].includes(t))return id===9?94:0;return t;}
    if(id===9)return 94;
@@ -109848,10 +109861,27 @@ const BMAtlas58=(()=>{
    return 0;
   }));}
  }
- for(let y=89;y<100;y++)for(let x=0;x<100;x++)put(40,x,y,y<92?92:94);
+
+ // Provenance: reuse the two adjoining corner sections in the new Basque map.
+ const cornerTerrain={"eastern":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,93,92,92,93,92,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,93,92,92,92,93],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,25,93,92,92],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,93,93,92,92],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,25,25,25,25,92,93,0,0],[0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,25,25,25,25,25,92,25,0,0],[0,25,25,0,0,0,0,25,25,0,0,0,0,0,0,0,25,25,25,25,92,25,25,0],[0,25,25,25,0,0,25,25,25,0,0,0,0,0,0,0,25,25,25,25,92,25,0,0],[0,0,25,25,25,25,25,25,0,0,0,0,0,0,0,0,25,25,25,25,92,0,0,0],[0,0,0,25,25,25,25,0,0,0,0,0,0,0,0,0,25,25,0,0,92,0,0,0],[0,0,0,25,25,25,25,0,0,0,0,0,0,0,0,0,0,0,0,0,92,92,0,0],[0,0,0,25,25,25,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,92,0,0],[0,0,25,25,25,25,25,25,0,0,0,0,0,0,0,0,0,0,0,0,0,92,0,0],[25,25,25,25,25,25,25,25,0,0,0,0,0,0,0,0,0,0,0,0,93,92,25,0],[25,25,25,25,25,25,25,0,0,0,0,0,0,0,0,25,0,0,0,0,93,92,25,25]],"southern":[[0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25],[0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0],[92,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0],[92,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[92,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0],[92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0],[92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0],[92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25],[92,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[93,92,92,92,92,92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]};
+ for(let y=0;y<16;y++)for(let x=0;x<24;x++){
+  put(86,x,80+y,cornerTerrain.eastern[y][x]);
+  put(86,76+x,4+y,cornerTerrain.southern[y][x]);
+  put(22,x,y,authored.get(22).maze[16][x]);
+ }
+ // Carry the gulf's curve across the two maps, then turn the road south.
+ for(let y=84;y<100;y++)for(let x=0;x<68;x++)put(39,x,y,x<58+(y-84)*.55?93:0);
+ for(let x=0;x<100;x++)put(39,x,99,x<68?93:0);
+ // The original Iberian northwest approach remains clear below the transferred corner.
+ for(let y=0;y<16;y++)for(let x=7;x<=10;x++)put(22,x,y,0);
+ // Cut only the thin original land bridge. Preserve all other Gibraltar interior tiles.
+ const bridgeCut=[];
+ for(let y=49;y<=69;y++)for(let x=58;x<=65;x++)if(!water(MAP_DB[-2].maze[y][x])){bridgeCut.push({x,y,from:MAP_DB[-2].maze[y][x]});MAP_DB[-2].maze[y][x]=93;}
  // Sea charts retain the Kraken's island, actors and campaign flags at their saved coordinates.
  // Place the shore in the neighboring water region when a settlement already reaches a land edge.
- function join(a,side,b){const other=opposite[side],ma=MAP_DB[a],mb=MAP_DB[b],bothSea=seas.has(a)&&seas.has(b),coast=seas.has(a)!==seas.has(b);const profile=[];
+ function join(a,side,b){const other=opposite[side],ma=MAP_DB[a],mb=MAP_DB[b];
+  if(authored.has(a)||authored.has(b)){const source=a===-2||b===-2?-2:authored.has(a)?a:b,target=source===a?b:a,ss=source===a?side:other,ts=opposite[ss],profile=[];for(let t=0;t<100;t++){const[x,y]=point(ss,t),tile=MAP_DB[source].maze[y][x];profile.push(tile);const depth=authored.has(target)?1:6;for(let d=0;d<depth;d++){const[xx,yy]=point(ts,t,d);put(target,xx,yy,tile);if(!water(tile))paint(target,xx,yy,MAP_DB[source].floorColor||'#64734a');}}seams.push({a,side,b,other,profile,authored:source});return;}
+  const bothSea=seas.has(a)&&seas.has(b),coast=seas.has(a)!==seas.has(b);const profile=[];
   for(let t=0;t<100;t++){
    const [ax,ay]=point(side,t),[bx,by]=point(other,t);let tile;
    if(bothSea)tile=94;
@@ -109859,7 +109889,7 @@ const BMAtlas58=(()=>{
     const sea=seas.has(a)?a:b,ss=seas.has(a)?side:other,depth=6+Math.round(2*Math.sin(t*.12+land));
     for(let d=0;d<depth+4;d++){const[x,y]=point(ss,t,d);put(sea,x,y,tile===0&&d<depth?0:d<depth+2?92:94);if(tile===0&&d<depth)paint(sea,x,y,m.floorColor||'#64734a');}
    }else{
-    const ca=ma.maze[ay][ax],cb=mb.maze[by][bx];tile=a===43&&b===44?94:water(ca)||water(cb)?94:([5,999,38,45].includes(a)||[5,999,38,45].includes(b))?3:0;
+    const ca=ma.maze[ay][ax],cb=mb.maze[by][bx];tile=(a===43&&b===44||a===46&&b===48)?93:water(ca)||water(cb)?94:([5,999,38,45].includes(a)||[5,999,38,45].includes(b))?3:0;
    }
    put(a,ax,ay,tile);put(b,bx,by,tile);profile.push(tile);
    // A four-tile transition strip joins old edge walls to the shared outline.
@@ -109868,8 +109898,8 @@ const BMAtlas58=(()=>{
  }
  for(const[id]of positions)for(const side of ['east','south']){const b=beside(id,side);if(b!==null)join(id,side,b);}
  // Corner agreement is shared by every region meeting at that physical point.
- const corners=new Map();for(const[id,p]of positions)for(const[x,y,dx,dy]of [[0,0,0,0],[99,0,1,0],[0,99,0,1],[99,99,1,1]]){const k=(p.x+dx)+','+(p.y+dy);if(!corners.has(k))corners.set(k,[]);corners.get(k).push({id,x,y});}for(const list of corners.values())if(list.length>1){const tile=list.some(p=>water(MAP_DB[p.id].maze[p.y][p.x]))?94:0;for(const p of list)put(p.id,p.x,p.y,tile);}
- function road(id,points,width=1.55){roads.push({id,points});const m=MAP_DB[id];for(let i=1;i<points.length;i++){const[x,y]=points[i-1],[a,b]=points[i],dx=a-x,dy=b-y,l=dx*dx+dy*dy||1;
+ const corners=new Map();for(const[id,p]of positions)for(const[x,y,dx,dy]of [[0,0,0,0],[99,0,1,0],[0,99,0,1],[99,99,1,1]]){const k=(p.x+dx)+','+(p.y+dy);if(!corners.has(k))corners.set(k,[]);corners.get(k).push({id,x,y});}for(const list of corners.values())if(list.length>1){const fixed=list.find(p=>p.id===-2)||list.find(p=>authored.has(p.id));const tile=fixed?MAP_DB[fixed.id].maze[fixed.y][fixed.x]:list.some(p=>water(MAP_DB[p.id].maze[p.y][p.x]))?94:0;for(const p of list)put(p.id,p.x,p.y,tile);}
+ function road(id,points,width=1.55){if(authored.has(id))return;roads.push({id,points});const m=MAP_DB[id];for(let i=1;i<points.length;i++){const[x,y]=points[i-1],[a,b]=points[i],dx=a-x,dy=b-y,l=dx*dx+dy*dy||1;
   for(let yy=Math.max(0,Math.floor(Math.min(y,b)-width));yy<Math.min(100,Math.ceil(Math.max(y,b)+width));yy++)for(let xx=Math.max(0,Math.floor(Math.min(x,a)-width));xx<Math.min(100,Math.ceil(Math.max(x,a)+width));xx++){const u=Math.max(0,Math.min(1,((xx+.5-x)*dx+(yy+.5-y)*dy)/l));if(Math.hypot(xx+.5-x-u*dx,yy+.5-y-u*dy)>width)continue;put(id,xx,yy,0);paint(id,xx,yy,desert(id)?'#c6b08a':'#a09475');}}
  }
  const passages=[];
@@ -109879,41 +109909,40 @@ const BMAtlas58=(()=>{
  pass(3,'south',2,50.5,[[50.5,85.5]],[[50.5,8.5],[45.5,13.5]]);
  pass(2,'south',0,65.5,[[65.5,91.5]],[[65.5,9.5]]);
  pass(2,'east',5,45.5,[[94.5,45.5]],[[6.5,45.5]]);
- pass(33,'east',47,52.5,[[30.5,22.5],[42,26],[72,43],[90,52.5]],[[8,52.5]]);
- pass(33,'south',14,50.5,[[30.5,22.5],[42,26],[50.5,60],[50.5,90]],[[50.5,12.5]]);
- pass(47,'east',38,52.5,[[91,52.5]],[[5.5,52.5],[5.5,25.5]]);
- pass(47,'south',39,32.5,[[32.5,90]],[[32.5,6.5],[39.5,6.5]]);
+ // Armorica's authored eastern and southern land edges feed the new extensions.
+ pass(14,'east',47,52.5,[],[[8,52.5]]);
+ pass(14,'south',39,50.5,[],[[50.5,12.5],[39.5,6.5]]);
+ pass(47,'east',87,52.5,[[91,52.5]],[[8,52.5],[50.5,52.5],[92,52.5]]);
+ pass(87,'east',38,52.5,[[92,52.5]],[[5.5,52.5],[5.5,25.5]]);
+ pass(47,'south',81,32.5,[[32.5,90]],[[32.5,6.5],[50.5,50.5]]);
+ pass(87,'south',88,50.5,[[50.5,52.5],[50.5,90]],[[50.5,8],[50.5,60.5]]);
  pass(38,'east',45,28.5,[[25.5,25.5],[40,28.5],[90,28.5]],[[9,28.5]]);
  pass(45,'south',46,48.5,[[48.5,92]],[[48.5,8]]);
- pass(14,'east',39,60.5,[[80,60.5]],[[8,60.5],[12.5,36.5]]);
- pass(14,'south',22,50.5,[[50.5,85.5]],[[50.5,10.5]]);
- pass(39,'south',40,12.5,[[12.5,36.5],[12.5,70],[12.5,92]],[[12.5,4.5],[14.5,4.5]]);
- pass(22,'east',40,60.5,[[78,60.5]],[[10,60.5],[14.5,49.5]]);
- pass(22,'south',-2,50.5,[[50.5,89.5]],[[50.5,12.5],[50.5,27.5]]);
- pass(-2,'south',59,50.5,[[50.5,69.5],[50.5,88]],[[50.5,10],[50.5,65]]);
- pass(59,'south',4,50.5,[[50.5,65],[50.5,90]],[[50.5,10],[50.5,60],[50.5,85.5],[92,85.5],[92,77.5]]);
+ pass(39,'east',81,60.5,[[39.5,6.5],[42,45],[80,60.5]],[[8,60.5],[50.5,50.5],[80,60.5]]);
+ // Enter Iberia southward from the Basque passes, at its northwestern edge.
+ pass(39,'south',86,70.5,[[39.5,6.5],[42,45],[70.5,70],[70.5,92]],[[70.5,8],[70.5,28],[67,46],[60,66],[25.5,75],[25.5,97],[8.5,97]]);
+ pass(86,'south',22,8.5,[[8.5,97]],[]);
+ pass(85,'east',22,52.5,[[25.5,57.5],[50,54],[90,52.5]],[]);
+ pass(22,'south',-2,55.5,[],[]);
+ pass(-2,'south',4,61.5,[],[[61.5,10],[50.5,60],[50.5,85.5],[92,85.5],[92,77.5]]);
  pass(4,'east',42,77.5,[[92,77.5]],[[8,77.5]]);
  pass(42,'east',73,72.5,[[92,72.5]],[[10,72.5],[48,56],[90,72.5]]);
  pass(73,'east',74,72.5,[[90,72.5]],[[10,72.5],[50,61],[90,72.5]]);
  pass(74,'east',43,72.5,[[90,72.5]],[[8,72.5]]);
+ pass(74,'south',83,50.5,[[50,61],[50.5,90]],[[50.5,10],[50.5,65]]);
  pass(43,'north',78,51.5,[[51.5,52.5],[51.5,8]],[[51.5,92],[62,65]]);
  pass(78,'east',72,65.5,[[62,65],[90,65.5]],[[10,65.5],[52.5,65.5]]);
  pass(72,'south',44,52.5,[[52.5,65.5],[52.5,90]],[[52.5,12],[49.5,17]]);
- pass(39,'east',66,60.5,[[80,60.5]],[[12,60.5],[39,61],[52.5,52]]);
+ pass(81,'east',88,60.5,[[80,60.5]],[[12,60.5],[50.5,60.5],[92,60.5]]);
+ pass(88,'east',66,60.5,[[92,60.5]],[[12,60.5],[39,61],[52.5,52]]);
  pass(38,'south',66,52.5,[[25.5,25.5],[52.5,65],[52.5,90]],[[52.5,12],[52.5,52]]);
  pass(66,'south',67,52.5,[[52.5,52],[41,67],[52.5,90]],[[52.5,12],[48,24],[54,42],[65,65],[72,82]]);
  pass(48,'south',49,52.5,[[76,51.5],[84,49.5],[84,74],[67,88],[52.5,94]],[[52.5,15],[45,34],[45,48.5]]);
  pass(49,'south',71,52.5,[[52.5,92]],[[52.5,10],[46,50],[52.5,90]]);
  pass(71,'south',72,52.5,[[52.5,90]],[[52.5,10],[52.5,65.5]]);
- // The southern Rioja shore faces water; the atlas never creates a second Iberian land bridge.
-
- // A true strait: northern and southern approaches meet separate shores, never a land bridge.
- for(let y=32;y<=65;y++)for(let x=0;x<100;x++)put(-2,x,y,y<36||y>61?92:94);
- road(-2,[[50.5,12],[50.5,29.5]]);road(-2,[[50.5,68.5],[50.5,78.5]]);
- for(const top of [27,67])for(let y=top;y<top+4;y++)for(let x=49;x<55;x++){put(-2,x,y,0);paint(-2,x,y,'#b5a180');}
- for(let y=32;y<=65;y++)for(let d=0;d<12;d++){put(65,99-d,y,94);put(57,d,y,94);}
+ // Local roads use the existing open ground; Gibraltar's interior remains authored.
  // Ensure a continuous swimmable approach at each sea/land seam without cutting a settlement.
- for(const s of seams)if(seas.has(s.a)!==seas.has(s.b)){
+ for(const s of seams)if(!s.authored&&seas.has(s.a)!==seas.has(s.b)){
   const land=seas.has(s.a)?s.b:s.a,side=seas.has(s.a)?s.other:s.side;let best=null,score=Infinity;
   for(let t=8;t<92;t++){const[x,y]=point(side,t,6),near=(MAP_DB[land].npcs||[]).some(n=>Math.hypot(n.x-x,n.y-y)<5);if(!near&&!water(MAP_DB[land].maze[y][x])&&Math.abs(t-50)<score){best=t;score=Math.abs(t-50);}}
   if(best===null)continue;
@@ -109922,18 +109951,59 @@ const BMAtlas58=(()=>{
   const sea=seas.has(s.a)?s.a:s.b,ss=opposite[side];for(let t=best-2;t<=best+2;t++)for(let d=0;d<=10;d++){const[x,y]=point(ss,t,d);put(sea,x,y,d<3?92:94);}
  }
  // Reconcile final edge tiles after roads and straits, preserving matched road positions.
- for(const s of seams)for(let t=0;t<100;t++){const[x,y]=point(s.side,t),[xx,yy]=point(s.other,t),a=MAP_DB[s.a].maze[y][x],b=MAP_DB[s.b].maze[yy][xx];let tile=a===b?a:water(a)||water(b)?92:a===0||b===0?0:a;put(s.a,x,y,tile);put(s.b,xx,yy,tile);s.profile[t]=tile;}
+ for(const s of seams)for(let t=0;t<100;t++){const[x,y]=point(s.side,t),[xx,yy]=point(s.other,t),a=MAP_DB[s.a].maze[y][x],b=MAP_DB[s.b].maze[yy][xx];let tile=s.a===-2?a:s.b===-2?b:authored.has(s.a)?a:authored.has(s.b)?b:a===b?a:water(a)||water(b)?92:a===0||b===0?0:a;put(s.a,x,y,tile);put(s.b,xx,yy,tile);s.profile[t]=tile;}
  for(let t=0;t<100;t++){put(66,99,t,25);put(46,0,t,25);}
  // The forest boundary is bark, with only the established road opening.
  for(let y=0;y<100;y++)if(y<44||y>46){put(2,99,y,3);put(5,0,y,3);}
- for(const list of corners.values())if(list.length>1){const tile=list.some(p=>water(MAP_DB[p.id].maze[p.y][p.x]))?94:0;for(const p of list)put(p.id,p.x,p.y,tile);}
+ for(const list of corners.values())if(list.length>1){const fixed=list.find(p=>p.id===-2)||list.find(p=>authored.has(p.id));const tile=fixed?MAP_DB[fixed.id].maze[fixed.y][fixed.x]:list.some(p=>water(MAP_DB[p.id].maze[p.y][p.x]))?94:0;for(const p of list)put(p.id,p.x,p.y,tile);}
  const forestBorder=[];for(let t=0;t<100;t++)for(const side of ['north','south','east','west']){const[x,y]=point(side,t);forestBorder.push({x,y,tile:MAP_DB[5].maze[y][x]});}
  function restoreBorders(id){if(id!==5)return;for(const p of forestBorder)put(5,p.x,p.y,p.tile);BMLayers.invalidate(MAP_DB[5]);}
  const ferry=(map,id,x,y,label,to,arrival)=>{R.actor(map,id,x,y,32,label);R.bind(map,id,(n,d)=>BMClassicDialogue.show({speaker:n,text:'The ferry leaves whenever you are ready. Passage is free. You may also swim the strait.',options:[{label:'Cross the strait',action:()=>{if(!BMInteract.reachable(n)||d.currentEnemy&&!d.currentEnemy.isDead)return;R.enter(d,to,arrival);}}]}));};
- ferry(-2,901001,52.5,28.5,'Northern ferry keeper',-2,{x:50.5,y:69.5,dir:2});ferry(-2,901002,52.5,69.5,'Southern ferry keeper',-2,{x:50.5,y:28.5,dir:0});
+ ferry(-2,901001,62.5,47.5,'Northern ferry keeper',-2,{x:60.5,y:73.5,dir:2});ferry(-2,901002,62.5,73.5,'Southern ferry keeper',-2,{x:60.5,y:47.5,dir:0});
  function sign(id,index,x,y,label,text){R.actor(id,index,x,y,1163,label,{interactionVerb:'Read',onSpawn:n=>BMClassArt.resource(n,1163)});R.bind(id,index,n=>BMClassicDialogue.show({speaker:n,text}));}
- sign(59,901010,50.5,67.5,'North · Gibraltar / South · Ger','North leads to the Gibraltar ferry and Iberia. South reaches Ger. From Ger the caravan road runs east through Deshret and Kemet; the Nile Delta and Sinai lead onward to Arabia.');
- sign(33,901011,49,61,'South · Armorica','The south road reaches Armorica. From there continue through Iberia to Gibraltar, or east through Gaul and La Rioja.');
+ // Use existing clear ground for doors; no authored tile or building is cut for these locations.
+ const keepDoor={x:23.5,y:14.5,dir:2},riojaDoor={x:81.5,y:4.5,dir:2};
+ function placeDoor(map,id,p,label,to,arrival){R.actor(map,id,p.x,p.y,1163,label,{interactionVerb:'Travel',onSpawn:n=>BMClassArt.resource(n,1163)});R.bind(map,id,(n,d)=>BMClassicDialogue.show({speaker:n,text:label+'. Follow the local approach.',options:[{label:'Travel',action:()=>{if(BMInteract.reachable(n))R.enter(d,to,arrival);}}]}));}
+ placeDoor(14,901014,keepDoor,'The ruined keep · northern Armorican coast',33,{x:6.5,y:22.5,dir:1});
+ placeDoor(33,901033,{x:8.5,y:22.5},'Return to Northern Armorica',14,keepDoor);
+ placeDoor(22,901022,riojaDoor,'La Rioja · local road',40,{x:14.5,y:4.5,dir:2});
+ placeDoor(40,901040,{x:16.5,y:4.5},'Return to Iberia',22,riojaDoor);
+ sign(81,901081,52.5,50.5,'Gaul foothills','West · Southern Armorica. North · Rhine. East · Alpine passes. Gaul is the broader mainland region; Brittany is another name for Armorica.');
+ sign(83,901083,52.5,65.5,'Libyan desert track','North · Eastern Deshret and the caravan road to Kemet.');
+ // Small inhabited places on the new terrain; doors open onto the existing road network.
+ function house(id,x,y,w,h,door,tile=25){const m=MAP_DB[id];for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){put(id,xx,yy,0);paint(id,xx,yy,'#91816b');const wall=yy===y||yy===y+h-1||xx===x||xx===x+w-1,entry=yy===y+h-1&&xx===door;if(wall&&!entry)m.slabs.push({x:xx,y:yy,bottom:0,top:1.8,tile});if(entry)m.slabs.push({x:xx,y:yy,bottom:1.35,top:1.8,tile});m.slabs.push({x:xx,y:yy,bottom:1.8,top:1.95,tile:15});}}
+ function plaza(id,x,y,w,h,color){for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){put(id,xx,yy,0);paint(id,xx,yy,color);}}
+ function resident(id,index,x,y,sprite,name,text){R.actor(id,index,x,y,sprite,name);R.bind(id,index,n=>BMClassicDialogue.show({speaker:n,text}));}
+ // Basque gulf: a curved shoreline below the hills, with stone terraces and a mountain town.
+ const bm=MAP_DB[86];bm.biome='Coast';bm.weather='rain';bm.floorColor='#63734b';bm.terrainOnly=false;
+ for(let y=27;y<72;y++)for(let x=30;x<83;x++)if(!water(bm.maze[y][x])&&water(bm.maze[y]?.[x-1])){bm.slabs.push({x,y,bottom:0,top:1.2+(y%4)*.25,tile:25});bm.maze[y][x]=25;}
+ plaza(86,59,39,17,13,'#908c7a');
+ house(86,60,31,6,6,63);house(86,69,31,7,6,72);house(86,77,40,6,6,80);house(86,53,51,7,6,56);
+ road(86,[[70.5,28],[72.5,38],[67.5,46],[60,66]]);road(86,[[63.5,36],[63.5,46],[80.5,46]]);road(86,[[56.5,56],[56.5,61],[60,66]]);
+ for(let y=39;y<42;y++)for(let x=59;x<65;x++)bm.slabs.push({x,y,bottom:0,top:.2,tile:15});
+ R.prop(86,901861,62.5,33.5,1170,'Village cot');R.prop(86,901862,70.5,33.5,1165,'Festival records');R.prop(86,901863,55.5,53.5,1167,'Water jug');
+ resident(86,901864,68.5,44.5,249,'Dance keeper','Our festival steps are taught in the square. The Dancer who now teaches in Tintagel learned her first steps here. Her apprentice Cherry performs at the village inn there. Visit her teacher for a recommendation; we cannot grant it in her place.');
+ resident(86,901865,74.5,48.5,252,'Pass guide','North follows the coast to Southern Armorica. South, the trail bends through the hills into the northwestern part of Eastern Iberia. Western Iberia and the port of Olisipo lie beyond its western road.');
+ sign(86,901866,10.5,97.5,'South · Eastern Iberia','Cross south into the northwestern corner of Eastern Iberia. The western road there reaches Lusitania and Olisipo.');
+ sign(39,901839,72.5,92.5,'South · Basque coast and passes','The southern trail follows the curve of the gulf, passes the cliffside town and continues south into Eastern Iberia.');
+ // Western Iberia and Olisipo: Atlantic port above the estuary; inland road extends the authored map.
+ const wm=MAP_DB[85];wm.biome='Coast';wm.weather='clear';wm.floorColor='#76805a';wm.terrainOnly=false;
+ plaza(85,18,53,23,8,'#a99b7c');house(85,22,46,7,6,25);house(85,32,46,7,6,35);house(85,38,57,6,6,41);
+ road(85,[[25.5,57.5],[25.5,52],[35.5,52],[35.5,57.5]]);road(85,[[41.5,62],[45.5,62],[45.5,54]]);
+ for(let y=57;y<61;y++)for(let x=9;x<24;x++){put(85,x,y,0);paint(85,x,y,'#957656');}
+ R.prop(85,901851,24.5,48.5,1170,'Harbour cot');R.prop(85,901853,34.5,48.5,1165,'Harbour records');
+ resident(85,901854,29.5,56.5,170,'Olisipo harbour clerk','Welcome to Olisipo, the Atlantic port of Lusitania. The inland road goes east across Iberia. The harbour pilot sails south to Tingis in Ger. Gibraltar remains reachable overland through Eastern Iberia.');
+ function voyage(map,index,x,y,label,to,arrival,text){R.actor(map,index,x,y,252,label);R.bind(map,index,(n,d)=>BMClassicDialogue.show({speaker:n,text,options:[{label:'Take passage',action:()=>{if(BMInteract.reachable(n)&&!(d.currentEnemy&&!d.currentEnemy.isDead))R.enter(d,to,arrival);}}]}));}
+ voyage(85,901852,16.5,58.5,'Olisipo harbour pilot',4,{x:37.5,y:78.5,dir:1},'The coastal boat sails south to Tingis, the port of Ger. Passage is free and leaves when you are ready.');
+ voyage(4,901904,37.5,79.5,'Tingis harbour pilot',85,{x:18.5,y:58.5,dir:1},'This is Tingis, the port of Ger. The coastal boat sails north to Olisipo in Western Iberia. Passage is free.');
+ const portName=MAP_DB[4].npcs.find(n=>n.index===890097);if(portName)portName.name='Tingis · Port of Ger';
+ sign(85,901855,46.5,53.5,'East · Eastern Iberia','Follow the inland road east. The Basque passes lead north to Southern Armorica; Gibraltar lies south of Eastern Iberia.');
+ sign(87,901887,51.5,54.5,'Black Forest road','West · Rhine and Northern Armorica. East · Germania. South · Alpine foothills.');
+ sign(88,901888,52.5,62.5,'Alpine foothills','West · Gaul and Southern Armorica. North · Black Forest. East · Alpine passes and Italia.');
+ // Visible boats sit in water beside the keepers; their existing model is non-blocking.
+ const ferrySkiff=MAP_DB[2].npcs.find(n=>n.sprite===1185);
+ if(ferrySkiff)for(const [map,index,x,y,name]of [[-2,901003,60.5,51.5,'Strait ferry'],[-2,901004,60.5,69.5,'Strait ferry'],[85,901856,6.5,58.5,'Olisipo coastal boat'],[4,901905,24.5,80.5,'Tingis coastal boat']])R.actor(map,index,x,y,1185,name,{role:'decoration',onSpawn(n,d){ferrySkiff.onSpawn(n,d);n.fixedWorldAngle=Math.PI/2;n.hideMinimap=true;}});
+
  // Redirect the previous east-facing Levant signs to the actual southern pass.
  const an=MAP_DB[48].npcs.find(n=>n.index===900050);if(an)Object.assign(an,{x:54.5,y:94.5,name:'South · Levant waystation'});
  R.bind(48,900050,n=>BMClassicDialogue.show({speaker:n,text:'South · Levant waystation. Follow the road through the ridge gate, then turn south.'}));
@@ -109944,7 +110014,7 @@ const BMAtlas58=(()=>{
  redirect(43,896134,53.5,7.5,'North · Nile Delta and Sinai','Follow the Nile road north, then turn east through Sinai. Arabia lies south of Sinai; the Red Sea separates its western coast from Kemet.');
  redirect(44,896135,54.5,8.5,'North · Sinai and Kemet','Travel north to Sinai, then west through the Nile Delta and south to Kemet. The Levant road continues north from Sinai.');
  R.bind(42,896123,n=>BMClassicDialogue.show({speaker:n,text:'Ger lies west. We call these dunes Deshret—the Red Land. Eastward, cross the Great Dunes and Eastern Deshret to Kemet. Follow the Nile north through the delta and turn east into Sinai to reach Arabia.'}));
- sign(66,901066,54.5,51.5,'Alpine crossroads','North · Germania. West · Gaul. South · Italia. The Carpathian road is a separate eastern route from Germania.');
+ sign(66,901066,54.5,51.5,'Alpine crossroads','North · Germania. West · Gaul foothills. South · Italia. The Carpathian road is a separate eastern route from Germania.');
  sign(67,901067,50.5,25.5,'Italia','The Alpine road returns north. Southward the peninsula reaches into the Mediterranean.');
  sign(71,901071,54.5,49.5,'Levant caravan road','North · Levant waystation and Anatolia. South · Sinai, Kemet and Arabia.');
  sign(72,901072,54.5,65.5,'Sinai crossroads','North · Levant. West · Nile Delta and Kemet. South · Arabia.');
@@ -109964,10 +110034,21 @@ const BMAtlas58=(()=>{
  }
  const prior=Explore.prototype.handleAtlasTransition;Explore.prototype.handleAtlasTransition=function(x,y){return positions.has(this.mapID)?transition(this,x,y):prior.call(this,x,y);};
  // Old quest travel markers remain shortcuts; every overland connection also has a physical road.
- const priorLoad=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...args){this.atlas=grid;for(const[mid]of positions)if(MAP_DB[mid].spawn)this.defaultSpawns[mid]=MAP_DB[mid].spawn;return priorLoad.call(this,id,...args);};
+ const retired=new Map([[50,6],[51,2],[52,0],[53,14],[54,14],[55,85],[56,-2],[57,67],[58,46],[59,4],[60,46],[61,48],[62,86],[63,14],[64,22],[65,-2],[68,67],[69,46],[70,43],[75,4],[76,74],[77,43],[79,4],[80,4],[82,74],[84,22]]);
+ const priorLoad=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...args){const old=Number(id);id=retired.get(old)??old;this.atlas=grid;for(const[mid]of positions)if(MAP_DB[mid].spawn)this.defaultSpawns[mid]=MAP_DB[mid].spawn;const result=priorLoad.call(this,id,...args);if(old!==id&&this.mapID===id){const p=MAP_DB[id].spawn||this.defaultSpawns[id];Object.assign(this,p,{targetMapX:p.x,targetMapY:p.y,groundZ:0});}return result;};
+ function migrateSave(data){
+  if(!data||Number(data.memory?.atlasCoastLayout)>=61)return;
+  const old=Number(data.mapID),id=retired.get(old)??old;data.mapID=id;
+  const m=MAP_DB[id],p=m?.spawn||Dungeon.defaultSpawns[id];
+  const altered=old===-2||(id===22&&(data.x<24&&data.y<16||data.x<1||data.x>=99||data.y<1||data.y>=99))||(id===39&&data.y>=84);
+  if(p&&(old!==id||altered&&(!BMLayers.placement(m,data.x,data.y,data.groundZ||0)||water(m.maze[Math.floor(data.y)]?.[Math.floor(data.x)]))))Object.assign(data,p,{groundZ:0});
+  if(retired.has(Number(data.prevMap)))data.prevMap=retired.get(Number(data.prevMap));
+  if(data.mapSpawns)for(const key of Object.keys(data.mapSpawns))if(retired.has(Number(key)))delete data.mapSpawns[key];
+  data.memory={...(data.memory||{}),atlasCoastLayout:61};
+ }
  Dungeon.atlas=grid;
  // Existing saved coordinates and quest locations remain valid on the expanded maps.
- const defaults=new Map([[9,{x:30.5,y:7.5,dir:3}],[33,{x:6.5,y:22.5,dir:1}],[38,{x:5.5,y:25.5,dir:0}],[39,{x:39.5,y:6.5,dir:2}],[40,{x:14.5,y:4.5,dir:2}],[-2,{x:50.5,y:28.5,dir:2}],[59,{x:50.5,y:65.5,dir:2}],[44,{x:52.5,y:4.5,dir:2}],[78,{x:62.5,y:65.5,dir:1}]]);
+ const defaults=new Map([[9,{x:30.5,y:7.5,dir:3}],[38,{x:5.5,y:25.5,dir:0}],[39,{x:39.5,y:6.5,dir:2}],[-2,{x:60.5,y:47.5,dir:2}],[85,{x:26.5,y:57.5,dir:1}],[86,{x:67.5,y:46.5,dir:2}],[44,{x:52.5,y:4.5,dir:2}],[78,{x:62.5,y:65.5,dir:1}]]);
  for(const[id,p]of defaults){MAP_DB[id].spawn=p;Dungeon.defaultSpawns[id]=p;}
  for(const[id,q]of surfaces)BMGuildDecor.appendSurface(id,q);for(const id of positions.keys())BMLayers.invalidate(MAP_DB[id]);
  // Keep authored arrivals when clear; migrate only blocked positions to nearby open ground.
@@ -109993,7 +110074,7 @@ const BMAtlas58=(()=>{
   for(const[id,p]of positions){const x=view.x+p.x*view.size,y=view.y+p.y*view.size,s=view.size;if(x+s<0||y+s<0||x>view.w||y>view.h)continue;c.drawImage(thumbnail(id),x,y,s,s);c.strokeStyle=id===selected?'#ffe397':'rgba(226,211,165,.3)';c.lineWidth=id===selected?3:1;c.strokeRect(x+.5,y+.5,s-1,s-1);
    if(!seas.has(id)||s>=70){const font=Math.max(9,Math.min(14,s*.15)),height=font+6;c.fillStyle='rgba(6,12,14,.85)';c.fillRect(x,y+s-height,s,height);c.fillStyle='#efdfb6';c.font=font+'px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(names[id],x+s/2,y+s-height/2,s-4);}
   }
-  const d=Dungeon,p=positions.get(MAP_DB[d.mapID]?.atlasMapID??d.mapID);if(p){const x=view.x+(p.x+d.x/100)*view.size,y=view.y+(p.y+d.y/100)*view.size;c.beginPath();c.arc(x,y,5,0,Math.PI*2);c.fillStyle='#66f8ed';c.fill();c.strokeStyle='#072e35';c.lineWidth=2;c.stroke();}
+  const d=Dungeon,p=positions.get(MAP_DB[d.mapID]?.atlasMapID??d.mapID);if(p){const local=d.mapID===33?{x:23.5,y:14.5}:d.mapID===40?{x:81.5,y:4.5}:d;const x=view.x+(p.x+local.x/100)*view.size,y=view.y+(p.y+local.y/100)*view.size;c.beginPath();c.arc(x,y,5,0,Math.PI*2);c.fillStyle='#66f8ed';c.fill();c.strokeStyle='#072e35';c.lineWidth=2;c.stroke();}
  }
  function create(){if(root)return;const style=document.createElement('style');style.textContent=`#bm-atlas{position:fixed;inset:0;z-index:16000;background:#071018;color:#e4d095;display:flex;flex-direction:column;font:15px system-ui,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box;overscroll-behavior:none}#bm-atlas[hidden]{display:none!important}#bm-atlas *{box-sizing:border-box}#bm-atlas header,#bm-atlas nav,#bm-atlas footer{display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap;flex-shrink:0}#bm-atlas header{justify-content:space-between;padding-bottom:2px}#bm-atlas h1{font:24px Georgia,serif;margin:0}#bm-atlas button,#bm-atlas select{border:1px solid #7d784f;border-radius:9px;background:#192c2e;color:#eee0b1;font:inherit;min-height:42px;padding:7px 12px}#bm-atlas button:focus-visible,#bm-atlas select:focus-visible,#bm-atlas canvas:focus-visible{outline:2px solid #66f8ed;outline-offset:-3px}#bm-atlas button:disabled{opacity:.45}#bm-atlas [hidden]{display:none!important}#bm-atlas select{min-width:0;flex:1;width:110px;max-width:280px}#bm-atlas canvas{display:block;touch-action:none;width:100%;height:100%;outline:none}#bm-atlas .chart-wrap{flex:1;min-height:0;overflow:hidden;position:relative}#bm-atlas .hint{margin:0;padding:3px 12px 7px;color:#b4c5c9;font-size:12px}#bm-atlas footer{border-top:1px solid #314347;min-height:55px}#bm-atlas .region{flex:1;min-width:140px;font-size:14px}#bm-atlas .travel{background:#4a5432;border-color:#d3bc73}@media(orientation:landscape) and (max-height:600px){#bm-atlas{display:grid;grid-template-columns:250px 1fr;grid-template-rows:auto auto minmax(0,1fr) auto}#bm-atlas header{grid-column:1}#bm-atlas nav{grid-column:2}#bm-atlas .hint,#bm-atlas .chart-wrap,#bm-atlas footer{grid-column:1/-1}}@media(max-height:480px){#bm-atlas header,#bm-atlas nav,#bm-atlas footer{padding:3px 12px}#bm-atlas h1{font-size:21px}#bm-atlas .hint{padding-bottom:3px}#bm-atlas button,#bm-atlas select{min-height:36px}}`;
   document.head.appendChild(style);root=document.createElement('section');root.id='bm-atlas';root.hidden=true;root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-label','World atlas');root.innerHTML='<header><h1>World atlas</h1><button data-action="close">Close</button></header><nav aria-label="Map controls"><button data-action="out" aria-label="Zoom out">−</button><button data-action="in" aria-label="Zoom in">+</button><button data-action="fit">Fit</button><button data-action="you">You</button><select aria-label="Select a region"></select></nav><p class="hint"></p><div class="chart-wrap"><canvas tabindex="0" aria-label="World map. Drag to pan, pinch to zoom, or use the map controls and region selector."></canvas></div><footer><span class="region" role="status"></span><button class="travel" data-action="teleport" hidden>Teleport</button></footer>';
@@ -110010,12 +110091,12 @@ const BMAtlas58=(()=>{
   root.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'){e.preventDefault();close();return;}if(e.target!==chart)return;const k=e.key;if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-'].includes(k))e.preventDefault();if(k==='+'||k==='=')zoom(1.35);else if(k==='-')zoom(1/1.35);else{if(k==='ArrowLeft')view.x+=50;if(k==='ArrowRight')view.x-=50;if(k==='ArrowUp')view.y+=50;if(k==='ArrowDown')view.y-=50;clampView();draw();}});root.addEventListener('keyup',e=>e.stopPropagation());
   new ResizeObserver(resize).observe(chart.parentElement);window.addEventListener('blur',cancelGesture);
  }
- function sync(){if(!active()){if(root)root.hidden=true;visible=false;cancelGesture();return;}create();root.hidden=false;if(!visible){visible=true;oldFocus=document.activeElement;BMTouch.cancel();BMMenuInput.reset();selected=positions.has(Dungeon.mapID)?Dungeon.mapID:null;picker.value=String(selected??2);resize();chart.focus({preventScroll:true});}update();draw();}
+ function sync(){if(!active()){if(root)root.hidden=true;visible=false;cancelGesture();return;}create();root.hidden=false;if(!visible){visible=true;oldFocus=document.activeElement;BMTouch.cancel();BMMenuInput.reset();const shown=MAP_DB[Dungeon.mapID]?.atlasMapID??Dungeon.mapID;selected=positions.has(shown)?shown:null;picker.value=String(selected??2);resize();chart.focus({preventScroll:true});}update();draw();}
  function render(){sync();}
  function click(){return active();} // Legacy canvas input can never initiate travel.
  const shellSync=BMShell.sync;BMShell.sync=function(...args){const r=shellSync.apply(this,args);sync();return r;};
  BMWorldRenderer.renderWorldOverlay=render;
- return {get selected(){return selected;},grid,positions,seas,names,expanded,seams,passages,roads,restoreBorders,edge,transition,beside,point,passable,render,click,thumbnail,view,select,travel,close,fit,center,zoom,sync,invalidate:()=>{thumbs.clear();dirty=true;}};
+ return {migrateSave,authored,bridgeCut,retired,cornerTerrain,get selected(){return selected;},grid,positions,seas,names,expanded,seams,passages,roads,restoreBorders,edge,transition,beside,point,passable,render,click,thumbnail,view,select,travel,close,fit,center,zoom,sync,invalidate:()=>{thumbs.clear();dirty=true;}};
 
 })();globalThis.BMAtlas58=BMAtlas58;globalThis.BMAtlas=BMAtlas58;
 
