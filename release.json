@@ -1,0 +1,18 @@
+{
+  "application": "BattleMage Runestones",
+  "version": "55",
+  "serverVersion": "1.9.8",
+  "date": "2026-11-06",
+  "entryPoint": "index.html",
+  "serverEntryPoint": "server.js",
+  "releaseNotes": "FRONTIER-JOURNAL-v55.md",
+  "futurePlan": "FUTURE-PASSES-v55.md",
+  "distribution": "versioned-zip",
+  "changes": [
+    "Germany\u2013Transylvania\u2013Greece roads and caravan quest",
+    "Reversible dated journal collections with original source preservation",
+    "Dated gathering and alchemy evidence in narrator context",
+    "Previous older / Next newer navigation"
+  ],
+  "supersedes": "BattleMage Runestones v54 / server 1.9.7"
+}
