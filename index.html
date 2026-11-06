@@ -2,7 +2,7 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-06-bm-v61-basque-coasts"/>
+      <meta name="suncat-build" content="2026-11-06-bm-v63-compact-relief"/>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage</title>
       <style>
         html,body {
@@ -43193,10 +43193,10 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                         const cachedSource=cardDrop?host.BMWorldCards.get(sprite,Math.abs(wallScale/transformY*scene.getSpriteConfig(sprite,frameAngle,imageIndex).scale)):(sprite.cachedBillboard||host.spriteCache[imageIndex]||host.BMArtwork.worldFrame(imageIndex));
                         if(!cachedSource)continue;
                         const directional=Array.isArray(cachedSource)&&Array.isArray(cachedSource[0]);
-                        const animationSpeed=sprite._cherryDance?340:directional?150:([46.1,63.1,74.1,82].includes(imageIndex)?300:100);
+                        const animationSpeed=sprite._cherryDance?800:directional?150:([46.1,63.1,74.1,82].includes(imageIndex)?300:100);
                         const selected=(0, host.selectPortraitFrame)(cachedSource,currentDir,-1,frameNow,animationSpeed);
                         if(!selected)continue;
-                        let srcImg=selected.image;const poseFrame=selected.frame,poseDirection=selected.direction;
+                        let srcImg=host.BMCherryArt?.frame(sprite,scene,frameNow)||selected.image;const poseFrame=selected.frame,poseDirection=selected.direction;
                         let imageMeta=cardDrop||sprite.cachedBillboard?null:(0, host.spriteFrameMeta)(imageIndex,poseDirection,poseFrame);
                         const equipped=host.BMEquipment.frame(sprite.isPlayer?scene:(sprite.auraOwner||sprite),imageIndex,poseDirection,poseFrame,srcImg,imageMeta);
                         if(equipped){srcImg=equipped.image;imageMeta=equipped.meta;}
@@ -69872,7 +69872,7 @@ const BMChatComposer=(()=>{
                     // ====================================================
                     if (window.isEmperorDuel === true ||(Dungeon.status === 'dueling')) {
                         window.isEmperorDuel = false;
-                        if(window.isPatronDuel){window.isPatronDuel=false;const won=Player[1].option===10.1;Player=[new Field(0),new Field(1,1)];Player[1].opponent=Player[0];Player[0].opponent=Player[1];Dungeon.currentSpeaker=null;Dungeon.dCounter=0;Dungeon.status='normal';Dungeon.isProcessingActions=false;startGame='explore';BMInteract.report(won?'You won the friendly Runestones match.':'Your opponent won the friendly match.');Dungeon.processNextAction();return;}
+                        if(window.isPatronDuel){if(globalThis.BMGambler?.complete(Player[1].option===10.1))return;window.isPatronDuel=false;const won=Player[1].option===10.1;Player=[new Field(0),new Field(1,1)];Player[1].opponent=Player[0];Player[0].opponent=Player[1];Dungeon.currentSpeaker=null;Dungeon.dCounter=0;Dungeon.status='normal';Dungeon.isProcessingActions=false;startGame='explore';BMInteract.report(won?'You won the friendly Runestones match.':'Your opponent won the friendly match.');Dungeon.processNextAction();return;}
                         // --- WIN MINIGAME ---
                         if (Player[1].option === 10.1) {  
                             if (Dungeon.status === 'dueling' || (Dungeon.currentSpeaker && Dungeon.currentSpeaker.socketId === 'NPC_SUNCAT')) {
@@ -88220,7 +88220,7 @@ const BMTacticsSession=(()=>{
     function begin(d,config){
         if(d.mapID===888&&d.tacticsReturn) return false;
         config.stakes??='mock';
-        const menu=config.stakes==='mock_menu'||[0,1,2,3,'options','options2'].includes(startGame);
+        const menu=config.stakes==='mock_menu'&&!config.tavernGame||[0,1,2,3,'options','options2'].includes(startGame);
         const map=d.mapID!==888&&MAP_DB[d.mapID]?d.mapID:(MAP_DB[d.prevMap]&&d.prevMap!==888?d.prevMap:999);
         d.tacticsReturn={mapID:map,x:d.x,y:d.y,dir:d.dir,returnToWorld:!menu,menu,
             continuation:(d.actionQueue||[]).slice(),config:{...config},
@@ -88260,6 +88260,7 @@ const BMTacticsSession=(()=>{
         d.restoreTacticsMap();window.TacticsEngine=null;
         preGame=p.menu?3:'explore';startGame=p.menu?3:'explore';
         BMActivity.record('tactics_result',`${c.scenarioName||'Tactics'}: ${cinematic?'witnessed the Magician’s escape':won?'victory':'defeat'}.`,{stakes:c.stakes,outcome:cinematic?'cinematic':won?'victory':'defeat',mapID:map,scenarioName:c.scenarioName});
+        if(c.tavernGame){globalThis.BMGambler?.complete(won);d.updateSkills();d.requestSave();MusicEngine.followScene();return true;}
         if(real&&!won&&!p.menu){
             d.currentWardTime=0;d.activeSummons=[];
             d.killPlayer('tactics',c.bossName||(t.units||[]).find(u=>u.alignment==='foe'&&u.isBoss)?.name||CARD_MANIFEST_DB[(t.units||[]).find(u=>u.alignment==='foe')?.type]?.name||'the tactical battle');
@@ -92179,8 +92180,8 @@ const BattleMusic = (() => {
         ?makeScene('menu',area,worldId,{duck:m==='pause'?.5:.72,overlay:true})
         :makeScene('menu','menu','menus');
     }else base=makeScene('menu','menu','menus');
-    const performanceScene=!death&&!threat&&globalThis.BMCherryPerformance?.scene(d,m);
-    if(performanceScene){base=makeScene('exploration',performanceScene.profile,performanceScene.identity,performanceScene);explicit=null;}
+    const performanceScene=!death&&globalThis.BMCherryPerformance?.scene(d,m);
+    if(performanceScene){encounter=null;lastThreat=0;base=makeScene('exploration',performanceScene.profile,performanceScene.identity,performanceScene);explicit=null;}
     if(previousMode!==m){
       if(previousMode==='jukebox'){manual=null;hold=false;}
       if(explicit&&explicit.mode!==m)explicit=null;
@@ -92189,7 +92190,7 @@ const BattleMusic = (() => {
     if(explicit&&(t>=explicit.until||explicit.map!==d.mapID||['combat','boss'].includes(base.kind)))explicit=null;
     if(explicit&&!death&&!['combat','boss'].includes(base.kind))base=makeScene('cue',explicit.profile,explicit.identity,{urgent:explicit.urgent,classicId:explicit.classicId});
     const worldScene=!['menu','jukebox'].includes(base.kind)||base.overlay;
-    if(worldScene){base.key+='|visit:'+visit.epoch;base.visit=visit.epoch;}
+    if(worldScene){if(!base.performance)base.key+='|visit:'+visit.epoch;base.visit=base.performance&&current?.scene.identity===base.identity?current.scene.visit:visit.epoch;}
     if(base.overlay&&current&&current.scene.visit===visit.epoch){base={...current.scene,duck:base.duck,overlay:true};if(encounter)lastThreat=t;}
     previousBase=base;
     return base;
@@ -103247,6 +103248,7 @@ const BMOnline = (() => {
   function canAttack(p) {
     return (
       ready &&
+      !globalThis.BMTavernPeace?.inside(Dungeon) && !globalThis.BMTavernPeace?.inside({mapID:p?.mapID??Dungeon.mapID,x:p?.x,y:p?.y}) &&
       !globalThis.BMGuildFinale?.active() && !globalThis.BMRegionalGuilds?.privateDuelMap(Dungeon) &&
       p &&
       !p.isDead &&
@@ -103287,6 +103289,7 @@ const BMOnline = (() => {
       guildStrongholdAccepted: Dungeon.memory.guild_quest?.type==='stronghold'&&Dungeon.memory.guild_quest?.storyChapter===1&&[1,2].includes(Dungeon.memory.guild_quest?.state),
       dead: !!(Dungeon.isDead || Dungeon.isDying),
       groundLoot: 1,
+      tavernListening:!!globalThis.BMTavernPeace?.inside(Dungeon)&&!!globalThis.BMCherryPerformance?.ready(Dungeon)&&!document.hidden,
       workshop: globalThis.BMMaterials?.onlineProfile()||null,
       active: startGame === "explore" && !Dungeon.isDead && !Dungeon.isDying && !globalThis.BMClassPaths?.inTrial() && !globalThis.BMRegionalGuilds?.privateDuelMap(Dungeon),
       summons: Dungeon.npcs
@@ -103851,7 +103854,7 @@ const BMOnline = (() => {
       el(
         "p",
         panel,
-        `Outlaw mark ${self().notoriety} · Bounty ${self().bounty} silver. Shops refuse trade; guards may attack.`,
+        `Outlaw mark ${self().notoriety} · Bounty ${self().bounty} silver. Shops refuse trade; guards may attack. The mark fades with time, three times faster while listening to Cherry in the tavern.`,
         "warning",
       );
     const selectedPlayer = window.remotePlayers?.[selected];
@@ -104034,7 +104037,7 @@ const BMOnline = (() => {
       notice("The shopkeeper refuses to trade while you carry an outlaw mark.");
     }
     if (
-      self()?.notoriety &&
+      self()?.notoriety && !globalThis.BMTavernPeace?.inside(Dungeon) &&
       !(self()?.protectedUntil > now()) &&
       Date.now() - lastGuard > 1600 &&
       startGame === "explore"
@@ -107629,8 +107632,8 @@ const BMBranches=(()=>{
  function patrons(n){
   const type=(n.index-890050)%10;
   if(type===0)return show(n,'A hand of blackjack? Play for free, stake up to 1,000 silver, or put a card or an item on the table. You see my prize before we deal.',[opt('Play blackjack',()=>BMGambler.open(n))]);
-  if(type===1)return realLesson(Dungeon)?show(n,'Fancy a friendly game of Runestones?',[opt('Play Runestones',()=>Dungeon.executeActions([['start_minigame','inn practice']]))]):show(n,'The High Priestess teaches the rules. Finish her card lesson and I will deal you in.');
-  return show(n,'Shall we set out the pieces? We can play a practice battle.',[opt('Play tactics',()=>Dungeon.executeActions([['start_tactics',{id:n.index,stakes:'mock',scenarioName:'Inn practice'}]]))]);
+  if(type===1)return realLesson(Dungeon)?show(n,'One shuffled deck, thirty-nine cards each. A friendly game, or shall we put a stake on it?',[opt('Play Runestones',()=>BMGambler.open(n))]):show(n,'The High Priestess teaches the rules. Finish her card lesson and I will deal you in.');
+  return show(n,'Random creature teams, their own skills and stats. Free practice or a stake of your choice?',[opt('Play tactics',()=>BMGambler.open(n))]);
  }
  function lodge(d){return d.memory.hunterLodge??={rank:0,task:null,marks:[]};}
  const trail=[[9.5,48.5],[22.5,52.5],[27.5,48.5]];
@@ -107757,9 +107760,11 @@ const BMBranches=(()=>{
  function dance(d,dt){
   if(d.mapID!==2||!BMCherryPerformance.ready(d)||startGame!=='explore'||d.currentSpeaker?.index===8405||document.hidden||!Number.isFinite(dt)||dt<=0)return;
   const n=d.npcs.find(a=>a.index===8405);if(!n?._eveningSet)return;
-  n._danceClock=(n._danceClock||0)+Math.min(.1,dt);const phase=n._danceClock*Math.PI*2/26;
-  n.x=76+.9*Math.sin(phase);n.y=71.5+.20*Math.sin(phase*2);n.groundZ=.25;n.state='stationary';n.isMoving=true;n._cherryDance=true;
-  const angle=Math.PI*.5*(1-Math.cos(phase));n.fixedWorldAngle=Math.PI/2+angle;n.dirX=-Math.sin(angle);n.dirY=Math.cos(angle);
+  n._danceClock=(n._danceClock||0)+Math.min(.1,dt);const t=n._danceClock%40;
+  const ease=u=>(1-Math.cos(Math.PI*Math.max(0,Math.min(1,u))))/2;
+  const steps=[[0,76,71.5],[10,77,71.5],[20,77,72],[30,75.5,72],[40,76,71.5]];let i=Math.min(3,Math.floor(t/10)),a=steps[i],b=steps[i+1],u=ease((t-a[0])/8);
+  n.x=a[1]+(b[1]-a[1])*u;n.y=a[2]+(b[2]-a[2])*u;n.groundZ=.25;n.state='stationary';n.isMoving=t%10<8;n._cherryDance=true;
+  const angle=Math.PI/2+Math.PI*2*(Math.floor(n._danceClock/40)%2?1-ease(t/40):ease(t/40));n.fixedWorldAngle=angle;n.dirX=Math.cos(angle);n.dirY=Math.sin(angle);
  }
  const originalTalk=NPC.prototype.triggerInteraction;
  NPC.prototype.triggerInteraction=function(d,...args){if(interact(this,d))return;return originalTalk.call(this,d,...args);};
@@ -109039,16 +109044,17 @@ const BMWarriorJourney=(()=>{
 const BMCherryPerformance=(()=>{
  let glow=0,lastPlayer=null,lastAudio=0,show=null,showSerial=0;
  const songs={taliesin:{name:'Taliesin',classicId:46},twilight:{name:'Twilight of the Gods',classicId:55},nocturne:{name:'Serenade · Nocturne',profile:'style:ambient',style:'ambient'},greek:{name:'Serenade · Ancient Greek',profile:'style:greekepic',style:'greekepic'}};
- const inside=(d,x=d.x,y=d.y)=>d.mapID===2&&x>=68&&x<82&&y>=69&&y<82;
+ const world=d=>d.tacticsReturn?.config?.tavernGame?d.tacticsReturn:d;
+ const inside=(d,x=world(d).x,y=world(d).y)=>world(d).mapID===2&&x>=68&&x<82&&y>=69&&y<82;
  const night=d=>BMBranches.night(d),request=d=>d.memory?.cherryRequest;
- const scheduled=d=>d.mapID===2&&(night(d)||!!request(d));
+ const scheduled=d=>world(d).mapID===2&&(night(d)||!!request(d));
  function finish(d,refund=false){const r=request(d);if(!r)return false;delete d.memory.cherryRequest;show=null;lastPlayer=null;lastAudio=0;if(refund&&!r.started){BMCurrency.add(r.cost);BMInteract.report('Cherry returns your '+r.cost+' silver. The song could not start.');}d.requestSave();return true;}
  function pulse(d){const r=request(d);if(!r)return;if(!inside(d)||d.isDead||d.isDying||r.sawNight&&!night(d)){finish(d,!r.started);return;}if(night(d))r.sawNight=true;
   const c=BattleMusic.current,p=c?.player;if(c?.scene.requestId!==r.id||!p?.playing||p.ctx.state!=='running'||document.hidden){lastPlayer=null;return;}
   const at=p.ctx.currentTime;if(lastPlayer===p)r.elapsed+=Math.max(0,Math.min(1,at-lastAudio));lastPlayer=p;lastAudio=at;
   if(r.elapsed>=r.duration&&c.scene.performanceTurn===show?.turn){const line=p.lyricCues?.findLast(c=>c.start<=at&&c.end+.2>=at);if(!line)ended(c.scene,p);}
  }
- function scene(d,mode){pulse(d);if(!inside(d)||!scheduled(d)){show=null;return null;}if(!['explore','dialogue','npc_chat','shop','guild_menu','gambler','pause','journal','grimoire','deck_menu','player','trainer','class_paths'].includes(mode))return null;
+ function scene(d,mode){pulse(d);if(!inside(d)||!scheduled(d)){show=null;return null;}if(![8,'tactics','battle','explore','dialogue','npc_chat','shop','guild_menu','gambler','pause','journal','grimoire','deck_menu','player','trainer','class_paths'].includes(mode))return null;
   const r=request(d),wanted=songs[r?.song]||songs.taliesin,identity=r?.id||'evening',online=BMOnline.connected();
   if(!show||show.identity!==identity)show={identity,mode:wanted.classicId?(online?'classic':'fallback'):'requested',turn:++showSerial};
   // Latch the local song through reconnection. Only its ending can return to a classic.
@@ -109510,7 +109516,7 @@ const BMAegeanRoad=(()=>{
  function buy(n,d,item,count,price){if(!near(d,ANATOLIA,n))return false;if(!BMCurrency.spend(price))return show(n,'You do not have enough silver.');if(!BMInventory.add(item,count)){BMCurrency.add(price);return show(n,'There is no room for those supplies.');}BMActivity.record('trade','Bought '+count+' '+item.name+' for '+price+' silver.',{item:item.key,quantity:count,silver:price});save(d,'Supplies packed for the road.');supplies(n,d);}
  function supplies(n,d){return show(n,'Fresh provisions for the road. The next ferry has no fare.',[opt('Moonleaf · 4 silver',()=>buy(n,d,moonleaf,1,4)),opt('Raw meat ×3 · 9 silver',()=>buy(n,d,{key:'material:meat',name:'Raw meat',kind:'material'},3,9)),opt('Fish · 5 silver',()=>buy(n,d,{key:'fish:0',name:BMFishSprites.species[0].name,kind:'fish',fishIndex:0},1,5))]);}
  function claim(n,d){const q=state(d);if(!near(d,ANATOLIA,n)||q.stage!==2||q.claimed)return false;if(!Number.isSafeInteger(BMCurrency.balance()+70)||!BMInventory.add(moonleaf,2))return show(n,'Make room for the travel herbs before taking your payment.');BMCurrency.add(70);q.stage=3;q.claimed=true;BMActivity.record('quest_completed','Delivered the Aegean route book and collected the innkeeper’s payment: 70 silver and two moonleaf.',{quest:'aegean-route-book',silver:70,herbs:2});save(d,'The Aegean route-book delivery is complete.');return show(n,'Signed and received. Seventy silver, and fresh moonleaf for your next journey.');}
- R.bind(ANATOLIA,NPC.innkeeper,(n,d)=>show(n,'Come in from the road. The ridge watch keeps a copy of every caravan route; I settle the couriers’ accounts here.',[opt('Talk',()=>show(n,'People heading south speak of the healing houses of Kemet. Beyond the Nile’s green banks they cross Deshret—the Red Land. The pass beyond our watch now reaches the Levant waystation. Its southern road crosses Sinai into Arabia. From Sinai, the western road reaches the Nile Delta and Kemet.')),...(stage(d)===2?[opt('Present receipt · 70 silver + 2 moonleaf',()=>claim(n,d))]:[]),opt('Supplies',()=>supplies(n,d)),opt('Delivery directions',()=>show(n,lead(d)))]));
+ R.bind(ANATOLIA,NPC.innkeeper,(n,d)=>show(n,'Come in from the road. The ridge watch keeps a copy of every caravan route; I settle the couriers’ accounts here.',[opt('Talk',()=>show(n,'People heading south speak of the healing houses of Kemet. Beyond the Nile’s green banks they cross Deshret—the Red Land. The pass beyond our watch now reaches the Levant waystation. Its southern road crosses Sinai into Arabia. From Sinai, go south to the isthmus junction, then west into Kemet.')),...(stage(d)===2?[opt('Present receipt · 70 silver + 2 moonleaf',()=>claim(n,d))]:[]),opt('Supplies',()=>supplies(n,d)),opt('Delivery directions',()=>show(n,lead(d)))]));
  R.bind(ANATOLIA,NPC.watchkeeper,(n,d)=>show(n,stage(d)===1?'A fresh route book from Hellas? We need reliable records before sending anyone farther south.':'We mend the old walls and keep this road open. Beyond the ridge gate, the southern road is open to the Levant waystation. Its southern road continues through Sinai into Arabia.',[opt('Missing caravan',()=>BMLevantRoad.offer(n,d)),...(stage(d)===1?[opt('Deliver the route book',()=>{if(!near(d,ANATOLIA,n)||stage(d)!==1)return;state(d).stage=2;BMActivity.record('quest_item','Delivered the route book to the Anatolian ridge watch and received a signed receipt.',{quest:'aegean-route-book'});save(d,lead(d));show(n,'Your receipt. The innkeeper back along the road will pay you.');})]:[]),opt('Talk',()=>show(n,'Our grandparents inherited these walls. We keep the ridge pass open to the Levant. Ask me about the overdue medicine shipment if you are heading east.'))]));
  // Give the existing caravan steward an onward direction without disturbing the v55 delivery.
  function sign(map,id,x,y,name,text){yard(map,Math.floor(x)-1,Math.floor(y)-1,3,3,map===HELLAS?'#b5aa8b':'#b0a181');R.actor(map,id,x,y,1163,name,{interactionVerb:'Read',onSpawn:n=>BMClassArt.resource(n,1163)});R.bind(map,id,n=>show(n,text));}
@@ -109547,7 +109553,7 @@ const BMNPCKnowledge=(()=>{
   'Priest begins the southern studies at Kemet’s healing house (38,40), once the Kraken is defeated and the company has settled in Tintagel.',
   'Collect both labelled garden specimens west of the healing house (29,36 and 29,39), then speak to the River Physician.',
   'Examine each patient. The ferryman needs a restored ward; the garden keeper needs cleansing. Use the practice treatments, then report to the River Physician.',
-  'Carry the introduction north through the Nile Delta, east into Sinai and south to the Oasis Physician in Arabia (69,39). Read both case records inside the study house.',
+  'Carry the introduction along the northern Nile road, then east across the dry isthmus above the Red Sea to the Oasis Physician in Arabia (69,39). Read both case records inside the study house.',
   'Examine the Arabian caravan guard. Cleanse the lingering poison first, then restore the depleted ward.',
   'Return to Priest in Kemet. The completed Arabian case lets you establish the guild together.',
   'The Priest’s Guild is established. Its desk offers supply jobs and training.'
@@ -109556,13 +109562,14 @@ const BMNPCKnowledge=(()=>{
   p=progress(p);const name=String(n.name||'Resident'),id=Number(n.index),out={name,voice:'A local inhabitant; courteous, plain spoken, willing to admit uncertainty.',local:[],quest:[],rumors:[],limits:'Only the supplied facts are known. Do not infer unknown quests, private thoughts, rewards, places or prior meetings.'};
   const is=(...ids)=>ids.includes(id),has=s=>new RegExp(s,'i').test(name);
   if(map===2){out.local.push('Tintagel’s village inn has a stage and a southern entrance onto the forecourt. The village stable is east of the inn. The east road leads into Savage Forest.');out.rumors.push('Travellers speak of Deshret, the Red Land, far to the south. This is a secondhand story, not a quest or a claim that the speaker has visited.');}
-  if([4,14,39,85,86,87,88].includes(map))out.local.push(({4:'This is Ger. Tingis is its port on the Moroccan side of the strait. The road north enters Gibraltar directly. Its ferry crosses to the Iberian shore. A harbour pilot in Tingis offers passage to Olisipo in Western Iberia.',14:'Northern Armorica lies south of the Moors across the sea. The ruined keep is near the northern coast; the southeastern forest and lake are inland. The road south reaches Southern Armorica; east lies the Rhine.',39:'Southern Armorica follows the gulf coast. Take the southern trail into the Basque coast and passes, then continue south into the northwestern corner of Eastern Iberia. The eastern road leads through the Gaul foothills.',85:'Western Iberia is Lusitania. Olisipo is its Atlantic port. The inland road goes east to Eastern Iberia. The harbour pilot sails south to Tingis in Ger.',86:'The cliffside town stands above the gulf, between Southern Armorica to the north and Eastern Iberia to the south. The southbound trail enters Eastern Iberia at its northwestern edge. The festival square is a local gathering place.',87:'The Black Forest road joins the Rhine to the west and Germania to the east. The southern trail reaches the Alpine foothills.',88:'These foothills connect Gaul to the west, Black Forest to the north and the Alpine passes to the east. Italia lies south of the Alpine passes.'})[map]);
+  const regional={"4":"Ger lies directly south of Gibraltar. Its port is Tingis; the harbour pilot sails to Olisipo in Lusitania. East lies Deshret.","14":"Northern Armorica lies south of the Moors across shared coastal waters. The ruined keep stands near the northern coast, with the forest and lake to the southeast. South is Southern Armorica; east is the Rhine crossing in Germania.","22":"Northeastern Iberia’s Basque festival square is outdoors in the northeastern mountains (88,22). The local road to La Rioja is at (79,24). Follow the gulf trail north into Southern Armorica; west lies Lusitania and south Southeastern Iberia and Gibraltar.","38":"The Rhine crossing, old watchhouse and Black Forest are within Germania. Northern Armorica lies west across the river; Carpathian Valleys lie east, and Alpine Passes south. Warrior stays with the tribe at (17,12).","39":"Southern Armorica continues Northern Armorica’s western coastline into the gulf. The small Basque mountain settlement is outdoors in the northwest (23,22). Its forest road runs south along the gulf and crosses into Northeastern Iberia at the southern edge. Alpine Passes lie east.","66":"The Alpine foothills and passes are here in one region. North is Germania, west Southern Armorica, south Italia. Valleys give walking routes; stepped slopes lead to snowy summits.","72":"Sinai joins Levant to the north and Arabia to the south. To reach Kemet, go south to the isthmus junction in northern Arabia and turn west, above the Red Sea.","74":"Eastern Deshret links Deshret to the west with Kemet to the east. The Libyan desert lies in its southern sands.","85":"Western Iberia is Lusitania. Olisipo is its Atlantic port. East is Northeastern Iberia; south is Gibraltar. The pilot offers free passage to Tingis in Ger.","89":"Southeastern Iberia contains broad mountains and a coastal road, with the Mediterranean to its south and east. North is Northeastern Iberia, west Gibraltar. Mountain ridges can be climbed; the highest peaks have snow.","43":"The Nile Delta occupies north-central Kemet. The river market is at (37,24); its bridge at (51,28) leads to the eastern isthmus road. The western bank road runs south to the Priest’s clinic at (38,40). There is no separate delta region north of Kemet."};if(regional[map])out.local.push(regional[map]);
   if(map===5){out.local.push('This is Savage Forest, east of Tintagel. Hunter keeps a cabin near its western side.');out.rumors.push('Travellers warn of goblins below the forest. Ask a local guide about the cavern entrance.');}
-  if([45,46,48,49].includes(map)){out.local.push(({45:'The Carpathian road runs west toward Germania and south toward Hellas. The northern gate is closed.',46:'The eastern Aegean landing offers a free ferry to Anatolia. Follow the coast road to the boatman (76,65).',48:'The road links the western ferry, roadside inn (48,50), ridge watch (76,48) and southern pass into the Levant.',49:'The northern pass returns to Anatolia. The waystation (49,47) offers rest and supplies. The southern road crosses the Southern Levant and Sinai. From Sinai go south to Arabia or west through the Nile Delta to Kemet.'})[map]);}
-  if([42,43,44].includes(map))out.local.push(({42:'Deshret is called the Red Land. Follow the caravan road east to Kemet or west to Ger.',43:'Kemet’s healing house stands west of the river. The northern road follows the Nile into the delta; turn east through Sinai and south to Arabia. The western road crosses Eastern Deshret, the Great Dunes and Deshret toward Ger.',44:'The study house is at the oasis (69,39). The northern road reaches Sinai. Turn west there to the Nile Delta and Kemet, or continue north through the Levant toward Anatolia.'})[map]);
+  if([45,46,48,49].includes(map)){out.local.push(({45:'The Carpathian road runs west toward Germania and south toward Hellas. The northern gate is closed.',46:'The eastern Aegean landing offers a free ferry to Anatolia. Follow the coast road to the boatman (76,65).',48:'The road links the western ferry, roadside inn (48,50), ridge watch (76,48) and southern pass into the Levant.',49:'The northern pass returns to Anatolia. The waystation (49,47) offers rest and supplies. The southern road crosses Sinai into Arabia. At the northern Arabian isthmus, turn west to Kemet above the Red Sea.'})[map]);}
+  if([42,43,44].includes(map))out.local.push(({42:'Deshret is called the Red Land. Follow the caravan road east to Kemet or west to Ger.',43:'Kemet’s healing house stands west of the river. The delta lies within northern Kemet. Follow the northern road east over the isthmus into Arabia; its junction turns north for Sinai. The western road crosses Eastern Deshret and Deshret, whose eastern sands contain the Great Dunes, toward Ger.',44:'The study house is at the oasis (69,39). The northern road reaches Sinai. The northern isthmus road turns west into Kemet. From Sinai continue north through the Levant toward Anatolia.'})[map]);
   if(has('hunter')||id===8006){out.voice='A practical hunter who notices tracks and habits; no expertise in distant politics.';out.quest.push('My guild supply jobs ask for two boar tusks or three pixie mushrooms. Hunt boars south of the cabin and gather their drops. Pixies carry mushrooms. Use my Guild desk to accept and deliver a job; asking about it does not accept it.');out.local.push('Boars and pixies provide useful supplies. Pick up what a defeated creature drops.');out.rumors=['Other hunters warn of deeper forest dangers. I cannot vouch for distant kingdoms.'];}
-  if(is(8405)||has('^Cherry$')){out.voice='Cherry, a spirited tavern performer and the Dancer’s apprentice. Warm with patrons, firm about lessons.';out.local.push('My teacher learned her first steps in the cliffside town on the Basque Coast. I learned from her; that does not mean I grew up in her hometown.');out.local.push('My stage is in Tintagel’s village inn. I perform at night; paid requests are chosen through my performance menu.');out.quest.push(p.dancer>=6?'You have completed my Dancer lesson. Use the class menu for your earned progression.':p.dancer>=4?'With the recommendation accepted, finish the three travelling steps in my rehearsal, return through its sigil and speak to me about the lesson.':'I do not teach strangers. Ask my teacher, Dancer, for a recommendation. Help with her costume parcel beside the Tintagel market courier (24,46), return it to her, and bring her letter to me. S-rank alone does not replace her word.');out.rumors=['A visiting performer spoke of the Red Land far to the south. I know the song and the story, not the desert roads.'];}
-  if(id===201||has('^Dancer$')){out.voice='Dancer, a busy teacher who expects students to help and then learn by teaching.';out.local.push('I grew up in the cliffside town on the Basque Coast and learned its festival dances. Cherry learned from me here in Tintagel.');out.quest.push('Cherry is my apprentice. I can recommend you after you help retrieve my costume parcel beside Tintagel’s market courier (24,46). Return it to me for the letter, then take it to Cherry. Use the Dance or class-path choices to begin.');}
+  if(is(8405)||has('^Cherry$')){out.voice='Cherry, a spirited tavern performer and the Dancer’s apprentice. Warm with patrons, firm about lessons.';out.local.push('My teacher learned her first steps in the Basque mountain village. I learned from her; that does not mean I grew up in her hometown.');out.local.push('My stage is in Tintagel’s village inn. I perform at night; paid requests are chosen through my performance menu.');out.quest.push(p.dancer>=6?'You have completed my Dancer lesson. Use the class menu for your earned progression.':p.dancer>=4?'With the recommendation accepted, finish the three travelling steps in my rehearsal, return through its sigil and speak to me about the lesson.':'I do not teach strangers. Ask my teacher, Dancer, for a recommendation. Help with her costume parcel beside the Tintagel market courier (24,46), return it to her, and bring her letter to me. S-rank alone does not replace her word.');out.rumors=['A visiting performer spoke of the Red Land far to the south. I know the song and the story, not the desert roads.'];}
+  if(id===201||has('^Dancer$')){out.voice='Dancer, a busy teacher who expects students to help and then learn by teaching.';out.local.push('I grew up in the Basque mountain village and learned its festival dances. Cherry learned from me here in Tintagel.');out.quest.push('Cherry is my apprentice. I can recommend you after you help retrieve my costume parcel beside Tintagel’s market courier (24,46). Return it to me for the letter, then take it to Cherry. Use the Dance or class-path choices to begin.');}
+  if([903434,903435].includes(id))out.local.push('The market bridge is at (51,28). Homes line the western bank, market stores the eastern bank. The clinic road follows the western bank south; the isthmus road leads east to Arabia and its Sinai junction.');
   if(id===901864){out.voice='A village dance keeper who preserves local festival steps and knows the Dancer from her youth.';out.local.push('Dancer, now teaching in Tintagel, learned her first steps here. Cherry is her apprentice. I cannot grant the recommendation or teach their class lesson.');}
   if(is(899001,899002,899010,899011,899012)){out.quest.push(aegean[p.aegean]);out.rumors.push('Caravan travellers call the southern desert Deshret, the Red Land. Kemet lies beyond the desert, on its river.');}
   if(is(899012,900010,900011)){out.quest.push(caravan[p.caravan]);}
@@ -109720,11 +109727,13 @@ const BMJournalReading=(()=>{
 })();globalThis.BMJournalReading=BMJournalReading;
 
 const BMGambler=(()=>{
- const LIMIT=1000,copy=v=>JSON.parse(JSON.stringify(v));let root,body,header,notice='',owner=null,tab='silver',selection={kind:'silver',count:0},confirmLeave=false;
+ const LIMIT=1000,copy=v=>JSON.parse(JSON.stringify(v));let root,body,header,notice='',owner=null,tab='silver',selection={kind:'silver',count:0},confirmLeave=false,matchMode=null;
  const el=(tag,p,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;p?.append(e);return e;};
  const button=(p,text,fn,cls)=>{const b=el('button',p,text,cls);b.type='button';b.onclick=fn;return b;};
  function table(){const d=Dungeon;d.memory.gamblerTables??={};return d.memory.gamblerTables[owner]??={offers:{},round:null};}
- const live=()=>startGame==='gambler'&&owner&&owner.startsWith(Dungeon.mapID+':')&&!Dungeon.isDead&&!Dungeon.isDying;
+ const game=()=>({0:'blackjack',1:'runestones',2:'tactics'})[Number(owner?.split(':')[1])%10]||'blackjack';
+ const title=()=>({blackjack:'Arcana blackjack',runestones:'Runestones',tactics:'Tactics'})[game()];
+ const live=()=>startGame==='gambler'&&owner&&owner.startsWith((Dungeon.tacticsReturn?.config?.tavernGame?Dungeon.tacticsReturn.mapID:Dungeon.mapID)+':')&&!Dungeon.isDead&&!Dungeon.isDying;
  const cardValue=id=>Math.max(1,Math.floor(BMShop.sellPrice(id)));
  function itemValue(v){if(!v||!BMItemTrade.price({...v,count:Math.max(1,v.count||0)})||v.quest||v.bound||v.questItem)return 0;
   const rank=BMMaterials.definition(v)?.rank||0,base=({material:2,herb:4,powder:6,fish:3,consumable:8,scroll:12,artifact:25,skillbook:20,equipment:15,book:5})[v.kind]||2;
@@ -109751,9 +109760,9 @@ const BMGambler=(()=>{
  }
  function offer(s=selection){const stake=stakeFor(s);if(!stake)return null;const key=[s.kind,s.id??s.key??'',s.count,stake.value].join('/'),t=table();if(!t.offers[key]){t.offers[key]={stake,prize:reward(stake.value)};Dungeon.saveGame();}return t.offers[key];}
  function select(s){if(!live()||table().round?.status==='playing')return false;selection={...s};notice='';render();return true;}
- const value=id=>id%13===0?11:Math.min(10,id%13+1);
- function score(hand){let total=hand.reduce((n,id)=>n+value(id),0),aces=hand.filter(id=>id%13===0).length;while(total>21&&aces){total-=10;aces--;}return {total,soft:aces>0};}
- function shoe(){const out=Array.from({length:52},(_,i)=>i);for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
+ const value=id=>BMBlackjack.value(id);
+ function score(hand){return BMBlackjack.score(hand);}
+ function shoe(){const out=Array.from({length:78},(_,i)=>i);for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
  function take(stake){if(!stake.value)return true;if(stake.kind==='silver')return BMCurrency.spend(stake.count);if(stake.kind==='card'){const cards=BMMastery.available(Dungeon).filter(c=>Math.floor(c.index)===stake.id).slice(0,stake.count);if(cards.length!==stake.count)return false;stake.cards=cards.map(copy);return BMMastery.consume(Dungeon,cards.map(c=>c.uid));}
   const v=BMInventory.entries()[stake.key];if(!v||itemValue(v)*stake.count!==stake.value)return false;stake.item=copy(v);stake.wasLearned=!!Dungeon.spellsLearned?.[v.spellId];if(!BMInventory.takeMany({[stake.key]:stake.count}))return false;
   if(v.kind==='equipment'&&!Object.values(BMInventory.entries()).some(i=>i.kind==='equipment'&&i.spellId===v.spellId&&i.count)){delete Dungeon.spellsLearned[v.spellId];}return true;
@@ -109766,72 +109775,95 @@ const BMGambler=(()=>{
   // Status, escrow return and winnings are saved together; repeated taps cannot settle twice.
   r.status=result;r.settled=true;r.forfeit=forfeit;if(result==='win'||result==='push')give(r.stake,true);if(result==='win')give(r.prize);
   const stats=Dungeon.memory.gamblerStats??={wins:0,losses:0,pushes:0,practice:0};if(!r.stake.value)stats.practice++;else stats[result==='win'?'wins':result==='push'?'pushes':'losses']++;
+  const all=Dungeon.memory.tableGames??={},key=r.game||'blackjack',g=all[key]??={wins:0,losses:0,pushes:0,opponents:{}};g[result==='win'?'wins':result==='push'?'pushes':'losses']++;const familiar=g.opponents[owner]??={wins:0,played:0};familiar.played++;if(result==='win')familiar.wins++;
+  BMActivity.record('table_game_result',title()+': '+result+'. '+(r.stake.value?'Stake '+describe(r.stake)+'.':'Free practice.'),{game:key,result,opponent:owner,stake:r.stake.value});
   Dungeon.updateSkills();Dungeon.saveGame();render();return true;
  }
  function deal(){if(!live()||table().round?.status==='playing')return false;const preview=offer(),fresh=stakeFor(selection);if(!preview||!fresh||fresh.value!==preview.stake.value){notice='Choose an available stake worth up to 1,000 silver.';render();return false;}
   const stake=copy(fresh);if(!take(stake)){notice='You no longer have that stake.';render();return false;}
-  const deck=shoe(),r={id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),stake,prize:copy(preview.prize),shoe:deck,player:[deck.pop()],dealer:[deck.pop()],status:'playing',settled:false};r.player.push(deck.pop());r.dealer.push(deck.pop());table().round=r;table().offers={};notice='';Dungeon.updateSkills();Dungeon.saveGame();
-  const p=score(r.player).total,d=score(r.dealer).total;if(p===21||d===21)finish(p===d?'push':p===21?'win':'loss');else render();return true;
+  const deck=shoe(),r={id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),game:game(),rules:'tarot78',stake,prize:copy(preview.prize),shoe:deck,player:[],dealer:[],status:'playing',settled:false};table().round=r;table().offers={};notice='';Dungeon.updateSkills();Dungeon.saveGame();
+  if(r.game!=='blackjack'){launch(r);return true;}
+  r.player=[deck.pop(),deck.pop()];r.dealer=[deck.pop(),deck.pop()];Dungeon.saveGame();
+  const p=score(r.player).total,d=score(r.dealer).total;if(p>21)finish('loss');else if(d>21)finish('win');else if(p===21||d===21)finish(p===d?'push':p===21?'win':'loss');else render();return true;
  }
+ function launch(r){
+  Dungeon.actionQueue=[];Dungeon.isProcessingActions=false;Dungeon.currentSpeaker=null;BMClassicDialogue.dismiss();
+  if(r.game==='runestones'){
+   r.halves=[r.shoe.slice(0,39),r.shoe.slice(39)];Player=[new Field(0,0,null,r.halves[0]),new Field(1,1,null,r.halves[1])];Player[0].opponent=Player[1];Player[1].opponent=Player[0];
+   sRune=new stone(1.545,4.545,1,eSTAT.S);cRune=new stone(7.625,4.625,1,eSTAT.C);iRune=new stone(3.545,4.49,1,eSTAT.I);aRune=new stone(5.545,4.53,1,eSTAT.A);
+   window.isPatronDuel=window.isEmperorDuel=true;matchMode=8;preGame='explore';startGame=8;
+  }else{
+   const ids=Object.keys(CARD_MANIFEST_DB).map(Number).filter(id=>id<100&&CARD_MANIFEST_DB[id].type==='monster'),pick=()=>ids[Math.floor(Math.random()*ids.length)],sprite=pick();
+   const team=[{source:'player',index:sprite,sprite,dungeonContext:Array.from({length:78},(_,i)=>new Card(i,0))},...Array.from({length:Math.floor(Math.random()*6)},pick)];
+   Dungeon.startEidolonMinigame(team,Array.from({length:1+Math.floor(Math.random()*6)},pick),{stakes:'mock_menu',forcePlayerSprite:sprite,tavernGame:r.id,scenarioName:'Tavern tactics',noLoot:true});matchMode='tactics';
+  }
+  Dungeon.saveGame();root.hidden=true;BMShell.sync();MusicEngine.followScene();
+ }
+ function complete(won){if(!owner||!table().round||table().round.status!=='playing'||table().round.game==='blackjack')return false;
+  if(game()==='runestones'){window.isPatronDuel=window.isEmperorDuel=false;Player=[new Field(0),new Field(1,1)];Player[0].opponent=Player[1];Player[1].opponent=Player[0];}
+  matchMode=null;Dungeon.currentSpeaker=null;Dungeon.status='normal';Dungeon.isProcessingActions=false;Dungeon.actionQueue=[];startGame='gambler';preGame='explore';finish(won?'win':'loss',!!table().round.forfeit);BMShell.sync();return true;
+ }
+
  function hit(){if(!live()||table().round?.status!=='playing')return false;const r=table().round;r.player.push(r.shoe.pop());const n=score(r.player).total;if(n>21)finish('loss');else if(n===21)stand();else{Dungeon.saveGame();render();}return true;}
  function stand(){if(!live()||table().round?.status!=='playing')return false;const r=table().round;while(score(r.dealer).total<17)r.dealer.push(r.shoe.pop());const p=score(r.player).total,d=score(r.dealer).total;finish(d>21||p>d?'win':p===d?'push':'loss');return true;}
- function leave(force=false){if(!live())return false;if(table().round?.status==='playing'&&!force){confirmLeave=true;render();return false;}if(table().round?.status==='playing')finish('loss',true);root.hidden=true;Dungeon.currentSpeaker=null;startGame=preGame='explore';BMTouch.cancel();BMShell.sync();return true;}
+ function leave(force=false){if(!live())return false;if(table().round?.status==='playing'&&!force){confirmLeave=true;render();return false;}if(table().round?.status==='playing'){table().round.forfeit=true;if(matchMode==='tactics'&&Dungeon.tacticsReturn){window.TacticsEngine.playerWon=false;BMTacticsSession.finish(window.TacticsEngine);}else if(matchMode===8)complete(false);finish('loss',true);}matchMode=null;root.hidden=true;Dungeon.currentSpeaker=null;startGame=preGame='explore';BMTouch.cancel();BMShell.sync();return true;}
  function create(){if(root)return;el('style',document.head,`
+ #bm-gambler .arcana-card{width:100px;min-height:145px;border:1px solid #c7b17a;border-radius:8px;background:#101b27;display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px;gap:4px;font-size:12px}#bm-gambler .arcana-card canvas{width:70px;height:70px}#bm-gambler .arcana-card strong{font:20px Georgia;color:#f5d98a}#bm-table-return{position:fixed;z-index:1300;right:8px;top:8px;border:1px solid #d6c18b;border-radius:8px;background:#14221f;color:#f4e3bc;padding:10px;min-height:44px}#bm-table-return[hidden]{display:none}
  #bm-gambler{position:fixed;inset:0;z-index:1240;background:radial-gradient(ellipse at 50% 28%,#203d30,#091711 80%);color:#eee2bf;font:15px/1.4 system-ui;box-sizing:border-box;padding:12px max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px;touch-action:pan-y}
  #bm-gambler[hidden]{display:none!important}#bm-gambler *{box-sizing:border-box}#bm-gambler header{display:flex;align-items:center;gap:10px;width:100%;max-width:900px;margin:auto}#bm-gambler h1{font:26px Georgia;margin:0;color:#edcf87;flex:1}#bm-gambler h2{font:21px Georgia;color:#dec68e;margin:10px 0 6px}#bm-gambler p{margin:6px 0 12px}#bm-gambler main{overflow:auto;min-height:0;width:100%;max-width:900px;flex:1;margin:auto;scrollbar-width:thin}#bm-gambler button,#bm-gambler input,#bm-gambler select{font:inherit;min-height:44px;color:#eee2bf;background:#182b21;border:1px solid #98875c;border-radius:7px;padding:9px 12px;max-width:100%;touch-action:manipulation}#bm-gambler button:disabled{opacity:.4}#bm-gambler button:focus-visible{outline:2px solid #ffe095}#bm-gambler .primary{background:#60512b;border-color:#e4c979}#bm-gambler .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#bm-gambler .muted{font-size:13px;color:#bcc4b1}#bm-gambler .offer{border:1px solid #82744e;border-radius:10px;padding:12px;margin:12px 0;background:#0c1d16}#bm-gambler .hand{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px}#bm-gambler .playing-card{width:62px;height:84px;background:#efe5cc;color:#19251c;border:2px solid #c7b17a;border-radius:7px;display:flex;align-items:center;justify-content:center;font:700 24px Georgia;box-shadow:0 3px 6px #0005}#bm-gambler .red{color:#a53936}#bm-gambler .back{background:repeating-linear-gradient(45deg,#20372c,#20372c 5px,#b29a5d 6px,#20372c 7px);color:#ead49e}#bm-gambler .inventory-list{display:flex;flex-direction:column;gap:6px;max-height:230px;overflow:auto}#bm-gambler .inventory-list button{text-align:left;display:flex;gap:10px;align-items:center}#bm-gambler canvas{width:44px;height:44px;object-fit:contain}#bm-gambler label{display:block;margin:10px 0 5px}#bm-gambler input{width:125px}#bm-gambler .result{font:23px Georgia;color:#f0d283}#bm-gambler [aria-pressed=true]{border-color:#ffe095;background:#435139}
- `);root=el('section',document.body);root.id='bm-gambler';root.hidden=true;root.setAttribute('aria-label','Gambler’s blackjack table');header=el('header',root);body=el('main',root);body.tabIndex=-1;
+ `);root=el('section',document.body);root.id='bm-gambler';root.hidden=true;root.setAttribute('aria-label','Tavern game table');header=el('header',root);body=el('main',root);body.tabIndex=-1;
   for(const type of ['pointerdown','pointermove','pointerup','touchstart','touchmove','touchend','mousedown','mouseup','click','wheel','keyup'])root.addEventListener(type,e=>e.stopPropagation());root.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'){e.preventDefault();if(confirmLeave){confirmLeave=false;render();}else leave();}});
  }
- function hand(p,label,cards,hidden){el('h2',p,label+' · '+(hidden?score([cards[0]]).total+' + ?':score(cards).total));const row=el('div',p,null,'hand');cards.forEach((id,i)=>{const face=['A','2','3','4','5','6','7','8','9','10','J','Q','K'][id%13],suit=['♠','♥','♦','♣'][Math.floor(id/13)],concealed=hidden&&i>0;const c=el('div',row,concealed?'✦':face+suit,'playing-card'+(concealed?' back':[1,2].includes(Math.floor(id/13))?' red':''));c.setAttribute('aria-label',concealed?'Hidden card':face+' '+['spades','hearts','diamonds','clubs'][Math.floor(id/13)]);});}
+ function hand(p,label,cards,hidden){el('h2',p,label+' · '+(hidden?'?':score(cards).total));const row=el('div',p,null,'hand');cards.forEach((id,i)=>{const concealed=hidden&&i>0,box=el('div',row,null,'arcana-card');if(concealed){box.textContent='✦';box.setAttribute('aria-label','Hidden card');return;}const card=new Card(id,0);el('strong',box,id<22?String(id):((id-22)%14===0?'A':String(value(id))));picture(box,{kind:'card',id,name:card.name});el('span',box,card.name);el('small',box,id<22?'Major · '+id:(id-22)%14===0?'1 or 11 points':value(id)+' points');});}
  function picture(p,v){if(!['card','item'].includes(v.kind))return;const c=el('canvas',p);c.width=c.height=96;c.setAttribute('role','img');c.setAttribute('aria-label',v.name);const saved={ctx,tX,tY,tL,tH};try{ctx=c.getContext('2d');tX=tY=0;tL=tH=96;if(v.kind==='card')drawPortrait(BMArtwork.cardPortrait(v.id),.3,.3,.94,0,0,0,CARD_PORTRAIT_PIXELS);else ctx.drawImage(BMMaterials.thumb(v.item,96),0,0);}finally{({ctx,tX,tY,tL,tH}=saved);}}
  function preview(p,o){const box=el('section',p,null,'offer');if(o.prize.kind!=='silver'){const art=el('div',box,null,'row');picture(art,o.prize);}el('p',box,'Your stake: '+describe(o.stake));el('p',box,'Win: '+(o.stake.value?'your stake back + '+describe(o.prize):'practice only · no prize'));if(o.stake.value)el('p',box,'Appraised at '+o.stake.value+' silver each. A tie returns your stake.','muted');}
- function render(){if(!root||!live())return;root.hidden=false;header.replaceChildren();el('h1',header,'Gambler’s table');el('span',header,BMCurrency.balance().toLocaleString()+' silver','muted');button(header,'Leave',()=>leave());body.replaceChildren();
-  const r=table().round;if(confirmLeave){el('h2',body,'Leave this hand?');el('p',body,'Your unfinished hand counts as a loss. Stake: '+describe(r?.stake));const row=el('div',body,null,'row');button(row,'Keep playing',()=>{confirmLeave=false;render();},'primary');button(row,'Forfeit and leave',()=>{confirmLeave=false;leave(true);});return;}
-  el('p',body,'Blackjack · dealer stands on all 17s. Wins, including blackjack, pay the shown prize.','muted');if(notice){const note=el('p',body,notice);note.setAttribute('role','status');}
-  if(r){hand(body,'Gambler',r.dealer,r.status==='playing');hand(body,'You',r.player,false);preview(body,r);
+ function render(){if(!root||!live())return;root.hidden=false;header.replaceChildren();el('h1',header,title());el('span',header,BMCurrency.balance().toLocaleString()+' silver','muted');button(header,'Leave',()=>leave());body.replaceChildren();
+  const r=table().round;if(confirmLeave){el('h2',body,'Leave this hand?');el('p',body,'Your unfinished hand counts as a loss. Stake: '+describe(r?.stake));const row=el('div',body,null,'row');button(row,'Keep playing',()=>{confirmLeave=false;if(matchMode){startGame=matchMode;root.hidden=true;BMShell.sync();}else render();},'primary');button(row,'Forfeit and leave',()=>{confirmLeave=false;leave(true);});return;}
+  el('p',body,game()==='blackjack'?'Original 78 Runestones cards. Majors count 0–21; minor aces 1/11, court cards 10. Dealer stands on 17.':game()==='runestones'?'One original 78-card deck, shuffled and split: 39 cards each. Borrowed cards never change your collection.':'A random battle using the main-menu rules: creature teams, their actual stats and innate skills. Your adventuring party stays safe.','muted');const g=Dungeon.memory.tableGames?.[game()],f=g?.opponents?.[owner];el('p',body,`${g?.wins||0} wins in ${title()} · ${f?.wins||0} wins with this opponent · ${!f?.wins?'A new face':f.wins<5?'A familiar challenger':f.wins<15?'A respected regular':'A favourite rival'}`,'muted');if(notice){const note=el('p',body,notice);note.setAttribute('role','status');}
+  if(r){if(r.game==='blackjack'||!r.game){hand(body,'Gambler',r.dealer,r.status==='playing');hand(body,'You',r.player,false);}preview(body,r);
+   if(r.status==='playing'&&game()!=='blackjack'){button(body,'Resume match',()=>{startGame=matchMode;root.hidden=true;BMShell.sync();});return;}
    if(r.status==='playing'){const row=el('div',body,null,'row');button(row,'Hit',hit,'primary');button(row,'Stand',stand);return;}
    const message=r.forfeit?'Hand forfeited':r.status==='win'?(r.stake.value?'You win!':'Practice win'):r.status==='push'?'Tie · stake returned':r.stake.value?'Gambler wins · stake lost':'Practice loss';el('p',body,message,'result');
-   button(body,'Next hand',()=>{table().round=null;notice='';if(!stakeFor(selection))selection={kind:'silver',count:0};Dungeon.saveGame();render();},'primary');return;
+   button(body,'Play again',()=>{table().round=null;notice='';if(!stakeFor(selection))selection={kind:'silver',count:0};Dungeon.saveGame();render();},'primary');return;
   }
   const tabs=el('nav',body,null,'row');for(const [key,label]of [['silver','Silver'],['card','Cards'],['item','Items & ingredients']]){const b=button(tabs,label,()=>{tab=key;render();});b.setAttribute('aria-pressed',tab===key);}
   if(tab==='silver'){const label=el('label',body,'Silver stake · 0–1,000');label.htmlFor='bm-gambler-amount';const row=el('div',body,null,'row'),input=el('input',row);input.id=label.htmlFor;input.type='number';input.min='0';input.max='1000';input.step='1';input.inputMode='numeric';input.value=selection.kind==='silver'?selection.count:0;button(row,'Set stake',()=>select({kind:'silver',count:Number(input.value)}));const presets=el('div',body,null,'row');for(const n of [0,5,25,100,500,1000])button(presets,n?n.toLocaleString():'Free',()=>select({kind:'silver',count:n}));}
   else{const inv=inventory(),entries=tab==='card'?inv.cards:inv.items;el('p',body,'Choose a physical card or item. Equipped, summoned and quest-bound belongings stay with you.','muted');const list=el('div',body,null,'inventory-list');for(const v of entries){const b=button(list,'',()=>select({kind:v.kind,id:v.id,key:v.key,count:1}));picture(b,v);
     el('span',b,v.name+' ×'+v.count+' · '+v.value+' silver each');b.disabled=v.value>LIMIT;b.setAttribute('aria-pressed',selection.kind===v.kind&&(v.kind==='card'?selection.id===v.id:selection.key===v.key));}
    if(!entries.length)el('p',list,'No available '+(tab==='card'?'cards':'items')+'.');if(selection.kind===tab){const label=el('label',body,'Quantity'),input=el('input',label);input.type='number';input.min='1';input.step='1';input.inputMode='numeric';input.value=selection.count;input.setAttribute('aria-label','Wager quantity');button(body,'Set quantity',()=>select({...selection,count:Number(input.value)}));}}
-  const o=offer();if(o){preview(body,o);button(body,o.stake.value?'Deal · stake '+describe(o.stake):'Deal free practice',deal,'primary').disabled=o.stake.kind==='silver'&&o.stake.count>BMCurrency.balance();}else el('p',body,'Choose an available stake with a total appraisal no higher than 1,000 silver.');
+  const o=offer();if(o){preview(body,o);button(body,o.stake.value?'Play · stake '+describe(o.stake):'Play free practice',deal,'primary').disabled=o.stake.kind==='silver'&&o.stake.count>BMCurrency.balance();}else el('p',body,'Choose an available stake with a total appraisal no higher than 1,000 silver.');
  }
- function open(n){if(!n||!((Dungeon.mapID===2&&n.index===890050)||(Dungeon.mapID===4&&n.index===890060))||Dungeon.isDead||Dungeon.isDying)return false;create();BMClassicDialogue.dismiss();Dungeon.currentSpeaker=n;owner=Dungeon.mapID+':'+n.index;selection={kind:'silver',count:0};tab='silver';confirmLeave=false;notice='';startGame='gambler';preGame='explore';BMTouch.cancel();BMShell.sync();render();body.focus();return true;}
- const sync=BMShell.sync;BMShell.sync=function(...args){const r=sync.apply(this,args);if(root&&!live())root.hidden=true;return r;};
- return {open,select,deal,hit,stand,leave,score,value,inventory,itemValue,cardValue,offer,describe,limit:LIMIT,get round(){return owner?table().round:null;}};
+ function open(n){if(!n||!((Dungeon.mapID===2&&n.index>=890050&&n.index<=890052)||(Dungeon.mapID===4&&n.index>=890060&&n.index<=890062))||Dungeon.isDead||Dungeon.isDying)return false;create();BMClassicDialogue.dismiss();Dungeon.currentSpeaker=n;owner=Dungeon.mapID+':'+n.index;selection={kind:'silver',count:0};tab='silver';confirmLeave=false;notice='';startGame='gambler';preGame='explore';BMTouch.cancel();BMShell.sync();const old=table().round;if(old?.status==='playing'&&(!old.rules||old.game!=='blackjack'&&!matchMode)){if(!old.rules){give(old.stake,true);old.status='push';old.settled=true;notice='Your old table stake has been returned. This table now uses the original tarot cards.';Dungeon.saveGame();}else{finish('loss',true);notice='The interrupted match was forfeited. Its stake was already committed.';}}render();body.focus();return true;}
+ const back=el('button',document.body,'Leave table');back.id='bm-table-return';back.hidden=true;back.onclick=()=>{if(matchMode){startGame='gambler';confirmLeave=true;render();BMShell.sync();}};
+ const sync=BMShell.sync;BMShell.sync=function(...args){const r=sync.apply(this,args);if(root&&!live())root.hidden=true;back.hidden=!matchMode||startGame!==matchMode;return r;};
+ return {complete,game,render,open,select,deal,hit,stand,leave,score,value,inventory,itemValue,cardValue,offer,describe,limit:LIMIT,get round(){return owner?table().round:null;}};
 })();globalThis.BMGambler=BMGambler;
 
-/* v61: compressed coastal boundaries, Basque south approach, western Iberia and authored Gibraltar. */
+/* v63: compact continent, entered Basque settlement, climbable relief and scale-independent atlas. */
 const BMAtlas58=(()=>{
  const SIZE=100,R=BMSouthernRoads,grid=[
-  [10,9,6,null,null,null,null,null],
-  [null,null,3,null,null,null,null,null],
-  [null,null,2,5,null,null,null,null],
-  [null,null,0,null,null,null,null,null],
-  [null,null,14,47,87,38,45,null],
-  [null,null,39,81,88,66,46,48],
-  [null,null,86,null,null,67,null,49],
-  [null,85,22,null,null,null,null,71],
-  [null,null,-2,null,null,null,78,72],
-  [null,null,4,42,73,74,43,44],
-  [null,null,null,null,null,83,null,null]
+  [10,9,6,null,null,null],
+  [null,null,3,null,null,null],
+  [null,null,2,5,null,null],
+  [null,null,0,null,null,null],
+  [null,null,14,38,45,null],
+  [null,null,39,66,46,48],
+  [null,85,22,67,null,49],
+  [null,-2,89,null,null,72],
+  [null,4,42,74,43,44]
  ];
  const authored=new Map([14,22,-2].map(id=>[id,{maze:MAP_DB[id].maze.map(row=>row.slice()),slabs:(MAP_DB[id].slabs||[]).map(s=>({...s}))}]));
  // These entered places belong to the existing regions. Keep their quest IDs and local coordinates.
  Object.assign(MAP_DB[33],{name:'Armorica · The ruined keep',atlasMapID:14,mapKind:'dwelling',outdoors:true});
  Object.assign(MAP_DB[40],{name:'Iberia · La Rioja',atlasMapID:22,mapKind:'dwelling',outdoors:true});
  const positions=new Map(),seas=new Set([9]),expanded=new Map(),surfaces=new Map(),seams=[],roads=[],thumbs=new Map();
- const names={0:'Moors',2:'Tintagel',3:'Steppes',4:'Ger',5:'Savage Forest',6:'Snow Mountain',9:'Kraken Sea',10:'Avalon',14:'Northern Armorica',22:'Eastern Iberia',33:'Armorica · Ruined keep',38:'Germania',39:'Southern Armorica',40:'Iberia · La Rioja',42:'Deshret',43:'Kemet',44:'Arabia',45:'Carpathian Valleys',46:'Hellas',47:'Rhine',48:'Anatolia',49:'Levant','-2':'Gibraltar',50:'Northern Sound',51:'Tintagel Sea',52:'Western Channel',53:'Outer Channel',54:'Western Sea',55:'Iberian Sea',56:'Southern Sea',57:'Western Mediterranean',58:'Aegean Sea',59:'North African Coast',60:'Middle Mediterranean',61:'Eastern Mediterranean',62:'Bay of Biscay',63:'Channel',64:'Iberian Mediterranean',65:'Alboran Sea',66:'Alpine Passes',67:'Italia',68:'Tyrrhenian Sea',69:'Ionian Sea',70:'Southern Mediterranean',71:'Southern Levant',72:'Sinai',73:'Great Dunes',74:'Eastern Deshret',75:'African Waters',76:'Libyan Sea',77:'Delta Waters',78:'Nile Delta',79:'Atlantic Coast',80:'Southern Atlantic',81:'Gaul Foothills',82:'Northern Libyan Sea',83:'Libyan Desert',84:'Balearic Sea',85:'Western Iberia · Lusitania',86:'Basque Coast',87:'Black Forest',88:'Alpine Foothills'};
+ const names={0:'Moors',2:'Tintagel',3:'Steppes',4:'Ger',5:'Savage Forest',6:'Snow Mountain',9:'Kraken Sea',10:'Avalon',14:'Northern Armorica',22:'Northeastern Iberia',33:'Armorica · Ruined keep',38:'Germania',39:'Southern Armorica',40:'Iberia · La Rioja',42:'Deshret',43:'Kemet',44:'Arabia',45:'Carpathian Valleys',46:'Hellas',47:'Rhine',48:'Anatolia',49:'Levant','-2':'Gibraltar',50:'Northern Sound',51:'Tintagel Sea',52:'Western Channel',53:'Outer Channel',54:'Western Sea',55:'Iberian Sea',56:'Southern Sea',57:'Western Mediterranean',58:'Aegean Sea',59:'North African Coast',60:'Middle Mediterranean',61:'Eastern Mediterranean',62:'Bay of Biscay',63:'Channel',64:'Iberian Mediterranean',65:'Alboran Sea',66:'Alpine Passes',67:'Italia',68:'Tyrrhenian Sea',69:'Ionian Sea',70:'Southern Mediterranean',71:'Southern Levant',72:'Sinai',73:'Great Dunes',74:'Eastern Deshret',75:'African Waters',76:'Libyan Sea',77:'Delta Waters',78:'Nile Delta',79:'Atlantic Coast',80:'Southern Atlantic',81:'Gaul Foothills',82:'Northern Libyan Sea',83:'Libyan Desert',84:'Balearic Sea',85:'Western Iberia · Lusitania',86:'Basque Mountain Village',87:'Black Forest',88:'Alpine Foothills',89:'Southeastern Iberia'};
  for(let y=0;y<grid.length;y++)for(let x=0;x<grid[y].length;x++)if(grid[y][x]!==null)positions.set(grid[y][x],{x,y});
  const opposite={north:'south',south:'north',east:'west',west:'east'},offset={north:[0,-1],south:[0,1],west:[-1,0],east:[1,0]};
  const water=t=>[92,93,94,95].includes(t),desert=id=>[4,42,43,44,49,59,71,72,73,74,78,83].includes(id);
  const point=(side,t,depth=0)=>side==='west'?[depth,t]:side==='east'?[99-depth,t]:side==='north'?[t,depth]:[t,99-depth];
  const beside=(id,side)=>{const p=positions.get(id),v=offset[side];return p?grid[p.y+v[1]]?.[p.x+v[0]]??null:null;};
- function put(id,x,y,tile){if(authored.has(id)&&!(id===22&&(x===0||y===0||x===99||y===99||x<24&&y<16)))return;if(x<0||y<0||x>=100||y>=100)return;const m=MAP_DB[id];m.maze[y][x]=tile;if(m.slabs?.length)m.slabs=m.slabs.filter(s=>s.x!==x||s.y!==y);}
+ function put(id,x,y,tile){if(authored.has(id))return;if(x<0||y<0||x>=100||y>=100)return;const m=MAP_DB[id];m.maze[y][x]=tile;if(m.slabs?.length)m.slabs=m.slabs.filter(s=>s.x!==x||s.y!==y);}
  function paint(id,x,y,color){if(!surfaces.has(id))surfaces.set(id,[]);surfaces.get(id).push({x,y,w:1,h:1,color});}
  function region(id){
   const sea=seas.has(id),alpine=id===66,italia=id===67,delta=id===78,gaul=[81,85,86,87,88].includes(id);
@@ -109852,8 +109884,9 @@ const BMAtlas58=(()=>{
   if(alpine)for(let y=0;y<100;y++)for(let x=0;x<100;x++)if(m.maze[y][x]===25){m.slabs.push({x,y,bottom:0,top:2.7+1.5*(.5+.5*Math.sin(x*.12)),tile:25});paint(id,x,y,'#c1c9c9');}
   if(id===73||id===74)for(let y=0;y<100;y++)for(let x=0;x<100;x++)if(Math.sin(x*.10+y*.15)>.55)paint(id,x,y,id===73?'#c6a574':'#b69672');
  }
+ for(const id of [71,73,74,78,81,83,85,86,87,88,89])if(!MAP_DB[id])region(id);
  for(const id of positions.keys()){if(!MAP_DB[id])region(id);const m=MAP_DB[id];m.outdoors=true;if(id===14||id===22||id===39)m.name=names[id];m.mapKind='overworld';const old=m.maze,h=old.length,w=old[0].length;
-  if(w!==100||h!==100){expanded.set(id,{w,h});m.maze=Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>{
+  if(w<100||h<100){expanded.set(id,{w,h});m.maze=Array.from({length:Math.max(100,h)},(_,y)=>Array.from({length:Math.max(100,w)},(_,x)=>{
    if(x<w&&y<h){const t=old[y][x];if((x===w-1||y===h-1||id!==9&&(x===0||y===0))&&[19,25].includes(t))return id===9?94:0;return t;}
    if(id===9)return 94;
    if(id===33&&x<3+Math.round(2*Math.sin(y*.12)))return 92;
@@ -109862,24 +109895,14 @@ const BMAtlas58=(()=>{
   }));}
  }
 
- // Provenance: reuse the two adjoining corner sections in the new Basque map.
- const cornerTerrain={"eastern":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,93,92,92,93,92,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,93,92,92,92,93],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,25,93,92,92],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,93,93,92,92],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,25,25,25,25,92,93,0,0],[0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,25,25,25,25,25,92,25,0,0],[0,25,25,0,0,0,0,25,25,0,0,0,0,0,0,0,25,25,25,25,92,25,25,0],[0,25,25,25,0,0,25,25,25,0,0,0,0,0,0,0,25,25,25,25,92,25,0,0],[0,0,25,25,25,25,25,25,0,0,0,0,0,0,0,0,25,25,25,25,92,0,0,0],[0,0,0,25,25,25,25,0,0,0,0,0,0,0,0,0,25,25,0,0,92,0,0,0],[0,0,0,25,25,25,25,0,0,0,0,0,0,0,0,0,0,0,0,0,92,92,0,0],[0,0,0,25,25,25,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,92,0,0],[0,0,25,25,25,25,25,25,0,0,0,0,0,0,0,0,0,0,0,0,0,92,0,0],[25,25,25,25,25,25,25,25,0,0,0,0,0,0,0,0,0,0,0,0,93,92,25,0],[25,25,25,25,25,25,25,0,0,0,0,0,0,0,0,25,0,0,0,0,93,92,25,25]],"southern":[[0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25],[0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0],[92,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0],[92,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[92,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0],[92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0],[92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,0,0,0,0],[92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25],[92,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[93,92,92,92,92,92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]};
- for(let y=0;y<16;y++)for(let x=0;x<24;x++){
-  put(86,x,80+y,cornerTerrain.eastern[y][x]);
-  put(86,76+x,4+y,cornerTerrain.southern[y][x]);
-  put(22,x,y,authored.get(22).maze[16][x]);
- }
- // Carry the gulf's curve across the two maps, then turn the road south.
- for(let y=84;y<100;y++)for(let x=0;x<68;x++)put(39,x,y,x<58+(y-84)*.55?93:0);
- for(let x=0;x<100;x++)put(39,x,99,x<68?93:0);
- // The original Iberian northwest approach remains clear below the transferred corner.
- for(let y=0;y<16;y++)for(let x=7;x<=10;x++)put(22,x,y,0);
+ const cornerTerrain={};
  // Cut only the thin original land bridge. Preserve all other Gibraltar interior tiles.
  const bridgeCut=[];
  for(let y=49;y<=69;y++)for(let x=58;x<=65;x++)if(!water(MAP_DB[-2].maze[y][x])){bridgeCut.push({x,y,from:MAP_DB[-2].maze[y][x]});MAP_DB[-2].maze[y][x]=93;}
  // Sea charts retain the Kraken's island, actors and campaign flags at their saved coordinates.
  // Place the shore in the neighboring water region when a settlement already reaches a land edge.
  function join(a,side,b){const other=opposite[side],ma=MAP_DB[a],mb=MAP_DB[b];
+  if((a===39&&b===22)||(a===22&&b===67)){seams.push({a,side,b,other,profile:[],custom:true});return;}
   if(authored.has(a)||authored.has(b)){const source=a===-2||b===-2?-2:authored.has(a)?a:b,target=source===a?b:a,ss=source===a?side:other,ts=opposite[ss],profile=[];for(let t=0;t<100;t++){const[x,y]=point(ss,t),tile=MAP_DB[source].maze[y][x];profile.push(tile);const depth=authored.has(target)?1:6;for(let d=0;d<depth;d++){const[xx,yy]=point(ts,t,d);put(target,xx,yy,tile);if(!water(tile))paint(target,xx,yy,MAP_DB[source].floorColor||'#64734a');}}seams.push({a,side,b,other,profile,authored:source});return;}
   const bothSea=seas.has(a)&&seas.has(b),coast=seas.has(a)!==seas.has(b);const profile=[];
   for(let t=0;t<100;t++){
@@ -109910,36 +109933,25 @@ const BMAtlas58=(()=>{
  pass(2,'south',0,65.5,[[65.5,91.5]],[[65.5,9.5]]);
  pass(2,'east',5,45.5,[[94.5,45.5]],[[6.5,45.5]]);
  // Armorica's authored eastern and southern land edges feed the new extensions.
- pass(14,'east',47,52.5,[],[[8,52.5]]);
+ pass(14,'east',38,52.5,[],[[8,52.5],[40,52.5],[54,40],[54,25],[25.5,25.5]]);
  pass(14,'south',39,50.5,[],[[50.5,12.5],[39.5,6.5]]);
- pass(47,'east',87,52.5,[[91,52.5]],[[8,52.5],[50.5,52.5],[92,52.5]]);
- pass(87,'east',38,52.5,[[92,52.5]],[[5.5,52.5],[5.5,25.5]]);
- pass(47,'south',81,32.5,[[32.5,90]],[[32.5,6.5],[50.5,50.5]]);
- pass(87,'south',88,50.5,[[50.5,52.5],[50.5,90]],[[50.5,8],[50.5,60.5]]);
- pass(38,'east',45,28.5,[[25.5,25.5],[40,28.5],[90,28.5]],[[9,28.5]]);
+ pass(38,'east',45,28.5,[[25.5,25.5],[54,25],[90,28.5]],[[9,28.5]]);
  pass(45,'south',46,48.5,[[48.5,92]],[[48.5,8]]);
- pass(39,'east',81,60.5,[[39.5,6.5],[42,45],[80,60.5]],[[8,60.5],[50.5,50.5],[80,60.5]]);
- // Enter Iberia southward from the Basque passes, at its northwestern edge.
- pass(39,'south',86,70.5,[[39.5,6.5],[42,45],[70.5,70],[70.5,92]],[[70.5,8],[70.5,28],[67,46],[60,66],[25.5,75],[25.5,97],[8.5,97]]);
- pass(86,'south',22,8.5,[[8.5,97]],[]);
+ pass(39,'east',66,60.5,[[39.5,6.5],[42,45],[80,60.5]],[[12,60.5],[39,61],[52.5,52]]);
  pass(85,'east',22,52.5,[[25.5,57.5],[50,54],[90,52.5]],[]);
- pass(22,'south',-2,55.5,[],[]);
+ pass(85,'south',-2,55.5,[[50,54],[55.5,90]],[]);
+ pass(22,'south',89,55.5,[],[[55.5,10],[40,30],[24,24],[8,20.5]]);
+ pass(-2,'east',89,20.5,[],[[8,20.5],[24,24]]);
  pass(-2,'south',4,61.5,[],[[61.5,10],[50.5,60],[50.5,85.5],[92,85.5],[92,77.5]]);
  pass(4,'east',42,77.5,[[92,77.5]],[[8,77.5]]);
- pass(42,'east',73,72.5,[[92,72.5]],[[10,72.5],[48,56],[90,72.5]]);
- pass(73,'east',74,72.5,[[90,72.5]],[[10,72.5],[50,61],[90,72.5]]);
+ pass(42,'east',74,72.5,[[92,72.5]],[[10,72.5],[50,61],[90,72.5]]);
  pass(74,'east',43,72.5,[[90,72.5]],[[8,72.5]]);
- pass(74,'south',83,50.5,[[50,61],[50.5,90]],[[50.5,10],[50.5,65]]);
- pass(43,'north',78,51.5,[[51.5,52.5],[51.5,8]],[[51.5,92],[62,65]]);
- pass(78,'east',72,65.5,[[62,65],[90,65.5]],[[10,65.5],[52.5,65.5]]);
+ pass(43,'east',44,15.5,[[55.5,52.5],[65,32],[82,15.5],[95,15.5]],[[7,15.5],[30,15.5],[52.5,15.5]]);
  pass(72,'south',44,52.5,[[52.5,65.5],[52.5,90]],[[52.5,12],[49.5,17]]);
- pass(81,'east',88,60.5,[[80,60.5]],[[12,60.5],[50.5,60.5],[92,60.5]]);
- pass(88,'east',66,60.5,[[92,60.5]],[[12,60.5],[39,61],[52.5,52]]);
- pass(38,'south',66,52.5,[[25.5,25.5],[52.5,65],[52.5,90]],[[52.5,12],[52.5,52]]);
+ pass(38,'south',66,52.5,[[25.5,25.5],[54,25],[54,65],[52.5,90]],[[52.5,12],[52.5,52]]);
  pass(66,'south',67,52.5,[[52.5,52],[41,67],[52.5,90]],[[52.5,12],[48,24],[54,42],[65,65],[72,82]]);
  pass(48,'south',49,52.5,[[76,51.5],[84,49.5],[84,74],[67,88],[52.5,94]],[[52.5,15],[45,34],[45,48.5]]);
- pass(49,'south',71,52.5,[[52.5,92]],[[52.5,10],[46,50],[52.5,90]]);
- pass(71,'south',72,52.5,[[52.5,90]],[[52.5,10],[52.5,65.5]]);
+ pass(49,'south',72,52.5,[[52.5,92]],[[52.5,10],[52.5,65.5]]);
  // Local roads use the existing open ground; Gibraltar's interior remains authored.
  // Ensure a continuous swimmable approach at each sea/land seam without cutting a settlement.
  for(const s of seams)if(!s.authored&&seas.has(s.a)!==seas.has(s.b)){
@@ -109951,7 +109963,7 @@ const BMAtlas58=(()=>{
   const sea=seas.has(s.a)?s.a:s.b,ss=opposite[side];for(let t=best-2;t<=best+2;t++)for(let d=0;d<=10;d++){const[x,y]=point(ss,t,d);put(sea,x,y,d<3?92:94);}
  }
  // Reconcile final edge tiles after roads and straits, preserving matched road positions.
- for(const s of seams)for(let t=0;t<100;t++){const[x,y]=point(s.side,t),[xx,yy]=point(s.other,t),a=MAP_DB[s.a].maze[y][x],b=MAP_DB[s.b].maze[yy][xx];let tile=s.a===-2?a:s.b===-2?b:authored.has(s.a)?a:authored.has(s.b)?b:a===b?a:water(a)||water(b)?92:a===0||b===0?0:a;put(s.a,x,y,tile);put(s.b,xx,yy,tile);s.profile[t]=tile;}
+ for(const s of seams)if(!s.custom)for(let t=0;t<100;t++){const[x,y]=point(s.side,t),[xx,yy]=point(s.other,t),a=MAP_DB[s.a].maze[y][x],b=MAP_DB[s.b].maze[yy][xx];let tile=s.a===-2?a:s.b===-2?b:authored.has(s.a)?a:authored.has(s.b)?b:a===b?a:water(a)||water(b)?92:a===0||b===0?0:a;put(s.a,x,y,tile);put(s.b,xx,yy,tile);s.profile[t]=tile;}
  for(let t=0;t<100;t++){put(66,99,t,25);put(46,0,t,25);}
  // The forest boundary is bark, with only the established road opening.
  for(let y=0;y<100;y++)if(y<44||y>46){put(2,99,y,3);put(5,0,y,3);}
@@ -110021,41 +110033,231 @@ const BMAtlas58=(()=>{
  sign(73,901073,50.5,55.5,'Great Dunes','West · Deshret oasis and Ger. East · Eastern Deshret and Kemet.');
  sign(74,901074,52.5,60.5,'Eastern Deshret','West · Great Dunes. East · Kemet and the Nile.');
  sign(78,901078,64.5,65.5,'Delta crossing','South · Kemet. East · Sinai and Arabia. The northern shore faces the Mediterranean.');
- const edgeSide=(d,x,y)=>x<0?'west':x>=100?'east':y<0?'north':y>=100?'south':null;
- const passable=(id,x,y)=>{const m=MAP_DB[id],t=m.maze[y]?.[x];return t!==undefined&&(t===0||water(t)||t>0&&t%2===0)&&!(m.slabs||[]).some(s=>s.x===x&&s.y===y&&s.bottom<.9&&s.top>0);};
- function edge(d,x,y){if(!positions.has(d.mapID))return null;const side=edgeSide(d,x,y);if(!side)return null;const next=beside(d.mapID,side);if(next===null)return false;const t=Math.floor(side==='east'||side==='west'?y:x);if(t<0||t>=100)return false;
+ // Consolidate the geography around the authored maps. Map IDs remain save identities.
+ const migrations=new Map([[47,{to:38,dx:-21,dy:0}],[87,{to:38,dx:16,dy:10}],[81,{to:39,dx:10,dy:5}],[88,{to:66,dx:-28,dy:0}],[73,{to:42,dx:15,dy:0}],[71,{to:49,dx:0,dy:28}],[78,{to:43,dx:6,dy:-46}],[83,{to:74,dx:0,dy:20}]]),relocated=[];
+ function force(id,x,y,tile){const m=MAP_DB[id];if(!m.maze[y]||x<0||x>=m.maze[0].length)return;m.maze[y][x]=tile;m.slabs=(m.slabs||[]).filter(s=>s.x!==x||s.y!==y);}
+ function lineDistance(x,y,points){let best=Infinity;for(let i=1;i<points.length;i++){const[a,b]=points[i-1],[c,d]=points[i],dx=c-a,dy=d-b,t=Math.max(0,Math.min(1,((x-a)*dx+(y-b)*dy)/(dx*dx+dy*dy||1)));best=Math.min(best,Math.hypot(x-a-t*dx,y-b-t*dy));}return best;}
+ // Southern Iberia is a compressed peninsula, with broad range belts rather than isolated rock scatter.
+ const se=MAP_DB[89];Object.assign(se,{name:names[89],biome:'Coast',weather:'clear',floorColor:'#a09368',skyColor:'#abc5d7',slabs:[]});
+ const southernCoast=x=>64-13*Math.sin(x*Math.PI/150)-Math.max(0,x-45)*.32;
+ for(let y=0;y<100;y++)for(let x=0;x<100;x++){
+  const coast=southernCoast(x),ridge=lineDistance(x,y,[[0,9],[20,13],[42,12],[57,5]]),betic=lineDistance(x,y,[[5,45],[25,40],[45,36],[65,27],[82,16]]),iberic=lineDistance(x,y,[[80,0],[78,12],[70,21]]);
+  se.maze[y][x]=y>coast?93:y>coast-2?92:(ridge<7||betic<9||iberic<7)?25:0;
+ }
+ // The north continues the original map; the western coast leads into Gibraltar's Spanish shore.
+ for(let x=0;x<100;x++)for(let y=0;y<5;y++)se.maze[y][x]=MAP_DB[22].maze[99][x];
+ for(let y=18;y<=22;y++)for(let x=90;x<100;x++)force(-2,x,y,0);
+ for(let y=0;y<100;y++)for(let x=0;x<4;x++)se.maze[y][x]=MAP_DB[-2].maze[y][99];
+ road(89,[[55.5,0],[55.5,10],[40,25],[24,24],[0,20.5]]);
+ road(89,[[40,25],[48,32],[63,23],[78,10]]);
+ sign(89,902089,41.5,26.5,'Iberian coastal road','North · Northeastern Iberia. West · Gibraltar. The coast turns southwest around the Baetic ranges. The mountains can be climbed by following their ridges; the Mediterranean lies beyond the southern shore.');
+ // Continue the authored Armorican coast into the gulf, preserving inland landmarks.
+ const gulfCoast=y=>y<28?1+y*.12:4.36+(y-28)*.79;
+ for(let y=1;y<100;y++)for(let x=0;x<64;x++)if(x<gulfCoast(y))force(39,x,y,x>gulfCoast(y)-2?92:93);
+ for(let x=0;x<100;x++)force(39,x,0,MAP_DB[14].maze[99][x]);
+ // Northern Iberia shares this gulf across its northern edge; the coast tapers into the old land.
+ for(let y=0;y<17;y++)for(let x=0;x<64;x++)if(x<60-y*3.6)force(22,x,y,x>58-y*3.6?92:93);
+ for(let x=0;x<100;x++)force(39,x,99,MAP_DB[22].maze[0][x]);
+ // Coastal meeting of Iberia and Italia is water, not a shortcut over land.
+ for(let y=0;y<100;y++){for(let d=0;d<3;d++){force(22,99-d,y,93);force(67,d,y,93);}}
+ for(let x=0;x<100;x++){for(let d=0;d<4;d++){force(89,x,99-d,93);force(42,x,d,93);}}
+ // The whole delta is compressed into north-central Kemet. Its former atlas tile stays empty.
+ for(let y=0;y<33;y++)for(let x=25;x<79;x++){
+  const river=50+Math.round(2*Math.sin(y*.1)),branch=Math.max(0,29-y)*.55;
+  if(y<5||Math.abs(x-river)<1.6||y<29&&(Math.abs(x-(river-branch))<1.3||Math.abs(x-(river+branch))<1.3))force(43,x,y,y<3?93:92);
+  else if(y>6){force(43,x,y,0);paint(43,x,y,'#84905a');}
+ }
+ // Compact west-bank homes and an eastern market flank the river; bridges are explicit road crossings.
+ const clearCourt=(id,x,y,w,h,color)=>{for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){force(id,xx,yy,0);paint(id,xx,yy,color);}};
+ clearCourt(43,31,16,16,12,'#c6b18a');house(43,32,17,5,5,34);house(43,40,17,5,5,42);
+ clearCourt(43,59,19,10,8,'#c6b18a');house(43,62,19,5,5,64);
+ road(43,[[34.5,22.5],[34.5,25.5],[46.5,25.5],[46.5,28.5],[65.5,28.5],[65.5,32.5],[55.5,52.5]],.9);
+ road(43,[[42.5,22.5],[42.5,25.5]],.9);road(43,[[64.5,24.5],[64.5,28.5]],.9);
+ road(43,[[34.5,25.5],[30.5,29.5],[30.5,43.5],[38.5,43.5]],.9);
+ road(43,[[46.5,25.5],[46.5,13.5],[44.5,10.5]],.8);
+ for(let x=49;x<55;x++)for(let y=28;y<30;y++)paint(43,x,y,'#a58a65');
+ R.prop(43,903431,33.5,18.5,1170,'Delta guest cot');R.prop(43,903432,41.5,18.5,1165,'River trade records');R.prop(43,903433,63.5,20.5,1167,'Market water jar');
+ resident(43,903434,37.5,24.5,170,'Delta market keeper','The river divides into its northern mouths here. The bridge to the east reaches the isthmus road. The road south on this bank leads to the Priest’s clinic; the western caravan road crosses the Red Land.');
+ resident(43,903435,45.5,13.5,252,'Delta boat keeper','These are Kemet’s northern river landings. The sea lies beyond the delta. Cross our market bridge and follow the eastern road for Sinai and Arabia.');
+ MAP_DB[43].deltaDistrict={bounds:[25,5,79,33],city:[31,16,69,29],bridge:[49,28,55,30],clinicRoad:[[34.5,25.5],[30.5,29.5],[30.5,43.5],[38.5,43.5]]};
+ for(let y=0;y<100;y++)for(let d=0;d<5;d++)for(const[id,x]of [[43,99-d],[44,d]])force(id,x,y,y>=10&&y<=22?0:93);
+ road(43,[[55.5,52.5],[65,32],[82,15.5],[100,15.5]]);
+ road(44,[[0,15.5],[30,15.5],[52.5,15.5]]);
+ // Transfer the watchhouse, inherited fortifications and Rhine bridge into western Germania.
+ const gm=MAP_DB[38],rh=MAP_DB[47],rhineAt=y=>y<28?0:Math.min(40,(y-28)*3.4);
+ for(let y=0;y<100;y++)for(let x=0;x<75;x++){
+  const r=rhineAt(y);if(Math.abs(x-r)<=(y<28?1:3))force(38,x,y,Math.abs(x-r)<(y<28?1:2)?94:92);
+  else if(y>32&&x>r+8&&x<90&&(x*17+y*31)%43<15&&!gm.npcs.some(n=>Math.hypot(n.x-x,n.y-y)<4))force(38,x,y,3);
+ }
+ for(let y=35;y<=60;y++)for(let x=21;x<=75;x++)force(38,x-21,y,rh.maze[y][x]);
+ for(const slab of rh.slabs||[])if(slab.x>=21&&slab.x<=75&&slab.y>=35&&slab.y<=60)gm.slabs.push({...slab,x:slab.x-21});
+ // Protect the house and gate while connecting the bridge to the tribe, Alps and eastern route.
+ road(38,[[0,52.5],[19,52.5],[19,47],[13.5,47],[13.5,44.5]],1.05);
+ road(38,[[19,52.5],[54,52.5],[54,25],[25.5,25.5]]);
+ road(38,[[54,52.5],[54,65],[52.5,100]]);
+ road(38,[[54,25],[90,28.5],[100,28.5]]);
+ road(38,[[11.5,78.5],[18,65],[19,52.5]]);
+ // Reapply the overhead gate after the road has been cut beneath it.
+ for(let y=49;y<56;y++)gm.slabs.push({x:25,y,bottom:1.6,top:1.9,tile:1});
+ for(const[from,move]of migrations){const old=MAP_DB[from],dest=MAP_DB[move.to];for(const def of old.npcs||[]){
+  const original={x:def.x,y:def.y},x=from===47&&def.index===897023?3.5:Math.max(2.5,Math.min(97.5,def.x+move.dx)),y=Math.max(2.5,Math.min(97.5,def.y+move.dy));
+  Object.assign(def,{x,y});dest.npcs.push(def);relocated.push({from,to:move.to,index:def.index,old:original,x,y});
+  // Preserve each registered interaction, while the live world stays on the destination map.
+  R.bind(move.to,def.index,(n,d)=>{const proxy=Object.create(d);proxy.mapID=from;return R.interact(n,proxy);});
+ }old.npcs=[];old.atlasMapID=move.to;old.retiredTo=move.to;}
+ // Restore the original crossing's natural river banks without erasing the tribe's older village.
+ const oldRhineRoute=BMRhineRoads.route;
+ BMRhineRoads.route=id=>[895090,895091,895092,895093].includes(id)?{name:'The Rhine crossing · Germania',map:38,arrival:{x:id===895091||id===895092?48.5:3.5,y:52.5,dir:1}}:oldRhineRoute(id);
+ redirect(38,897001,22.5,51,'Local watchkeeper','We keep this old fort and the stone bridge in repair. Across the Rhine is Germania. The tribal settlement and Warrior lie northeast; the Alpine road runs south.');
+ redirect(38,897002,13.5,41.5,'Bridge keeper','Northern Armorica lies west of this bank. Cross the Rhine, then follow the woodland road northeast to the tribe. South beyond Germania are the Alpine passes.');
+ redirect(38,901887,68.5,64.5,'Black Forest trail','The Black Forest occupies the eastern bank of the Rhine. The tribe and Warrior are north; the Alpine road continues south.');
+ redirect(39,901081,62.5,55.5,'Gaul foothills','West · Southern Armorica and its gulf coast. East · Alpine Passes. Northern Armorica lies north; the mountain settlement leads into Iberia.');
+ redirect(66,901888,24.5,62.5,'Alpine foothills','West · Southern Armorica. North · Germania. South · Italia. Follow the valley road between the climbable peaks.');
+ redirect(42,901073,65.5,55.5,'Great Dunes','The Great Dunes form the eastern part of Deshret. West · Ger. East · Eastern Deshret and Kemet.');
+ redirect(49,901071,54.5,77.5,'Southern Levant road','North · Levant waystation and Anatolia. South · Sinai and Arabia. Kemet lies beyond the northern isthmus.');
+ redirect(43,901078,47.5,26.5,'Nile Delta','The delta spreads across northern Kemet. East along the northern isthmus lies the route to Sinai and Arabia.');
+ redirect(74,901083,52.5,85.5,'Libyan desert track','The Libyan desert opens south of the caravan track here. West · Deshret. East · Kemet.');
+ redirect(43,896134,65.5,17.5,'East · Isthmus, Sinai and Arabia','Follow the dry northern isthmus east, above the Red Sea. Turn north for Sinai and the Levant, or continue into Arabia.');
+ redirect(44,896135,54.5,8.5,'North · Sinai; west · Kemet','North is Sinai. The western track crosses the northern isthmus into Kemet, above the Red Sea.');
+ redirect(72,901072,54.5,65.5,'Sinai crossroads','North · Levant. South · Arabia. To reach Kemet, go south to the isthmus junction and turn west.');
+ redirect(74,901074,52.5,60.5,'Eastern Deshret','West · Deshret and its Great Dunes. East · Kemet and the Nile. The Libyan sands lie south of this road.');
+ R.bind(42,896123,n=>BMClassicDialogue.show({speaker:n,text:'Ger lies west. We call these dunes Deshret—the Red Land. Cross Eastern Deshret to Kemet. The northern isthmus joins the route to Sinai and Arabia above the Red Sea.'}));
+ // Basque buildings belong to the two surrounding overworld maps, with no extra atlas or indoor map.
+ const basqueIberia={x:88.5,y:25.5,dir:0},basqueArmorica={x:23.5,y:24.5,dir:0};
+ for(const [id,cx,cy]of [[22,84,10],[39,19,8]]){
+  for(let y=3;y<31;y++)for(let x=Math.max(1,cx-13);x<=Math.min(96,cx+13);x++){
+   if(water(MAP_DB[id].maze[y][x]))continue;
+   if(((x-cx)/14)**2+((y-cy)/12)**2<1)force(id,x,y,25);
+   else if((x*7+y*13)%11<4&&!MAP_DB[id].npcs.some(n=>Math.hypot(n.x-x-.5,n.y-y-.5)<2))force(id,x,y,3);
+  }
+ }
+ clearCourt(22,81,13,14,15,'#908c7a');house(22,82,13,5,5,84);house(22,89,13,5,5,91);
+ clearCourt(39,12,13,15,14,'#908c7a');house(39,13,13,5,5,15);house(39,21,13,5,5,23);
+ const basqueMoves=[[901861,22,83.5,14.5],[901862,22,90.5,14.5],[901863,39,14.5,14.5],[901864,22,88.5,22.5],[901865,39,23.5,22.5],[901866,22,88.5,26.5]];
+ for(const[index,to,x,y]of basqueMoves){const n=MAP_DB[86].npcs.find(n=>n.index===index);if(!n)continue;const old={x:n.x,y:n.y};Object.assign(n,{x,y});MAP_DB[to].npcs.push(n);relocated.push({from:86,to,index,old,x,y});R.bind(to,index,(actor,d)=>{const proxy=Object.create(d);proxy.mapID=86;return R.interact(actor,proxy);});}
+ const trail=(id,points)=>{for(let y=0;y<100;y++)for(let x=0;x<100;x++)if(lineDistance(x+.5,y+.5,points)<.9){force(id,x,y,0);paint(id,x,y,'#a09475');}};
+ trail(22,[[84.5,18.5],[84.5,24.5],[91.5,24.5],[91.5,18.5]]);
+ trail(22,[[88.5,24.5],[70.5,24.5],[70.5,0]]);
+ Object.assign(riojaDoor,{x:79.5,y:24.5});Object.assign(MAP_DB[22].npcs.find(n=>n.index===901022),riojaDoor);
+ // Preserve the original western trader, clearing the old rock underneath rather than moving the shop.
+ for(let y=18;y<=21;y++)for(let x=5;x<=8;x++)force(22,x,y,0);
+ trail(39,[[15.5,18.5],[15.5,24.5],[23.5,24.5],[23.5,18.5]]);
+ trail(39,[[23.5,24.5],[39.5,28],[50.5,42],[70.5,80],[70.5,100]]);
+ road(39,[[39.5,6.5],[39.5,28],[50.5,42],[80,60.5]]);
+ passages.push({a:39,side:'south',b:22,center:70.5});
+ redirect(39,895095,41.5,30.5,'South · Iberian mountain road','The southern road follows the gulf into northeastern Iberia. The Basque settlement is northwest; La Rioja lies across the mountains to the south.');
+ redirect(39,895010,29.5,26.5,'Tracks near the mountain ford','The tracks follow the forest path around the mountain settlement.');
+ redirect(39,901839,26.5,25.5,'Basque mountain settlement','The forest village stands northwest of the trail. Follow the road south along the gulf into Iberia.');
+ redirect(22,901866,88.5,26.5,'Basque mountain trail','Northern trail · Southern Armorica. Westward through Iberia · Lusitania and Olisipo.');
+ redirect(39,901865,23.5,22.5,'Pass guide','Our settlement follows both sides of these forested mountains. Take the gulf road south into northeastern Iberia. The Dancer’s old festival square stands on the Iberian side.');
+ MAP_DB[86].npcs=[];MAP_DB[86].retiredTo=22;MAP_DB[86].atlasMapID=22;
+ redirect(85,901855,46.5,53.5,'Iberian roads','East · Northeastern Iberia. South · Gibraltar. The Mediterranean route also reaches Gibraltar through Southeastern Iberia.');
+ R.bind(85,901854,n=>BMClassicDialogue.show({speaker:n,text:'Welcome to Olisipo, the Atlantic port of Lusitania. The inland road goes east across Iberia; the southern road reaches Gibraltar. Our harbour pilot sails to Tingis in Ger.'}));
+ redirect(66,901066,54.5,51.5,'Alpine crossroads','North · Germania. West · Southern Armorica. South · Italia. The Carpathian road branches east from Germania.');
+ // Copy road sign directions along with the old content; ground around each relocated object remains reachable.
+ for(const v of relocated){const m=MAP_DB[v.to],def=m.npcs.find(n=>n.index===v.index);if(def&&v.from!==47){const x=Math.floor(def.x),y=Math.floor(def.y);for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++)if(!water(m.maze[yy]?.[xx]))force(v.to,xx,yy,0);}}
+ // Edge reconciliation is restricted to the boundary itself. It never paints a new strip over authored terrain.
+ for(const s of seams){s.profile=[];for(let t=0;t<100;t++){
+  const[x,y]=point(s.side,t),[xx,yy]=point(s.other,t);let tile=MAP_DB[s.a].maze[y][x];
+  if(s.b===-2)tile=MAP_DB[-2].maze[yy][xx];else if(s.a===39&&s.b===22)tile=MAP_DB[22].maze[yy][xx];
+  if((s.a===89&&s.b===42)||(s.a===22&&s.b===67))tile=93;
+  force(s.a,x,y,tile);force(s.b,xx,yy,tile);s.profile.push(tile);
+ }}
+ // Mountain height is derived from distance inside each original footprint. Half-tile rises are climbable.
+ const mountainMaps=[22,39,-2,85,89,66,67,45,6],mountainSummary=[];
+ for(const id of mountainMaps){const m=MAP_DB[id],h=m.maze.length,w=m.maze[0].length,mask=Array.from({length:h},()=>Array(w).fill(false)),dist=Array.from({length:h},()=>Array(w).fill(10000)),queue=[];
+  if(id===66||id===45)m.slabs=m.slabs.filter(s=>!(s.bottom===0&&s.tile===(id===66?25:10)));
+  const occupied=new Set((m.slabs||[]).map(s=>s.x+','+s.y));
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+   mask[y][x]=(m.maze[y][x]===25||[6,14].includes(id)&&m.maze[y][x]===13||id===45&&m.maze[y][x]===10)&&!occupied.has(x+','+y)&&!(m.npcs||[]).some(n=>Math.hypot(n.x-x-.5,n.y-y-.5)<2);
+   if(!mask[y][x]){dist[y][x]=0;queue.push([x,y]);}
+  }
+  // Outer grid cells are not artificially lowered: border mountain height follows both maps' terrain.
+  for(let k=0;k<queue.length;k++){const[x,y]=queue[k];for(const[dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]]){const a=x+dx,b=y+dy;if(a>=0&&b>=0&&a<w&&b<h&&dist[b][a]>dist[y][x]+1){dist[b][a]=dist[y][x]+1;queue.push([a,b]);}}}
+  m.mountainHeights=Array.from({length:h},()=>Array(w).fill(0));m.mountainFootprint=mask;m.snowLine=id===6?1.5:id===66||id===45?3:id===89?3.5:id===22?4:99;
+  let count=0,peak=0,snow=0;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(mask[y][x]){
+   const z=Math.min(id===86?10:12,dist[y][x]*.5),cap=z>=m.snowLine;m.maze[y][x]=0;m.mountainHeights[y][x]=z;m.slabs.push({x,y,bottom:0,top:z,tile:cap?13:25,mountain:true});paint(id,x,y,cap?'#e8eef4':z>=3?'#989b94':'#797b6a');count++;peak=Math.max(peak,z);if(cap)snow++;
+  }
+  mountainSummary.push({id,cells:count,peak,snow});
+ }
+ // Ensure height is continuous at paired borders as well as the underlying land/water tile.
+ for(const s of seams)for(let t=0;t<100;t++){
+  const[x,y]=point(s.side,t),[xx,yy]=point(s.other,t),a=MAP_DB[s.a],b=MAP_DB[s.b],za=a.mountainHeights?.[y]?.[x]||0,zb=b.mountainHeights?.[yy]?.[xx]||0;if(!za&&!zb)continue;
+  const z=Math.min(za,zb);for(const[m,c,r]of [[a,x,y],[b,xx,yy]]){m.slabs=m.slabs.filter(v=>!(v.mountain&&v.x===c&&v.y===r));if(m.mountainHeights)m.mountainHeights[r][c]=z;if(z)m.slabs.push({x:c,y:r,bottom:0,top:z,tile:z>=m.snowLine?13:25,mountain:true});}s.profile[t]=a.maze[y][x];
+ }
+ // Retired tiles are kept only as migration sources; none is an atlas destination.
+ // Match the physical edge after mountain walls have become raised surfaces.
+ for(const s of seams)for(let t=0;t<100;t++){
+  const[x,y]=point(s.side,t),[xx,yy]=point(s.other,t),a=MAP_DB[s.a],b=MAP_DB[s.b],za=a.mountainHeights?.[y]?.[x]||0,zb=b.mountainHeights?.[yy]?.[xx]||0;
+  if(za||zb){const z=za&&zb?Math.min(za,zb):.5;for(const[m,c,r]of [[a,x,y],[b,xx,yy]]){m.maze[r][c]=0;m.mountainHeights??=Array.from({length:100},()=>Array(100).fill(0));m.mountainHeights[r][c]=z;m.slabs=m.slabs.filter(v=>!(v.mountain&&v.x===c&&v.y===r));m.slabs.push({x:c,y:r,bottom:0,top:z,tile:z>=m.snowLine?13:25,mountain:true});}}
+  else if(a.maze[y][x]!==b.maze[yy][xx]){const tile=water(a.maze[y][x])||water(b.maze[yy][xx])?93:a.maze[y][x];a.maze[y][x]=b.maze[yy][xx]=tile;}
+ }
+ for(const list of corners.values())if(list.length>1){const tile=list.some(p=>water(MAP_DB[p.id].maze[p.y][p.x]))?93:0;for(const p of list){force(p.id,p.x,p.y,tile);if(MAP_DB[p.id].mountainHeights)MAP_DB[p.id].mountainHeights[p.y][p.x]=0;}}
+ for(const s of seams)s.profile=Array.from({length:100},(_,t)=>{const[x,y]=point(s.side,t);return MAP_DB[s.a].maze[y][x];});
+ for(const[id,index]of [[66,901066],[49,900051]]){const n=MAP_DB[id].npcs.find(n=>n.index===index);for(let y=Math.floor(n.y)-1;y<=Math.floor(n.y)+1;y++)for(let x=Math.floor(n.x)-1;x<=Math.floor(n.x)+1;x++){force(id,x,y,0);if(MAP_DB[id].mountainHeights)MAP_DB[id].mountainHeights[y][x]=0;}}
+ const dimensions=id=>{const m=typeof id==='object'?id:MAP_DB[id];return {w:m.maze[0].length,h:m.maze.length};};
+ const edgeSide=(d,x,y)=>x<0?'west':x>=d.maze[0].length?'east':y<0?'north':y>=d.maze.length?'south':null;
+ function boundary(id,side,t,depth=0){const{w,h}=dimensions(id);return side==='west'?[depth,t]:side==='east'?[w-1-depth,t]:side==='north'?[t,depth]:[t,h-1-depth];}
+ // Physical distances may differ; the fractional position along a shared edge is the atlas coordinate.
+ function edgeLocation(id,side,coordinate){const next=beside(id,side);if(next===null)return null;const src=dimensions(id),dst=dimensions(next),vertical=side==='east'||side==='west',fraction=Math.max(0,Math.min(1,coordinate/(vertical?src.h:src.w))),t=Math.min((vertical?dst.h:dst.w)-.5,Math.max(.5,fraction*(vertical?dst.h:dst.w)));return {next,t,fraction,side:opposite[side]};}
+ const passable=(id,x,y,z=0)=>{const m=MAP_DB[id];return !!m.maze[y]&&m.maze[y][x]!==undefined&&!BMLayers.blocked(BMLayers.preview(m),x+.5,y+.5,z);};
+ function edge(d,x,y){if(!positions.has(d.mapID))return null;const side=edgeSide(d,x,y);if(!side)return null;const vertical=side==='east'||side==='west',coordinate=(vertical?y:x)+.5,loc=edgeLocation(d.mapID,side,coordinate);if(!loc)return false;
+  const t=Math.floor(vertical?y:x),limit=vertical?d.maze.length:d.maze[0].length;if(t<0||t>=limit)return false;
   if(d.mapID===9&&side==='west'&&!d.memory.kraken_dead)return false;
   if((d.mapID===2&&side==='east'||d.mapID===5&&side==='west')&&(t<44||t>46))return false;
-  const[a,b]=point(side,t),[c,e]=point(opposite[side],t);const[f,g]=point(opposite[side],t,1);return passable(d.mapID,a,b)&&passable(next,c,e)&&passable(next,f,g);
+  const[a,b]=boundary(d.mapID,side,t),[c,e]=boundary(loc.next,loc.side,Math.floor(loc.t)),[f,g]=boundary(loc.next,loc.side,Math.floor(loc.t),1),z=Number(d.groundZ)||0;
+  const source=MAP_DB[d.mapID].maze[b][a],dest=MAP_DB[loc.next].maze[e][c];
+  // Swimming shares the same coastline mapping; solid cliff faces still obey elevation collision.
+  const open=(id,xx,yy)=>water(MAP_DB[id].maze[yy]?.[xx])||passable(id,xx,yy,z);
+  return open(d.mapID,a,b)&&open(loc.next,c,e)&&open(loc.next,f,g)&&(!water(source)||water(dest)||passable(loc.next,c,e,z));
  }
- function transition(d,x,y){if(!edge(d,x,y))return false;const side=edgeSide(d,x,y),next=beside(d.mapID,side),t=Math.max(.5,Math.min(99.5,side==='east'||side==='west'?d.y:d.x));const p=side==='east'?{x:1.5,y:t,dir:1}:side==='west'?{x:98.5,y:t,dir:3}:side==='south'?{x:t,y:1.5,dir:2}:{x:t,y:98.5,dir:0};
-  if(!passable(next,Math.floor(p.x),Math.floor(p.y)))return false;
-  const result=R.enter(d,next,p);if(result){d.currentAngle=d.dir*Math.PI/2;d.currentCamZ=.55;d.isViewingWorld=d.isViewingAtlas=false;MusicEngine.followScene();}return result;
+ function transition(d,x,y){if(!edge(d,x,y))return false;const side=edgeSide(d,x,y),vertical=side==='east'||side==='west',loc=edgeLocation(d.mapID,side,vertical?d.y:d.x),{w,h}=dimensions(loc.next),p=side==='east'?{x:1.5,y:loc.t,dir:1}:side==='west'?{x:w-1.5,y:loc.t,dir:3}:side==='south'?{x:loc.t,y:1.5,dir:2}:{x:loc.t,y:h-1.5,dir:0};
+  const target=MAP_DB[loc.next],z=Number(d.groundZ)||0,wet=water(target.maze[Math.floor(p.y)]?.[Math.floor(p.x)]),ground=wet?0:BMLayers.support(BMLayers.preview(target),p.x,p.y,z,.51);if(!wet&&!BMLayers.placement(target,p.x,p.y,ground))return false;
+  const result=R.enter(d,loc.next,p);if(result){d.groundZ=ground;d._arrivalPending=true;d.currentAngle=d.dir*Math.PI/2;d.currentCamZ=ground+.55;d.isViewingWorld=d.isViewingAtlas=false;MusicEngine.followScene();}return result;
  }
- const prior=Explore.prototype.handleAtlasTransition;Explore.prototype.handleAtlasTransition=function(x,y){return positions.has(this.mapID)?transition(this,x,y):prior.call(this,x,y);};
+ const prior=Explore.prototype.handleAtlasTransition;Explore.prototype.handleAtlasTransition=function(x,y){return this.mapID===86?false:positions.has(this.mapID)?transition(this,x,y):prior.call(this,x,y);};
  // Old quest travel markers remain shortcuts; every overland connection also has a physical road.
- const retired=new Map([[50,6],[51,2],[52,0],[53,14],[54,14],[55,85],[56,-2],[57,67],[58,46],[59,4],[60,46],[61,48],[62,86],[63,14],[64,22],[65,-2],[68,67],[69,46],[70,43],[75,4],[76,74],[77,43],[79,4],[80,4],[82,74],[84,22]]);
+ const retired=new Map([[86,22],[47,38],[87,38],[81,39],[88,66],[73,42],[71,49],[78,43],[83,74],[50,6],[51,2],[52,0],[53,14],[54,14],[55,85],[56,-2],[57,67],[58,46],[59,4],[60,46],[61,48],[62,22],[63,14],[64,22],[65,-2],[68,67],[69,46],[70,43],[75,4],[76,74],[77,43],[79,4],[80,4],[82,74],[84,22]]);
  const priorLoad=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...args){const old=Number(id);id=retired.get(old)??old;this.atlas=grid;for(const[mid]of positions)if(MAP_DB[mid].spawn)this.defaultSpawns[mid]=MAP_DB[mid].spawn;const result=priorLoad.call(this,id,...args);if(old!==id&&this.mapID===id){const p=MAP_DB[id].spawn||this.defaultSpawns[id];Object.assign(this,p,{targetMapX:p.x,targetMapY:p.y,groundZ:0});}return result;};
- function migrateSave(data){
-  if(!data||Number(data.memory?.atlasCoastLayout)>=61)return;
-  const old=Number(data.mapID),id=retired.get(old)??old;data.mapID=id;
+ function migrateSave62(data){
+  if(!data||Number(data.memory?.atlasCoastLayout)>=62)return;
+  const old=Number(data.mapID),id=retired.get(old)??old;data.mapID=id;data.memory??={};
+  const used=data.memory.householdContainers??{};
+  for(const v of relocated){if(used[v.from+'/'+v.index])used[v.to+'/'+v.index]=used[v.from+'/'+v.index];if(data.memory[v.from+'_'+v.index]!==undefined)data.memory[v.to+'_'+v.index]=data.memory[v.from+'_'+v.index];}
+  const move=migrations.get(old);if(move){data.x=Math.max(.5,Math.min(99.5,data.x+move.dx));data.y=Math.max(.5,Math.min(99.5,data.y+move.dy));}
   const m=MAP_DB[id],p=m?.spawn||Dungeon.defaultSpawns[id];
-  const altered=old===-2||(id===22&&(data.x<24&&data.y<16||data.x<1||data.x>=99||data.y<1||data.y>=99))||(id===39&&data.y>=84);
-  if(p&&(old!==id||altered&&(!BMLayers.placement(m,data.x,data.y,data.groundZ||0)||water(m.maze[Math.floor(data.y)]?.[Math.floor(data.x)]))))Object.assign(data,p,{groundZ:0});
+  if(p&&(!BMLayers.placement(m,data.x,data.y,data.groundZ||0)||old!==id&&water(m.maze[Math.floor(data.y)]?.[Math.floor(data.x)])))Object.assign(data,p,{groundZ:0});
   if(retired.has(Number(data.prevMap)))data.prevMap=retired.get(Number(data.prevMap));
   if(data.mapSpawns)for(const key of Object.keys(data.mapSpawns))if(retired.has(Number(key)))delete data.mapSpawns[key];
-  data.memory={...(data.memory||{}),atlasCoastLayout:61};
+  const migrateTarget=q=>{if(!q||typeof q!=='object')return;for(const k of ['mapID','map','targetMap'])if(migrations.has(Number(q[k]))){const move=migrations.get(Number(q[k]));q[k]=move.to;if(Number.isFinite(q.x))q.x=Math.max(1.5,Math.min(98.5,q.x+move.dx));if(Number.isFinite(q.y))q.y=Math.max(1.5,Math.min(98.5,q.y+move.dy));if(Number.isFinite(q.targetX))q.targetX=Math.max(1.5,Math.min(98.5,q.targetX+move.dx));if(Number.isFinite(q.targetY))q.targetY=Math.max(1.5,Math.min(98.5,q.targetY+move.dy));}if(typeof q.mapKey==='string'&&migrations.has(Number(q.mapKey.split(':')[0])))q.mapKey=migrations.get(Number(q.mapKey.split(':')[0])).to+':'+q.mapKey.split(':').slice(1).join(':');};
+  migrateTarget(data.memory.guild_quest);migrateTarget(data.activeEscortQuest);
+  for(const q of Object.values(data.guildQuests||{}))migrateTarget(q);
+  for(const q of data.activeEscorts||[])migrateTarget(q);
+  for(const q of data.activeSummons||[])migrateTarget(q);
+  for(const q of data.memory.groundLoot?.piles||[])migrateTarget(q);
+  data.memory.atlasCoastLayout=62;
+ }
+ function migrateSave(data){
+  if(!data)return;migrateSave62(data);if(Number(data.memory?.atlasCoastLayout)>=63)return;
+  data.memory??={};const used=data.memory.householdContainers??{};
+  for(const v of relocated.filter(v=>v.from===86)){if(used['86/'+v.index])used[v.to+'/'+v.index]=used['86/'+v.index];if(data.memory['86_'+v.index]!==undefined)data.memory[v.to+'_'+v.index]=data.memory['86_'+v.index];}
+  const move=q=>{if(!q||typeof q!=='object')return;for(const k of ['mapID','map','targetMap'])if(Number(q[k])===86){q[k]=22;if(Number.isFinite(q.x))q.x=88.5;if(Number.isFinite(q.y))q.y=25.5;if(Number.isFinite(q.targetX))q.targetX=88.5;if(Number.isFinite(q.targetY))q.targetY=25.5;}if(typeof q.mapKey==='string'&&q.mapKey.startsWith('86:'))q.mapKey='22:'+q.mapKey.slice(3);};
+  move(data);move(data.memory.guild_quest);move(data.activeEscortQuest);for(const q of Object.values(data.guildQuests||{}))move(q);for(const q of data.activeEscorts||[])move(q);for(const q of data.activeSummons||[])move(q);for(const q of data.memory.groundLoot?.piles||[])move(q);
+  if(Number(data.prevMap)===86)data.prevMap=22;if(data.mapSpawns)delete data.mapSpawns[86];
+  if([22,39,43].includes(Number(data.mapID))){const m=MAP_DB[data.mapID];if(!BMLayers.placement(m,data.x,data.y,data.groundZ||0)||water(m.maze[Math.floor(data.y)]?.[Math.floor(data.x)]))Object.assign(data,m.spawn||Dungeon.defaultSpawns[data.mapID],{groundZ:0});}
+  data.memory.atlasCoastLayout=63;
  }
  Dungeon.atlas=grid;
  // Existing saved coordinates and quest locations remain valid on the expanded maps.
- const defaults=new Map([[9,{x:30.5,y:7.5,dir:3}],[38,{x:5.5,y:25.5,dir:0}],[39,{x:39.5,y:6.5,dir:2}],[-2,{x:60.5,y:47.5,dir:2}],[85,{x:26.5,y:57.5,dir:1}],[86,{x:67.5,y:46.5,dir:2}],[44,{x:52.5,y:4.5,dir:2}],[78,{x:62.5,y:65.5,dir:1}]]);
+ const defaults=new Map([[89,{x:40.5,y:30.5,dir:2}],[9,{x:30.5,y:7.5,dir:3}],[38,{x:5.5,y:25.5,dir:0}],[39,{x:39.5,y:6.5,dir:2}],[-2,{x:60.5,y:47.5,dir:2}],[85,{x:26.5,y:57.5,dir:1}],[86,{x:67.5,y:46.5,dir:2}],[44,{x:52.5,y:4.5,dir:2}],[78,{x:62.5,y:65.5,dir:1}]]);
  for(const[id,p]of defaults){MAP_DB[id].spawn=p;Dungeon.defaultSpawns[id]=p;}
- for(const[id,q]of surfaces)BMGuildDecor.appendSurface(id,q);for(const id of positions.keys())BMLayers.invalidate(MAP_DB[id]);
+ for(const[id,q]of surfaces)BMGuildDecor.appendSurface(id,q);for(const id of [...positions.keys(),86])BMLayers.invalidate(MAP_DB[id]);
  // Keep authored arrivals when clear; migrate only blocked positions to nearby open ground.
  for(const[id]of positions){const m=MAP_DB[id],p=m.spawn||Dungeon.defaultSpawns[id]||{x:50.5,y:50.5,dir:0};if(BMLayers.placement(m,p.x,p.y,0)&&(seas.has(id)||!water(m.maze[Math.floor(p.y)]?.[Math.floor(p.x)])))continue;let safe=null;for(let r=1;r<100&&!safe;r++)for(let y=Math.max(0,Math.floor(p.y)-r);y<=Math.min(99,Math.floor(p.y)+r)&&!safe;y++)for(let x=Math.max(0,Math.floor(p.x)-r);x<=Math.min(99,Math.floor(p.x)+r);x++){if(Math.max(Math.abs(x-Math.floor(p.x)),Math.abs(y-Math.floor(p.y)))!==r)continue;if(!seas.has(id)&&water(m.maze[y][x]))continue;if(BMLayers.placement(m,x+.5,y+.5,0)&&!(m.npcs||[]).some(n=>Math.hypot(n.x-x-.5,n.y-y-.5)<.7)){safe={x:x+.5,y:y+.5,dir:p.dir??0};break;}}if(safe){m.spawn=safe;Dungeon.defaultSpawns[id]=safe;}}
  // Regenerate the small terrain images only when first opening the chart, not every game frame.
  const colors={0:'#64754b',3:'#30472f',1:'#897b65',25:'#7d776c',10:'#8b8170',92:'#398aa1',93:'#245d85',94:'#234d72',95:'#2b6a86'};
- function thumbnail(id){if(thumbs.has(id))return thumbs.get(id);const m=MAP_DB[id],c=document.createElement('canvas');c.width=c.height=100;const q=c.getContext('2d');for(let y=0;y<100;y++)for(let x=0;x<100;x++){const t=m.maze[y][x];q.fillStyle=t===0?(BMGuildDecor.color(id,x,y)||m.floorColor||'#64754b'):(colors[t]||Dungeon.wallColors[t]||'#776f5e');q.fillRect(x,y,1,1);}thumbs.set(id,c);return c;}
+ function thumbnail(id){if(thumbs.has(id))return thumbs.get(id);const m=MAP_DB[id],{w,h}=dimensions(id),c=document.createElement('canvas');c.width=c.height=100;const q=c.getContext('2d');for(let y=0;y<100;y++)for(let x=0;x<100;x++){const xx=Math.min(w-1,Math.floor(x*w/100)),yy=Math.min(h-1,Math.floor(y*h/100)),t=m.maze[yy][xx],z=m.mountainHeights?.[yy]?.[xx];q.fillStyle=z?(z>=m.snowLine?'#e8eef4':z>=3?'#989b94':'#797b6a'):t===0?(BMGuildDecor.color(id,xx,yy)||m.floorColor||'#64754b'):(colors[t]||Dungeon.wallColors[t]||'#776f5e');q.fillRect(x,y,1,1);}thumbs.set(id,c);return c;}
  let selected=null,root,chart,label,teleport,hint,picker,visible=false,dirty=true,oldFocus=null;
  const view={x:0,y:0,size:48,w:0,h:0,fit:24},fingers=new Map();let gesture=null,blockedClick=false;
  const active=()=>!!Dungeon.isViewingWorld;
@@ -110067,14 +110269,14 @@ const BMAtlas58=(()=>{
  function select(id){if(!positions.has(id))return;selected=id;picker.value=String(id);dirty=true;update();draw();}
  function close(){Dungeon.isViewingWorld=Dungeon.isViewingAtlas=Dungeon.isTeleporting=false;cancelGesture();sync();BMTouch.cancel();BMMenuInput.reset();oldFocus?.isConnected&&oldFocus.focus?.({preventScroll:true});}
  function travel(){const d=Dungeon;if(!active()||!d.isTeleporting||selected===null||d.isDead||d.isDying||d.isLoading||d.currentEnemy&&!d.currentEnemy.isDead)return false;const id=selected,p=MAP_DB[id].spawn||d.defaultSpawns[id]||{x:50.5,y:50.5,dir:0};if(!R.enter(d,id,p)){hint.textContent='Travel is unavailable right now.';return false;}close();d.currentAngle=d.dir*Math.PI/2;MusicEngine.play3DSFX('warp');return true;}
- function update(){if(!root)return;const d=Dungeon;label.textContent=selected===null?'Select a region':names[selected]+' · 100 × 100 · '+(seas.has(selected)?'Swim / sail':'Overworld');teleport.hidden=!d.isTeleporting;teleport.disabled=selected===null||d.isLoading||d.isDead||d.isDying||!!(d.currentEnemy&&!d.currentEnemy.isDead);hint.textContent=d.isTeleporting?'Select a destination, then press Teleport.':'Drag to explore · Pinch or use + / − to zoom';}
+ function update(){if(!root)return;const d=Dungeon;label.textContent=selected===null?'Select a region':names[selected]+' · '+dimensions(selected).w+' × '+dimensions(selected).h+' · '+(seas.has(selected)?'Swim / sail':'Overworld');teleport.hidden=!d.isTeleporting;teleport.disabled=selected===null||d.isLoading||d.isDead||d.isDying||!!(d.currentEnemy&&!d.currentEnemy.isDead);hint.textContent=d.isTeleporting?'Select a destination, then press Teleport.':'Drag to explore · Pinch or use + / − to zoom';}
  function resize(){if(!root||root.hidden)return;const r=chart.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height),oldW=view.w,oldH=view.h;const cx=oldW?(oldW/2-view.x)/view.size:grid[0].length/2,cy=oldH?(oldH/2-view.y)/view.size:grid.length/2;
   view.w=w;view.h=h;view.fit=Math.min((w-20)/grid[0].length,(h-20)/grid.length);const dpr=Math.min(2,devicePixelRatio||1);chart.width=Math.round(w*dpr);chart.height=Math.round(h*dpr);if(!oldW)fit();else{view.size=Math.max(view.fit*.8,view.size);view.x=w/2-cx*view.size;view.y=h/2-cy*view.size;clampView();}cancelGesture();dirty=true;draw();}
  function draw(){if(!root||root.hidden||!dirty)return;dirty=false;const c=chart.getContext('2d'),dpr=chart.width/view.w;c.setTransform(dpr,0,0,chart.height/view.h,0,0);c.fillStyle='#071018';c.fillRect(0,0,view.w,view.h);c.imageSmoothingEnabled=false;
   for(const[id,p]of positions){const x=view.x+p.x*view.size,y=view.y+p.y*view.size,s=view.size;if(x+s<0||y+s<0||x>view.w||y>view.h)continue;c.drawImage(thumbnail(id),x,y,s,s);c.strokeStyle=id===selected?'#ffe397':'rgba(226,211,165,.3)';c.lineWidth=id===selected?3:1;c.strokeRect(x+.5,y+.5,s-1,s-1);
-   if(!seas.has(id)||s>=70){const font=Math.max(9,Math.min(14,s*.15)),height=font+6;c.fillStyle='rgba(6,12,14,.85)';c.fillRect(x,y+s-height,s,height);c.fillStyle='#efdfb6';c.font=font+'px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(names[id],x+s/2,y+s-height/2,s-4);}
+   if(!seas.has(id)||s>=70){const font=Math.max(8,Math.min(14,s*.15));c.save();c.beginPath();c.rect(x,y,s,s);c.clip();c.font='600 '+font+'px system-ui,sans-serif';c.textAlign='center';c.textBaseline='bottom';c.lineJoin='round';c.lineWidth=3;c.strokeStyle='#061017';c.fillStyle='#fff1c9';c.strokeText(names[id],x+s/2,y+s-3,s-5);c.fillText(names[id],x+s/2,y+s-3,s-5);c.restore();}
   }
-  const d=Dungeon,p=positions.get(MAP_DB[d.mapID]?.atlasMapID??d.mapID);if(p){const local=d.mapID===33?{x:23.5,y:14.5}:d.mapID===40?{x:81.5,y:4.5}:d;const x=view.x+(p.x+local.x/100)*view.size,y=view.y+(p.y+local.y/100)*view.size;c.beginPath();c.arc(x,y,5,0,Math.PI*2);c.fillStyle='#66f8ed';c.fill();c.strokeStyle='#072e35';c.lineWidth=2;c.stroke();}
+  const d=Dungeon,p=positions.get(MAP_DB[d.mapID]?.atlasMapID??d.mapID);if(p){const local=d.mapID===33?{x:23.5,y:14.5}:d.mapID===40?{x:81.5,y:4.5}:d.mapID===86?basqueIberia:d;const x=view.x+(p.x+local.x/dimensions(MAP_DB[d.mapID]?.atlasMapID??d.mapID).w)*view.size,y=view.y+(p.y+local.y/dimensions(MAP_DB[d.mapID]?.atlasMapID??d.mapID).h)*view.size;c.beginPath();c.arc(x,y,5,0,Math.PI*2);c.fillStyle='#66f8ed';c.fill();c.strokeStyle='#072e35';c.lineWidth=2;c.stroke();}
  }
  function create(){if(root)return;const style=document.createElement('style');style.textContent=`#bm-atlas{position:fixed;inset:0;z-index:16000;background:#071018;color:#e4d095;display:flex;flex-direction:column;font:15px system-ui,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box;overscroll-behavior:none}#bm-atlas[hidden]{display:none!important}#bm-atlas *{box-sizing:border-box}#bm-atlas header,#bm-atlas nav,#bm-atlas footer{display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap;flex-shrink:0}#bm-atlas header{justify-content:space-between;padding-bottom:2px}#bm-atlas h1{font:24px Georgia,serif;margin:0}#bm-atlas button,#bm-atlas select{border:1px solid #7d784f;border-radius:9px;background:#192c2e;color:#eee0b1;font:inherit;min-height:42px;padding:7px 12px}#bm-atlas button:focus-visible,#bm-atlas select:focus-visible,#bm-atlas canvas:focus-visible{outline:2px solid #66f8ed;outline-offset:-3px}#bm-atlas button:disabled{opacity:.45}#bm-atlas [hidden]{display:none!important}#bm-atlas select{min-width:0;flex:1;width:110px;max-width:280px}#bm-atlas canvas{display:block;touch-action:none;width:100%;height:100%;outline:none}#bm-atlas .chart-wrap{flex:1;min-height:0;overflow:hidden;position:relative}#bm-atlas .hint{margin:0;padding:3px 12px 7px;color:#b4c5c9;font-size:12px}#bm-atlas footer{border-top:1px solid #314347;min-height:55px}#bm-atlas .region{flex:1;min-width:140px;font-size:14px}#bm-atlas .travel{background:#4a5432;border-color:#d3bc73}@media(orientation:landscape) and (max-height:600px){#bm-atlas{display:grid;grid-template-columns:250px 1fr;grid-template-rows:auto auto minmax(0,1fr) auto}#bm-atlas header{grid-column:1}#bm-atlas nav{grid-column:2}#bm-atlas .hint,#bm-atlas .chart-wrap,#bm-atlas footer{grid-column:1/-1}}@media(max-height:480px){#bm-atlas header,#bm-atlas nav,#bm-atlas footer{padding:3px 12px}#bm-atlas h1{font-size:21px}#bm-atlas .hint{padding-bottom:3px}#bm-atlas button,#bm-atlas select{min-height:36px}}`;
   document.head.appendChild(style);root=document.createElement('section');root.id='bm-atlas';root.hidden=true;root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-label','World atlas');root.innerHTML='<header><h1>World atlas</h1><button data-action="close">Close</button></header><nav aria-label="Map controls"><button data-action="out" aria-label="Zoom out">−</button><button data-action="in" aria-label="Zoom in">+</button><button data-action="fit">Fit</button><button data-action="you">You</button><select aria-label="Select a region"></select></nav><p class="hint"></p><div class="chart-wrap"><canvas tabindex="0" aria-label="World map. Drag to pan, pinch to zoom, or use the map controls and region selector."></canvas></div><footer><span class="region" role="status"></span><button class="travel" data-action="teleport" hidden>Teleport</button></footer>';
@@ -110096,9 +110298,62 @@ const BMAtlas58=(()=>{
  function click(){return active();} // Legacy canvas input can never initiate travel.
  const shellSync=BMShell.sync;BMShell.sync=function(...args){const r=shellSync.apply(this,args);sync();return r;};
  BMWorldRenderer.renderWorldOverlay=render;
- return {migrateSave,authored,bridgeCut,retired,cornerTerrain,get selected(){return selected;},grid,positions,seas,names,expanded,seams,passages,roads,restoreBorders,edge,transition,beside,point,passable,render,click,thumbnail,view,select,travel,close,fit,center,zoom,sync,invalidate:()=>{thumbs.clear();dirty=true;}};
+ return {dimensions,edgeLocation,migrations,relocated,basqueIberia,basqueArmorica,migrateSave,authored,bridgeCut,retired,cornerTerrain,get selected(){return selected;},grid,positions,seas,names,expanded,seams,passages,roads,restoreBorders,edge,transition,beside,point,passable,render,click,thumbnail,view,select,travel,close,fit,center,zoom,sync,invalidate:()=>{thumbs.clear();dirty=true;}};
 
 })();globalThis.BMAtlas58=BMAtlas58;globalThis.BMAtlas=BMAtlas58;
+delete MAP_DB[86];delete Dungeon.defaultSpawns[86];
+/* Neutral tavern: shared by combat, status effects and the performance. */
+const BMTavernPeace=(()=>{
+ const inside=(d,x=d?.x,y=d?.y)=>Number(d?.mapID)===2&&x>=68&&x<82&&y>=69&&y<82;
+ const protectedActor=a=>!!a&&inside({mapID:a.mapID??Dungeon.mapID},a.x,a.y);
+ const harmful=id=>id==null||['projectile','cone','debuff','gravity','flurry','melee','touch','aoe'].includes(SPELL_REGISTRY[id]?.type);
+ function recover(a,dt){if(a.isDead||a.isDying)return;const cap=(a.maxWards||3)*(a.timePerWard||3);a.currentWardTime=Math.min(cap,(a.currentWardTime||0)+dt*.7);a.wardShatterCooldown=Math.max(0,(a.wardShatterCooldown||0)-dt*2);for(const b of a.activeBuffs||[])if(b.type==='debuff'||b.bind||b.votType==='dot'||b.votType==='stun')b.duration=Math.max(0,(b.duration||0)-dt*60);}
+ function peaceful(a){a.currentEnemy=null;a.cachedPrey=null;a.target=null;a.isAttacking=false;a.isAggroDashing=false;a.isSliding=false;a.attackAnimTimer=0;a.combatCooldown=30;}
+ function tick(d,dt){if(!Number.isFinite(dt)||dt<=0)return;dt=Math.min(.1,dt);if(inside(d)){peaceful(d);if(BMCherryPerformance.ready(d))recover(d,dt);} }
+ const update=NPC.prototype.update;
+ NPC.prototype.update=function(maze,x,y,d,dt){
+  if(!this.isDead&&!this.isDying&&inside(d,this.x,this.y)&&this.role!=='decoration'&&this.index!==8405){
+   const battle=this.role==='battle'||this.role==='summoned_minion'||this.alignment==='ally',performing=BMCherryPerformance.scheduled(d)&&BMCherryPerformance.ready(d);
+   if(battle){peaceful(this);const step=Math.max(0,Math.min(.1,dt||0));recover(this,performing?step:0);
+    if(this.alignment==='ally'||this.role==='summoned_minion'||this.isHired){
+     if(performing&&Math.hypot(this.x-d.x,this.y-d.y)<6){this._danceCheck=(this._danceCheck||0)-step;if(this._danceCheck<=0){this._danceCheck=4;const cherry=d.npcs.find(n=>n.index===8405);this._listeningDance=resolveStatRoll(this,2)<resolveStatRoll(cherry||d,2);}
+      if(this._listeningDance){this._listenClock=(this._listenClock||0)+step;const angle=this._listenClock*Math.PI/12;this.fixedWorldAngle=angle;this.dirX=Math.cos(angle);this.dirY=Math.sin(angle);this.isMoving=true;this._tavernDancing=true;return;}}
+     if(this._tavernDancing){delete this.fixedWorldAngle;this.isMoving=false;this._tavernDancing=false;}
+     // Normal following resumes as soon as the owner leaves or the INT check succeeds.
+    }else{
+     this._tavernVisit=(this._tavernVisit||0)+step;this.isMoving=false;
+     if(this._tavernVisit>24||!performing){
+      if(!this._tavernExit?.length)this._tavernExit=d.findPath(this.x,this.y,75.5,83.5,false,this.groundZ||0).slice(1);
+      const p=this._tavernExit?.[0];if(p){const dx=p.x-this.x,dy=p.y-this.y,l=Math.hypot(dx,dy)||1,amount=Math.min(l,step*.75);this.isMoving=true;this.dirX=dx/l;this.dirY=dy/l;if(BMTerrainPhysics.move(d,this,this.x+dx/l*amount,this.y+dy/l*amount)&&l<=amount+.05)this._tavernExit.shift();}this._tavernPeaceUntil=Date.now()+6000;
+     }
+     return;
+    }
+   }
+  }else if(this._tavernDancing){delete this.fixedWorldAngle;this._tavernDancing=false;this._listeningDance=false;this.isMoving=false;}
+  if(this._tavernPeaceUntil>Date.now()&&!inside(d,this.x,this.y)){peaceful(this);this.isMoving=false;return;}
+  return update.call(this,maze,x,y,d,dt);
+ };
+ for(const proto of [Explore.prototype,NPC.prototype]){
+  const hit=proto.absorbHit;proto.absorbHit=function(a,id,...args){if(protectedActor(this)||protectedActor(a))return true;return hit.call(this,a,id,...args);};
+  const cast=proto.castSpell;proto.castSpell=function(id,...args){if(protectedActor(this)&&harmful(id))return false;return cast.call(this,id,...args);};
+  const apply=proto.applySpell;proto.applySpell=function(id,mag=1,source,...args){if(harmful(id)&&(protectedActor(this)||protectedActor(source||Dungeon._combatSource)))return;return apply.call(this,id,mag,source,...args);};
+ }
+ const projectile=Projectile.prototype.update;Projectile.prototype.update=function(d,dt){if(inside(d,this.x,this.y)&&harmful(this.spellId??this.spell)){this.life=0;this.isDead=true;return;}return projectile.call(this,d,dt);};
+ const oldTick=BMCherryPerformance.tick;BMCherryPerformance.tick=function(d,dt){oldTick(d,dt);tick(d,dt);};
+ return {inside,protectedActor,harmful,recover,tick};
+})();globalThis.BMTavernPeace=BMTavernPeace;
+/* Blend the existing dancer mesh poses instead of snapping four billboard frames. */
+const BMCherryArt=(()=>{
+ const raw=document.createElement('canvas'),out=document.createElement('canvas');raw.width=raw.height=out.width=out.height=256;let key='';
+ function frame(n,d,now){if(!n._cherryDance||n._classArt!==1160)return null;
+  const t=n._danceClock||0,angle=(n.fixedWorldAngle??Math.PI/2)-((Number.isFinite(d.currentAngle)?d.currentAngle:(Number(d.dir)||0)*Math.PI/2)+(d.lookPan||0))-Math.PI/2,k=Math.floor(now/40)+':'+Math.round(angle*100);if(k===key)return out;key=k;
+  const model=BMClassArt.model(1160),pose=n.isMoving?Math.min(1,model.meshes.length-1):0,row=model.meshes[pose],f=t/.8,ia=Math.floor(f)%row.length,ib=(ia+1)%row.length,u=(1-Math.cos((f%1)*Math.PI))*.5,a=row[ia],b=row[ib];
+  const mesh={...a,vertices:a.vertices.map((v,i)=>v.map((v,j)=>v+((b.vertices[i]?.[j]??v)-v)*u)),faces:a.faces.map(f=>({...f})),normalsReady:false};prepareSpriteNormals(mesh);
+  const saved={ctx,tX,tY,tL,tH};try{ctx=raw.getContext('2d');ctx.clearRect(0,0,256,256);tX=tY=0;tL=tH=256;render3dMesh(mesh,model.x,model.y,model.scale,0,angle,0);const pixels=ctx.getImageData(0,0,256,256).data;let bottom=255,found=false;for(;bottom>0;bottom--){for(let x=0;x<256;x++)if(pixels[(bottom*256+x)*4+3]>8){found=true;break;}if(found)break;}const q=out.getContext('2d');q.clearRect(0,0,256,256);q.drawImage(raw,0,255-bottom);}finally{({ctx,tX,tY,tL,tH}=saved);}return out;
+ }
+ return {frame};
+})();globalThis.BMCherryArt=BMCherryArt;
+
 
 
 

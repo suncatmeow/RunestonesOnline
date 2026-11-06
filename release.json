@@ -1,23 +1,23 @@
 {
   "application": "BattleMage Runestones",
-  "version": "61",
-  "serverVersion": "1.10.4",
+  "version": "63",
+  "serverVersion": "1.10.6",
   "date": "2026-11-06",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "releaseNotes": [
-    "COASTLINES-v61.md",
-    "ATLAS-AUDIO-v59.md",
-    "JOURNAL-PROSE-v58.md"
+    "README.md"
   ],
-  "futurePlan": "FUTURE-PASSES-v61.md",
+  "review": "ATLAS-REVIEW.html",
+  "futurePlan": "FUTURE-PASSES-v63.md",
   "distribution": "versioned-zip",
-  "supersedes": "BattleMage Runestones v60 / server 1.10.3",
+  "supersedes": "BattleMage Runestones v62 / server 1.10.5",
+  "deployed": false,
   "changes": [
-    "Shared coastal water without filler sea maps; 34 charted 100x100 overworld regions",
-    "Southern Armorica to Basque Coast to the northwestern entrance of Eastern Iberia",
-    "Western Iberia / Olisipo and coastal passage to Tingis in Ger",
-    "Original Gibraltar restored except 126 bridge tiles; ferries and direct Ger border",
-    "Old-save migration, matching server terrain and region-specific NPC knowledge"
+    "Kemet delta and city integrated; northern atlas square empty",
+    "Basque content outdoors on retained maps; connected gulf coast",
+    "Atlas labels overlay terrain",
+    "Neutral tavern; continuous commissioned music and smoother dancing",
+    "78-card blackjack, 39/39 Runestones, random creature tactics, stakes and familiarity"
   ]
 }
