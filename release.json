@@ -1,21 +1,21 @@
 {
   "application": "BattleMage Runestones",
-  "version": "58",
-  "serverVersion": "1.10.1",
+  "version": "59",
+  "serverVersion": "1.10.2",
   "date": "2026-11-06",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "releaseNotes": [
-    "ATLAS-OVERWORLD-v58.md",
+    "ATLAS-AUDIO-v59.md",
     "JOURNAL-PROSE-v58.md"
   ],
-  "futurePlan": "FUTURE-PASSES-v58.md",
+  "futurePlan": "FUTURE-PASSES-v59.md",
   "distribution": "versioned-zip",
-  "supersedes": "BattleMage Runestones v57 / server 1.10.0",
+  "supersedes": "BattleMage Runestones v58 / server 1.10.1",
   "changes": [
-    "Connected 39-region 100x100 overworld atlas with reciprocal roads and coastal waters",
-    "Expanded Kraken Sea and continental regions; free Gibraltar ferry and extended ship travel",
-    "Separate prose and Logs tabs, with complete export controls below entries",
-    "Prose chapter review and bounded revision; repeated/weak drafts retain sources and wait durably for fresh evidence"
+    "54 connected 100x100 overworld regions; North African coast south of Gibraltar and Ger farther south",
+    "Alpine route into Italia, wider Deshret, Nile Delta and Sinai land connection",
+    "Full-screen portrait/landscape atlas with pan, pinch/zoom, selection and explicit Teleport",
+    "Prompt Cherry score disposal with fading and smoother, better balanced movement/combat effects"
   ]
 }

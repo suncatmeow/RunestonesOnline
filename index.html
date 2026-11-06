@@ -24702,7 +24702,7 @@ class MusicWorkshopAudio {
  runtime(seed){const host=this,rt={random:Workshop.rng(seed),timers:new Set(),intervals:new Set(),get now(){return host.ctx.currentTime;}};rt.setTimeout=(fn,ms,...args)=>{const id=setTimeout(()=>{rt.timers.delete(id);if(host.playing)Workshop.enter(rt,()=>fn(...args));},Math.max(0,ms));rt.timers.add(id);return id;};rt.clearTimeout=id=>{clearTimeout(id);rt.timers.delete(id);};rt.setInterval=(fn,ms,...args)=>{const id=setInterval(()=>{if(host.playing)Workshop.enter(rt,()=>fn(...args));},ms);rt.intervals.add(id);return id;};rt.clearInterval=id=>{clearInterval(id);rt.intervals.delete(id);};return rt;}
  cleanup(b){if(!this.bundles.has(b))return;for(const n of b.nodes){try{n.disconnect();}catch{}this.allNodes.delete(n);}this.bundles.delete(b);}
  setVolume(v){if(this.output)this.output.gain.setTargetAtTime(v,this.ctx.currentTime,.02);}
- stop(){this.token++;this.backingBuffers=null;this.backingMix=[];this.backingCycle=0;clearTimeout(this.vocalTimer);this.vocalRenderer?.dispose();this.vocalRenderer=null;this.scheduleVocals=null;this.mixValues=null;this.playing=false;this.vocalContext?.cache?.clear();this.vocalPrefetch=null;clearInterval(this.timer);if(this.rt){for(const id of this.rt.timers)clearTimeout(id);for(const id of this.rt.intervals)clearInterval(id);}if(this.native){try{Workshop.enter(this.rt,()=>this.native.stop());}catch{}this.native=null;}const bus=this.runOutput;this.runOutput=null;const nodes=[...this.allNodes,...(bus?[bus]:[])],sources=[...this.sources],now=this.ctx?.currentTime||0,fade=this.offline?0:.025;if(bus)try{bus.gain.cancelAndHoldAtTime(now);bus.gain.linearRampToValueAtTime(0,now+fade);}catch{}for(const b of this.bundles)for(const g of b.gates||[])try{const p=g.gain.gain;p.cancelAndHoldAtTime(now);p.linearRampToValueAtTime(0,now+fade);}catch{}for(const n of sources)try{n.stop(now+fade+.005);}catch{}this.sources.clear();this.allNodes.clear();this.bundles.clear();for(const base of this.bases.values())base.contextBuffers?.clear();this.bases.clear();const disconnect=()=>{for(const n of nodes)try{n.disconnect();}catch{}};if(fade)setTimeout(disconnect,60);else disconnect();this.position=0;this.onStatus('Stopped');}
+ stop(fadeSeconds=.025){this.token++;this.backingBuffers=null;this.backingMix=[];this.backingCycle=0;clearTimeout(this.vocalTimer);this.vocalRenderer?.dispose();this.vocalRenderer=null;this.scheduleVocals=null;this.mixValues=null;this.playing=false;this.vocalContext?.cache?.clear();this.vocalPrefetch=null;clearInterval(this.timer);if(this.rt){for(const id of this.rt.timers)clearTimeout(id);for(const id of this.rt.intervals)clearInterval(id);}if(this.native){try{Workshop.enter(this.rt,()=>this.native.stop());}catch{}this.native=null;}const bus=this.runOutput;this.runOutput=null;const nodes=[...this.allNodes,...(bus?[bus]:[])],sources=[...this.sources],now=this.ctx?.currentTime||0,fade=this.offline?0:Math.max(0,Math.min(.5,fadeSeconds));if(bus)try{bus.gain.cancelAndHoldAtTime(now);bus.gain.linearRampToValueAtTime(0,now+fade);}catch{}for(const b of this.bundles)for(const g of b.gates||[])try{const p=g.gain.gain;p.cancelAndHoldAtTime(now);p.linearRampToValueAtTime(0,now+fade);}catch{}for(const n of sources)try{n.stop(now+fade+.005);}catch{}this.sources.clear();this.allNodes.clear();this.bundles.clear();for(const base of this.bases.values())base.contextBuffers?.clear();this.bases.clear();const disconnect=()=>{for(const n of nodes)try{n.disconnect();}catch{}};if(fade)setTimeout(disconnect,(fade+.035)*1000);else disconnect();this.position=0;this.onStatus('Stopped');}
  async prepareCat(events=null){
   /* Full original studies retain the workshop's native score preparation. */
   if(!events){const Cat=SourceLibrary.classes.CathedralModule,bank=Cat.rawBank;if(bank.ready&&!events)return;const temp=new Cat(this.context(),this.output,{seed:1});const keys=new Set();if(events){for(const e of events.filter(e=>e.voice==='Cathedral._play'))keys.add(temp._sampleKey(e.args[0].instrument,e.midi));}else{for(const[k,p]of Object.entries(Cat.profiles))for(let n=Math.round(p.range[0]/3)*3;n<=Math.round(p.range[1]/3)*3;n+=3)keys.add(k+':'+n);for(const k of ['kick','snare','cymbal','crash'])keys.add(k+':48');for(let n=36;n<=48;n+=3)keys.add('timpani:'+n);}let i=0;const token=this.token;for(const key of keys){if(token!==this.token)throw Error('Cancelled');if(!bank.buffers.has(key)){const[k,n]=key.split(':');bank.buffers.set(key,Cat.sample(k,+n,this.ctx.sampleRate));}if(++i%2===0){this.onStatus('Preparing Cathedral voices '+Math.round(i/keys.size*100)+'%');await new Promise(r=>setTimeout(r,0));}}if(!bank.impulse)bank.impulse=Cat.impulse(this.ctx.sampleRate);if(!events)bank.ready=true;return;}
@@ -28364,14 +28364,14 @@ class ClassicMusicPlayer {
   this.project={title:entry.name,seconds,music:{tempo},sections:[{time:0,tempo}],tracks:[],events:[],songRecipe:{styleName:entry.name,source:'classic',classicId:entry.id}};
  }
  activate(at,fade){const g=this.output.gain;g.setValueAtTime(0,this.ctx.currentTime);g.setValueAtTime(0,at);g.linearRampToValueAtTime(this.volume,at+fade);}
- dispose(){
+ dispose(fadeSeconds=.025){
   if(this.disposed)return;this.disposed=true;this.playing=false;if(this.preparer)this.preparer.token++;
   if(this.entry?.workshopProject)this.native?.audio?.stop();
   for(const id of this.rt.timers)globalThis.clearTimeout(id);for(const id of this.rt.intervals)globalThis.clearInterval(id);this.rt.timers.clear();this.rt.intervals.clear();
-  const at=this.ctx.currentTime,g=this.output.gain;g.cancelScheduledValues(at);g.setValueAtTime(g.value,at);g.linearRampToValueAtTime(0,at+.025);
-  for(const n of this.sources)try{n.stop(at+.03);}catch(_){}this.sources.clear();
+  const at=this.ctx.currentTime,fade=Math.max(.025,Math.min(.5,fadeSeconds)),g=this.output.gain;if(g.cancelAndHoldAtTime)g.cancelAndHoldAtTime(at);else{g.cancelScheduledValues(at);g.setValueAtTime(g.value,at);}g.linearRampToValueAtTime(0,at+fade);
+  for(const n of this.sources)try{n.stop(at+fade+.005);}catch(_){}this.sources.clear();
   const nodes=[...this.nodes.values()];this.nodes.clear();this.voiceNodes.length=0;
-  globalThis.setTimeout(()=>{try{this.enter(()=>this.native?.stop());}catch(_){}this.native?.contextBuffers?.clear();for(const n of nodes)try{n.disconnect();}catch(_){}this.output.disconnect();},50);
+  globalThis.setTimeout(()=>{try{this.enter(()=>this.native?.stop());}catch(_){}this.native?.contextBuffers?.clear();for(const n of nodes)try{n.disconnect();}catch(_){}this.output.disconnect();},(fade+.03)*1000);
  }
 }
 
@@ -28489,7 +28489,7 @@ class BMPartPlayer extends MusicWorkshopAudio {
   if(notes>=this.bmProfile.notes){this.dropped++;return;}
   return super.render(e,t,cycle);
  }
- stop(){super.stop();this.sampleBank?.clear();this.readyParts?.clear();this.preparingParts=0;this.bmVocalsPrepared=false;}
+ stop(fade=.025){super.stop(fade);this.sampleBank?.clear();this.readyParts?.clear();this.preparingParts=0;this.bmVocalsPrepared=false;}
 }
 
 globalThis.BattleSerenadeCore={BMMusicParts,BMPartPlayer,InstrumentCatalog,BackingTracks,BackingChords,TraditionalStyles,registerWorkshopSong,ClassicMusicPlayer,Workshop,SongMaker,MusicWorkshopAudio,SourceLibrary,VOICE_TEMPLATES,AutoBalance,SongPreferences,StudioStrings,NaturalSinger,VoiceExcitation,VocalParts,HookWorkshop};
@@ -92334,7 +92334,7 @@ const BattleMusic = (() => {
     }
     setVolume(v){this.volume=v;}
     activate(at,fade){this.activated=true;this.output.gain.setValueAtTime(0,this.ctx.currentTime);this.output.gain.setValueAtTime(0,at);this.output.gain.linearRampToValueAtTime(this.volume,at+fade);}
-    dispose(){if(this.disposed)return;this.disposed=true;super.stop();this.savedVocalTake=null;this.project=null;this.queue=[];this.vocalContext=null;this.instrumentContext=null;const out=this.output;setTimeout(()=>{out?.disconnect();for(const n of this.toneNodes||[])n.disconnect();},90);}
+    dispose(fade=.025){if(this.disposed)return;this.disposed=true;super.stop(fade);this.savedVocalTake=null;this.project=null;this.queue=[];this.vocalContext=null;this.instrumentContext=null;const out=this.output;setTimeout(()=>{out?.disconnect();for(const n of this.toneNodes||[])n.disconnect();},(Math.max(.025,Math.min(.5,fade))+.05)*1000);}
   }
   function boundary(scene){
     const t=engine.ctx.currentTime;if(!current||current.player.disposed||scene.urgent)return t+.07;
@@ -92424,7 +92424,7 @@ const BattleMusic = (() => {
     if(failures&&t-lastFailure<Math.min(30,2**failures))return;
     if(!current){if(!incoming)transition(scene);return;}
     if(scene.key!==current.scene.key){
-      if(current.scene.performance==='cherry'&&!scene.performance)current.player.output.gain.setTargetAtTime(0,engine.ctx.currentTime,.12);
+      if(current.scene.performance==='cherry'&&!current.player.disposed)current.player.dispose(scene.urgent?.12:.35);
       if(!incoming)transition(scene);
     }else{candidate=null;
       const p=current.player,remaining=p.started+playbackDuration(scene,p)-engine.ctx.currentTime;
@@ -92795,19 +92795,19 @@ const BMAudioSFX=(()=>{
         this.limiter=this.ctx.createDynamicsCompressor();this.limiter.threshold.value=-4;
         this.limiter.knee.value=4;this.limiter.ratio.value=12;this.limiter.attack.value=.003;this.limiter.release.value=.15;
         this.musicGain=this.ctx.createGain();this.musicGain.gain.value=BattleMusic.settings.music;
-        this.sfxInput=this.ctx.createGain();
+        this.sfxInput=this.ctx.createGain();this.sfxInput.gain.value=.7;
         this.sfxCompressor=this.ctx.createDynamicsCompressor();
         this.sfxCompressor.threshold.value=-12;this.sfxCompressor.knee.value=9;this.sfxCompressor.ratio.value=5;
         this.sfxCompressor.attack.value=.003;this.sfxCompressor.release.value=.16;
         this.sfxGain=this.ctx.createGain();this.sfxGain.gain.value=BattleMusic.settings.sfx;
         this.sfxMixGain=this.ctx.createGain();this.sfxMixGain.gain.value=.85;
         this.musicGain.connect(this.masterGain);
-        this.sfxInput.connect(this.sfxCompressor);this.sfxCompressor.connect(this.sfxGain);
+        this.sfxHighpass=this.ctx.createBiquadFilter();this.sfxHighpass.type='highpass';this.sfxHighpass.frequency.value=30;this.sfxHighpass.Q.value=.5;this.sfxInput.connect(this.sfxHighpass);this.sfxHighpass.connect(this.sfxCompressor);this.sfxCompressor.connect(this.sfxGain);
         this.sfxGain.connect(this.sfxMixGain);this.sfxMixGain.connect(this.masterGain);
         this.masterGain.connect(this.limiter);this.limiter.connect(this.ctx.destination);
       }
       try{if(this.ctx.state==='suspended')await this.ctx.resume();}catch(_){return false;}
-      await BMAudioBuffers.warm(this.ctx,2);this._sharedNoiseBuffer=BMAudioBuffers.get(this.ctx,2);this._lootBuffer??=BMLootSound.prepare(this.ctx);this.unlocked=true;BattleMusic.attach(this);return true;
+      if(!this._sharedNoiseBuffer){this._noiseReady??=BMAudioBuffers.warm(this.ctx,2).then(()=>{this._sharedNoiseBuffer=BMAudioBuffers.get(this.ctx,2);});await this._noiseReady;}this._lootBuffer??=BMLootSound.prepare(this.ctx);this.unlocked=true;BattleMusic.attach(this);return true;
     },
     play3DSFX(...args){return BMAudioSFX.play(this,args);},
     sfxLater(fn,ms){return this._sfxLease?this._sfxLease.later(fn,ms):setTimeout(fn,ms);},
@@ -93000,8 +93000,7 @@ const BMAudioSFX=(()=>{
           // 3D Routing
           cG.connect(panner); panner.connect(distGain); distGain.connect(this.sfxInput ? this.sfxInput : this.ctx.destination);
           
-          cG.gain.setValueAtTime(1, t);
-          cG.gain.exponentialRampToValueAtTime(0.01, t + 1);
+          this.effectEnvelope(cG.gain,t,.5,.65);
           c.start(t); m.start(t);
           c.stop(t + 0.5); m.stop(t + 0.5);
           this.cleanupNodes(t + 1, c, cG, m, mG);
@@ -94334,7 +94333,7 @@ const BMAudioSFX=(()=>{
 
         // --- LAYER A: THE HEAVY SWISH (The air being cut) ---
         const noise = this.ctx.createBufferSource();
-        noise.buffer = this._sharedNoiseBuffer;
+        noise.buffer = this._sharedNoiseBuffer;noise.loop=true;
         
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'highpass';
@@ -94418,8 +94417,7 @@ const BMAudioSFX=(()=>{
         thud.frequency.exponentialRampToValueAtTime(30, t + 0.12); 
 
         const thudGain = this.ctx.createGain();
-        thudGain.gain.setValueAtTime(vol * 3.5, t); 
-        thudGain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+        this.effectEnvelope(thudGain.gain,t,.15,vol*1.5);
 
         thud.connect(thudGain); thudGain.connect(distGain);
         thud.start(t); thud.stop(t + 0.15);
@@ -94440,8 +94438,7 @@ const BMAudioSFX=(()=>{
         cymbalFilter.Q.value = 0.5;
 
         const cymbalGain = this.ctx.createGain();
-        cymbalGain.gain.setValueAtTime(vol * 2.0, t);
-        cymbalGain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+        this.effectEnvelope(cymbalGain.gain,t,dur,vol);
 
         cymbalNoise.connect(cymbalFilter); cymbalFilter.connect(cymbalGain); cymbalGain.connect(distGain);
         cymbalNoise.start(t); cymbalNoise.stop(t + dur);
@@ -94456,8 +94453,7 @@ const BMAudioSFX=(()=>{
         metallicFilter.frequency.setValueAtTime(2500 + (rand * 800), t); 
 
         const metallicGain = this.ctx.createGain();
-        metallicGain.gain.setValueAtTime(vol * 2.0, t);
-        metallicGain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.7);
+        this.effectEnvelope(metallicGain.gain,t,dur*.7,vol);
 
         sq1.connect(metallicFilter);
         sq2.connect(metallicFilter);
@@ -94471,14 +94467,18 @@ const BMAudioSFX=(()=>{
 
         this.cleanupNodes(t + dur, thud, thudGain, cymbalNoise, cymbalFilter, cymbalGain, sq1, sq2, sq3, metallicFilter, metallicGain);
     },
+    effectEnvelope(param,t,duration,volume){
+      const dur=Math.max(.012,duration),attack=Math.min(.005,dur*.15),tail=Math.min(.008,dur*.2),peak=Math.max(.0001,volume);
+      param.setValueAtTime(0,t);param.linearRampToValueAtTime(peak,t+attack);
+      param.exponentialRampToValueAtTime(.0001,t+dur-tail);param.linearRampToValueAtTime(0,t+dur);
+    },
     createTone(t, freq, type, vol, dur, slide, distGain = null, panner = null) {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = type;
       osc.frequency.setValueAtTime(freq, t);
       if (slide !== 0) osc.frequency.linearRampToValueAtTime(freq + slide, t + dur);
-      gain.gain.setValueAtTime(vol* 3.0, t);
-      gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+      this.effectEnvelope(gain.gain,t,dur,vol);
 
       osc.connect(gain); 
       
@@ -94511,7 +94511,7 @@ const BMAudioSFX=(()=>{
         }
 
         const noise = this.ctx.createBufferSource();
-        noise.buffer = this._sharedNoiseBuffer;
+        noise.buffer = this._sharedNoiseBuffer;noise.loop=true;
 
         const filter = this.ctx.createBiquadFilter();
         filter.type = filterType;
@@ -94519,8 +94519,7 @@ const BMAudioSFX=(()=>{
         if (sweep !== 0) filter.frequency.linearRampToValueAtTime(filterFreq + sweep, t + dur);
 
         const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(vol* 3.0, t);
-        gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+        this.effectEnvelope(gain.gain,t,dur,vol);
 
         noise.connect(filter); 
         filter.connect(gain); 
@@ -94813,7 +94812,7 @@ const BMAudioSFX=(()=>{
         // We create a noise buffer manually here to control it better
         const dur = 0.1; // Very short duration
         const bufSize = this.ctx.sampleRate * dur;
-        const buffer=BMAudioBuffers.get(this.ctx,Math.max(2,Math.ceil(bufSize/this.ctx.sampleRate)));
+        const buffer=this._sharedNoiseBuffer;if(!buffer)return;
 
         const noise = this.ctx.createBufferSource();
         noise.buffer = buffer;
@@ -94831,8 +94830,7 @@ const BMAudioSFX=(()=>{
 
         const gain = this.ctx.createGain();
         // Low volume for "softness"
-        gain.gain.setValueAtTime(0.15, t); 
-        gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        this.effectEnvelope(gain.gain,t,dur,.15);
 
         noise.connect(filter);
         filter.connect(gain);
@@ -101155,7 +101153,7 @@ BMEngine.sync(startGame);
 /* A gesture belongs to the screen where it began, through its final click. */
 const BMMenuInput=(()=>{
   let scene='',epoch=0,last=null;const pointers=new Map(),held=new Map();
-  const menus='#bm-creator,#bm-shell,#bm-camp,#bm-gambler,#bm-artisan,#bm-fieldwork,#bm-book-reader,#bm-serenade-jukebox,#bm-intro,dialog';
+  const menus='#bm-atlas,#bm-creator,#bm-shell,#bm-camp,#bm-gambler,#bm-artisan,#bm-fieldwork,#bm-book-reader,#bm-serenade-jukebox,#bm-intro,dialog';
   const owner=e=>e.target?.closest?.(menus)||null;
   function reset(){
     epoch++;BMTouch.cancel();BMPlayerMotion.cancelDodge();Dungeon.clickInput=null;
@@ -109197,7 +109195,7 @@ const BMSouthernRoads=(()=>{
  for(const [id,x,y,sprite,name]of [[896100,35.5,34.5,1170,'Clinic bed'],[896101,42.5,34.5,1170,'Clinic bed'],[896102,41.5,39.5,1165,'Case records'],[896103,34.5,40.5,1169,'Healers’ supply chest'],[896104,26.5,48.5,1170,'River house bed'],[896105,38.5,60.5,1169,'River house chest']])prop(EGYPT,id,x,y,sprite,name);
  for(const [id,x,y,sprite,name]of [[896110,65.5,35.5,1170,'Resting place'],[896111,73.5,35.5,1165,'Physicians’ books'],[896112,64.5,41.5,1169,'Oasis supply chest'],[896113,58.5,53.5,1170,'Caravan bed'],[896114,74.5,54.5,1169,'Caravan chest']])prop(ARABIA,id,x,y,sprite,name);
  prop(DESERT,896120,30.5,66.5,1171,'Caravan crate');prop(DESERT,896121,31.5,68.5,1172,'Supply barrel');prop(DESERT,896122,24.5,65.5,1169,'Caravan chest');
- actor(DESERT,896123,26.5,67.5,252,'Caravan guide');bind(DESERT,896123,(n,d)=>show(n,'Ger lies west. We call these dunes Deshret—the Red Land. Eastward, follow the road between the stone ridges until you reach Kemet’s river. The bridge leads onward to Arabia. The water here is a welcome place to stop.'));
+ actor(DESERT,896123,26.5,67.5,252,'Caravan guide');bind(DESERT,896123,(n,d)=>show(n,'Ger lies west. We call these dunes Deshret—the Red Land. Eastward, follow the road between the stone ridges until you reach Kemet’s river. The Nile Delta and Sinai lead onward to Arabia. The water here is a welcome place to stop.'));
  for(const [id,m]of maps){BMGuildDecor.addSurface(id,surfaces.get(id));BMLayers.invalidate(m);}
  // Shared border coordinates: walking and swimming retain the position along the crossing.
  const links=new Map();
@@ -109255,7 +109253,7 @@ const BMPriestJourney=(()=>{
    'Priest studies at Kemet’s healing house, west of the river (38,39). From Ger, follow the eastern road (99,77), cross Deshret, the Red Land, and enter Kemet.',
    'Collect the two study specimens in the healing-house garden (29,36 and 29,39), then speak to the River Physician. Specimens: '+s.specimens.length+' / 2.',
    'Examine both patients in Kemet’s healing house. Match the treatment to the ailment: restore a broken ward or cleanse lingering poison. Treated: '+s.treated.filter(id=>id!==896212).length+' / 2. Report to the River Physician.',
-   'Carry the physician’s introduction east across the river, through the Sinai road into Arabia. Meet the Oasis Physician at the study house (69,39). Read both case records inside.',
+   'Carry the physician’s introduction north along the Nile into the delta, east through Sinai, then south into Arabia. Meet the Oasis Physician at the study house (69,39). Read both case records inside.',
    'Examine the caravan guard in the Arabian study house. Follow the case notes: cleanse the lingering ailment, then restore the ward.',
    'The Arabian case is complete. Return to Priest at Kemet’s healing house and establish the guild together.',
    'Priest’s Guild is open at Kemet’s healing house. Talk, take supply jobs, train or follow the Priest class path. Each INT point spent earns one extra training step.'
@@ -109511,8 +109509,8 @@ const BMAegeanRoad=(()=>{
  function buy(n,d,item,count,price){if(!near(d,ANATOLIA,n))return false;if(!BMCurrency.spend(price))return show(n,'You do not have enough silver.');if(!BMInventory.add(item,count)){BMCurrency.add(price);return show(n,'There is no room for those supplies.');}BMActivity.record('trade','Bought '+count+' '+item.name+' for '+price+' silver.',{item:item.key,quantity:count,silver:price});save(d,'Supplies packed for the road.');supplies(n,d);}
  function supplies(n,d){return show(n,'Fresh provisions for the road. The next ferry has no fare.',[opt('Moonleaf · 4 silver',()=>buy(n,d,moonleaf,1,4)),opt('Raw meat ×3 · 9 silver',()=>buy(n,d,{key:'material:meat',name:'Raw meat',kind:'material'},3,9)),opt('Fish · 5 silver',()=>buy(n,d,{key:'fish:0',name:BMFishSprites.species[0].name,kind:'fish',fishIndex:0},1,5))]);}
  function claim(n,d){const q=state(d);if(!near(d,ANATOLIA,n)||q.stage!==2||q.claimed)return false;if(!Number.isSafeInteger(BMCurrency.balance()+70)||!BMInventory.add(moonleaf,2))return show(n,'Make room for the travel herbs before taking your payment.');BMCurrency.add(70);q.stage=3;q.claimed=true;BMActivity.record('quest_completed','Delivered the Aegean route book and collected the innkeeper’s payment: 70 silver and two moonleaf.',{quest:'aegean-route-book',silver:70,herbs:2});save(d,'The Aegean route-book delivery is complete.');return show(n,'Signed and received. Seventy silver, and fresh moonleaf for your next journey.');}
- R.bind(ANATOLIA,NPC.innkeeper,(n,d)=>show(n,'Come in from the road. The ridge watch keeps a copy of every caravan route; I settle the couriers’ accounts here.',[opt('Talk',()=>show(n,'People heading south speak of the healing houses of Kemet. Beyond the Nile’s green banks they cross Deshret—the Red Land. The pass beyond our watch now reaches the Levant waystation. Its southern road leads into Arabia, and Kemet lies west from there.')),...(stage(d)===2?[opt('Present receipt · 70 silver + 2 moonleaf',()=>claim(n,d))]:[]),opt('Supplies',()=>supplies(n,d)),opt('Delivery directions',()=>show(n,lead(d)))]));
- R.bind(ANATOLIA,NPC.watchkeeper,(n,d)=>show(n,stage(d)===1?'A fresh route book from Hellas? We need reliable records before sending anyone farther south.':'We mend the old walls and keep this road open. Beyond the ridge gate, the southern road is open to the Levant waystation. Its southern road continues into Arabia.',[opt('Missing caravan',()=>BMLevantRoad.offer(n,d)),...(stage(d)===1?[opt('Deliver the route book',()=>{if(!near(d,ANATOLIA,n)||stage(d)!==1)return;state(d).stage=2;BMActivity.record('quest_item','Delivered the route book to the Anatolian ridge watch and received a signed receipt.',{quest:'aegean-route-book'});save(d,lead(d));show(n,'Your receipt. The innkeeper back along the road will pay you.');})]:[]),opt('Talk',()=>show(n,'Our grandparents inherited these walls. We keep the ridge pass open to the Levant. Ask me about the overdue medicine shipment if you are heading east.'))]));
+ R.bind(ANATOLIA,NPC.innkeeper,(n,d)=>show(n,'Come in from the road. The ridge watch keeps a copy of every caravan route; I settle the couriers’ accounts here.',[opt('Talk',()=>show(n,'People heading south speak of the healing houses of Kemet. Beyond the Nile’s green banks they cross Deshret—the Red Land. The pass beyond our watch now reaches the Levant waystation. Its southern road crosses Sinai into Arabia. From Sinai, the western road reaches the Nile Delta and Kemet.')),...(stage(d)===2?[opt('Present receipt · 70 silver + 2 moonleaf',()=>claim(n,d))]:[]),opt('Supplies',()=>supplies(n,d)),opt('Delivery directions',()=>show(n,lead(d)))]));
+ R.bind(ANATOLIA,NPC.watchkeeper,(n,d)=>show(n,stage(d)===1?'A fresh route book from Hellas? We need reliable records before sending anyone farther south.':'We mend the old walls and keep this road open. Beyond the ridge gate, the southern road is open to the Levant waystation. Its southern road continues through Sinai into Arabia.',[opt('Missing caravan',()=>BMLevantRoad.offer(n,d)),...(stage(d)===1?[opt('Deliver the route book',()=>{if(!near(d,ANATOLIA,n)||stage(d)!==1)return;state(d).stage=2;BMActivity.record('quest_item','Delivered the route book to the Anatolian ridge watch and received a signed receipt.',{quest:'aegean-route-book'});save(d,lead(d));show(n,'Your receipt. The innkeeper back along the road will pay you.');})]:[]),opt('Talk',()=>show(n,'Our grandparents inherited these walls. We keep the ridge pass open to the Levant. Ask me about the overdue medicine shipment if you are heading east.'))]));
  // Give the existing caravan steward an onward direction without disturbing the v55 delivery.
  function sign(map,id,x,y,name,text){yard(map,Math.floor(x)-1,Math.floor(y)-1,3,3,map===HELLAS?'#b5aa8b':'#b0a181');R.actor(map,id,x,y,1163,name,{interactionVerb:'Read',onSpawn:n=>BMClassArt.resource(n,1163)});R.bind(map,id,n=>show(n,text));}
  sign(HELLAS,899050,47.5,35.5,'East · Aegean landing','Follow the southern coast road, then the eastern branch to the Aegean landing (76,65). A free ferry crosses to Anatolia.');
@@ -109548,7 +109546,7 @@ const BMNPCKnowledge=(()=>{
   'Priest begins the southern studies at Kemet’s healing house (38,40), once the Kraken is defeated and the company has settled in Tintagel.',
   'Collect both labelled garden specimens west of the healing house (29,36 and 29,39), then speak to the River Physician.',
   'Examine each patient. The ferryman needs a restored ward; the garden keeper needs cleansing. Use the practice treatments, then report to the River Physician.',
-  'Carry the introduction east to the Oasis Physician in Arabia (69,39). Read both case records inside the study house.',
+  'Carry the introduction north through the Nile Delta, east into Sinai and south to the Oasis Physician in Arabia (69,39). Read both case records inside the study house.',
   'Examine the Arabian caravan guard. Cleanse the lingering poison first, then restore the depleted ward.',
   'Return to Priest in Kemet. The completed Arabian case lets you establish the guild together.',
   'The Priest’s Guild is established. Its desk offers supply jobs and training.'
@@ -109558,8 +109556,8 @@ const BMNPCKnowledge=(()=>{
   const is=(...ids)=>ids.includes(id),has=s=>new RegExp(s,'i').test(name);
   if(map===2){out.local.push('Tintagel’s village inn has a stage and a southern entrance onto the forecourt. The village stable is east of the inn. The east road leads into Savage Forest.');out.rumors.push('Travellers speak of Deshret, the Red Land, far to the south. This is a secondhand story, not a quest or a claim that the speaker has visited.');}
   if(map===5){out.local.push('This is Savage Forest, east of Tintagel. Hunter keeps a cabin near its western side.');out.rumors.push('Travellers warn of goblins below the forest. Ask a local guide about the cavern entrance.');}
-  if([45,46,48,49].includes(map)){out.local.push(({45:'The Carpathian road runs west toward Germania and south toward Hellas. The northern gate is closed.',46:'The eastern Aegean landing offers a free ferry to Anatolia. Follow the coast road to the boatman (76,65).',48:'The road links the western ferry, roadside inn (48,50), ridge watch (76,48) and southern pass into the Levant.',49:'The northern pass returns to Anatolia. The waystation (49,47) offers rest and supplies. The southern road reaches Arabia; Kemet lies west from Arabia.'})[map]);}
-  if([42,43,44].includes(map))out.local.push(({42:'Deshret is called the Red Land. Follow the caravan road east to Kemet or west to Ger.',43:'Kemet’s healing house stands west of the river. The bridge and eastern road lead to Arabia; the western road crosses Deshret toward Ger.',44:'The study house is at the oasis (69,39). The western road reaches Kemet. The northern pass leads through the Levant toward Anatolia.'})[map]);
+  if([45,46,48,49].includes(map)){out.local.push(({45:'The Carpathian road runs west toward Germania and south toward Hellas. The northern gate is closed.',46:'The eastern Aegean landing offers a free ferry to Anatolia. Follow the coast road to the boatman (76,65).',48:'The road links the western ferry, roadside inn (48,50), ridge watch (76,48) and southern pass into the Levant.',49:'The northern pass returns to Anatolia. The waystation (49,47) offers rest and supplies. The southern road crosses the Southern Levant and Sinai. From Sinai go south to Arabia or west through the Nile Delta to Kemet.'})[map]);}
+  if([42,43,44].includes(map))out.local.push(({42:'Deshret is called the Red Land. Follow the caravan road east to Kemet or west to Ger.',43:'Kemet’s healing house stands west of the river. The northern road follows the Nile into the delta; turn east through Sinai and south to Arabia. The western road crosses Eastern Deshret, the Great Dunes and Deshret toward Ger.',44:'The study house is at the oasis (69,39). The northern road reaches Sinai. Turn west there to the Nile Delta and Kemet, or continue north through the Levant toward Anatolia.'})[map]);
   if(has('hunter')||id===8006){out.voice='A practical hunter who notices tracks and habits; no expertise in distant politics.';out.quest.push('My guild supply jobs ask for two boar tusks or three pixie mushrooms. Hunt boars south of the cabin and gather their drops. Pixies carry mushrooms. Use my Guild desk to accept and deliver a job; asking about it does not accept it.');out.local.push('Boars and pixies provide useful supplies. Pick up what a defeated creature drops.');out.rumors=['Other hunters warn of deeper forest dangers. I cannot vouch for distant kingdoms.'];}
   if(is(8405)||has('^Cherry$')){out.voice='Cherry, a spirited tavern performer and the Dancer’s apprentice. Warm with patrons, firm about lessons.';out.local.push('My stage is in Tintagel’s village inn. I perform at night; paid requests are chosen through my performance menu.');out.quest.push(p.dancer>=6?'You have completed my Dancer lesson. Use the class menu for your earned progression.':p.dancer>=4?'With the recommendation accepted, finish the three travelling steps in my rehearsal, return through its sigil and speak to me about the lesson.':'I do not teach strangers. Ask my teacher, Dancer, for a recommendation. Help with her costume parcel beside the Tintagel market courier (24,46), return it to her, and bring her letter to me. S-rank alone does not replace her word.');out.rumors=['A visiting performer spoke of the Red Land far to the south. I know the song and the story, not the desert roads.'];}
   if(id===201||has('^Dancer$')){out.voice='Dancer, a busy teacher who expects students to help and then learn by teaching.';out.quest.push('Cherry is my apprentice. I can recommend you after you help retrieve my costume parcel beside Tintagel’s market courier (24,46). Return it to me for the letter, then take it to Cherry. Use the Dance or class-path choices to begin.');}
@@ -109803,7 +109801,7 @@ const BMGambler=(()=>{
  return {open,select,deal,hit,stand,leave,score,value,inventory,itemValue,cardValue,offer,describe,limit:LIMIT,get round(){return owner?table().round:null;}};
 })();globalThis.BMGambler=BMGambler;
 
-/* v58: one physical scale, one atlas, and reciprocal terrain seams. */
+/* v59: geographical regions and a touch atlas; preserves v58 identities. one physical scale, one atlas, and reciprocal terrain seams. */
 const BMAtlas58=(()=>{
  const SIZE=100,R=BMSouthernRoads,grid=[
   [10,9,6,null,null,null,null,null,null],
@@ -109811,20 +109809,36 @@ const BMAtlas58=(()=>{
   [null,51,2,5,null,null,null,null,null],
   [null,52,0,null,null,null,null,null,null],
   [null,53,63,33,47,38,45,null,null],
-  [null,54,62,14,39,null,46,58,48],
-  [null,55,64,22,40,57,60,61,49],
-  [null,56,65,-2,59,4,42,43,44]
+  [null,54,62,14,39,66,46,58,48],
+  [null,55,64,22,40,67,60,61,49],
+  [null,56,65,-2,57,68,69,70,71],
+  [null,null,79,59,75,76,77,78,72],
+  [null,null,80,4,42,73,74,43,44]
  ];
- const positions=new Map(),seas=new Set([9,50,51,52,53,54,55,56,57,58,60,61,62,63,64,65]),expanded=new Map(),surfaces=new Map(),seams=[],roads=[],thumbs=new Map();
- const names={0:'Moors',2:'Tintagel',3:'Steppes',4:'Ger',5:'Savage Forest',6:'Snow Mountain',9:'Kraken Sea',10:'Avalon',14:'Armorica',22:'Iberia',33:'Brittany',38:'Germania',39:'Gaul',40:'La Rioja',42:'Deshret',43:'Kemet',44:'Arabia',45:'Carpathian Valleys',46:'Hellas',47:'Rhine',48:'Anatolia',49:'Levant','-2':'Gibraltar',50:'Northern Sound',51:'Tintagel Sea',52:'Western Channel',53:'Outer Channel',54:'Western Sea',55:'Iberian Sea',56:'Southern Sea',57:'Western Mediterranean',58:'Aegean Sea',59:'North African Coast',60:'Middle Mediterranean',61:'Eastern Mediterranean',62:'Bay of Biscay',63:'Channel',64:'Iberian Coast',65:'Atlantic Strait'};
+ const positions=new Map(),seas=new Set([9,50,51,52,53,54,55,56,57,58,60,61,62,63,64,65,68,69,70,75,76,77,79,80]),expanded=new Map(),surfaces=new Map(),seams=[],roads=[],thumbs=new Map();
+ const names={0:'Moors',2:'Tintagel',3:'Steppes',4:'Ger',5:'Savage Forest',6:'Snow Mountain',9:'Kraken Sea',10:'Avalon',14:'Armorica',22:'Iberia',33:'Brittany',38:'Germania',39:'Gaul',40:'La Rioja',42:'Deshret',43:'Kemet',44:'Arabia',45:'Carpathian Valleys',46:'Hellas',47:'Rhine',48:'Anatolia',49:'Levant','-2':'Gibraltar',50:'Northern Sound',51:'Tintagel Sea',52:'Western Channel',53:'Outer Channel',54:'Western Sea',55:'Iberian Sea',56:'Southern Sea',57:'Western Mediterranean',58:'Aegean Sea',59:'North African Coast',60:'Middle Mediterranean',61:'Eastern Mediterranean',62:'Bay of Biscay',63:'Channel',64:'Iberian Coast',65:'Atlantic Strait',66:'Alpine Passes',67:'Italia',68:'Tyrrhenian Sea',69:'Ionian Sea',70:'Southern Mediterranean',71:'Southern Levant',72:'Sinai',73:'Great Dunes',74:'Eastern Deshret',75:'African Waters',76:'Libyan Sea',77:'Delta Waters',78:'Nile Delta',79:'Atlantic Coast',80:'Southern Atlantic'};
  for(let y=0;y<grid.length;y++)for(let x=0;x<grid[y].length;x++)if(grid[y][x]!==null)positions.set(grid[y][x],{x,y});
  const opposite={north:'south',south:'north',east:'west',west:'east'},offset={north:[0,-1],south:[0,1],west:[-1,0],east:[1,0]};
- const water=t=>[92,93,94,95].includes(t),desert=id=>[4,42,43,44,49,59].includes(id);
+ const water=t=>[92,93,94,95].includes(t),desert=id=>[4,42,43,44,49,59,71,72,73,74,78].includes(id);
  const point=(side,t,depth=0)=>side==='west'?[depth,t]:side==='east'?[99-depth,t]:side==='north'?[t,depth]:[t,99-depth];
  const beside=(id,side)=>{const p=positions.get(id),v=offset[side];return p?grid[p.y+v[1]]?.[p.x+v[0]]??null:null;};
  function put(id,x,y,tile){if(x<0||y<0||x>=100||y>=100)return;const m=MAP_DB[id];m.maze[y][x]=tile;if(m.slabs?.length)m.slabs=m.slabs.filter(s=>s.x!==x||s.y!==y);}
  function paint(id,x,y,color){if(!surfaces.has(id))surfaces.set(id,[]);surfaces.get(id).push({x,y,w:1,h:1,color});}
- function region(id){MAP_DB[id]={name:names[id],outdoors:true,mapKind:'overworld',biome:seas.has(id)?'Sea':'Desert',weather:id===50?'snow':'clear',floorColor:seas.has(id)?'#285970':'#b59a75',skyColor:'#abc5d7',spawn:{x:50.5,y:50.5,dir:1},slabs:[],npcs:[],maze:Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>seas.has(id)?94:y<65-x*.52+2*Math.sin(x*.08)?94:0))};}
+ function region(id){
+  const sea=seas.has(id),alpine=id===66,italia=id===67,delta=id===78;
+  const m=MAP_DB[id]={name:names[id],outdoors:true,mapKind:'overworld',terrainOnly:true,biome:sea?'Sea':alpine?'Mountain':italia?'Coast':'Desert',weather:alpine?'snow':'clear',floorColor:sea?'#285970':alpine?'#959b92':italia?'#839164':delta?'#8a9464':'#b59a75',skyColor:alpine?'#b7c6ce':'#abc5d7',spawn:{x:50.5,y:50.5,dir:2},slabs:[],npcs:[],maze:[]};
+  m.maze=Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>{
+   if(sea)return 94;
+   if(alpine){const ridge=Math.sin(x*.085+y*.045)+.55*Math.cos(y*.13);return ridge>.05?25:0;}
+   if(italia){const outline=[[4,0],[94,0],[89,19],[75,34],[76,49],[91,68],[99,75],[98,81],[85,78],[78,73],[82,85],[75,96],[58,98],[48,95],[55,88],[66,86],[63,76],[50,60],[38,45],[28,35],[16,26],[8,24]];let land=false;for(let i=0,j=outline.length-1;i<outline.length;j=i++){const[a,b]=outline[i],[c,d]=outline[j];if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)land=!land;}return !land?94:(x>40+y*.28&&x<47+y*.28&&(x*13+y*29)%17<6)?25:0;}
+   if(id===59)return x<7+2*Math.sin(y*.08)||y<18&&x>72+y*.6?94:0;
+   if(delta){const river=50+6*Math.sin(y*.04);return y<24-8*Math.sin(x*.06)||Math.abs(x-river)<3||y<50&&(Math.abs(x-(river-(50-y)*.6))<2||Math.abs(x-(river+(50-y)*.5))<2)?92:0;}
+   if(id===71||id===72)return x<9+4*Math.sin(y*.05)?94:(x*17+y*31)%101<4?25:0;
+   return (x*17+y*29)%127<4?25:0;
+  }));
+  if(alpine)for(let y=0;y<100;y++)for(let x=0;x<100;x++)if(m.maze[y][x]===25){m.slabs.push({x,y,bottom:0,top:2.7+1.5*(.5+.5*Math.sin(x*.12)),tile:25});paint(id,x,y,'#c1c9c9');}
+  if(id===73||id===74)for(let y=0;y<100;y++)for(let x=0;x<100;x++)if(Math.sin(x*.10+y*.15)>.55)paint(id,x,y,id===73?'#c6a574':'#b69672');
+ }
  for(const id of positions.keys()){if(!MAP_DB[id])region(id);const m=MAP_DB[id];m.outdoors=true;m.mapKind='overworld';const old=m.maze,h=old.length,w=old[0].length;
   if(w!==100||h!==100){expanded.set(id,{w,h});m.maze=Array.from({length:100},(_,y)=>Array.from({length:100},(_,x)=>{
    if(x<w&&y<h){const t=old[y][x];if((x===w-1||y===h-1||id!==9&&(x===0||y===0))&&[19,25].includes(t))return id===9?94:0;return t;}
@@ -109834,6 +109848,7 @@ const BMAtlas58=(()=>{
    return 0;
   }));}
  }
+ for(let y=89;y<100;y++)for(let x=0;x<100;x++)put(40,x,y,y<92?92:94);
  // Sea charts retain the Kraken's island, actors and campaign flags at their saved coordinates.
  // Place the shore in the neighboring water region when a settlement already reaches a land edge.
  function join(a,side,b){const other=opposite[side],ma=MAP_DB[a],mb=MAP_DB[b],bothSea=seas.has(a)&&seas.has(b),coast=seas.has(a)!==seas.has(b);const profile=[];
@@ -109844,7 +109859,7 @@ const BMAtlas58=(()=>{
     const sea=seas.has(a)?a:b,ss=seas.has(a)?side:other,depth=6+Math.round(2*Math.sin(t*.12+land));
     for(let d=0;d<depth+4;d++){const[x,y]=point(ss,t,d);put(sea,x,y,tile===0&&d<depth?0:d<depth+2?92:94);if(tile===0&&d<depth)paint(sea,x,y,m.floorColor||'#64734a');}
    }else{
-    const ca=ma.maze[ay][ax],cb=mb.maze[by][bx];tile=a===40&&b===59?94:water(ca)||water(cb)?94:([5,999,38,45].includes(a)||[5,999,38,45].includes(b))?3:0;
+    const ca=ma.maze[ay][ax],cb=mb.maze[by][bx];tile=a===43&&b===44?94:water(ca)||water(cb)?94:([5,999,38,45].includes(a)||[5,999,38,45].includes(b))?3:0;
    }
    put(a,ax,ay,tile);put(b,bx,by,tile);profile.push(tile);
    // A four-tile transition strip joins old edge walls to the shared outline.
@@ -109875,20 +109890,28 @@ const BMAtlas58=(()=>{
  pass(39,'south',40,12.5,[[12.5,36.5],[12.5,70],[12.5,92]],[[12.5,4.5],[14.5,4.5]]);
  pass(22,'east',40,60.5,[[78,60.5]],[[10,60.5],[14.5,49.5]]);
  pass(22,'south',-2,50.5,[[50.5,89.5]],[[50.5,12.5],[50.5,27.5]]);
- pass(-2,'east',59,77.5,[[50.5,78.5],[80,77.5]],[[12,77.5],[50,65],[90,77.5]]);
- pass(59,'east',4,77.5,[[90,77.5]],[[12,77.5],[27.5,77.5]]);
+ pass(-2,'south',59,50.5,[[50.5,69.5],[50.5,88]],[[50.5,10],[50.5,65]]);
+ pass(59,'south',4,50.5,[[50.5,65],[50.5,90]],[[50.5,10],[50.5,60],[50.5,85.5],[92,85.5],[92,77.5]]);
  pass(4,'east',42,77.5,[[92,77.5]],[[8,77.5]]);
- pass(42,'east',43,72.5,[[92,72.5]],[[8,72.5]]);
- pass(43,'east',44,54.5,[[92,54.5]],[[8,54.5]]);
+ pass(42,'east',73,72.5,[[92,72.5]],[[10,72.5],[48,56],[90,72.5]]);
+ pass(73,'east',74,72.5,[[90,72.5]],[[10,72.5],[50,61],[90,72.5]]);
+ pass(74,'east',43,72.5,[[90,72.5]],[[8,72.5]]);
+ pass(43,'north',78,51.5,[[51.5,52.5],[51.5,8]],[[51.5,92],[62,65]]);
+ pass(78,'east',72,65.5,[[62,65],[90,65.5]],[[10,65.5],[52.5,65.5]]);
+ pass(72,'south',44,52.5,[[52.5,65.5],[52.5,90]],[[52.5,12],[49.5,17]]);
+ pass(39,'east',66,60.5,[[80,60.5]],[[12,60.5],[39,61],[52.5,52]]);
+ pass(38,'south',66,52.5,[[25.5,25.5],[52.5,65],[52.5,90]],[[52.5,12],[52.5,52]]);
+ pass(66,'south',67,52.5,[[52.5,52],[41,67],[52.5,90]],[[52.5,12],[48,24],[54,42],[65,65],[72,82]]);
  pass(48,'south',49,52.5,[[76,51.5],[84,49.5],[84,74],[67,88],[52.5,94]],[[52.5,15],[45,34],[45,48.5]]);
- pass(49,'south',44,52.5,[[52.5,92]],[[52.5,12],[49.5,17]]);
+ pass(49,'south',71,52.5,[[52.5,92]],[[52.5,10],[46,50],[52.5,90]]);
+ pass(71,'south',72,52.5,[[52.5,90]],[[52.5,10],[52.5,65.5]]);
  // The southern Rioja shore faces water; the atlas never creates a second Iberian land bridge.
- for(let y=89;y<100;y++)for(let x=0;x<100;x++)put(40,x,y,y<92?92:94);
+
  // A true strait: northern and southern approaches meet separate shores, never a land bridge.
  for(let y=32;y<=65;y++)for(let x=0;x<100;x++)put(-2,x,y,y<36||y>61?92:94);
  road(-2,[[50.5,12],[50.5,29.5]]);road(-2,[[50.5,68.5],[50.5,78.5]]);
  for(const top of [27,67])for(let y=top;y<top+4;y++)for(let x=49;x<55;x++){put(-2,x,y,0);paint(-2,x,y,'#b5a180');}
- for(let y=32;y<=65;y++)for(let d=0;d<12;d++){put(65,99-d,y,94);put(59,d,y,y<65-d*.52?94:0);}
+ for(let y=32;y<=65;y++)for(let d=0;d<12;d++){put(65,99-d,y,94);put(57,d,y,94);}
  // Ensure a continuous swimmable approach at each sea/land seam without cutting a settlement.
  for(const s of seams)if(seas.has(s.a)!==seas.has(s.b)){
   const land=seas.has(s.a)?s.b:s.a,side=seas.has(s.a)?s.other:s.side;let best=null,score=Infinity;
@@ -109900,6 +109923,7 @@ const BMAtlas58=(()=>{
  }
  // Reconcile final edge tiles after roads and straits, preserving matched road positions.
  for(const s of seams)for(let t=0;t<100;t++){const[x,y]=point(s.side,t),[xx,yy]=point(s.other,t),a=MAP_DB[s.a].maze[y][x],b=MAP_DB[s.b].maze[yy][xx];let tile=a===b?a:water(a)||water(b)?92:a===0||b===0?0:a;put(s.a,x,y,tile);put(s.b,xx,yy,tile);s.profile[t]=tile;}
+ for(let t=0;t<100;t++){put(66,99,t,25);put(46,0,t,25);}
  // The forest boundary is bark, with only the established road opening.
  for(let y=0;y<100;y++)if(y<44||y>46){put(2,99,y,3);put(5,0,y,3);}
  for(const list of corners.values())if(list.length>1){const tile=list.some(p=>water(MAP_DB[p.id].maze[p.y][p.x]))?94:0;for(const p of list)put(p.id,p.x,p.y,tile);}
@@ -109908,13 +109932,25 @@ const BMAtlas58=(()=>{
  const ferry=(map,id,x,y,label,to,arrival)=>{R.actor(map,id,x,y,32,label);R.bind(map,id,(n,d)=>BMClassicDialogue.show({speaker:n,text:'The ferry leaves whenever you are ready. Passage is free. You may also swim the strait.',options:[{label:'Cross the strait',action:()=>{if(!BMInteract.reachable(n)||d.currentEnemy&&!d.currentEnemy.isDead)return;R.enter(d,to,arrival);}}]}));};
  ferry(-2,901001,52.5,28.5,'Northern ferry keeper',-2,{x:50.5,y:69.5,dir:2});ferry(-2,901002,52.5,69.5,'Southern ferry keeper',-2,{x:50.5,y:28.5,dir:0});
  function sign(id,index,x,y,label,text){R.actor(id,index,x,y,1163,label,{interactionVerb:'Read',onSpawn:n=>BMClassArt.resource(n,1163)});R.bind(id,index,n=>BMClassicDialogue.show({speaker:n,text}));}
- sign(59,901010,50.5,67.5,'Coastal caravan road','West leads to the Gibraltar ferry and Iberia. East follows the coast to Ger, Deshret, Kemet and Arabia.');
+ sign(59,901010,50.5,67.5,'North · Gibraltar / South · Ger','North leads to the Gibraltar ferry and Iberia. South reaches Ger. From Ger the caravan road runs east through Deshret and Kemet; the Nile Delta and Sinai lead onward to Arabia.');
  sign(33,901011,49,61,'South · Armorica','The south road reaches Armorica. From there continue through Iberia to Gibraltar, or east through Gaul and La Rioja.');
  // Redirect the previous east-facing Levant signs to the actual southern pass.
  const an=MAP_DB[48].npcs.find(n=>n.index===900050);if(an)Object.assign(an,{x:54.5,y:94.5,name:'South · Levant waystation'});
  R.bind(48,900050,n=>BMClassicDialogue.show({speaker:n,text:'South · Levant waystation. Follow the road through the ridge gate, then turn south.'}));
  const lv=MAP_DB[49].npcs.find(n=>n.index===900051);if(lv)Object.assign(lv,{x:54.5,y:4.5,name:'North · Anatolia and the Aegean ferry'});
  R.bind(49,900051,n=>BMClassicDialogue.show({speaker:n,text:'North · Anatolia and the Aegean ferry. The southern road continues to Arabia.'}));
+ // Replace obsolete directions without changing the IDs used by saved quests.
+ const redirect=(map,id,x,y,label,text)=>{const n=MAP_DB[map].npcs.find(n=>n.index===id);if(n)Object.assign(n,{x,y,name:label});R.bind(map,id,n=>BMClassicDialogue.show({speaker:n,text}));};
+ redirect(43,896134,53.5,7.5,'North · Nile Delta and Sinai','Follow the Nile road north, then turn east through Sinai. Arabia lies south of Sinai; the Red Sea separates its western coast from Kemet.');
+ redirect(44,896135,54.5,8.5,'North · Sinai and Kemet','Travel north to Sinai, then west through the Nile Delta and south to Kemet. The Levant road continues north from Sinai.');
+ R.bind(42,896123,n=>BMClassicDialogue.show({speaker:n,text:'Ger lies west. We call these dunes Deshret—the Red Land. Eastward, cross the Great Dunes and Eastern Deshret to Kemet. Follow the Nile north through the delta and turn east into Sinai to reach Arabia.'}));
+ sign(66,901066,54.5,51.5,'Alpine crossroads','North · Germania. West · Gaul. South · Italia. The Carpathian road is a separate eastern route from Germania.');
+ sign(67,901067,50.5,25.5,'Italia','The Alpine road returns north. Southward the peninsula reaches into the Mediterranean.');
+ sign(71,901071,54.5,49.5,'Levant caravan road','North · Levant waystation and Anatolia. South · Sinai, Kemet and Arabia.');
+ sign(72,901072,54.5,65.5,'Sinai crossroads','North · Levant. West · Nile Delta and Kemet. South · Arabia.');
+ sign(73,901073,50.5,55.5,'Great Dunes','West · Deshret oasis and Ger. East · Eastern Deshret and Kemet.');
+ sign(74,901074,52.5,60.5,'Eastern Deshret','West · Great Dunes. East · Kemet and the Nile.');
+ sign(78,901078,64.5,65.5,'Delta crossing','South · Kemet. East · Sinai and Arabia. The northern shore faces the Mediterranean.');
  const edgeSide=(d,x,y)=>x<0?'west':x>=100?'east':y<0?'north':y>=100?'south':null;
  const passable=(id,x,y)=>{const m=MAP_DB[id],t=m.maze[y]?.[x];return t!==undefined&&(t===0||water(t)||t>0&&t%2===0)&&!(m.slabs||[]).some(s=>s.x===x&&s.y===y&&s.bottom<.9&&s.top>0);};
  function edge(d,x,y){if(!positions.has(d.mapID))return null;const side=edgeSide(d,x,y);if(!side)return null;const next=beside(d.mapID,side);if(next===null)return false;const t=Math.floor(side==='east'||side==='west'?y:x);if(t<0||t>=100)return false;
@@ -109931,30 +109967,62 @@ const BMAtlas58=(()=>{
  const priorLoad=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...args){this.atlas=grid;for(const[mid]of positions)if(MAP_DB[mid].spawn)this.defaultSpawns[mid]=MAP_DB[mid].spawn;return priorLoad.call(this,id,...args);};
  Dungeon.atlas=grid;
  // Existing saved coordinates and quest locations remain valid on the expanded maps.
- const defaults=new Map([[9,{x:30.5,y:7.5,dir:3}],[33,{x:6.5,y:22.5,dir:1}],[38,{x:5.5,y:25.5,dir:0}],[39,{x:39.5,y:6.5,dir:2}],[40,{x:14.5,y:4.5,dir:2}],[-2,{x:50.5,y:28.5,dir:2}],[59,{x:50.5,y:65.5,dir:1}]]);
+ const defaults=new Map([[9,{x:30.5,y:7.5,dir:3}],[33,{x:6.5,y:22.5,dir:1}],[38,{x:5.5,y:25.5,dir:0}],[39,{x:39.5,y:6.5,dir:2}],[40,{x:14.5,y:4.5,dir:2}],[-2,{x:50.5,y:28.5,dir:2}],[59,{x:50.5,y:65.5,dir:2}],[44,{x:52.5,y:4.5,dir:2}],[78,{x:62.5,y:65.5,dir:1}]]);
  for(const[id,p]of defaults){MAP_DB[id].spawn=p;Dungeon.defaultSpawns[id]=p;}
  for(const[id,q]of surfaces)BMGuildDecor.appendSurface(id,q);for(const id of positions.keys())BMLayers.invalidate(MAP_DB[id]);
  // Keep authored arrivals when clear; migrate only blocked positions to nearby open ground.
- for(const[id]of positions){const m=MAP_DB[id],p=m.spawn||Dungeon.defaultSpawns[id]||{x:50.5,y:50.5,dir:0};if(BMLayers.placement(m,p.x,p.y,0))continue;let safe=null;for(let r=1;r<100&&!safe;r++)for(let y=Math.max(0,Math.floor(p.y)-r);y<=Math.min(99,Math.floor(p.y)+r)&&!safe;y++)for(let x=Math.max(0,Math.floor(p.x)-r);x<=Math.min(99,Math.floor(p.x)+r);x++){if(Math.max(Math.abs(x-Math.floor(p.x)),Math.abs(y-Math.floor(p.y)))!==r)continue;if(!seas.has(id)&&water(m.maze[y][x]))continue;if(BMLayers.placement(m,x+.5,y+.5,0)&&!(m.npcs||[]).some(n=>Math.hypot(n.x-x-.5,n.y-y-.5)<.7)){safe={x:x+.5,y:y+.5,dir:p.dir??0};break;}}if(safe){m.spawn=safe;Dungeon.defaultSpawns[id]=safe;}}
+ for(const[id]of positions){const m=MAP_DB[id],p=m.spawn||Dungeon.defaultSpawns[id]||{x:50.5,y:50.5,dir:0};if(BMLayers.placement(m,p.x,p.y,0)&&(seas.has(id)||!water(m.maze[Math.floor(p.y)]?.[Math.floor(p.x)])))continue;let safe=null;for(let r=1;r<100&&!safe;r++)for(let y=Math.max(0,Math.floor(p.y)-r);y<=Math.min(99,Math.floor(p.y)+r)&&!safe;y++)for(let x=Math.max(0,Math.floor(p.x)-r);x<=Math.min(99,Math.floor(p.x)+r);x++){if(Math.max(Math.abs(x-Math.floor(p.x)),Math.abs(y-Math.floor(p.y)))!==r)continue;if(!seas.has(id)&&water(m.maze[y][x]))continue;if(BMLayers.placement(m,x+.5,y+.5,0)&&!(m.npcs||[]).some(n=>Math.hypot(n.x-x-.5,n.y-y-.5)<.7)){safe={x:x+.5,y:y+.5,dir:p.dir??0};break;}}if(safe){m.spawn=safe;Dungeon.defaultSpawns[id]=safe;}}
  // Regenerate the small terrain images only when first opening the chart, not every game frame.
  const colors={0:'#64754b',3:'#30472f',1:'#897b65',25:'#7d776c',10:'#8b8170',92:'#398aa1',93:'#245d85',94:'#234d72',95:'#2b6a86'};
  function thumbnail(id){if(thumbs.has(id))return thumbs.get(id);const m=MAP_DB[id],c=document.createElement('canvas');c.width=c.height=100;const q=c.getContext('2d');for(let y=0;y<100;y++)for(let x=0;x<100;x++){const t=m.maze[y][x];q.fillStyle=t===0?(BMGuildDecor.color(id,x,y)||m.floorColor||'#64754b'):(colors[t]||Dungeon.wallColors[t]||'#776f5e');q.fillRect(x,y,1,1);}thumbs.set(id,c);return c;}
- let selected=null;const layout={x:.3,y:1.2,size:1.04};
- function render(d){const u=tL/10,v=tH/10,c=ctx;c.save();c.textAlign='left';drawShape('rec',0,0,1,0,0,10,10,0,0,0,0,'#071018',1);drawText(.3,.1,7,.35,'WORLD ATLAS','#e4d095',1,'left');drawText(8.25,.1,1.45,.35,'Close','#e4d095',1,'center');
-  for(const[id,p]of positions){const x=tX+(layout.x+p.x*layout.size)*u,y=tY+(layout.y+p.y*layout.size)*v,w=layout.size*u,h=layout.size*v;c.imageSmoothingEnabled=false;c.drawImage(thumbnail(id),x,y,w,h);c.strokeStyle=id===selected?'#ffe397':'rgba(226,211,165,.27)';c.lineWidth=id===selected?2:1;c.strokeRect(x+.5,y+.5,w-1,h-1);
-   if(!seas.has(id)){c.fillStyle='rgba(6,12,14,.75)';c.fillRect(x,y+h-11,w,11);c.fillStyle='#efdfb6';c.font='9px sans-serif';c.textAlign='center';c.textBaseline='alphabetic';c.fillText(names[id],x+w/2,y+h-2,w-2);}
+ let selected=null,root,chart,label,teleport,hint,picker,visible=false,dirty=true,oldFocus=null;
+ const view={x:0,y:0,size:48,w:0,h:0,fit:24},fingers=new Map();let gesture=null,blockedClick=false;
+ const active=()=>!!Dungeon.isViewingWorld;
+ function cancelGesture(){fingers.clear();gesture=null;blockedClick=true;}
+ function clampView(){const margin=40;view.x=Math.max(margin-grid[0].length*view.size,Math.min(view.w-margin,view.x));view.y=Math.max(margin-grid.length*view.size,Math.min(view.h-margin,view.y));dirty=true;}
+ function fit(){view.size=view.fit;view.x=(view.w-grid[0].length*view.size)/2;view.y=(view.h-grid.length*view.size)/2;dirty=true;}
+ function zoom(factor,x=view.w/2,y=view.h/2){const size=Math.max(view.fit*.8,Math.min(300,view.size*factor)),k=size/view.size;view.x=x-(x-view.x)*k;view.y=y-(y-view.y)*k;view.size=size;clampView();draw();}
+ function center(id=Dungeon.mapID){const p=positions.get(MAP_DB[id]?.atlasMapID??id);if(!p)return;view.size=Math.max(view.size,Math.min(90,view.fit*2));view.x=view.w/2-(p.x+.5)*view.size;view.y=view.h/2-(p.y+.5)*view.size;dirty=true;draw();}
+ function select(id){if(!positions.has(id))return;selected=id;picker.value=String(id);dirty=true;update();draw();}
+ function close(){Dungeon.isViewingWorld=Dungeon.isViewingAtlas=Dungeon.isTeleporting=false;cancelGesture();sync();BMTouch.cancel();BMMenuInput.reset();oldFocus?.isConnected&&oldFocus.focus?.({preventScroll:true});}
+ function travel(){const d=Dungeon;if(!active()||!d.isTeleporting||selected===null||d.isDead||d.isDying||d.isLoading||d.currentEnemy&&!d.currentEnemy.isDead)return false;const id=selected,p=MAP_DB[id].spawn||d.defaultSpawns[id]||{x:50.5,y:50.5,dir:0};if(!R.enter(d,id,p)){hint.textContent='Travel is unavailable right now.';return false;}close();d.currentAngle=d.dir*Math.PI/2;MusicEngine.play3DSFX('warp');return true;}
+ function update(){if(!root)return;const d=Dungeon;label.textContent=selected===null?'Select a region':names[selected]+' · 100 × 100 · '+(seas.has(selected)?'Swim / sail':'Overworld');teleport.hidden=!d.isTeleporting;teleport.disabled=selected===null||d.isLoading||d.isDead||d.isDying||!!(d.currentEnemy&&!d.currentEnemy.isDead);hint.textContent=d.isTeleporting?'Select a destination, then press Teleport.':'Drag to explore · Pinch or use + / − to zoom';}
+ function resize(){if(!root||root.hidden)return;const r=chart.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height),oldW=view.w,oldH=view.h;const cx=oldW?(oldW/2-view.x)/view.size:grid[0].length/2,cy=oldH?(oldH/2-view.y)/view.size:grid.length/2;
+  view.w=w;view.h=h;view.fit=Math.min((w-20)/grid[0].length,(h-20)/grid.length);const dpr=Math.min(2,devicePixelRatio||1);chart.width=Math.round(w*dpr);chart.height=Math.round(h*dpr);if(!oldW)fit();else{view.size=Math.max(view.fit*.8,view.size);view.x=w/2-cx*view.size;view.y=h/2-cy*view.size;clampView();}cancelGesture();dirty=true;draw();}
+ function draw(){if(!root||root.hidden||!dirty)return;dirty=false;const c=chart.getContext('2d'),dpr=chart.width/view.w;c.setTransform(dpr,0,0,chart.height/view.h,0,0);c.fillStyle='#071018';c.fillRect(0,0,view.w,view.h);c.imageSmoothingEnabled=false;
+  for(const[id,p]of positions){const x=view.x+p.x*view.size,y=view.y+p.y*view.size,s=view.size;if(x+s<0||y+s<0||x>view.w||y>view.h)continue;c.drawImage(thumbnail(id),x,y,s,s);c.strokeStyle=id===selected?'#ffe397':'rgba(226,211,165,.3)';c.lineWidth=id===selected?3:1;c.strokeRect(x+.5,y+.5,s-1,s-1);
+   if(!seas.has(id)||s>=70){const font=Math.max(9,Math.min(14,s*.15)),height=font+6;c.fillStyle='rgba(6,12,14,.85)';c.fillRect(x,y+s-height,s,height);c.fillStyle='#efdfb6';c.font=font+'px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(names[id],x+s/2,y+s-height/2,s-4);}
   }
-  const current=positions.get(MAP_DB[d.mapID]?.atlasMapID??d.mapID);if(current){const x=tX+(layout.x+(current.x+d.x/100)*layout.size)*u,y=tY+(layout.y+(current.y+d.y/100)*layout.size)*v;c.fillStyle='#66f8ed';c.beginPath();c.arc(x,y,3.5,0,Math.PI*2);c.fill();}
-  c.textAlign='left';drawText(.3,.58,9.4,.25,d.isTeleporting?'Choose a region to teleport':'Tap a region for its name · Roads cross at matching borders','#b9ccd2',1,'left');
-  drawText(.3,9.58,9.4,.24,selected!==null?(names[selected]+' · 100 × 100'+(seas.has(selected)?' · Swim / sail':' · Overworld')):(names[d.mapID]||d.mapname),'#e4d095',1,'left');c.restore();
+  const d=Dungeon,p=positions.get(MAP_DB[d.mapID]?.atlasMapID??d.mapID);if(p){const x=view.x+(p.x+d.x/100)*view.size,y=view.y+(p.y+d.y/100)*view.size;c.beginPath();c.arc(x,y,5,0,Math.PI*2);c.fillStyle='#66f8ed';c.fill();c.strokeStyle='#072e35';c.lineWidth=2;c.stroke();}
  }
- function click(x,y){const d=Dungeon;if(!d.isViewingWorld)return false;if(y<.55&&x>8||y<layout.y||y>=layout.y+grid.length*layout.size){d.isViewingWorld=d.isTeleporting=false;return true;}
-  const gx=Math.floor((x-layout.x)/layout.size),gy=Math.floor((y-layout.y)/layout.size),id=grid[gy]?.[gx];if(id===undefined||id===null)return true;selected=id;
-  if(d.isTeleporting){const p=MAP_DB[id].spawn||d.defaultSpawns[id]||{x:50.5,y:50.5,dir:0};if(R.enter(d,id,p)){d.isViewingWorld=d.isViewingAtlas=d.isTeleporting=false;d.currentAngle=d.dir*Math.PI/2;MusicEngine.play3DSFX('warp');}}return true;
+ function create(){if(root)return;const style=document.createElement('style');style.textContent=`#bm-atlas{position:fixed;inset:0;z-index:16000;background:#071018;color:#e4d095;display:flex;flex-direction:column;font:15px system-ui,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box;overscroll-behavior:none}#bm-atlas[hidden]{display:none!important}#bm-atlas *{box-sizing:border-box}#bm-atlas header,#bm-atlas nav,#bm-atlas footer{display:flex;align-items:center;gap:8px;padding:8px 12px;flex-wrap:wrap;flex-shrink:0}#bm-atlas header{justify-content:space-between;padding-bottom:2px}#bm-atlas h1{font:24px Georgia,serif;margin:0}#bm-atlas button,#bm-atlas select{border:1px solid #7d784f;border-radius:9px;background:#192c2e;color:#eee0b1;font:inherit;min-height:42px;padding:7px 12px}#bm-atlas button:focus-visible,#bm-atlas select:focus-visible,#bm-atlas canvas:focus-visible{outline:2px solid #66f8ed;outline-offset:-3px}#bm-atlas button:disabled{opacity:.45}#bm-atlas [hidden]{display:none!important}#bm-atlas select{min-width:0;flex:1;width:110px;max-width:280px}#bm-atlas canvas{display:block;touch-action:none;width:100%;height:100%;outline:none}#bm-atlas .chart-wrap{flex:1;min-height:0;overflow:hidden;position:relative}#bm-atlas .hint{margin:0;padding:3px 12px 7px;color:#b4c5c9;font-size:12px}#bm-atlas footer{border-top:1px solid #314347;min-height:55px}#bm-atlas .region{flex:1;min-width:140px;font-size:14px}#bm-atlas .travel{background:#4a5432;border-color:#d3bc73}@media(orientation:landscape) and (max-height:600px){#bm-atlas{display:grid;grid-template-columns:250px 1fr;grid-template-rows:auto auto minmax(0,1fr) auto}#bm-atlas header{grid-column:1}#bm-atlas nav{grid-column:2}#bm-atlas .hint,#bm-atlas .chart-wrap,#bm-atlas footer{grid-column:1/-1}}@media(max-height:480px){#bm-atlas header,#bm-atlas nav,#bm-atlas footer{padding:3px 12px}#bm-atlas h1{font-size:21px}#bm-atlas .hint{padding-bottom:3px}#bm-atlas button,#bm-atlas select{min-height:36px}}`;
+  document.head.appendChild(style);root=document.createElement('section');root.id='bm-atlas';root.hidden=true;root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-label','World atlas');root.innerHTML='<header><h1>World atlas</h1><button data-action="close">Close</button></header><nav aria-label="Map controls"><button data-action="out" aria-label="Zoom out">−</button><button data-action="in" aria-label="Zoom in">+</button><button data-action="fit">Fit</button><button data-action="you">You</button><select aria-label="Select a region"></select></nav><p class="hint"></p><div class="chart-wrap"><canvas tabindex="0" aria-label="World map. Drag to pan, pinch to zoom, or use the map controls and region selector."></canvas></div><footer><span class="region" role="status"></span><button class="travel" data-action="teleport" hidden>Teleport</button></footer>';
+  // The map itself selects only on pointer release. Travel is a separate action.
+  document.body.appendChild(root);chart=root.querySelector('canvas');label=root.querySelector('.region');hint=root.querySelector('.hint');teleport=root.querySelector('.travel');picker=root.querySelector('select');for(const[id]of [...positions].sort((a,b)=>names[a[0]].localeCompare(names[b[0]]))){const option=document.createElement('option');option.value=String(id);option.textContent=names[id];picker.appendChild(option);}picker.addEventListener('change',()=>{select(Number(picker.value));center(Number(picker.value));});
+  root.addEventListener('click',e=>{e.stopPropagation();const action=e.target.closest('[data-action]')?.dataset.action;if(action==='close')close();else if(action==='fit'){fit();draw();}else if(action==='you')center();else if(action==='in')zoom(1.35);else if(action==='out')zoom(1/1.35);else if(action==='teleport')travel();});
+  const point=e=>{const r=chart.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
+  chart.addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();const p=point(e);fingers.set(e.pointerId,p);chart.setPointerCapture(e.pointerId);if(fingers.size===1){gesture={start:p,last:p,moved:false,pinched:false};blockedClick=false;}else{gesture.pinched=true;gesture.moved=true;const a=[...fingers.values()];gesture.distance=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);gesture.center={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};}});
+  chart.addEventListener('pointermove',e=>{if(!fingers.has(e.pointerId)||!gesture)return;e.preventDefault();const p=point(e);fingers.set(e.pointerId,p);if(fingers.size>1){const a=[...fingers.values()],distance=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),center={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};if(gesture.distance>0)zoom(distance/gesture.distance,gesture.center.x,gesture.center.y);view.x+=center.x-gesture.center.x;view.y+=center.y-gesture.center.y;gesture.distance=distance;gesture.center=center;gesture.moved=gesture.pinched=true;}else{if(Math.hypot(p.x-gesture.start.x,p.y-gesture.start.y)>8)gesture.moved=true;if(gesture.moved){view.x+=p.x-gesture.last.x;view.y+=p.y-gesture.last.y;}gesture.last=p;}clampView();draw();});
+  const end=(e,cancel=false)=>{if(!fingers.has(e.pointerId))return;const p=point(e),tap=!cancel&&!blockedClick&&fingers.size===1&&gesture&&!gesture.moved&&!gesture.pinched&&Math.hypot(p.x-gesture.start.x,p.y-gesture.start.y)<=8;fingers.delete(e.pointerId);if(tap){const x=Math.floor((p.x-view.x)/view.size),y=Math.floor((p.y-view.y)/view.size),id=grid[y]?.[x];if(id!==null&&id!==undefined)select(id);}if(fingers.size){gesture.last=[...fingers.values()][0];gesture.moved=true;gesture.pinched=true;}else gesture=null;};
+  chart.addEventListener('pointerup',e=>end(e));chart.addEventListener('pointercancel',e=>end(e,true));chart.addEventListener('lostpointercapture',e=>{if(fingers.has(e.pointerId))end(e,true);});
+  chart.addEventListener('wheel',e=>{e.preventDefault();const p=point(e);blockedClick=true;zoom(Math.exp(-Math.max(-150,Math.min(150,e.deltaY))*.003),p.x,p.y);},{passive:false});
+  for(const event of ['pointerdown','pointermove','pointerup','pointercancel','mousedown','mouseup','touchstart','touchmove','touchend','wheel','dblclick'])root.addEventListener(event,e=>e.stopPropagation());
+  root.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'){e.preventDefault();close();return;}if(e.target!==chart)return;const k=e.key;if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-'].includes(k))e.preventDefault();if(k==='+'||k==='=')zoom(1.35);else if(k==='-')zoom(1/1.35);else{if(k==='ArrowLeft')view.x+=50;if(k==='ArrowRight')view.x-=50;if(k==='ArrowUp')view.y+=50;if(k==='ArrowDown')view.y-=50;clampView();draw();}});root.addEventListener('keyup',e=>e.stopPropagation());
+  new ResizeObserver(resize).observe(chart.parentElement);window.addEventListener('blur',cancelGesture);
  }
+ function sync(){if(!active()){if(root)root.hidden=true;visible=false;cancelGesture();return;}create();root.hidden=false;if(!visible){visible=true;oldFocus=document.activeElement;BMTouch.cancel();BMMenuInput.reset();selected=positions.has(Dungeon.mapID)?Dungeon.mapID:null;picker.value=String(selected??2);resize();chart.focus({preventScroll:true});}update();draw();}
+ function render(){sync();}
+ function click(){return active();} // Legacy canvas input can never initiate travel.
+ const shellSync=BMShell.sync;BMShell.sync=function(...args){const r=shellSync.apply(this,args);sync();return r;};
  BMWorldRenderer.renderWorldOverlay=render;
- return {get selected(){return selected;},grid,positions,seas,names,expanded,seams,passages,roads,restoreBorders,edge,transition,beside,point,passable,render,click,thumbnail,layout,invalidate:()=>thumbs.clear()};
-})();globalThis.BMAtlas58=BMAtlas58;
+ return {get selected(){return selected;},grid,positions,seas,names,expanded,seams,passages,roads,restoreBorders,edge,transition,beside,point,passable,render,click,thumbnail,view,select,travel,close,fit,center,zoom,sync,invalidate:()=>{thumbs.clear();dirty=true;}};
+
+})();globalThis.BMAtlas58=BMAtlas58;globalThis.BMAtlas=BMAtlas58;
+
+
+
+
+
 
 BMContent.installEmbedded();await bootGame();BMMovementCourtyard.previewStart();BMCreator.previewStart();}catch(error){window.BattleMageStartup?.report(error,"Saved-game startup");if(window.BM_CREATOR_PREVIEW)parent.postMessage({type:"bm-creator-error",message:String(error.message||error)},"*");}})();
 </script>
