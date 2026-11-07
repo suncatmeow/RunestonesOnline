@@ -1,11 +1,11 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.6",
+  "version": "1.10.12",
   "private": true,
-  "description": "BattleMage: Kemet delta, connected coastlines and tavern performances and games",
+  "description": "BattleMage: contextual NPC conversations and sword-and-sorcery journals",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/multiplayer.cjs && node --test --test-concurrency=1 tests/runestones-server.cjs tests/tintagel-server.cjs tests/class-paths-server.cjs tests/guild-story-server.cjs tests/dragonflight-server.cjs tests/summoner86.cjs tests/recovery87.cjs tests/flow88.cjs tests/loading91.cjs tests/attack-cadence-server.cjs tests/suncat-life.cjs tests/ground-loot-server.cjs tests/stronghold-chests-server.cjs tests/road-encounters-server.cjs && node tests/material-workshop.cjs && node --test tests/desert-landmarks-server.cjs && npm run test:journal && npm run test:frontier && npm run test:aegean && npm run test:conversation && npm run test:atlas && npm run test:tavern",
+    "test": "node tests/multiplayer.cjs && node --test --test-concurrency=1 tests/runestones-server.cjs tests/tintagel-server.cjs tests/class-paths-server.cjs tests/guild-story-server.cjs tests/dragonflight-server.cjs tests/summoner86.cjs tests/recovery87.cjs tests/flow88.cjs tests/loading91.cjs tests/attack-cadence-server.cjs tests/suncat-life.cjs tests/ground-loot-server.cjs tests/stronghold-chests-server.cjs tests/road-encounters-server.cjs && node tests/material-workshop.cjs && node --test tests/desert-landmarks-server.cjs && npm run test:journal && npm run test:frontier && npm run test:aegean && npm run test:conversation && npm run test:atlas && npm run test:tavern && node --test tests/dancer-server64.cjs && node --test tests/oceans65.cjs && node --test tests/coast-estate66.cjs && node --test tests/northern67.cjs && node --test tests/northern68.cjs",
     "test:dragonflight": "node --test tests/dragonflight-server.cjs",
     "test:summoner": "node --test tests/summoner86.cjs",
     "test:recovery": "node --test tests/recovery87.cjs",
@@ -19,10 +19,10 @@
     "test:loot": "node --test tests/ground-loot-server.cjs",
     "test:stronghold": "node --test tests/stronghold-chests-server.cjs",
     "test:materials": "node tests/material-workshop.cjs",
-    "test:journal": "node --test tests/journal-scheduling.cjs tests/journal-desk.cjs tests/journal-habits.cjs tests/journal-reflection.cjs tests/journal-prose.cjs",
+    "test:journal": "node --test tests/journal-scheduling.cjs tests/journal-desk.cjs tests/journal-habits.cjs tests/journal-reflection.cjs tests/journal-prose.cjs tests/journal-final69.cjs",
     "test:frontier": "node --test tests/frontier-roads-server.cjs",
     "test:aegean": "node --test tests/aegean-server.cjs tests/class-paths-server.cjs",
-    "test:conversation": "node --test tests/npc-conversation.cjs tests/npc-dialogue-socket.cjs tests/levant-server.cjs",
+    "test:conversation": "node --test tests/npc-conversation.cjs tests/npc-dialogue-socket.cjs tests/levant-server.cjs tests/living-conversation69.cjs tests/suncat-voice69.cjs",
     "test:atlas": "node --test tests/atlas-server.cjs",
     "test:tavern": "node --test tests/tavern-server63.cjs"
   },

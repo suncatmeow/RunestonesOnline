@@ -1,23 +1,27 @@
 {
   "application": "BattleMage Runestones",
-  "version": "63",
-  "serverVersion": "1.10.6",
-  "date": "2026-11-06",
+  "version": "69",
+  "serverVersion": "1.10.12",
+  "date": "2026-11-07",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "releaseNotes": [
     "README.md"
   ],
-  "review": "ATLAS-REVIEW.html",
-  "futurePlan": "FUTURE-PASSES-v63.md",
+  "futurePlan": "FUTURE-PASSES-v69.md",
   "distribution": "versioned-zip",
-  "supersedes": "BattleMage Runestones v62 / server 1.10.5",
+  "supersedes": "BattleMage Runestones v68 / server 1.10.11",
   "deployed": false,
   "changes": [
-    "Kemet delta and city integrated; northern atlas square empty",
-    "Basque content outdoors on retained maps; connected gulf coast",
-    "Atlas labels overlay terrain",
-    "Neutral tavern; continuous commissioned music and smoother dancing",
-    "78-card blackjack, 39/39 Runestones, random creature tactics, stakes and familiarity"
-  ]
+    "Contextual LLM conversations for authored, generated and locally observed NPCs",
+    "Explicit unavailable/offline states and optional silence",
+    "Suncat repeat detection with one speech-only retry",
+    "Sword-and-sorcery chapters with evidence preparation and a literary edit",
+    "Non-destructive prose revisions and reconnect replay",
+    "Preserved chapter-ID collisions and unique new chapter IDs",
+    "Chapters-only reading export alongside full logs and backup"
+  ],
+  "validation": "VALIDATION-v69.txt",
+  "clientSha256": "9680e7b42c8ce0b83f589b7898dcd6f14e91af11f903c8f88476ceee4a69aab7",
+  "serverSha256": "d09092768ecb5bf84daa0a4a090476e2a013d1dab4a92068d75f7ca1d8ed67c0"
 }
