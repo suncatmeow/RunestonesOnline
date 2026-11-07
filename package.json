@@ -1,30 +1,11 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.12",
+  "version": "1.10.13",
   "private": true,
-  "description": "BattleMage: contextual NPC conversations and sword-and-sorcery journals",
+  "description": "BattleMage Runestones v70: five-file server and game distribution",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/multiplayer.cjs && node --test --test-concurrency=1 tests/runestones-server.cjs tests/tintagel-server.cjs tests/class-paths-server.cjs tests/guild-story-server.cjs tests/dragonflight-server.cjs tests/summoner86.cjs tests/recovery87.cjs tests/flow88.cjs tests/loading91.cjs tests/attack-cadence-server.cjs tests/suncat-life.cjs tests/ground-loot-server.cjs tests/stronghold-chests-server.cjs tests/road-encounters-server.cjs && node tests/material-workshop.cjs && node --test tests/desert-landmarks-server.cjs && npm run test:journal && npm run test:frontier && npm run test:aegean && npm run test:conversation && npm run test:atlas && npm run test:tavern && node --test tests/dancer-server64.cjs && node --test tests/oceans65.cjs && node --test tests/coast-estate66.cjs && node --test tests/northern67.cjs && node --test tests/northern68.cjs",
-    "test:dragonflight": "node --test tests/dragonflight-server.cjs",
-    "test:summoner": "node --test tests/summoner86.cjs",
-    "test:recovery": "node --test tests/recovery87.cjs",
-    "test:endurance": "node tests/endurance87.cjs",
-    "test:flow": "node --test tests/flow88.cjs",
-    "test:runestones": "node tests/multiplayer.cjs && node --test tests/runestones-server.cjs",
-    "test:classes": "node --test tests/class-paths-server.cjs",
-    "test:tintagel": "node --test tests/tintagel-server.cjs",
-    "test:attack-cadence": "node --test tests/attack-cadence-server.cjs",
-    "test:suncat": "node --test tests/suncat-life.cjs",
-    "test:loot": "node --test tests/ground-loot-server.cjs",
-    "test:stronghold": "node --test tests/stronghold-chests-server.cjs",
-    "test:materials": "node tests/material-workshop.cjs",
-    "test:journal": "node --test tests/journal-scheduling.cjs tests/journal-desk.cjs tests/journal-habits.cjs tests/journal-reflection.cjs tests/journal-prose.cjs tests/journal-final69.cjs",
-    "test:frontier": "node --test tests/frontier-roads-server.cjs",
-    "test:aegean": "node --test tests/aegean-server.cjs tests/class-paths-server.cjs",
-    "test:conversation": "node --test tests/npc-conversation.cjs tests/npc-dialogue-socket.cjs tests/levant-server.cjs tests/living-conversation69.cjs tests/suncat-voice69.cjs",
-    "test:atlas": "node --test tests/atlas-server.cjs",
-    "test:tavern": "node --test tests/tavern-server63.cjs"
+    "check": "node --check server.js"
   },
   "engines": {
     "node": ">=20"
@@ -34,8 +15,5 @@
     "dotenv": "18.0.5",
     "socket.io": "4.7.2",
     "jsdom": "26.1.0"
-  },
-  "devDependencies": {
-    "socket.io-client": "4.7.2"
   }
 }

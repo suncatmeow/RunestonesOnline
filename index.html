@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-07-bm-v69-living-chronicle"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v69</title>
+      <meta name="suncat-build" content="2026-11-07-bm-v70-five-file"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v70</title>
       <style>
         html,body {
           width:100%;
@@ -23,7 +23,6 @@
       <meta name="apple-mobile-web-app-capable" content="yes">
       <meta name="apple-mobile-web-app-status-bar-style" content="black">
       <meta name="apple-mobile-web-app-title" content="Runestones">
-      <link rel="apple-touch-icon" href="icon-192.png">
 
     </head>
     <body>
@@ -66712,26 +66711,21 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
     //DISPLAY 
         window.addEventListener('resize', resizeCanvas, false);
         window.addEventListener("orientationchange", function() {setTimeout(resizeCanvas, 200);}, false);
-            // Check if we are running on a real web server, NOT a local file
-        if (window.location.protocol !== 'file:') {
-            
-            // 1. Inject the Manifest dynamically
-            let manifestTag = document.createElement('link');
+        // Five-file distribution: the web manifest is embedded. No separate
+        // manifest, icon, or service-worker file is needed. File play stays local.
+        if (window.location.protocol === 'https:' || window.location.protocol === 'http:') {
+            const appURL = new URL(window.location.href);
+            appURL.search = '';
+            appURL.hash = '';
+            const manifestTag = document.createElement('link');
             manifestTag.rel = 'manifest';
-            manifestTag.href = 'manifest.json';
+            manifestTag.href = URL.createObjectURL(new Blob([JSON.stringify({
+                name: 'BattleMage Runestones', short_name: 'Runestones',
+                start_url: appURL.href, scope: new URL('./', appURL).href,
+                display: 'standalone', background_color: '#000000', theme_color: '#000000'
+            })], {type: 'application/manifest+json'}));
             document.head.appendChild(manifestTag);
-
-            // 2. Register the Service Worker
-            if (!(window.BM_CREATOR_PREVIEW||window.BM_LAYER_PREVIEW) && 'serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('./sw.js')
-                        .then(reg => console.log('SW registered successfully'))
-                        .catch(err => console.log('SW failed:', err));
-                });
-            }
-            } else {
-                console.log('Offline Mode: Service Worker and Manifest bypassed.');
-            }
+        }
         // The controls and world share cached canvas artwork. On mobile the
         // backing pixels can be discarded while their JS objects still exist.
         let hudArtGeneration=0, backgroundScene, needsTabResume=false;

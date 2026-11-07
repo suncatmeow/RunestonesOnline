@@ -1,27 +1,63 @@
 {
   "application": "BattleMage Runestones",
-  "version": "69",
-  "serverVersion": "1.10.12",
+  "version": "70",
+  "serverVersion": "1.10.13",
   "date": "2026-11-07",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
-  "releaseNotes": [
-    "README.md"
-  ],
-  "futurePlan": "FUTURE-PASSES-v69.md",
-  "distribution": "versioned-zip",
-  "supersedes": "BattleMage Runestones v68 / server 1.10.11",
+  "distribution": "five-file-zip",
+  "supersedes": "BattleMage Runestones v69 / server 1.10.12",
   "deployed": false,
-  "changes": [
-    "Contextual LLM conversations for authored, generated and locally observed NPCs",
-    "Explicit unavailable/offline states and optional silence",
-    "Suncat repeat detection with one speech-only retry",
-    "Sword-and-sorcery chapters with evidence preparation and a literary edit",
-    "Non-destructive prose revisions and reconnect replay",
-    "Preserved chapter-ID collisions and unique new chapter IDs",
-    "Chapters-only reading export alongside full logs and backup"
+  "files": [
+    "index.html",
+    "server.js",
+    "package.json",
+    "package-lock.json",
+    "release.json"
   ],
-  "validation": "VALIDATION-v69.txt",
-  "clientSha256": "9680e7b42c8ce0b83f589b7898dcd6f14e91af11f903c8f88476ceee4a69aab7",
-  "serverSha256": "d09092768ecb5bf84daa0a4a090476e2a013d1dab4a92068d75f7ca1d8ed67c0"
+  "changes": [
+    "Embedded NPC conversation code, knowledge, and catalogue in server.js; client-modules folder no longer required",
+    "Preserved v69 gameplay, contextual conversations, Suncat behavior, and journal prose",
+    "Embedded the optional web manifest and removed requests for missing icon and service-worker files",
+    "Production package includes startup and syntax-check commands without references to omitted test files",
+    "Credentials continue to come from server environment variables; no secrets or saved runtime data are distributed"
+  ],
+  "configuration": {
+    "secrets": "Existing hosting environment variables; no credential values are included",
+    "startup": "npm start",
+    "install": "npm ci --omit=dev",
+    "persistence": "Keep existing memory, account, and online-world data files on the host",
+    "offline": "Local index.html play is retained; hosted service-worker offline caching is not included",
+    "hosting": "Game hosting and the existing server connection remain unchanged"
+  },
+  "clientSha256": "1f80004a71ab737b96bf58821cc8cbcb26b037f8067d7a1cd09206cba05831ae",
+  "serverSha256": "b361d76b3968e9fbbfbaa5bfc4b8861ffb33b8da5050fdba55c0f50895193641",
+  "validation": {
+    "status": "passed",
+    "focusedServerTests": {
+      "passed": 36,
+      "failed": 0,
+      "scope": "NPC conversations, socket route, Suncat repeat repair, journal scheduling/prose/revisions"
+    },
+    "npcKnowledgeEquivalenceCases": 2304,
+    "productionStartup": "Passed with production dependencies, no client-modules folder, unrelated working directory, and no API credentials",
+    "dependencyLock": "npm ci --omit=dev succeeded; production versions and integrity values unchanged from v69",
+    "browser": {
+      "viewport": "390x844",
+      "httpStartup": "passed",
+      "localFileStartup": "passed",
+      "dialogueAndJournalChecks": 5,
+      "pageErrors": 0,
+      "missingHelperAssetRequests": 0
+    },
+    "credentialScan": {
+      "credentialPatternMatches": 0,
+      "files": 5,
+      "embeddedCompressedTextPayloads": 1,
+      "runtimeDataIncluded": false
+    },
+    "limitations": [
+      "AI responses were tested through controlled model adapters; no live Gemini requests or hosting/account changes were made."
+    ]
+  }
 }
