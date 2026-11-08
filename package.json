@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.13",
+  "version": "1.10.22",
   "private": true,
-  "description": "BattleMage Runestones v70: five-file server and game distribution",
+  "description": "BattleMage Runestones v78: embodied Suncat, quest tracking and faster Cherry dance; preserves Dragonflight 11.67 transport",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"

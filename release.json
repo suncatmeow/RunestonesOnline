@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": "70",
-  "serverVersion": "1.10.13",
-  "date": "2026-11-07",
+  "version": "78",
+  "serverVersion": "1.10.22",
+  "date": "2026-11-08",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v69 / server 1.10.12",
+  "supersedes": "BattleMage v77; merged on latest shared Dragonflight 11.67 server 1.10.21",
   "deployed": false,
   "files": [
     "index.html",
@@ -16,48 +16,50 @@
     "release.json"
   ],
   "changes": [
-    "Embedded NPC conversation code, knowledge, and catalogue in server.js; client-modules folder no longer required",
-    "Preserved v69 gameplay, contextual conversations, Suncat behavior, and journal prose",
-    "Embedded the optional web manifest and removed requests for missing icon and service-worker files",
-    "Production package includes startup and syntax-check commands without references to omitted test files",
-    "Credentials continue to come from server environment variables; no secrets or saved runtime data are distributed"
+    "Cherry performs the same smooth choreography at 2x speed: 36-second loop, with pose frames accelerated to match.",
+    "Class recommendations are trackable journal quests with current objective markers. Only spawned class-trial enemies gain boss markers.",
+    "One persistent network Suncat body uses one elected active client observer; handoffs fence stale commands and preserve world provenance. Other nearby clients render that body.",
+    "Perception uses Suncat-relative distance and sight, independent of the human camera. Nearby services and resources are supplied before autonomous decisions.",
+    "Peaceful proximity and collision open live Suncat conversation once per visited map per session; later contact passes through and manual conversation remains available. Deliberate attacks enable combat and allied targeting; accepted ceasefire clears it.",
+    "Attacks request a model decision instead of forcing retaliation. Suncat may choose speech, sustained defense, escape or ceasefire from real actions.",
+    "Character, GM, utility and moderation receive separate prompts, histories and capability checks. Mysticism and unawareness are no longer mandatory. Creator background is attributed separately from lived memory.",
+    "Moderation reports retain bounded recent server chat evidence and a pending-admin decision. Character favor cannot issue sanctions.",
+    "The existing opt-in generated GM scenario is restricted to one active region, actual objectives, existing once-only contract rewards, and cleanup after ten empty minutes.",
+    "Battle music starts from actual player damage, including ward loss and attributed damage over time; nearby fights and aggro alone are silent. The tavern clears a stuck card battle and restores actor visibility.",
+    "Default Gemini 2.5 Flash-Lite remains configurable; usage includes thinking tokens and per-model totals. Background model concurrency leaves capacity for direct requests.",
+    "Preserved Dragonflight 11.67 networking and all earlier campaign and shop changes."
   ],
   "configuration": {
-    "secrets": "Existing hosting environment variables; no credential values are included",
-    "startup": "npm start",
     "install": "npm ci --omit=dev",
-    "persistence": "Keep existing memory, account, and online-world data files on the host",
-    "offline": "Local index.html play is retained; hosted service-worker offline caching is not included",
-    "hosting": "Game hosting and the existing server connection remain unchanged"
+    "startup": "npm start",
+    "secrets": "Use hosting environment variables only; no credential values are included.",
+    "persistence": "Preserve existing memory, account and world state files.",
+    "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
+    "modelExample": "gemini-3.1-flash-lite",
+    "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
+    "deployment": "Update the client and shared server files together. No remote service was changed."
   },
-  "clientSha256": "1f80004a71ab737b96bf58821cc8cbcb26b037f8067d7a1cd09206cba05831ae",
-  "serverSha256": "b361d76b3968e9fbbfbaa5bfc4b8861ffb33b8da5050fdba55c0f50895193641",
+  "limitations": [
+    "LLM behavior and live provider quality were tested with a local mock, not a paid live model comparison.",
+    "Suncat simulates the selected client\u2019s loaded world. Unobserved worlds do not continue as a hidden full game client.",
+    "Moderation queues evidence for administrator review; this pass does not grant the character automatic permanent bans.",
+    "GM scenario creation remains request-driven and opt-in.",
+    "Local relay timing is not an estimate of mobile or internet latency. Galaxy S9 playback and feel still need device testing."
+  ],
+  "clientSha256": "b620eb9cc677bd6918c3326f734c154bb7b54ea7a4953f5e05741798152116ba",
+  "serverSha256": "46b07f31276d93104d3f5950654bd476d93de70dec4e7c886b1a644479aa7092",
+  "preservedDragonflightSectionSha256": "7c14c9fdd61761dc8ad94a2378aa0a9e2549ef538f8b659b1a7f639c6d5bcde6",
   "validation": {
-    "status": "passed",
-    "focusedServerTests": {
-      "passed": 36,
-      "failed": 0,
-      "scope": "NPC conversations, socket route, Suncat repeat repair, journal scheduling/prose/revisions"
-    },
-    "npcKnowledgeEquivalenceCases": 2304,
-    "productionStartup": "Passed with production dependencies, no client-modules folder, unrelated working directory, and no API credentials",
-    "dependencyLock": "npm ci --omit=dev succeeded; production versions and integrity values unchanged from v69",
-    "browser": {
-      "viewport": "390x844",
-      "httpStartup": "passed",
-      "localFileStartup": "passed",
-      "dialogueAndJournalChecks": 5,
-      "pageErrors": 0,
-      "missingHelperAssetRequests": 0
-    },
-    "credentialScan": {
-      "credentialPatternMatches": 0,
-      "files": 5,
-      "embeddedCompressedTextPayloads": 1,
-      "runtimeDataIncluded": false
-    },
-    "limitations": [
-      "AI responses were tested through controlled model adapters; no live Gemini requests or hosting/account changes were made."
-    ]
+    "serverSyntax": "passed",
+    "inlineJavaScriptSyntax": 13,
+    "serverRegressionTests": 35,
+    "localSocketAndRoleChecks": 29,
+    "browserFeatureChecks": 30,
+    "priorRepairChecks": 42,
+    "priorCampaignAndShopChecks": 518,
+    "mobileConversationLayout": "390x844 inspected; no page errors",
+    "credentials": "No known embedded credential patterns",
+    "liveModelCalls": 0,
+    "remoteDeployments": 0
   }
 }
