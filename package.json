@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.22",
+  "version": "1.10.29",
   "private": true,
-  "description": "BattleMage Runestones v78: embodied Suncat, quest tracking and faster Cherry dance; preserves Dragonflight 11.67 transport",
+  "description": "BattleMage v86: Suncat chat reply routing and live history repair",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"

@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": "78",
-  "serverVersion": "1.10.22",
+  "version": "86",
+  "serverVersion": "1.10.29",
   "date": "2026-11-08",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage v77; merged on latest shared Dragonflight 11.67 server 1.10.21",
+  "supersedes": "BattleMage Runestones v85 / server 1.10.28",
   "deployed": false,
   "files": [
     "index.html",
@@ -16,6 +16,95 @@
     "release.json"
   ],
   "changes": [
+    "Correlated Suncat replies with their original world-chat or conversation-screen question; unrelated or late replies cannot complete another question",
+    "Chat History now updates while open and preserves the position when reading older messages",
+    "Added queued, no-reply, connection-loss and failed-request feedback without fabricating dialogue or automatically repeating actions",
+    "Explicitly addressing Suncat works with ambient narration disabled; direct greetings and topic changes no longer imply talking to somebody else",
+    "Preserved Night Court v85 and previous campaign content, Cherry behaviour, and Dragonflight 11.67 networking"
+  ],
+  "configuration": {
+    "install": "npm ci --omit=dev",
+    "startup": "npm start",
+    "secrets": "Use hosting environment variables only; no credential values are included.",
+    "persistence": "Preserve existing memory, account and world state files.",
+    "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
+    "modelExample": "gemini-3.1-flash-lite",
+    "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
+    "deployment": "Use both the v86 client and matching server 1.10.29 for correlated chat replies and request status. Files only; no remote deployment.",
+    "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority."
+  },
+  "limitations": [
+    "LLM behavior and live provider quality were tested with a local mock, not a paid live model comparison.",
+    "Suncat simulates the selected client’s loaded world. Unobserved worlds do not continue as a hidden full game client.",
+    "Moderation queues evidence for administrator review; this pass does not grant the character automatic permanent bans.",
+    "GM scenario creation remains request-driven and opt-in.",
+    "Local relay timing is not an estimate of mobile or internet latency. Galaxy S9 playback and feel still need device testing.",
+    "Relic custody prevents normal duplicate rewards and stale local-save duplication within a personal world; independent offline copies on separate devices are not globally reconciled.",
+    "New relic hit effects target local creatures; PvP hit authority and shared-server relic trading remain unchanged. The field accord resolves this encounter, not all Ireland or a player coronation.",
+    "The new area is one 100×100 Eastern Wilderness chart. It does not open India or China. Dancer friendship is a small authored conversation sequence, separate from Cherry’s upcoming rescue arc. Islands/fisherman are skipped; minigame leagues await discussion.",
+    "Night Court pass 1 opens the settlement and academy previews only. Cherry stays in Tintagel until the complete rescue pass. The private castle interior, Vampire class and its three playable skills arrive in later passes. Gold remains unobtainable; shops neither sell nor buy real inventory."
+  ],
+  "clientSha256": "0f57fd35a29a97b7e5d82f7e103a823ccd0580650b65ed09854cbc5533f65bfa",
+  "serverSha256": "d55e61a771e0d458e7b4b79673b30e17a289e49214ea07c271321ef4ee12d00d",
+  "preservedDragonflightSectionSha256": "7c14c9fdd61761dc8ad94a2378aa0a9e2549ef538f8b659b1a7f639c6d5bcde6",
+  "validation": {
+    "status": "passed locally",
+    "chatBrowserChecks": 34,
+    "chatSocketChecks": 34,
+    "cherryAndSuncatRegressionChecks": 40,
+    "serverTests": 58,
+    "parsedInlineScripts": 13,
+    "chatRouting": "Actual chatbox Enter and socket receive handlers tested; original IDs/channels preserved through queued public and private responses; stale and unrelated answers cannot claim newer questions",
+    "history": "New messages appear while Chat History is open; older pages remain anchored including at the 2000-record limit",
+    "failureHandling": "Silence, provider failure, actual rate limits, queue overflow, connection loss and offline sends tested without automatic retries or fabricated speech",
+    "compatibility": "Legacy string-only clients still receive normal world chat; matching v86 client/server required for correlated private-screen replies",
+    "nightCourt": "V85 Night Court module byte-identical",
+    "dragonflight1167": "Protected service section byte-identical",
+    "secrets": "No credential patterns detected; keys remain environment-only",
+    "notTested": [
+      "Actual phone performance",
+      "Paid live-model responses",
+      "Deployed server or internet connection"
+    ]
+  },
+  "previousPassChanges": [
+    "Opened the 100×100 Night Court vampire settlement through Dacia, with luxury shops, academy, public recital hall and private castle exterior",
+    "Added gold-only luxury displays, silver refusal and refusal to buy player goods; no gold source or exchange",
+    "Added Vampire-only academy previews for Bat transformation, Bat swarm and Blood drain; no transformation or playable new skills yet",
+    "Added Draw weapon for all eleven vampire residents, saved settlement hostility, bat escapes without loot or XP, and safe-passage return",
+    "Added matching NPC knowledge, map geometry and saved court context; preserved Cherry’s existing tavern behaviour and Dragonflight 11.67 networking",
+    "Extended the two eastern lookout trails into one connected 100×100 wilderness region with snowy uplands, dry grassland and a trail shelter",
+    "Added Beyond the Last Waystone: a tracked survey with a repairable bridge, rescued surveyor, restored spring, three marked quest foes and a one-time reward",
+    "Added optional Dancer friendship conversations based on the player’s actual eastern trail discoveries, preserving guild/class choices",
+    "Added matching client/server local knowledge and saved survey/friendship context; corrected Dancer chat resolution at the completed Tintagel guild hall; retained Dragonflight 11.67 networking",
+    "Added three re-enterable northern trials and the Stone of Fál, Spear of Light and Sword of Nuada",
+    "Added personal-world relic custody, safekeeping, ordinary shop sale/purchase and basic-weapon selection",
+    "Added the wider Mag Tuired council with Fir Bolg, Tuatha and shared-settlement routes, preparations, three encounter waves and persistent outcomes",
+    "Fixed NPC turning after knockback: angular interpolation recovers from an exactly opposite heading and remains bounded at high Agility",
+    "Preserved earlier chapters, cauldron custody, repair passes and Dragonflight 11.67 networking",
+    "Added Briotán’s Alba reunion, repaired pier and rescued sailor, channel-chart and beacon work, and a welcome meal",
+    "Added three voluntary hospitality pledges with distinct visible settlement additions",
+    "Added an explicit seven-year stay and the households’ western voyage, preserving earlier rescue and captain outcomes",
+    "Added an inhabited Fir Bolg settlement in Ériu, three household accounts and three council positions with different physical guest access",
+    "Saved temporary terms, once-only council reward, quest markers, safe recovery and current client/server speaker context",
+    "Preserved cauldron custody, all earlier quests and repairs, and Dragonflight 11.67 networking exactly",
+    "Added Iobáth’s parallel northern learning chapter, practical Athenian exercises and an on-demand school passage to Murias",
+    "Added living teachers in all four northern cities and a playable common-hearth trial with wolves, supplies, structural repair, real alchemy and individual guest needs",
+    "Added the unique Cauldron of Plenty with personal-world custody, inventory recovery, Semias safekeeping and ordinary merchant Buy stock after sale",
+    "Cauldron improves potion restoration and beneficial durations by 25%; current alchemy progresses 25% faster with half the scorch and delicate-ingredient heat damage",
+    "Added saved quest objectives, chapter-aware dialogue, correct departed speaker presence and safe quest death recovery",
+    "Preserved v78–v80 Suncat, Cherry, town boundary and projectile fixes; preserved Dragonflight 11.67 networking exactly",
+    "Suncat uses the standard Talk/Use/Take/Break interaction control. His normal JRPG greeting is Yes? with Draw weapon, Talk and Leave; the separate Talk to Suncat button is removed.",
+    "Talk opens the live conversation and Back restores the choices. Draw weapon enables normal combat movement and allied targeting without sending an attack itself; an actual ceasefire clears that state.",
+    "Cherry retains her defender behavior after performing, with STR raised to 32d4. Her landed basic attack can finish an ordinary hostile fox when it breaks every ward. The performer-only nonlethal clash flag no longer prevents that result. Pets, bosses and quest foxes remain excluded.",
+    "Idle ordinary enemies cannot cross into Tintagel’s coastal town, river settlement or southeastern village. Active pursuits may cross those settlement boundaries.",
+    "Ordinary enemies avoid the area around Cherry’s tavern even during pursuit, do not select sheltered humans as targets, and retreat if already inside. Authored encounters, companions and other maps retain their existing movement rules.",
+    "Preserved v79 projectile cancellation, finite lifetimes, bounded attack list, Suncat server sanctuary, Cherry’s smooth 2x dance, previous quests and shop changes. Shared server and Dragonflight 11.67 networking are byte-identical to v79.",
+    "Tavern sanctuary cancels attacks using the real active flag, removes stalled visuals from the projectile list and reports Suncat cancellation once.",
+    "Ordinary projectiles expire after 30 seconds. Arrivals also sweep expired shots while simulation is paused; no more than 512 attacks are retained. Lingering gravity zones retain their authored duration.",
+    "All tavern occupants, including Cherry after her performance, avoid combat targeting. Hostile wildlife leaves alive along a bounded, body-sized terrain route; normal combat resumes outside.",
+    "Server-side Suncat respects the same sanctuary before spending combat resources, clears pending attacks on entry and rejects protected hostility without deciding mercy or changing character relationships.",
+    "Preserved Cherry’s exact 2x choreography, v78 class quests, direct-damage music, observer handoffs, role separation, previous campaign and shop updates, and Dragonflight 11.67 networking.",
     "Cherry performs the same smooth choreography at 2x speed: 36-second loop, with pose frames accelerated to match.",
     "Class recommendations are trackable journal quests with current objective markers. Only spawned class-trial enemies gain boss markers.",
     "One persistent network Suncat body uses one elected active client observer; handoffs fence stale commands and preserve world provenance. Other nearby clients render that body.",
@@ -29,37 +118,37 @@
     "Default Gemini 2.5 Flash-Lite remains configurable; usage includes thinking tokens and per-model totals. Background model concurrency leaves capacity for direct requests.",
     "Preserved Dragonflight 11.67 networking and all earlier campaign and shop changes."
   ],
-  "configuration": {
-    "install": "npm ci --omit=dev",
-    "startup": "npm start",
-    "secrets": "Use hosting environment variables only; no credential values are included.",
-    "persistence": "Preserve existing memory, account and world state files.",
-    "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
-    "modelExample": "gemini-3.1-flash-lite",
-    "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Update the client and shared server files together. No remote service was changed."
+  "campaign": {
+    "implemented": "Living Hallows passes 1–8, Eastern Wilderness survey, early Dancer friendship, and Cherry/vampire pass 1: Night Court",
+    "next": "Pass 2: Cherry’s Basque departure, search, enthralled performance, castle rescue and family recovery. Pass 3: rumours, nighttime bite and playable Vampire class/trainer. Islands/fisherman skipped; minigame leagues await discussion.",
+    "chronology": "Same-founder game adaptation; Nuada is a separate Tuatha leader, not Iobáth renamed."
   },
-  "limitations": [
-    "LLM behavior and live provider quality were tested with a local mock, not a paid live model comparison.",
-    "Suncat simulates the selected client\u2019s loaded world. Unobserved worlds do not continue as a hidden full game client.",
-    "Moderation queues evidence for administrator review; this pass does not grant the character automatic permanent bans.",
-    "GM scenario creation remains request-driven and opt-in.",
-    "Local relay timing is not an estimate of mobile or internet latency. Galaxy S9 playback and feel still need device testing."
+  "loreSources": [
+    {
+      "url": "https://celt.ucc.ie/published/T100054/text020.html",
+      "use": "Broad northern-school, seven-year Scottish stay and Irish-return sequence; reunion cast, voluntary hospitality, retained return boats and council outcomes are game adaptations."
+    },
+    {
+      "url": "https://celt.ucc.ie/published/T300011.html",
+      "use": "Falias–stone, Gorias–spear, Findias–Sword of Nuada, Murias–cauldron. Quest tasks and three field outcomes are game adaptations."
+    }
   ],
-  "clientSha256": "b620eb9cc677bd6918c3326f734c154bb7b54ea7a4953f5e05741798152116ba",
-  "serverSha256": "46b07f31276d93104d3f5950654bd476d93de70dec4e7c886b1a644479aa7092",
-  "preservedDragonflightSectionSha256": "7c14c9fdd61761dc8ad94a2378aa0a9e2549ef538f8b659b1a7f639c6d5bcde6",
-  "validation": {
-    "serverSyntax": "passed",
-    "inlineJavaScriptSyntax": 13,
-    "serverRegressionTests": 35,
-    "localSocketAndRoleChecks": 29,
-    "browserFeatureChecks": 30,
-    "priorRepairChecks": 42,
-    "priorCampaignAndShopChecks": 518,
-    "mobileConversationLayout": "390x844 inspected; no page errors",
-    "credentials": "No known embedded credential patterns",
-    "liveModelCalls": 0,
-    "remoteDeployments": 0
+  "relicEffects": {
+    "stone": {
+      "naturalWardRegenMultiplier": 1.25,
+      "condition": "carried, one nonstacking benefit; shatter delay remains"
+    },
+    "spear": {
+      "basicTravelRange": 2.6,
+      "burnChance": 0.25,
+      "burnBaseDurationSeconds": 3,
+      "condition": "damaging basic creature strike; existing debuff metabolism applies; refreshes without stacking"
+    },
+    "sword": {
+      "basicAttackRateMultiplier": 1.25,
+      "basicTravelRange": 1.8,
+      "resistedHitFractionOfMaxWard": 0.025,
+      "condition": "connected resisted basic creature strike only; true dodge and protected-speaker rules remain"
+    }
   }
 }
