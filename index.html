@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-09-bm-v90-chasm-occlusion"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v90</title>
+      <meta name="suncat-build" content="2026-11-09-bm-v91-suncat-continuity"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v91</title>
       <style>
         html,body {
           width:100%;
@@ -53284,6 +53284,7 @@ const BMCombatAttribution={
  describe(a){return a?.attacker?`${a.attacker.name} struck the final blow${a.ability?' with '+a.ability:''}.`:'The final attacker was not identified in this observation.';}
 };
 
+        setInterval(()=>{if(typeof Dungeon==='undefined'||!Dungeon?.memory||typeof socket==='undefined'||!socket.connected||!window.remotePlayers?.NPC_SUNCAT||Date.now()-SUNCAT_FIELD.lastPresence<1500)return;SUNCAT_FIELD.observe(Dungeon);},1000);
         const SUNCAT_FIELD = {
             lease:null,lastPresence:0,sequence:0,results:new Map(),cancelled:new Map(),
             fairy(){return window.remotePlayers?.NPC_SUNCAT;},
@@ -53303,11 +53304,11 @@ const BMCombatAttribution={
                 this.lastPresence=Date.now();const s=this.fairy();if(!s)return;
                 const active=['explore','npc_chat'].includes(startGame)&&!world.isDead&&!world.isDying&&!document.hidden;
                 const a=this.lease?.actor?.stat?.[3]||[1,12,0],range=Math.min(30,10*(1+(a[0]*a[1]+a[2]-4)*.05));
-                const entities=active&&this.lease?.mapID===world.mapID&&Date.now()-this.lease.at<3000?world.npcs.filter(n=>!n.isDead&&!n.isDying&&Math.hypot(n.x-s.x,n.y-s.y)<=range&&this.sight(world,s,n)).sort((a,b)=>Math.hypot(a.x-s.x,a.y-s.y)-Math.hypot(b.x-s.x,b.y-s.y)).slice(0,60).map(n=>{
+                const entities=active&&s.mapID===world.mapID&&this.lease?.mapID===world.mapID&&Date.now()-this.lease.at<3000?world.npcs.filter(n=>!n.isDead&&!n.isDying&&Math.hypot(n.x-s.x,n.y-s.y)<=range&&this.sight(world,s,n)).sort((a,b)=>Math.hypot(a.x-s.x,a.y-s.y)-Math.hypot(b.x-s.x,b.y-s.y)).slice(0,60).map(n=>{
                     const v=this.snapshot(n);if(n.role==='dropped_card'||n.type===-27){v.kind='loot';v.cardId=n.deck?.[0]?.index??n.deck?.[0];}return v;
                 }):[];
-                if(active&&Math.hypot(world.x-s.x,world.y-s.y)<=range&&this.sight(world,s,world))entities.push(this.snapshot(world,'player'));
-                socket.emit('suncat_presence',{version:1,mapID:world.mapID,worldId:globalThis.BMSuncat78?.worldId(world),progress:BMNPCChat.progress(world),active,entities,self:active?this.snapshot(world,'player'):null});
+                if(active&&s.mapID===world.mapID&&Math.hypot(world.x-s.x,world.y-s.y)<=range&&this.sight(world,s,world))entities.push(this.snapshot(world,'player'));
+                socket.emit('suncat_presence',{version:1,mapID:world.mapID,worldId:globalThis.BMSuncat78?.worldId(world),progress:BMNPCChat.progress(world),active:!world.isDead&&!world.isDying&&!document.hidden,observing:active,entities,self:active?this.snapshot(world,'player'):null});
             },
             hit(attacker,spellId=null,projectileId=null){
                 const s=this.fairy();if(!s||s.mapID!==Dungeon.mapID||s.isDead||typeof socket==='undefined'||!socket.connected)return;
@@ -53708,7 +53709,7 @@ const SUNCAT_LIFE_CLIENT = (() => {
                     if(typeof ack!=='function'||typeof Dungeon==='undefined'||Dungeon.mapID!==data?.mapID)return;
                     if(data.observerEpoch!==undefined&&data.observerEpoch!==SUNCAT_FIELD.lease?.epoch)return ack({ok:false,error:'Stale world observation.'});
                     const alive=Dungeon.npcs.filter(n=>!n.isDead&&!n.isDying&&Number.isFinite(n.x)&&Number.isFinite(n.y)&&(data.observerEpoch===undefined||Math.hypot(n.x-data.x,n.y-data.y)<=30&&SUNCAT_FIELD.sight(Dungeon,data,n)));
-                    ack({mapID:Dungeon.mapID,maze:Dungeon.maze,complete:data.observerEpoch===undefined&&alive.length<=128,
+                    ack({mapID:Dungeon.mapID,navigationVersion:91,maze:Dungeon.maze.map((row,y)=>row.map((tile,x)=>BMLayers.blocked(Dungeon,x+.5,y+.5,0)?1:tile)),complete:data.observerEpoch===undefined&&alive.length<=128,
                         npcs:alive.sort((a,b)=>Math.hypot(a.x-data.x,a.y-data.y)-Math.hypot(b.x-data.x,b.y-data.y))
                             .slice(0,128).map(n=>({...this.publicNPC(n,Dungeon),x:n.x,y:n.y,summonTag:n.summonTag}))});
                 });
