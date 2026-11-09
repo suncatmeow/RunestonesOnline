@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": "86",
-  "serverVersion": "1.10.29",
-  "date": "2026-11-08",
+  "version": "89",
+  "serverVersion": "1.10.32",
+  "date": "2026-11-09",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v85 / server 1.10.28",
+  "supersedes": "BattleMage Runestones v88 / server 1.10.31",
   "deployed": false,
   "files": [
     "index.html",
@@ -16,11 +16,11 @@
     "release.json"
   ],
   "changes": [
-    "Correlated Suncat replies with their original world-chat or conversation-screen question; unrelated or late replies cannot complete another question",
-    "Chat History now updates while open and preserves the position when reading older messages",
-    "Added queued, no-reply, connection-loss and failed-request feedback without fabricating dialogue or automatically repeating actions",
-    "Explicitly addressing Suncat works with ambient narration disabled; direct greetings and topic changes no longer imply talking to somebody else",
-    "Preserved Night Court v85 and previous campaign content, Cherry behaviour, and Dragonflight 11.67 networking"
+    "Gemini participates through Suncat, Edmundo’s in-game counterpart; no forced personality rewrite, prescribed prayer or automatic seclusion",
+    "White, Yellow and Black Schools plus Left-Hand Path retain their names as provisional interpretations of actions, with evidence and alternatives",
+    "Dialogue and action memory use actual records; journals allow flowing literary interiority without becoming factual memory; original archives retained",
+    "Owned cards, equipment, consumables and materials can be gifted with persistent reservation and recipient receipts; no unrestricted minting",
+    "Optional cultivation reviews real practice, limits, application and transfer; first unlock imbues a real crafted potion or meal using an owned identified ingredient"
   ],
   "configuration": {
     "install": "npm ci --omit=dev",
@@ -30,44 +30,50 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Use both the v86 client and matching server 1.10.29 for correlated chat replies and request status. Files only; no remote deployment.",
+    "deployment": "Use both v89 client and server 1.10.32. Files only; no remote deployment. Existing environment keys remain on Render.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority."
   },
   "limitations": [
-    "LLM behavior and live provider quality were tested with a local mock, not a paid live model comparison.",
-    "Suncat simulates the selected client’s loaded world. Unobserved worlds do not continue as a hidden full game client.",
-    "Moderation queues evidence for administrator review; this pass does not grant the character automatic permanent bans.",
-    "GM scenario creation remains request-driven and opt-in.",
-    "Local relay timing is not an estimate of mobile or internet latency. Galaxy S9 playback and feel still need device testing.",
-    "Relic custody prevents normal duplicate rewards and stale local-save duplication within a personal world; independent offline copies on separate devices are not globally reconciled.",
-    "New relic hit effects target local creatures; PvP hit authority and shared-server relic trading remain unchanged. The field accord resolves this encounter, not all Ireland or a player coronation.",
-    "The new area is one 100×100 Eastern Wilderness chart. It does not open India or China. Dancer friendship is a small authored conversation sequence, separate from Cherry’s upcoming rescue arc. Islands/fisherman are skipped; minigame leagues await discussion.",
-    "Night Court pass 1 opens the settlement and academy previews only. Cherry stays in Tintagel until the complete rescue pass. The private castle interior, Vampire class and its three playable skills arrive in later passes. Gold remains unobtainable; shops neither sell nor buy real inventory."
+    "Literary quality and emergent choices still need a live playtest with the configured model. Local tests use provider stubs.",
+    "New terrain mechanics, custom realms, arbitrary new materials and level-granting potions remain future work.",
+    "Unconfirmed gift reservations require the original recipient’s saved receipt; no blind replay or refund.",
+    "Cultivation review is an in-game evidential standard, not proof of spiritual attainment."
   ],
-  "clientSha256": "0f57fd35a29a97b7e5d82f7e103a823ccd0580650b65ed09854cbc5533f65bfa",
-  "serverSha256": "d55e61a771e0d458e7b4b79673b30e17a289e49214ea07c271321ef4ee12d00d",
+  "clientSha256": "25c63fe557324c107cc8a367c0730dd31025886fe62571b877d5e5b10f317c20",
+  "serverSha256": "a7239c8638145525bfdb2de5ac21dd2cd06d06a3ce704c550f26635d65fd8907",
   "preservedDragonflightSectionSha256": "7c14c9fdd61761dc8ad94a2378aa0a9e2549ef538f8b659b1a7f639c6d5bcde6",
   "validation": {
-    "status": "passed locally",
+    "status": "passed_local_checks",
+    "newServerAndTransferChecks": 44,
+    "newBrowserGiftChecks": 12,
+    "journalChecks": 16,
+    "interactionAndTavernBrowserChecks": 52,
     "chatBrowserChecks": 34,
-    "chatSocketChecks": 34,
-    "cherryAndSuncatRegressionChecks": 40,
-    "serverTests": 58,
-    "parsedInlineScripts": 13,
-    "chatRouting": "Actual chatbox Enter and socket receive handlers tested; original IDs/channels preserved through queued public and private responses; stale and unrelated answers cannot claim newer questions",
-    "history": "New messages appear while Chat History is open; older pages remain anchored including at the 2000-record limit",
-    "failureHandling": "Silence, provider failure, actual rate limits, queue overflow, connection loss and offline sends tested without automatic retries or fabricated speech",
-    "compatibility": "Legacy string-only clients still receive normal world chat; matching v86 client/server required for correlated private-screen replies",
-    "nightCourt": "V85 Night Court module byte-identical",
-    "dragonflight1167": "Protected service section byte-identical",
-    "secrets": "No credential patterns detected; keys remain environment-only",
-    "notTested": [
-      "Actual phone performance",
-      "Paid live-model responses",
-      "Deployed server or internet connection"
-    ]
+    "cherryRegressionChecks": 7,
+    "socketDialogueAndArrivalChecks": 53,
+    "observerCombatAndGmChecks": 36,
+    "parserAndLandingChecks": 24,
+    "inlineScriptsParsed": 13,
+    "dependencyChanges": false,
+    "embeddedCredentialPatternsDetected": false,
+    "dragonflight1167": "byte-identical to protected baseline",
+    "modelEvaluation": "Provider responses and cultivation verdicts stubbed for repeatable local tests. Live dialogue/prose quality and S9 performance still require a playtest."
   },
   "previousPassChanges": [
+    "Friendly Suncat contact and proximity never open dialogue; normal Talk menu and hostile combat retained",
+    "Normal interaction control gains a high-contrast gold glow within its existing 44px footprint, with reduced-motion support",
+    "Missing or invalid speech receives one bounded speech-only repair; explicit silence and technical errors have separate outcomes; completed tools are not replayed",
+    "Observer handoffs place Suncat on nearby reachable floor away from players and residents; unknown geometry is observed before arrival",
+    "Complete Cherry rescue chapter: optional family departure, overdue investigation, Night Court recital, patron abduction, two castle floors, rescue, family recovery and tavern return",
+    "Flying patron casts dodgeable marked area attacks while the controlled dance briefly turns owned summons; interruptions and every exit restore allegiance",
+    "Protected carried-Cherry quest item cannot be sold or consumed and clears automatically when she wakes or reaches home",
+    "Homeward Measure lesson rewards trained Dancers after Cherry returns; existing songs and class guidance preserved",
+    "Matched personal-world quest context and authored maps on client/server; v86 chat routing and Dragonflight 11.67 networking retained",
+    "Correlated Suncat replies with their original world-chat or conversation-screen question; unrelated or late replies cannot complete another question",
+    "Chat History now updates while open and preserves the position when reading older messages",
+    "Added queued, no-reply, connection-loss and failed-request feedback without fabricating dialogue or automatically repeating actions",
+    "Explicitly addressing Suncat works with ambient narration disabled; direct greetings and topic changes no longer imply talking to somebody else",
+    "Preserved Night Court v85 and previous campaign content, Cherry behaviour, and Dragonflight 11.67 networking",
     "Opened the 100×100 Night Court vampire settlement through Dacia, with luxury shops, academy, public recital hall and private castle exterior",
     "Added gold-only luxury displays, silver refusal and refusal to buy player goods; no gold source or exchange",
     "Added Vampire-only academy previews for Bat transformation, Bat swarm and Blood drain; no transformation or playable new skills yet",
@@ -119,8 +125,8 @@
     "Preserved Dragonflight 11.67 networking and all earlier campaign and shop changes."
   ],
   "campaign": {
-    "implemented": "Living Hallows passes 1–8, Eastern Wilderness survey, early Dancer friendship, and Cherry/vampire pass 1: Night Court",
-    "next": "Pass 2: Cherry’s Basque departure, search, enthralled performance, castle rescue and family recovery. Pass 3: rumours, nighttime bite and playable Vampire class/trainer. Islands/fisherman skipped; minigame leagues await discussion.",
+    "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
+    "next": "Pass 3: Cherry after dark, rumours, nighttime bite and playable Vampire class/trainer. Gold unavailable. Islands/fisherman skipped; minigame leagues await discussion.",
     "chronology": "Same-founder game adaptation; Nuada is a separate Tuatha leader, not Iobáth renamed."
   },
   "loreSources": [
