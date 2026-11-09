@@ -42482,7 +42482,7 @@ drawMinimap(scene, ctx, viewX, viewY, viewW, viewH) {
                     const dist = Math.sqrt(diffX*diffX + diffY*diffY);
 
                     if (npc.isBoss || npc.isTarget) {
-                        let starColor = npc.isTarget ? 'yellow' : 'red';
+                        let starColor = npc.isBoss ? 'red' : 'yellow';
                         let drawDiffX = diffX;
                         let drawDiffY = diffY;
                         
@@ -106545,7 +106545,7 @@ const BMGuildFinale=(()=>{
    assaultCast(m,s);
   }
   if(!gather)m.npcs.push({index:PORTAL,x:57.5,y:17.5,groundZ:BMGuildBuilding.floor,sprite:1164,name:'Held invasion portal',role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn:n=>BMClassArt.resource(n,1164)});
-  m.npcs.push({index:EXIT,x:54.5,y:37.5,sprite:1164,name:'Road to Tintagel',role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn:n=>BMClassArt.resource(n,1164)});
+  m.npcs.push({index:EXIT,x:54.5,y:37.5,sprite:1179,name:'Road to Tintagel',role:'dialogue',alignment:'friendly',state:'stationary',isCinematic:true,companionEligible:false,onSpawn:n=>BMClassArt.resource(n,1179)});
   geometry(m,d);
   if(gather){m.slabs.push(...MAP_DB[0].slabs.filter(v=>v.coachStable&&!m.slabs.some(s=>s.coachStable&&s.x===v.x&&s.y===v.y&&s.bottom===v.bottom)));m.npcs.push(...MAP_DB[0].npcs.filter(n=>n.index===893076||n.index>=894024&&n.index<=894027));}
   globalThis.BMNorth68?.guildBorder(m);
@@ -112331,7 +112331,7 @@ const BMClassQuest78=(()=>{
  }
  function refresh(d=Dungeon,force=false){if(!d?.npcs)return;if(!force&&performance.now()<next)return;next=performance.now()+250;
   for(const n of d.npcs)if(n._classQuestTarget78){n.isTarget=n._classQuestBase78;delete n._classQuestTarget78;delete n._classQuestBase78;}
-  for(const n of new Set(objectives(d).map(o=>o.n))){n._classQuestBase78=!!n.isTarget;n._classQuestTarget78=true;n.isTarget=true;}
+  for(const n of new Set(objectives(d).map(o=>o.n))){n._classQuestBase78=!!n.isTarget&&!n._questTarget93;n._classQuestTarget78=true;n.isTarget=true;}
   for(const n of d.npcs)if(n._classTrialFoe)n.isBoss=true;
  }
  const entries=Q.entries;Q.entries=()=>entries().map(e=>{const id=e.id.slice('class-path:'.length),r=Q.record(id);return {...e,title:e.title.replace('CLASS PATH','CLASS QUEST'),classPath:id,tracked:!!r.tracked,entryType:r.finalized?'Completed':r.completed?'Recommendation earned':'Class quest'};});
@@ -113100,6 +113100,91 @@ const BMCherryRescue87=(()=>{
  const entries=BMAegeanRoad.entries;BMAegeanRoad.entries=function(d){const q=view(d),texts={1:'Cherry is visiting her family, then training. Her mother is in the eastern house (84,76) of the Basque settlement in southeastern Aquitania. You may stay there to wait for news.',2:'Cherry is overdue. Ask her mother in southeastern Aquitania’s Basque settlement (84,76).',3:'Follow the last letter to Dacia. Search the ribbon beside the Night Court road (71,53), north of its gate (74,64).',4:'Enter the Night Court through Dacia (74,64). The free performance hall is at (50,39); Cherry is on its stage (50,30).',5:'The patron took Cherry to his castle. Enter at (50,21). Defeat the gallery guards and ward bats; release both seals (6,11) and (29,11). The northern stair (18,4) leads to the high chamber.',6:'Defeat the flying patron. Move out of crimson circles. Cherry’s dance can briefly turn your owned summons; interrupt or incapacitate her to free them. Retreat restores their allegiance.',7:'The patron’s hold has broken. Speak to Cherry in the high chamber (15,9) and help her home.',8:'Cherry is resting in your care. Return to her mother in southeastern Aquitania (84,76). If she wakes before you arrive, she will go home herself.',9:'Cherry is recovering with her family (84,76), southeastern Aquitania. Stay through her recovery or continue your travels.',10:'Cherry is back at the Tintagel tavern, with her songs and lessons. Trained Dancers can ask her to teach Homeward Measure.'};return [...entries(d).map(e=>e.id==='night-court85'&&q.phase>=5?{...e,text:e.text.replace('The castle remains private.','The patron’s invitation opens the castle at (50,21).')}:e),...(q.phase?[{id:'cherry-rescue87',title:'The missing performer',text:texts[q.phase]||texts[10],completed:q.phase===10}]:[])];};
  BMLayers.invalidate(hall);BMLayers.invalidate(spire);BMAtlas.invalidate();return {HALL,SPIRE,FAMILY,CARRY,LESSON,BLAST,ids,foes,view,state,away,castle,sync,begin,overdue,abduct,enterCastle,seal,fight,free,carry,recover,home,teach,measure,charm,restore,tick,revive,targets,get encounter(){return encounter;},get charmed(){return charmed;}};
 })();globalThis.BMCherryRescue87=BMCherryRescue87;
+
+/* v93: existing world art, with explicit identities so ordinary vessels remain vessels. */
+const BMEntrance93=(()=>{
+ const gate=-35,cave=-34,sign=1179;
+ const rows=[
+  [45,970001,gate,'Enter'],[117,970002,gate,'Leave'],
+  [45,986001,-30,'Enter'],[151,986002,-30,'Leave'],[151,986006,gate,'Enter'],
+  [140,980003,gate,'Use'],[152,987010,gate,'Leave'],[152,987013,gate,'Use'],[153,987020,gate,'Leave'],
+  [33,901033,sign,'Travel'],[40,901040,sign,'Travel'],[41,895098,cave,'Travel'],
+  [118,981011,sign,'Enter'],[143,981025,sign,'Leave'],
+  [146,983001,sign,'Leave'],[147,983021,sign,'Leave'],[148,983041,sign,'Leave']
+ ];
+ const patches=new Map(rows.map(r=>[r[0]+':'+r[1],r]));
+ function apply(n,row){const sprite=row[2];n.type=sprite;n._classArt=sprite;n._entrance93=true;n._sectScale=sprite===sign?.85:1.8;n._sectHover=0;n.interactionVerb=row[3];n.hideMinimap=false;n.needsBillboardUpdate=true;}
+ for(const row of rows){const def=MAP_DB[row[0]]?.npcs?.find(n=>n.index===row[1]);if(!def)throw Error('Missing entrance '+row[0]+':'+row[1]);const spawn=def.onSpawn;def.sprite=row[2];def.interactionVerb=row[3];def.onSpawn=(n,d)=>{spawn?.(n,d);apply(n,row);};}
+ // Dynamic guild chapters create this route marker after boot. Its dialogue stays intact.
+ function guildSign(n){if(n.name!=='Road to Tintagel')return;n.type=sign;n._classArt=sign;n._sectScale=.85;n._sectHover=0;n.interactionVerb='Read';n.hideMinimap=false;n.needsBillboardUpdate=true;}
+ const build=Explore.prototype.buildNPC;Explore.prototype.buildNPC=function(...a){const n=build.apply(this,a);if(n)guildSign(n);return n;};
+ const trigger=NPC.prototype.triggerInteraction;NPC.prototype.triggerInteraction=function(d,...a){if(this._entrance93){BMSouthernRoads.interact(this,d);return;}return trigger.call(this,d,...a);};
+ const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...a){const r=load.apply(this,a);for(const n of this.npcs||[]){const row=patches.get(this.mapID+':'+n.index);if(row)apply(n,row);guildSign(n);}return r;};
+ return {rows,apply,guildSign};
+})();globalThis.BMEntrance93=BMEntrance93;
+
+/* v93: quest state selects the real objective actors; prose is never parsed for targets. */
+const BMQuestTargets93=(()=>{
+ let next=0;
+ const owned=new WeakMap();
+ function objectives(d=Dungeon){
+  const out=new Set(),m=d.memory||{},add=(map,...ids)=>{if(d.mapID===map)for(const id of ids.flat())if(id)out.add(id);};
+  const invitation=m.carpathianInvitation?.stage||0,estate=m.silverThornEstate||{};
+  if(invitation===1)add(45,969002);if(invitation===2)add(45,969001);
+  if(estate.stage===1){add(45,970001);add(117,970003);}
+  if(estate.stage===2){add(45,970001);add(117,!estate.visitor?970004:0,!estate.ledger?970005:0,estate.visitor&&estate.ledger?970003:0);}
+  if(estate.stage===3){add(45,970001);add(117,970004);}
+  if(estate.stage===4){add(117,970002);add(45,969001);}
+  const f=m.frontierRoad||{},a=m.aegeanRoad||{},l=m.levantCaravan||{};
+  if(f.stage===1){const foes=BMFrontierRoads.WOLVES.filter(id=>!f.defeated?.includes(id));add(45,foes.length?foes:898040);}if(f.stage===2)add(46,898020);
+  if(a.stage===1){add(46,899001);add(48,899012);}if(a.stage===2)add(48,899011);
+  if(l.stage===1){const foes=BMLevantRoad.JACKALS.filter(id=>!l.defeated?.includes(id));add(BMLevantRoad.MAP,foes.length?foes:900030);}if(l.stage===2)add(BMLevantRoad.MAP,900010);
+  const ath=m.athensJourney||{};
+  if(ath.stage===1)add(46,974001);if(ath.stage===2)add(46,!ath.library?974002:0,!ath.dial?974003:0,ath.library&&ath.dial?974001:0);if(ath.stage===3)add(46,8003);if(ath.stage===4)add(46,974004);
+  const refuge=m.rogueRefuge;if(refuge?.route&&!refuge.safe){const defeated=refuge.defeated||[];add(2,refuge.read||[888315,888316].every(id=>defeated.includes(id))?8002:refuge.route==='ledger'?888314:[888315,888316].filter(id=>!defeated.includes(id)));}
+  const q=m.livingHallows||{},siege=q.siege||{},v=q.voyage||{},t=q.thrace||{},e=q.escape||{};
+  const ti=BMTower71.ids;
+  if(q.stage&&!q.claimed&&!siege.phase){if(q.stage<2){add(2,ti.ferry);add(137,ti.iobath);}else{
+   if(BMTower71.mask(d)===7)add(137,ti.iobath);
+   if(!q.stores?.done)add(137,!q.stores?.accepted?ti.simeon:!q.stores?.recovered?ti.stores:ti.simeon);
+   if(!q.skiff?.done)add(137,!q.skiff?.accepted?ti.briotan:!q.metCaptain?ti.captain:!q.skiff?.rope?ti.rope:!q.skiff?.rescued?ti.mooring:ti.briotan);
+   if(!q.names?.done)add(137,!q.names?.accepted?ti.iobath:!q.names?.roll?ti.roll:!q.names?.checked?ti.hearth:ti.iobath);
+  }}
+  if(siege.phase>0&&siege.phase<5){if(siege.phase<4)for(const n of d.npcs||[])if(n._towerRaider&&!n.isDead)add(137,n.index);if(siege.phase>=2)add(137,!(siege.aid&1)?BMTowerSiege.ids.beam:0,!(siege.aid&2)?BMTowerSiege.ids.launch:0);if(siege.phase===4&&siege.aid===3)add(137,ti.iobath);}
+  const vi=BMHallowsVoyage.ids;
+  if(v.phase===1)add(137,!(v.prep&1)?ti.briotan:0,!(v.prep&2)?ti.hearth:0,v.prep===3?ti.captain:0);
+  if(v.phase===2)add(139,!(v.crossing&1)?vi.spar:0,!(v.crossing&2)?vi.line:0,v.crossing===3?vi.helm:0);
+  if(v.phase===3)add(138,v.route===1?vi.teacher:vi.dockworker,vi.patron,vi.terms);
+  if(v.phase===4)add(138,ti.simeon);
+  if(v.phase===5)add(138,ti.simeon,(v.safeguards&2)&&!(v.rescues&1)?vi.dockworker:0,(v.safeguards&1)&&!(v.rescues&2)?vi.tools:0);
+  const ri=BMThraceResistance.ids;
+  if(t.phase===1)add(140,!t.roll?ri.roll:!t.roster?ri.artisan:ri.beam);
+  if(t.phase===2){add(140,!(t.plans&1)?ri.plans:0,!(t.plans&2)||t.studied?ri.drain:0);if(t.plans===3&&!t.studied){if(t.approach===1)add(140,ri.artisan);else{add(140,ri.courier);add(138,vi.teacher);}}}
+  if(t.phase===3)add(140,!(t.contacts&1)?ri.artisan:0,!(t.contacts&2)?ri.earth:0,!(t.contacts&4)?ri.boat:0,t.contacts===7?ri.hearth:0);
+  if(t.phase===4)add(140,!t.captain?ri.captain:!t.intel?ri.courier:!t.signal?ri.signal:ri.simeon);
+  const ei=BMThracianEscape.ids;
+  if(e.phase===1)add(140,ri.signal);
+  if(e.phase>=2&&e.phase<=5)for(const row of BMThracianEscape.remaining(d))add(row[1],row[0]);
+  if(e.phase===2)add(140,!e.alarm?ei.alarm:0,!e.crane?ei.crane:0,ei.gate);
+  if(e.phase===3&&!BMThracianEscape.remaining(d,140).length)add(140,!e.rallied?ri.hearth:ei.convoy);
+  if(e.phase===4||e.phase===5)add(141,!(e.flags&1)?ei.chain:0,!(e.flags&2)?ei.repair:0,ei.helm,e.phase===5&&!(e.flags&8)?ei.passengers:0,e.phase===5&&!(e.flags&16)?ei.rope:0);
+  if(e.phase===6)add(142,!(e.projects&1)?ei.drain:0,!(e.projects&2)?ei.foundation:0,!(e.projects&4)?ei.berth:0,e.projects===7?ri.simeon:0,e.captainTerms!==3&&!e.restitution?ri.captain:0);
+  // Existing Cherry, northern, trial and class modules retain their objective logic.
+  const cherry=m.cherryRescue87||{};if(cherry.phase===4||cherry.phase===5)add(45,986001);
+  if(cherry.phase===5)add(151,986006);
+  if(cherry.phase===8){add(153,987020);add(152,987010);add(151,986002);}
+  return out;
+ }
+ function refresh(d=Dungeon,force=false){if(!d?.npcs)return;if(!force&&performance.now()<next)return;next=performance.now()+250;const wanted=objectives(d);
+  for(const n of d.npcs){if(owned.has(n)){n.isTarget=owned.get(n)||!!n._classQuestTarget78;owned.delete(n);delete n._questTarget93;}
+   if(wanted.has(n.index)&&!n.isDead&&!n.isDying&&n.visible!==false){owned.set(n,!!n.isTarget&&!n._classQuestTarget78);n.isTarget=true;n._questTarget93=true;n.hideMinimap=false;}
+  }
+ }
+ const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...a){const r=load.apply(this,a);refresh(this,true);return r;};
+ const shell=BMShell.sync;BMShell.sync=function(...a){const r=shell.apply(this,a);refresh();return r;};
+ const save=Explore.prototype.requestSave;Explore.prototype.requestSave=function(...a){refresh(this,true);return save.apply(this,a);};
+ return {objectives,refresh};
+})();globalThis.BMQuestTargets93=BMQuestTargets93;
 
 BMContent.installEmbedded();await bootGame();BMMovementCourtyard.previewStart();BMCreator.previewStart();}catch(error){window.BattleMageStartup?.report(error,"Saved-game startup");if(window.BM_CREATOR_PREVIEW)parent.postMessage({type:"bm-creator-error",message:String(error.message||error)},"*");}})();
 </script>

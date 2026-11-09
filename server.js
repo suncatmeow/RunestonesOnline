@@ -7255,6 +7255,17 @@ function suncatPublicVoice(response){
   try{const parts=response?.candidates?.[0]?.content?.parts;
     text=Array.isArray(parts)?parts.filter(p=>!p.thought&&typeof p.text==='string').map(p=>p.text).join(''):response?.text?.()||'';
   }catch{return '';}
+  text=String(text).trim();
+  const fenced=text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if(fenced)text=fenced[1].trim();
+  if(text.startsWith('{')){
+    try{const value=JSON.parse(text);
+      if(!value||Array.isArray(value)||!['speak','silent'].includes(value.choice)||typeof value.speech!=='string')return '';
+      if(value.choice==='silent')return value.speech.trim()===''?'[IGNORE]':'';
+      if(/\[\/?VOICE\]|\[IGNORE\]/i.test(value.speech))return '';
+      text='[VOICE]'+value.speech+'[/VOICE]';
+    }catch{return '';}
+  }
   const matches=[...String(text).matchAll(/\[VOICE\]([\s\S]*?)\[\/VOICE\]/gi)];
   if(matches.length!==1||(String(text).match(/\[\/?VOICE\]/gi)||[]).length!==2)return '';
   const voice=matches[0][1].trim();
@@ -7263,17 +7274,10 @@ function suncatPublicVoice(response){
   return voice.slice(0,6000);
 }
 // SUNCAT_PUBLIC_VOICE_END
-function suncatRepairedVoice91(response){
- const candidate=response?.candidates?.[0];
- if(response?.promptFeedback?.blockReason||candidate?.finishReason&&candidate.finishReason!=='STOP')return '';
- try{
-  const parts=candidate?.content?.parts,text=Array.isArray(parts)?parts.filter(p=>!p.thought&&typeof p.text==='string').map(p=>p.text).join(''):response.text();
-  const value=JSON.parse(text);
-  if(!value||Array.isArray(value)||typeof value.speech!=='string'||!['speak','silent'].includes(value.choice))return '';
-  if(value.choice==='silent')return value.speech.trim()===''?'[IGNORE]':'';
-  if(/\[\/?VOICE\]|\[IGNORE\]/i.test(value.speech))return '';
-  return suncatPublicVoice({text:()=>'[VOICE]'+value.speech+'[/VOICE]'});
- }catch{return '';}
+function suncatRepairedVoice91(response){return suncatPublicVoice(response);}
+function suncatSpeechDiagnostic93(response){
+ const c=response?.candidates?.[0],u=response?.usageMetadata||{};
+ return {finish:c?.finishReason||'unspecified',blocked:!!response?.promptFeedback?.blockReason,textParts:(c?.content?.parts||[]).filter(p=>!p.thought&&typeof p.text==='string').length,outputTokens:u.candidatesTokenCount||0,thoughtTokens:u.thoughtsTokenCount||0};
 }
 function suncatChatScene91(player){
  const s=players[SUNCAT_ID],source=SUNCAT_PASS78.source(),sameWorld=source?.observer&&players[source.observer]?.persistentId===player.persistentId;
@@ -7531,7 +7535,7 @@ const SUNCAT_CHECKPOINT=(()=>{
       stamp=d.issuedAt;local=true;players[SUNCAT_ID].aggroList.clear();SUNCAT_COMBAT.target=null;SUNCAT_COMBAT.entities.clear();SUNCAT_COMBAT.pending.clear();SUNCAT_COMBAT.effectClaims.clear();
       recordSuncatAdventure('private_continuity_recovered',{note:'Recovered an authenticated character checkpoint. Previous intentions may be reconsidered; old hostility and pending attacks were not restored.'});void saveSuncatMemory();SUNCAT_COMBAT.sync();}
     settled=true;return true;}
-  function begin(socket){if(!local&&until===Infinity)until=Date.now()+10000;if(!key)return;const nonce=crypto.randomBytes(18).toString('hex');sessions.set(socket,{nonce,used:false});socket.emit('suncat_checkpoint_request',{version:1,nonce,recoveryOpen:!local&&Date.now()<until});}
+  function begin(socket){if(!key){if(!local){until=0;settled=true;}return;}if(!local&&until===Infinity)until=Date.now()+10000;const nonce=crypto.randomBytes(18).toString('hex');sessions.set(socket,{nonce,used:false});socket.emit('suncat_checkpoint_request',{version:1,nonce,recoveryOpen:!local&&Date.now()<until});}
   function bind(socket){socket.on('suncat_checkpoint_offer',(packet,ack)=>{
     const session=sessions.get(socket);try{if(!players[socket.id]||!session||session.used||packet?.nonce!==session.nonce)throw Error('Checkpoint session is not active.');session.used=true;
       if(local||Date.now()>=until){ack?.({ok:true,status:'active_state_kept'});return;}
@@ -8864,7 +8868,7 @@ setInterval(()=>SUNCAT_CHECKPOINT.publish(),1000);
             cleanResponse = cleanResponse.replace(/\[SOUL\][\s\S]*?\[\/SOUL\]/ig, "");
             cleanResponse = cleanResponse.replace(/\[THOUGHT\][\s\S]*?\[\/THOUGHT\]/ig, "");
             cleanResponse = cleanResponse.replace(/\[INTERNAL THOUGHT\][\s\S]*?\[\/INTERNAL THOUGHT\]/ig, "");
-            cleanResponse = cleanResponse.replace(/^(I should|I will|I must)[\s\S]*?(?=\n|$)/i, ""); // Kills rogue first-person planning
+            // First-person intentions inside validated public speech are character dialogue.
             
             // A. Remove anything inside markdown code blocks
             cleanResponse = cleanResponse.replace(/```[\s\S]*?```/g, "");
@@ -8877,34 +8881,12 @@ setInterval(()=>SUNCAT_CHECKPOINT.publish(),1000);
             
             cleanResponse = cleanResponse.trim();
 
-            if (!cleanResponse || cleanResponse === "") {
-                cleanResponse = "*The world shifts around you...*";
-            }
+            if (!cleanResponse) return;
 
             // 1. Check if this is an omniscient DM narration (sender is empty)
             const isNarrator = (senderName === "");
 
-            // Helper function to send borders to the correct target!
-            const sendBorder = () => {
-                const borderPayload = {
-                    sender: "",
-                    text: "✧ ******************************************************** ✧",                
-                    color: "#555555"
-                };
-                recipient.emit('chat_message', borderPayload);
-            };
-
-            // 2. Print a top border
-            if (isNarrator) {
-                sendBorder();
-            }
-
             recipient.emit('chat_message',{sender:senderName,text:cleanResponse,color:chatColor,complete:true,...(suncatChatDelivery86({...options.chatDelivery86,version:1})||{})});
-
-            // 4. Optional: Print a bottom border
-            if (isNarrator) {
-                sendBorder();
-            }
         };
     function updateSuncatJournal(newEntry) {
         if (!newEntry) return;
@@ -9672,7 +9654,20 @@ function suncatPlace91(id){return id===999&&activeCustomMap?activeCustomMap.name
         }
         const suncat = players[SUNCAT_ID];
         const now = Date.now();
-        if(!SUNCAT_CHECKPOINT.finish()){if(triggerType==='chat'&&!suncatChatStatus86(socketId,data,'error','Suncat is recovering her bearings. Please give her a moment.'))io.to(socketId).emit('chat_message',{sender:'[SYSTEM]',text:'Suncat is recovering her bearings. Please give her a moment.'});return;}
+        if(!SUNCAT_CHECKPOINT.finish()){
+            if(triggerType!=='chat')return;
+            suncatChatStatus86(socketId,data,'queued','Restoring Suncat’s saved state. Your message is queued.');
+            const deadline=Date.now()+12000;
+            while(players[socketId]===player&&!SUNCAT_CHECKPOINT.finish()&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,100));
+            if(players[socketId]!==player)return;
+            if(!SUNCAT_CHECKPOINT.finish()){suncatChatStatus86(socketId,data,'error','Saved-state recovery has not finished. Please try again shortly.');return;}
+            suncatChatStatus86(socketId,data,'processing');
+        }
+        if(triggerType==='exploration'&&Number.isInteger(data.areaMapID93)){
+            const visits=player._areaNarration93??=new Map(),key=String(data.areaMapID93)+':'+(data.areaMapID93===999?activeCustomMap?.instanceId||'':'');
+            if(Date.now()-(visits.get(key)||0)<300000)return;
+            visits.set(key,Date.now());if(visits.size>64)visits.delete(visits.keys().next().value);
+        }
 
         //SUNCAT TOKEN LIMIT
             if (isBankrupt()) {
@@ -10010,7 +10005,7 @@ function suncatPlace91(id){return id===999&&activeCustomMap?activeCustomMap.name
             else {
                 // ADDED FALLBACK: Don't lose the data.action!
                 useBigBrain = false;
-                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: Briefly narrate the atmosphere around the player in exactly ONE sentence.`;
+                eventInstruction = `[PLAYER ACTION]: ${data.action}\nTASK: Describe one concrete feature or change from the supplied location in one short sentence. If nothing new is supported, use [VOICE][IGNORE][/VOICE]. Avoid interchangeable air, ancient-secret or scent descriptions; do not invent visible inhabitants.`;
             }
         }
         else if (triggerType === 'spectate') {
@@ -10116,6 +10111,10 @@ function suncatPlace91(id){return id===999&&activeCustomMap?activeCustomMap.name
         }
 
 
+        if(triggerType==='chat'&&!modelConfig.tools){
+            modelConfig.generationConfig={maxOutputTokens:2048,responseMimeType:'application/json',responseSchema:{type:SchemaType.OBJECT,properties:{choice:{type:SchemaType.STRING,enum:['speak','silent']},speech:{type:SchemaType.STRING}},required:['choice','speech']}};
+            modelConfig.systemInstruction=dynamicPersona+'\nReturn the required JSON: choice=speak with only your spoken words in speech, or choice=silent with empty speech. No VOICE tags or private reasoning. Confirmed receipts, not prose, establish completed actions.';
+        }
         const activeModel = genAI.getGenerativeModel(modelConfig);
         
         let activeSession;
@@ -10153,7 +10152,8 @@ function suncatPlace91(id){return id===999&&activeCustomMap?activeCustomMap.name
                 const fixed=await journalDeadline(repair.generateContent(JSON.stringify({latestPlayerMessage:data.text,recentConversation:suncatRepairHistory91(currentHistory),scene:suncatChatScene91(player),actionReceipt:actionReceipt||null,confirmedToolReceipts:turnReceipts91,previousPublicReply:finalSpeech||null})),20000);
                 if(fixed.response.usageMetadata)updateBudget(fixed.response.usageMetadata,socketId);
                 finalSpeech=suncatRepairedVoice91(fixed.response);
-                if(!finalSpeech||repeated(finalSpeech)){suncatChatStatus86(socketId,data,'error','The dialogue response could not be read. Please try again; completed actions were not repeated.');return;}
+                if(!finalSpeech){console.warn('[Suncat speech recovery]',JSON.stringify({initial:suncatSpeechDiagnostic93(result.response),repair:suncatSpeechDiagnostic93(fixed.response)}));suncatChatStatus86(socketId,data,'error','The dialogue response could not be read. Please try again; completed actions were not repeated.');return;}
+                // A valid repeated answer is still speech. Do not report a parse failure for it.
                 activeSession=activeModel.startChat({history:[...currentHistory,{role:'user',parts:[{text:prompt}]},{role:'model',parts:[{text:'[VOICE]'+finalSpeech+'[/VOICE]'}]}]});
             }
         }
@@ -13505,7 +13505,7 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
             ) return;
 
             void (0, host.processSuncatThought)(socket.id, "exploration", {
-                action: instruction.slice(0, 600)
+                action: instruction.slice(0, 600),areaMapID93:/^player entered map (\d+):/i.test(instruction)?Number(instruction.match(/^player entered map (\d+):/i)[1]):undefined
             });
         }
 }
