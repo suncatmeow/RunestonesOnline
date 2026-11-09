@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-09-bm-v91-suncat-continuity"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v91</title>
+      <meta name="suncat-build" content="2026-11-09-bm-v92-suncat-world"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v92</title>
       <style>
         html,body {
           width:100%;
@@ -52002,7 +52002,7 @@ const BMObstacles=(()=>{
             if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('heal'); // Play a nice sound when getting a quest!
             });
             BMJournalDesk.install(socket);
-            SUNCAT_CLIENT.install(socket);
+            SUNCAT_CLIENT.install(socket);BMSuncatWorld92.install(socket);
             socket.on('suncat_tile_changed',data=>{
                 if(typeof Dungeon==='undefined'||Dungeon.mapID!==data.mapID) return;
                 if(![data.x,data.y,data.tileId].every(Number.isInteger)||!Dungeon.maze[data.y]||data.x<0||data.x>=Dungeon.maze[data.y].length) return;
@@ -53308,7 +53308,7 @@ const BMCombatAttribution={
                     const v=this.snapshot(n);if(n.role==='dropped_card'||n.type===-27){v.kind='loot';v.cardId=n.deck?.[0]?.index??n.deck?.[0];}return v;
                 }):[];
                 if(active&&s.mapID===world.mapID&&Math.hypot(world.x-s.x,world.y-s.y)<=range&&this.sight(world,s,world))entities.push(this.snapshot(world,'player'));
-                socket.emit('suncat_presence',{version:1,mapID:world.mapID,worldId:globalThis.BMSuncat78?.worldId(world),progress:BMNPCChat.progress(world),active:!world.isDead&&!world.isDying&&!document.hidden,observing:active,entities,self:active?this.snapshot(world,'player'):null});
+                socket.emit('suncat_presence',{version:1,worldVersion:92,mapID:world.mapID,worldId:globalThis.BMSuncat78?.worldId(world),progress:BMNPCChat.progress(world),active:!world.isDead&&!world.isDying&&!document.hidden,observing:active,entities,self:active?this.snapshot(world,'player'):null});
             },
             hit(attacker,spellId=null,projectileId=null){
                 const s=this.fairy();if(!s||s.mapID!==Dungeon.mapID||s.isDead||typeof socket==='undefined'||!socket.connected)return;
@@ -53715,6 +53715,47 @@ const SUNCAT_LIFE_CLIENT = (() => {
                 });
             }
     };
+
+// SUNCAT_WORLD_CLIENT92_BEGIN — apply server consequences before resuming this map.
+const BMSuncatWorld92=(()=>{
+ let session=null,busy=false,last=0,sock=null,wrapped=false;const ledger=new Map();
+ const identity=()=>{const authority=SUNCAT_FIELD.authority;if(!sock?.connected||authority?.observer!==sock.id||!Dungeon?.memory)return null;return {worldId:authority.worldId,mapID:Dungeon.mapID,mapKey:String(Dungeon.mapID)+':'+(Dungeon.mapID===999?Dungeon.customMapInstance||'expired':'' )};};
+ const key=p=>p.worldId+'|'+p.mapKey;
+ function pending(){const p=identity();return !!p&&(!session||session.key!==key(p)||!session.ready)&&(!session||Date.now()-session.started<6000);}
+ function capture(p,leaving=false){const row=ledger.get(key(p)),ids=row?.trackedActors||[];return {...p,revision:row?.revision,leaving,
+  actors:ids.map(index=>{const n=Dungeon.npcs.find(n=>n.index===index);return n?{index,x:n.x,y:n.y,wardSeconds:n.currentWardTime,shatterSeconds:n.wardShatterCooldown||0,dead:!!n.isDead||!!n.isDying}: {index,unavailable:true};}),harvests:Dungeon.memory.herbHarvests||{},sales:Dungeon.memory.suncatShopSales||{}};}
+ function apply(p){if(!p?.ok||!identity()||key(p)!==key(identity()))return false;
+  const initial=!ledger.has(key(p))||!session?.ready||session.key!==key(p);
+  for(const[index,v]of Object.entries(initial?p.actors||{}:{})){const n=Dungeon.npcs.find(n=>n.index===+index);if(!n)continue;
+   if(v.dead||v.unavailable){n.isDead=true;n.visible=false;continue;}
+   if(Number.isFinite(v.x+v.y)&&!BMLayers.blocked(Dungeon,v.x,v.y,0)){n.x=v.x;n.y=v.y;n.isSliding=false;}
+   if(Number.isFinite(v.wardSeconds))n.currentWardTime=Math.max(0,Math.min((n.maxWards||0)*(n.timePerWard||3),v.wardSeconds));
+   if(Number.isFinite(v.shatterUntil))n.wardShatterCooldown=Math.max(0,(v.shatterUntil-Date.now())/1000);
+   if(Array.isArray(v.effects)){n.activeBuffs=(n.activeBuffs||[]).filter(b=>!b.suncatWorld92);for(const e of v.effects){const sp=SPELL_REGISTRY[e.id];if(!sp||e.expiresAt<=Date.now())continue;n.activeBuffs.push({...sp,id:e.id,amount:e.magnitude,duration:(e.expiresAt-Date.now())/1000*30,suncatWorld92:true});}}
+   n.cachedPrey=null;if(v.chasing)n.state='wandering';
+  }
+  Dungeon.npcs=Dungeon.npcs.filter(n=>!n.isDead||!p.actors?.[n.index]?.dead&&!p.actors?.[n.index]?.unavailable);
+  Dungeon.memory.herbHarvests??={};for(const[id,until]of Object.entries(p.harvests||{}))Dungeon.memory.herbHarvests[id]=Math.max(Number(Dungeon.memory.herbHarvests[id])||0,Number(until)||0);
+  Dungeon.memory.suncatShopSales??={};for(const[id,values]of Object.entries(p.sales||{}))Dungeon.memory.suncatShopSales[id]=[...new Set([...(Dungeon.memory.suncatShopSales[id]||[]),...values])];
+  const resources=p.resources?(p.resources||[]).map(r=>({x:r.x,y:r.y,groundZ:0,key:r.id,speciesIndex:r.speciesIndex,type:-201-r.speciesIndex,role:'herb',alignment:'plant',visible:true,isDead:false,cachedBillboard:BMHerbs.imageFor(r.speciesIndex),name:r.item.name})):ledger.get(key(p))?.plants||[];
+  ledger.set(key(p),{...p,plants:resources});while(ledger.size>8)ledger.delete(ledger.keys().next().value);
+  session={key:key(p),ready:true,started:Date.now()};Dungeon.requestSave();sock.emit('suncat_world_ack92',{worldId:p.worldId,mapID:p.mapID,revision:p.revision,token:p.token});return true;
+ }
+ function send(leaving=false){const p=identity();if(!p||busy&&!leaving||!leaving&&Date.now()-last<1800)return;last=Date.now();const k=key(p);if(session?.key!==k)session={key:k,ready:false,started:Date.now()};
+  const data=capture(p,leaving);if(leaving){sock.emit('suncat_world_state92',data,()=>{});return;}
+  busy=true;const timeout=setTimeout(()=>{busy=false;},4000);sock.emit('suncat_world_state92',data,result=>{clearTimeout(timeout);busy=false;if(identity()&&key(identity())===k){if(result?.ok)apply(result);else session={key:k,ready:true,started:Date.now()};}});
+ }
+ function install(socket){if(sock===socket)return;sock=socket;wrap();sock.on('suncat_observer_changed',()=>{session=null;last=0;setTimeout(()=>send(),0);});sock.on('disconnect',()=>{session=null;busy=false;});setInterval(()=>send(),1000);}
+ function wrap(){if(wrapped)return;wrapped=true;
+ const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...args){if(this===Dungeon){send(true);session=null;last=0;}const result=load.apply(this,args);if(this===Dungeon)setTimeout(()=>send(),0);return result;};
+ const update=Explore.prototype.updateNPCWorld;Explore.prototype.updateNPCWorld=function(...args){if(this===Dungeon&&pending())return;return update.apply(this,args);};
+ const hit=NPC.prototype.absorbHit;NPC.prototype.absorbHit=function(...args){if(pending())return true;return hit.apply(this,args);};
+ const herbs=BMHerbs.world;BMHerbs.world=function(){const p=identity(),row=p&&ledger.get(key(p));if(!row)return herbs();const h=Dungeon.memory.herbHarvests||{},now=Date.now();return row.plants.filter(v=>!h[v.key]||h[v.key]!==true&&Number(h[v.key])<=now);};
+ const gather=BMHerbs.gather;BMHerbs.gather=function(...args){return pending()?false:gather.apply(this,args);};
+ }
+ return {install,pending,send,apply,capture,ledger};
+})();
+// SUNCAT_WORLD_CLIENT92_END
 
 /* Shared terrain coordinates and companion continuity, October 2026. */
 const BMTerrainPhysics=(()=>{
