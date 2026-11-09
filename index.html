@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-09-bm-v89-tavern-town"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v89</title>
+      <meta name="suncat-build" content="2026-11-09-bm-v90-chasm-occlusion"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v90</title>
       <style>
         html,body {
           width:100%;
@@ -41898,18 +41898,19 @@ drawColumn(scene, stripX, hitCount, viewX, viewY, viewW, viewH, width, camX, cam
                                 fogFactor = Math.min(fogFactor, 0.85); 
                             }
                             const surfaceKind = host.TERRAIN_SURFACES[hit.wallID]?.kind;
-                            const surfaceZ=surfaceKind==='water'?0:scene.getTileElevation(hit.wallID)-(surfaceKind==='chasm'?2:0);
+                            const rimZ=surfaceKind==='water'?0:scene.getTileElevation(hit.wallID);
                             const chasmDepth=surfaceKind==='chasm'?2:0;
+                            const surfaceZ=rimZ-chasmDepth;
                                                         
-                            // 1. CALCULATE FRONT EDGE
-                            // Clamped perfectly to the floor level. NO MORE 15 PIXEL HACK.
-                            // This entirely removes the green spikes and ensures the water naturally tucks beneath the floor.
-                            let frontFloorY = Math.ceil(horizon+lineHeight*(draw_camZ-surfaceZ));
+                            // The near rim is the aperture through the ground. Projecting the
+                            // recessed bottom here paints the pit over solid foreground floor.
+                            // Both the bottom and the far cliff must stop at this rim.
+                            let frontFloorY = Math.ceil(horizon+lineHeight*(draw_camZ-rimZ));
                             
                             // 2. CALCULATE BACK EDGE (The far shore)
                             let exitLineHeight = wallScale / hit.exitDist;
                             let exitZShift = exitLineHeight * zOffset;
-                            let backFloorY = Math.floor(horizon+exitLineHeight*(draw_camZ-surfaceZ-chasmDepth));
+                            let backFloorY = Math.floor(horizon+exitLineHeight*(draw_camZ-rimZ));
                             let backWaterY = Math.floor(horizon+exitLineHeight*(draw_camZ-surfaceZ));
 
                             // 3. MAP BORDER DETECTION (The Infinite Horizon)

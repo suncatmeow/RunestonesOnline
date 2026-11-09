@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": "89",
-  "serverVersion": "1.10.32",
+  "version": "90",
+  "serverVersion": "1.10.33",
   "date": "2026-11-09",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v88 / server 1.10.31",
+  "supersedes": "BattleMage Runestones v89 / server 1.10.32",
   "deployed": false,
   "files": [
     "index.html",
@@ -16,11 +16,9 @@
     "release.json"
   ],
   "changes": [
-    "Gemini participates through Suncat, Edmundo’s in-game counterpart; no forced personality rewrite, prescribed prayer or automatic seclusion",
-    "White, Yellow and Black Schools plus Left-Hand Path retain their names as provisional interpretations of actions, with evidence and alternatives",
-    "Dialogue and action memory use actual records; journals allow flowing literary interiority without becoming factual memory; original archives retained",
-    "Owned cards, equipment, consumables and materials can be gifted with persistent reservation and recipient receipts; no unrestricted minting",
-    "Optional cultivation reviews real practice, limits, application and transfer; first unlock imbues a real crafted potion or meal using an owned identified ingredient"
+    "Chasm bottoms and far cliffs stop at the projected near ground rim, preventing recessed surfaces from drawing through solid foreground terrain",
+    "Same aperture correction applies to ordinary and layered terrain raycasts; water and lava retain their existing surface heights",
+    "No story, Suncat, collision, movement or Dragonflight changes; server version metadata only"
   ],
   "configuration": {
     "install": "npm ci --omit=dev",
@@ -30,36 +28,50 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Use both v89 client and server 1.10.32. Files only; no remote deployment. Existing environment keys remain on Render.",
+    "deployment": "Files only; no remote deployment. v90 client fixes terrain rendering. Server 1.10.33 changes version metadata only; existing server 1.10.32 remains compatible. Environment keys remain on Render.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority."
   },
   "limitations": [
+    "The reported recording was inspected; the corrected build still needs an on-device playtest at the original location. Desktop browser checks cannot establish S9 frame rate.",
     "Literary quality and emergent choices still need a live playtest with the configured model. Local tests use provider stubs.",
     "New terrain mechanics, custom realms, arbitrary new materials and level-granting potions remain future work.",
     "Unconfirmed gift reservations require the original recipient’s saved receipt; no blind replay or refund.",
     "Cultivation review is an in-game evidential standard, not proof of spiritual attainment."
   ],
-  "clientSha256": "25c63fe557324c107cc8a367c0730dd31025886fe62571b877d5e5b10f317c20",
+  "clientSha256": "88669b0fba233ac302b285ef2e9d58d78c2ab1b4cc70ef8a9f6d26405235fc6c",
   "serverSha256": "a7239c8638145525bfdb2de5ac21dd2cd06d06a3ce704c550f26635d65fd8907",
   "preservedDragonflightSectionSha256": "7c14c9fdd61761dc8ad94a2378aa0a9e2549ef538f8b659b1a7f639c6d5bcde6",
   "validation": {
     "status": "passed_local_checks",
-    "newServerAndTransferChecks": 44,
-    "newBrowserGiftChecks": 12,
-    "journalChecks": 16,
-    "interactionAndTavernBrowserChecks": 52,
-    "chatBrowserChecks": 34,
-    "cherryRegressionChecks": 7,
-    "socketDialogueAndArrivalChecks": 53,
-    "observerCombatAndGmChecks": 36,
-    "parserAndLandingChecks": 24,
+    "regressionReproduced": "The previous renderer overwrote solid foreground below the near rim; v90 preserves it.",
+    "cameraHeightAndAngleCases": 120,
+    "waterAndLavaBaselineComparisons": 24,
+    "terrainCoverage": [
+      "ordinary and layered raycasts",
+      "low and elevated camera positions",
+      "camera pitch and oblique rays",
+      "raised foreground",
+      "space below a bridge",
+      "camera above a passable pit",
+      "separate pits with solid land between"
+    ],
+    "fullFrameViews": 8,
+    "fullFrameFixture": "First- and third-person Desert rendering with a test-only pit. The stock Desert map has no chasm, so the exact recorded world instance was not reproduced.",
+    "browserErrors": 0,
     "inlineScriptsParsed": 13,
+    "serverSyntax": "passed",
     "dependencyChanges": false,
     "embeddedCredentialPatternsDetected": false,
+    "serverChanges": "version metadata only",
     "dragonflight1167": "byte-identical to protected baseline",
-    "modelEvaluation": "Provider responses and cultivation verdicts stubbed for repeatable local tests. Live dialogue/prose quality and S9 performance still require a playtest."
+    "deviceEvaluation": "Local Chromium only; original recording inspected. No S9 performance claim."
   },
   "previousPassChanges": [
+    "Gemini participates through Suncat, Edmundo’s in-game counterpart; no forced personality rewrite, prescribed prayer or automatic seclusion",
+    "White, Yellow and Black Schools plus Left-Hand Path retain their names as provisional interpretations of actions, with evidence and alternatives",
+    "Dialogue and action memory use actual records; journals allow flowing literary interiority without becoming factual memory; original archives retained",
+    "Owned cards, equipment, consumables and materials can be gifted with persistent reservation and recipient receipts; no unrestricted minting",
+    "Optional cultivation reviews real practice, limits, application and transfer; first unlock imbues a real crafted potion or meal using an owned identified ingredient",
     "Friendly Suncat contact and proximity never open dialogue; normal Talk menu and hostile combat retained",
     "Normal interaction control gains a high-contrast gold glow within its existing 44px footprint, with reduced-motion support",
     "Missing or invalid speech receives one bounded speech-only repair; explicit silence and technical errors have separate outcomes; completed tools are not replayed",
