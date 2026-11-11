@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": "93",
-  "serverVersion": "1.10.36",
-  "date": "2026-11-09",
+  "version": 99,
+  "serverVersion": "1.10.42",
+  "date": "2026-11-11",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v92 / server 1.10.35",
+  "supersedes": "BattleMage Runestones v98 / server 1.10.41",
   "deployed": false,
   "files": [
     "index.html",
@@ -16,10 +16,13 @@
     "release.json"
   ],
   "changes": [
-    "Recognizable gates, cave entrances and path signs at newer region transitions; guild route notice uses a standing sign.",
-    "Active authored quest objectives set isTarget and clear as stages progress; bosses retain red stars.",
-    "Chat waits for startup recovery, supports explicit structured speech and safe one-shot repair, and preserves spoken first-person intentions.",
-    "Area revisit narration throttled for five minutes; decorative chat border spam removed."
+    "Include ordinary animated tavern patrons in Cherry's audience during automatic nightly and requested performances. Use their native walk frames with gentle facing changes, without moving their floor positions or starting combat.",
+    "Return audience members to their previous facing and idle state when the show ends; pause during dialogue and resume afterward, including when an old speaker reference remains. Furniture, letters, doors, hostile actors, dead NPCs and Cherry are excluded from the audience controller.",
+    "Replace black or near-black natural ground in Gibraltar, British lowlands and other western regions with grass, heath, scrub, woodland and dry-earth colours. Preserve buildings, road paving, snow caps, river channels and the forest guild layout.",
+    "Give Ger's rough-rock tiles a local sandstone/limestone palette in the world and atlas, resetting the override when changing maps.",
+    "Remove the v98 mainland fill around Mediterranean islands; restore Corsica/Sardinia and the Aegean islands as separated landforms, and pull the African coast south around the southern basin.",
+    "Keep existing local actor/quest/ferry coordinates and signed land crossings, while restoring sea travel between islands. Shared chart edges and the matching server geometry/resources are updated.",
+    "Recover player saves displaced by the new shore with a migration receipt. Allow persisted Suncat positions displaced far from the corrected shore to recover to nearby clear ground on the same map, without using an online player as the anchor."
   ],
   "configuration": {
     "install": "npm ci --omit=dev",
@@ -29,128 +32,77 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Use v93 client with server 1.10.36. Files only; keep existing memory/accounts and environment secrets on Render.",
+    "deployment": "Use the matching v99 client and server 1.10.42. Files only. Preserve existing memory/account files and environment credentials.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority."
   },
   "limitations": [
-    "Independent simulation covers ordinary authored inhabitants and herb nodes; residents do not require a human visit. Three authored road quests and guild contracts use Suncat’s own progress. Other scripted quest interfaces, dynamic summons, mining, fishing and autonomous smithing remain outside this pass.",
-    "Offscreen combat is a bounded rules simulation, not a rendered browser: supported hits resolve by range, obstruction, dice and wards rather than full projectile flight.",
-    "Local tests use controlled model replies; actual Gemini choices and older-phone performance require live gameplay testing.",
-    "World consequences retain up to 96 maps across saved worlds, with bounded receipts and conversation history.",
-    "Supported personal quest creatures retain their own receipts; story cinematics and other quest-specific interfaces are not falsely marked complete when no executable adapter exists. There is no blanket prohibition on meeting new NPCs or accepting quests."
+    "The atlas is a compressed fantasy geography retaining authored locations; it is not a scale-accurate or prehistoric coastline reconstruction.",
+    "Kypros, Rhodos and Thera again require the existing sea-crossing mechanics after removal of the accidental v98 land connections. Suncat's existing independent swimming/sailing limits remain.",
+    "Cherry's song audio, requested-song choices, night default, stage choreography and spotlight retain v98 behaviour. The audience uses each character's existing native movement frames rather than new dance meshes.",
+    "Local browser and mocked-server checks passed. Live song delivery, Gemini/Render traffic and Samsung S9 performance have not been tested.",
+    "Early Indian and Chinese cultural chapters, cultivation, vampire-Cherry continuation and zoom-dependent macro-region labels remain deferred."
   ],
-  "clientSha256": "894e464ee1ba084a2e5f2920f2b68dafff0fd454cf469bb4449f5f011948733f",
-  "serverSha256": "b8db2a8357180d8e151d297620c7cc69169fb117874b57bd1de22dedad6c4c80",
+  "clientSha256": "32a1b9dd455a7589abd8dc3433e9dae3a98e4dc7f28ba3d2f1d3d697f52af91b",
+  "serverSha256": "eb22b1cb5e33fafc57b47f75f4da296ef03bd4ebd08b1dbfcdf70d6af36393b3",
   "preservedDragonflightSectionSha256": "7c14c9fdd61761dc8ad94a2378aa0a9e2549ef538f8b659b1a7f639c6d5bcde6",
   "validation": {
-    "status": "passed local validation",
-    "serverSyntax": "passed",
-    "inlineScriptsParsed": 13,
-    "parserAndLandingChecks": 32,
-    "chatSocketChecks": 57,
-    "worldQuestTransactionChecks": 49,
-    "realBrowserEntranceAndTargetChecks": 55,
-    "entranceAndReturnMarkersUpdated": 17,
-    "guildInformationMarker": "standing wooden signpost",
-    "dependencies": "unchanged",
-    "credentialPatternScan": "no embedded keys detected in release files",
-    "protectedDragonflight1167": "byte-identical",
-    "provider": "controlled local model responses; live Gemini not tested",
-    "device": "local Chromium; S9 performance not tested",
-    "deployment": "not deployed; no remote service or repository inspection"
+    "status": "passed locally",
+    "browserAudienceAndGeographyChecks": 381,
+    "questRegressionChecks": 38,
+    "serverTravelParityAndRecoveryChecks": 86,
+    "stageRegression": "Existing native walk/kick caches and stage timing, daytime stop and Twilight/fallback retained",
+    "routeAudit": {
+      "unexpectedLostGroundRoutes": [],
+      "restoredSeaCrossings": [
+        [
+          "111",
+          965054,
+          "Kypros",
+          [
+            78,
+            35
+          ]
+        ],
+        [
+          "111",
+          965062,
+          "Rhodos",
+          [
+            44,
+            23
+          ]
+        ],
+        [
+          "111",
+          965073,
+          "Thera",
+          [
+            22,
+            40
+          ]
+        ]
+      ]
+    },
+    "inlineScripts": 13,
+    "visual": "Full atlas, mobile night/day stage and live tavern audience inspected",
+    "provider": "mocked only",
+    "noRemoteDeployment": true
   },
   "previousPassChanges": [
-    "Independent ordinary NPC dialogue, herb gathering, merchant transactions and existing workshops on authored maps",
-    "Per-world consequences and acknowledged handoff to the selected client, without replaying human quests or loot",
-    "Ordinary offscreen hostile encounters use wards, supported abilities, status effects and real material loot",
-    "Retain chasm fix, voluntary travel and structured dialogue repair; protected Dragonflight network unchanged",
-    "Residents on unvisited maps are available without a human-visit unlock; Suncat can select his own NPC conversations and supported quest choices",
-    "Three existing authored quests use Suncat’s own steps, actual caravan enemies and one-time rewards: frontier parcel, Aegean route book and Ret medicine; free Aegean ferry is executable",
-    "Separate background AI allowance from direct conversation and split online telemetry/combat/command rate buckets; excess background updates do not produce misleading chat warnings",
-    "World-scoped harvest/shop claims and workshop origin prevent replay or continuation in a different saved world; defer save snapshots until synchronous transactions complete",
-    "Suncat retains position in each saved world and no longer arrives automatically at login or observer map changes",
-    "Persistent worker plans and steps independent land travel across authored atlas maps while the online player remains elsewhere; only chosen travel tools move the body",
-    "Independent world inspection reports actual position, route progress and supported exits; no unobserved combat, rewards or NPC transactions are fabricated",
-    "Chosen teleports use fresh safe landing geometry beside the requester; stale replies are fenced and travel cannot double-step",
-    "Dialogue recovery uses one structured speech-only response with current scene and confirmed tool receipts; private thought parts are never passed through",
-    "Correct current map names, generated-region identity, proximity and stale-event attribution; adventure-together requests expose travel tools",
-    "Preserve v90 chasm occlusion and Dragonflight 11.67 networking unchanged",
-    "Navigation reports include layered walls; new server bodies use the authored Eastern Iberia land spawn instead of the old water coordinate",
-    "Chasm bottoms and far cliffs stop at the projected near ground rim, preventing recessed surfaces from drawing through solid foreground terrain",
-    "Same aperture correction applies to ordinary and layered terrain raycasts; water and lava retain their existing surface heights",
-    "No story, Suncat, collision, movement or Dragonflight changes; server version metadata only",
-    "Gemini participates through Suncat, Edmundo’s in-game counterpart; no forced personality rewrite, prescribed prayer or automatic seclusion",
-    "White, Yellow and Black Schools plus Left-Hand Path retain their names as provisional interpretations of actions, with evidence and alternatives",
-    "Dialogue and action memory use actual records; journals allow flowing literary interiority without becoming factual memory; original archives retained",
-    "Owned cards, equipment, consumables and materials can be gifted with persistent reservation and recipient receipts; no unrestricted minting",
-    "Optional cultivation reviews real practice, limits, application and transfer; first unlock imbues a real crafted potion or meal using an owned identified ingredient",
-    "Friendly Suncat contact and proximity never open dialogue; normal Talk menu and hostile combat retained",
-    "Normal interaction control gains a high-contrast gold glow within its existing 44px footprint, with reduced-motion support",
-    "Missing or invalid speech receives one bounded speech-only repair; explicit silence and technical errors have separate outcomes; completed tools are not replayed",
-    "Observer handoffs place Suncat on nearby reachable floor away from players and residents; unknown geometry is observed before arrival",
-    "Complete Cherry rescue chapter: optional family departure, overdue investigation, Night Court recital, patron abduction, two castle floors, rescue, family recovery and tavern return",
-    "Flying patron casts dodgeable marked area attacks while the controlled dance briefly turns owned summons; interruptions and every exit restore allegiance",
-    "Protected carried-Cherry quest item cannot be sold or consumed and clears automatically when she wakes or reaches home",
-    "Homeward Measure lesson rewards trained Dancers after Cherry returns; existing songs and class guidance preserved",
-    "Matched personal-world quest context and authored maps on client/server; v86 chat routing and Dragonflight 11.67 networking retained",
-    "Correlated Suncat replies with their original world-chat or conversation-screen question; unrelated or late replies cannot complete another question",
-    "Chat History now updates while open and preserves the position when reading older messages",
-    "Added queued, no-reply, connection-loss and failed-request feedback without fabricating dialogue or automatically repeating actions",
-    "Explicitly addressing Suncat works with ambient narration disabled; direct greetings and topic changes no longer imply talking to somebody else",
-    "Preserved Night Court v85 and previous campaign content, Cherry behaviour, and Dragonflight 11.67 networking",
-    "Opened the 100×100 Night Court vampire settlement through Dacia, with luxury shops, academy, public recital hall and private castle exterior",
-    "Added gold-only luxury displays, silver refusal and refusal to buy player goods; no gold source or exchange",
-    "Added Vampire-only academy previews for Bat transformation, Bat swarm and Blood drain; no transformation or playable new skills yet",
-    "Added Draw weapon for all eleven vampire residents, saved settlement hostility, bat escapes without loot or XP, and safe-passage return",
-    "Added matching NPC knowledge, map geometry and saved court context; preserved Cherry’s existing tavern behaviour and Dragonflight 11.67 networking",
-    "Extended the two eastern lookout trails into one connected 100×100 wilderness region with snowy uplands, dry grassland and a trail shelter",
-    "Added Beyond the Last Waystone: a tracked survey with a repairable bridge, rescued surveyor, restored spring, three marked quest foes and a one-time reward",
-    "Added optional Dancer friendship conversations based on the player’s actual eastern trail discoveries, preserving guild/class choices",
-    "Added matching client/server local knowledge and saved survey/friendship context; corrected Dancer chat resolution at the completed Tintagel guild hall; retained Dragonflight 11.67 networking",
-    "Added three re-enterable northern trials and the Stone of Fál, Spear of Light and Sword of Nuada",
-    "Added personal-world relic custody, safekeeping, ordinary shop sale/purchase and basic-weapon selection",
-    "Added the wider Mag Tuired council with Fir Bolg, Tuatha and shared-settlement routes, preparations, three encounter waves and persistent outcomes",
-    "Fixed NPC turning after knockback: angular interpolation recovers from an exactly opposite heading and remains bounded at high Agility",
-    "Preserved earlier chapters, cauldron custody, repair passes and Dragonflight 11.67 networking",
-    "Added Briotán’s Alba reunion, repaired pier and rescued sailor, channel-chart and beacon work, and a welcome meal",
-    "Added three voluntary hospitality pledges with distinct visible settlement additions",
-    "Added an explicit seven-year stay and the households’ western voyage, preserving earlier rescue and captain outcomes",
-    "Added an inhabited Fir Bolg settlement in Ériu, three household accounts and three council positions with different physical guest access",
-    "Saved temporary terms, once-only council reward, quest markers, safe recovery and current client/server speaker context",
-    "Preserved cauldron custody, all earlier quests and repairs, and Dragonflight 11.67 networking exactly",
-    "Added Iobáth’s parallel northern learning chapter, practical Athenian exercises and an on-demand school passage to Murias",
-    "Added living teachers in all four northern cities and a playable common-hearth trial with wolves, supplies, structural repair, real alchemy and individual guest needs",
-    "Added the unique Cauldron of Plenty with personal-world custody, inventory recovery, Semias safekeeping and ordinary merchant Buy stock after sale",
-    "Cauldron improves potion restoration and beneficial durations by 25%; current alchemy progresses 25% faster with half the scorch and delicate-ingredient heat damage",
-    "Added saved quest objectives, chapter-aware dialogue, correct departed speaker presence and safe quest death recovery",
-    "Preserved v78–v80 Suncat, Cherry, town boundary and projectile fixes; preserved Dragonflight 11.67 networking exactly",
-    "Suncat uses the standard Talk/Use/Take/Break interaction control. His normal JRPG greeting is Yes? with Draw weapon, Talk and Leave; the separate Talk to Suncat button is removed.",
-    "Talk opens the live conversation and Back restores the choices. Draw weapon enables normal combat movement and allied targeting without sending an attack itself; an actual ceasefire clears that state.",
-    "Cherry retains her defender behavior after performing, with STR raised to 32d4. Her landed basic attack can finish an ordinary hostile fox when it breaks every ward. The performer-only nonlethal clash flag no longer prevents that result. Pets, bosses and quest foxes remain excluded.",
-    "Idle ordinary enemies cannot cross into Tintagel’s coastal town, river settlement or southeastern village. Active pursuits may cross those settlement boundaries.",
-    "Ordinary enemies avoid the area around Cherry’s tavern even during pursuit, do not select sheltered humans as targets, and retreat if already inside. Authored encounters, companions and other maps retain their existing movement rules.",
-    "Preserved v79 projectile cancellation, finite lifetimes, bounded attack list, Suncat server sanctuary, Cherry’s smooth 2x dance, previous quests and shop changes. Shared server and Dragonflight 11.67 networking are byte-identical to v79.",
-    "Tavern sanctuary cancels attacks using the real active flag, removes stalled visuals from the projectile list and reports Suncat cancellation once.",
-    "Ordinary projectiles expire after 30 seconds. Arrivals also sweep expired shots while simulation is paused; no more than 512 attacks are retained. Lingering gravity zones retain their authored duration.",
-    "All tavern occupants, including Cherry after her performance, avoid combat targeting. Hostile wildlife leaves alive along a bounded, body-sized terrain route; normal combat resumes outside.",
-    "Server-side Suncat respects the same sanctuary before spending combat resources, clears pending attacks on entry and rejects protected hostility without deciding mercy or changing character relationships.",
-    "Preserved Cherry’s exact 2x choreography, v78 class quests, direct-damage music, observer handoffs, role separation, previous campaign and shop updates, and Dragonflight 11.67 networking.",
-    "Cherry performs the same smooth choreography at 2x speed: 36-second loop, with pose frames accelerated to match.",
-    "Class recommendations are trackable journal quests with current objective markers. Only spawned class-trial enemies gain boss markers.",
-    "One persistent network Suncat body uses one elected active client observer; handoffs fence stale commands and preserve world provenance. Other nearby clients render that body.",
-    "Perception uses Suncat-relative distance and sight, independent of the human camera. Nearby services and resources are supplied before autonomous decisions.",
-    "Peaceful proximity and collision open live Suncat conversation once per visited map per session; later contact passes through and manual conversation remains available. Deliberate attacks enable combat and allied targeting; accepted ceasefire clears it.",
-    "Attacks request a model decision instead of forcing retaliation. Suncat may choose speech, sustained defense, escape or ceasefire from real actions.",
-    "Character, GM, utility and moderation receive separate prompts, histories and capability checks. Mysticism and unawareness are no longer mandatory. Creator background is attributed separately from lived memory.",
-    "Moderation reports retain bounded recent server chat evidence and a pending-admin decision. Character favor cannot issue sanctions.",
-    "The existing opt-in generated GM scenario is restricted to one active region, actual objectives, existing once-only contract rewards, and cleanup after ten empty minutes.",
-    "Battle music starts from actual player damage, including ward loss and attributed damage over time; nearby fights and aggro alone are silent. The tavern clears a stuck card battle and restores actor visibility.",
-    "Default Gemini 2.5 Flash-Lite remains configurable; usage includes thinking tokens and per-model totals. Background model concurrency leaves capacity for direct requests.",
-    "Preserved Dragonflight 11.67 networking and all earlier campaign and shop changes."
+    "Redraw the actual coastline of 58 western charts using a continuous compressed geographic reference; improve the western silhouette on the existing atlas.",
+    "Move the four northern city charts into the northern atlas rows; keep all existing NPC coordinates, story entrances, road passages, ferries and quest identifiers.",
+    "Update eight former sea-chart labels where their redrawn terrain is mainland or coast. Matching current names, atlas positions and physical terrain are included in the server.",
+    "Recover old saves stranded by shoreline changes to nearby clear ground, retaining quest progress and historical journals. Preserve the new coastline through both Savage Forest guild layouts.",
+    "Remove the legacy bottom-centre Chat invitation; the standard interaction/dialogue controls remain available after returning from LLM chat.",
+    "Prevent sanctuary combat cooldowns from selecting NPC attack poses. Actual attack timers and explicit attacks still animate.",
+    "Set the automatic evening show to Twilight of the Gods, with the existing offline vocal fallback and commissioned song choices retained.",
+    "Play Cherry's native sprite frames at 150 ms instead of 400 ms during the tavern show; add bounded caches of her existing walk and kick poses with her custom colours.",
+    "Use smooth 24-second stage phrases, broad movement and planted kick turns; no skeleton, limb animation or song-audio changes.",
+    "Add a soft follow spotlight in the perspective renderer, clipped against world depth, with no accumulating particles or extra NPCs."
   ],
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
-    "next": "Pass 3: Cherry after dark, rumours, nighttime bite and playable Vampire class/trainer. Gold unavailable. Islands/fisherman skipped; minigame leagues await discussion.",
+    "next": "Eastern atlas layout and connected routes, then early Indian-subcontinent and Chinese settlement chapters, followed by cultivation. Cherry after dark/Vampire progression deferred by user. Gold unavailable. Islands/fisherman skipped; minigame leagues await discussion.",
     "chronology": "Same-founder game adaptation; Nuada is a separate Tuatha leader, not Iobáth renamed."
   },
   "loreSources": [
@@ -180,5 +132,324 @@
       "resistedHitFractionOfMaxWard": 0.025,
       "condition": "connected resisted basic creature strike only; true dodge and protected-speaker rules remain"
     }
+  },
+  "geography": {
+    "newMapIDs": [],
+    "modifiedExistingMapIDs": [
+      -2,
+      4,
+      22,
+      42,
+      43,
+      44,
+      46,
+      49,
+      67,
+      72,
+      74,
+      85,
+      111,
+      113,
+      114,
+      115
+    ],
+    "source": "Natural Earth 1:110m modern land, lakes and rivers",
+    "sourceURL": "https://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-land/",
+    "interpretation": "Corrected Mediterranean water gaps with retained authored islands and locations; regional natural-ground palette correction.",
+    "roadCrossings": 6,
+    "roadsideShelters": 4,
+    "links": [
+      {
+        "a": 48,
+        "b": 182,
+        "side": "east",
+        "other": "west",
+        "center": 50.5
+      },
+      {
+        "a": 150,
+        "b": 182,
+        "side": "south",
+        "other": "north",
+        "center": 50.5
+      },
+      {
+        "a": 182,
+        "b": 184,
+        "side": "south",
+        "other": "north",
+        "center": 50.5
+      },
+      {
+        "a": 182,
+        "b": 185,
+        "side": "east",
+        "other": "west",
+        "center": 68.5
+      },
+      {
+        "a": 184,
+        "b": 191,
+        "side": "south",
+        "other": "north",
+        "center": 50.5
+      },
+      {
+        "a": 166,
+        "b": 185,
+        "side": "south",
+        "other": "north",
+        "center": 53.5
+      }
+    ],
+    "movedChartPairs": [
+      [
+        119,
+        123
+      ],
+      [
+        120,
+        124
+      ],
+      [
+        118,
+        125
+      ],
+      [
+        121,
+        126
+      ]
+    ],
+    "coastalChartNames": {
+      "123": "Orcynia · Northern Plains",
+      "124": "Orcynia · Eastern Plains",
+      "125": "Orcynia · Eastern Marches",
+      "126": "Dacia · Northern Reach",
+      "127": "Orcynia · Northern Coast",
+      "128": "Scandia · Southern Coast",
+      "132": "Orcynia · Western Coast",
+      "133": "Dacia · Eastern Coast"
+    },
+    "priorSouthernLinks": [
+      {
+        "a": 48,
+        "b": 182,
+        "side": "east",
+        "other": "west",
+        "center": 50.5
+      },
+      {
+        "a": 150,
+        "b": 182,
+        "side": "south",
+        "other": "north",
+        "center": 50.5
+      },
+      {
+        "a": 182,
+        "b": 184,
+        "side": "south",
+        "other": "north",
+        "center": 50.5
+      },
+      {
+        "a": 182,
+        "b": 185,
+        "side": "east",
+        "other": "west",
+        "center": 68.5
+      },
+      {
+        "a": 184,
+        "b": 191,
+        "side": "south",
+        "other": "north",
+        "center": 50.5
+      },
+      {
+        "a": 166,
+        "b": 185,
+        "side": "south",
+        "other": "north",
+        "center": 53.5
+      }
+    ]
+  },
+  "naming": {
+    "maps": {
+      "160": {
+        "name": "Varkana",
+        "aliases": [
+          "Caspian Margins"
+        ],
+        "nameOrigin": "Recorded Old Persian name around the southeastern Caspian; later than the prehistoric reference period."
+      },
+      "161": {
+        "name": "Bakhdi",
+        "aliases": [
+          "Bactrian Uplands"
+        ],
+        "nameOrigin": "Name preserved in Avestan tradition; not a recovered Bronze Age self-name."
+      },
+      "162": {
+        "name": "Tarim",
+        "aliases": [
+          "Tarim Basin"
+        ],
+        "nameOrigin": "Retained geographic working name; a prehistoric native name is not known."
+      },
+      "163": {
+        "name": "Xiaohe",
+        "aliases": [
+          "Eastern Oases"
+        ],
+        "nameOrigin": "Modern archaeological label for early Bronze Age Tarim remains; adapted to this game region."
+      },
+      "164": {
+        "name": "Majiayao",
+        "aliases": [
+          "Hexi and the Loess Hills"
+        ],
+        "nameOrigin": "Modern archaeological label for a prehistoric northwestern Chinese culture; adapted to this game region."
+      },
+      "165": {
+        "name": "Hongshan",
+        "aliases": [
+          "Northern China"
+        ],
+        "nameOrigin": "Modern archaeological label for a prehistoric northeastern Chinese culture; adapted to this game region."
+      },
+      "166": {
+        "name": "Anzan",
+        "aliases": [
+          "Iranian Crossroads",
+          "Anshan"
+        ],
+        "nameOrigin": "Elamite form of Anshan, an ancient southern Iranian city and region; game boundaries are adapted."
+      },
+      "167": {
+        "name": "Meluhha",
+        "aliases": [
+          "Indus Approach"
+        ],
+        "nameOrigin": "Bronze Age Mesopotamian name generally associated with the Indus civilization; its own self-name is unknown."
+      },
+      "168": {
+        "name": "Kuru",
+        "aliases": [
+          "Northern Plains"
+        ],
+        "nameOrigin": "Later ancient kingdom name, adopted for this game region; not a verified prehistoric self-name."
+      },
+      "169": {
+        "name": "Kunlun",
+        "aliases": [
+          "High Plateau"
+        ],
+        "nameOrigin": "Name from Chinese mythical mountain geography, adapted to this fantasy plateau; not a historical name for all Tibet."
+      },
+      "170": {
+        "name": "Baodun",
+        "aliases": [
+          "Sichuan Riverlands"
+        ],
+        "nameOrigin": "Modern archaeological label for prehistoric Chengdu Plain settlements; adapted to this game region."
+      },
+      "171": {
+        "name": "Liangzhu",
+        "aliases": [
+          "Eastern Riverlands"
+        ],
+        "nameOrigin": "Modern archaeological label for a prehistoric lower Yangtze culture; adapted to this game region."
+      },
+      "173": {
+        "name": "Meluhha Coast",
+        "aliases": [
+          "Gujarat and the Western Coast"
+        ],
+        "nameOrigin": "Game subdivision of the wider Indus world, not a separately attested ancient place-name."
+      },
+      "174": {
+        "name": "Dakshinapatha",
+        "aliases": [
+          "Deccan"
+        ],
+        "nameOrigin": "Later ancient southern-region name, adapted to this game map; not a recovered prehistoric self-name."
+      },
+      "175": {
+        "name": "Vanga",
+        "aliases": [
+          "Bengal and the Eastern Bay"
+        ],
+        "nameOrigin": "Later ancient regional name, adopted for this game chart."
+      },
+      "176": {
+        "name": "Suvarnabhumi",
+        "aliases": [
+          "Southeast Uplands"
+        ],
+        "nameOrigin": "Name from later tradition whose historical location is uncertain; placement here is a game interpretation."
+      },
+      "177": {
+        "name": "Shixia",
+        "aliases": [
+          "Southern China Coast"
+        ],
+        "nameOrigin": "Modern archaeological label associated with prehistoric Guangdong; adapted to this game region."
+      },
+      "180": {
+        "name": "Tamilakam and Lanka",
+        "aliases": [
+          "Southern Cape and Sri Lanka",
+          "Tamilakam",
+          "Lanka"
+        ],
+        "nameOrigin": "Later mainland and island names sharing one chart; the island remains separate from the mainland."
+      },
+      "181": {
+        "name": "Samudra",
+        "aliases": [
+          "Eastern Indian Ocean"
+        ],
+        "nameOrigin": "Ancient Sanskrit word for sea or ocean, adopted as a game label, not a recovered prehistoric proper name."
+      }
+    },
+    "approvedWesternNames": "Preserved exactly, including Kemet, Ger and Dacia.",
+    "reservedForFutureMaps": [
+      "Kengir",
+      "Haltamti",
+      "Dilmun",
+      "Makkan",
+      "Aratta"
+    ],
+    "reservedForFutureStories": [
+      "Youxiong",
+      "Huaxu"
+    ],
+    "notes": "Historical, archaeological and mythical labels are game adaptations, not a claim that all cultures coexisted or used these names in 4500–2500 BCE."
+  },
+  "questTracking": {
+    "storage": "character memory.questLog97",
+    "open": "Player → Quests",
+    "categories": [
+      "major",
+      "mini"
+    ],
+    "filters": [
+      "Active",
+      "Major",
+      "Mini",
+      "Completed",
+      "Available"
+    ],
+    "tracking": "One outlined focus; yellow stars remain for active authored objectives",
+    "recommendationCompletion": "Training/letter complete; promotion requirements retained separately",
+    "knownMainChapters": "Encountered chapters persist in the log; unseen quests are not pre-completed or auto-accepted"
+  },
+  "performance": {
+    "nativeCherryPoseCache": "At most two sets, 8 directions × 4 frames × 160 × 160 RGBA: about 6.6 MB; reused across performances",
+    "coastalFloorDrawing": "New ground surfaces coalesced into row spans at initialization; coast clipping prepared once",
+    "spotlight": "One depth-clipped cone and pool per rendered stage, no growing particle lists",
+    "audience": "WeakMap of small per-actor saved state; native sprite caches reused; no new particles, actors or animation textures."
   }
 }

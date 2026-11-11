@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.36",
+  "version": "1.10.42",
   "private": true,
-  "description": "BattleMage v92: Suncat independent world interactions",
+  "description": "BattleMage v99: tavern audience, terrain palettes and Mediterranean coast correction",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"
