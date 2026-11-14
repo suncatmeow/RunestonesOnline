@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.49",
+  "version": "1.10.51",
   "private": true,
-  "description": "BattleMage v109: isolated map 613 homestead, physical NPC economy and ecology",
+  "description": "BattleMage v111: active Conaing tower and fixed-size JRPG reading",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"
