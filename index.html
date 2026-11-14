@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-14-bm-v111-tower-play"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v111</title>
+      <meta name="suncat-build" content="2026-11-14-bm-v112-dialogue-rest-items"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v112</title>
       <style>
         html,body {
           width:100%;
@@ -44161,14 +44161,15 @@ render(scene, dt) {
                                 +config.scale*(restFace?1-restFace.originalV:currentFaceZ));
                             let zDiff = focusZ - scene.camZ; 
                             
-                            let viewH = (typeof host.tH !== 'undefined' && host.tH > 0) ? host.tH : 400;
+                            let viewH = (0,host.worldViewport)().h;
                             let zScale = scene.zScale || 1.0;
                             // Follow projected depth, with a small near-camera safety bound.
                             const facing=scene.currentAngle+(scene.lookPan||0);
                             const dialogue=host.startGame==='dialogue';
                             let safeDist=Math.max(.15,dialogue?dist+(scene.currentCamDist||0):dx*Math.sin(facing)-dy*Math.cos(facing)+(loot?scene.currentCamDist||0:0)); 
                             let exactCenterPitch = (zDiff / safeDist) * viewH * zScale;
-                            let uiFramingOffset = -(viewH * 0.15);
+                            const panel=host.window.BMDialogueLayout112?.current,viewRect=(0,host.worldViewport)();
+                            let uiFramingOffset = dialogue&&panel?Math.max(viewH*.12,(panel.rect.y-viewRect.y)*.42)-viewH/2:-(viewH*.15);
                             
                             // --- THE FIX: SOFT LOOK FOR ALLIES ---
                             // Dampen the up/down movement so we don't stare at the floor when they stand next to us
@@ -45003,7 +45004,7 @@ render(scene, dt) {
                             host.btnTurnL.show(5.2,5.3, 1.5, 1, 1, '', 'turn_l', 1, 0);
                             host.btnTurnR.show(8.3,5.3, 1.5, 1, 1, '', 'turn_r', 1, 0);
                         }
-                        if(host.window.settingsControlsMode!=='touch')host.btnLook.show(6.875, 6.875, 1.25, 1, 1, '', 'joystick', 1, 0);
+                        if(host.startGame!=='dialogue'&&host.window.settingsControlsMode!=='touch')host.btnLook.show(6.875, 6.875, 1.25, 1, 1, '', 'joystick', 1, 0);
                         else for(const b of [host.btnMove,host.btnMove2,host.btnTurnL,host.btnTurnR,host.btnLook]){b.visible=false;b.isPressed=false;}
                         host.BMTouch.draw(); 
 
@@ -46996,9 +46997,10 @@ const BMWorldCards=(()=>{
 /* A nearby friendly can be addressed without bumping its collision box. */
 const BMInteract=(()=>{
  let button=null,near=null,next=0;
- function friendly(n){if(globalThis.BMSuncat78?.isSuncat(n))return BMSuncat78.available(n);return n&&!n._dialogueConsumed&&(!n.nonBlocking||n._talkThrough)&&n.visible!==false&&!n.isDead&&!n.isDying&&!BMLock.hostile(n)&&(n.type>=0||n.interactionVerb||n._guildProp||n.service||n._guildEntrance||n._guildFire||n._guildStandard)&&n.type!==99&&n.role!=='summoned_minion'&&n.role!=='sign'&&(!!n.service||!!n._bmDirector||['dialogue','shop','reward','quest_giver','become_ally','portal_invite'].includes(n.role))&&!['portal','internal_portal','dropped_card','notification'].includes(n.role)&&!n.artisanNode;}
+ function friendly(n){if(globalThis.BMRest112?.point(n))return BMRest112.alive(n);if(globalThis.BMSuncat78?.isSuncat(n))return BMSuncat78.available(n);return n&&!n._dialogueConsumed&&(!n.nonBlocking||n._talkThrough)&&n.visible!==false&&!n.isDead&&!n.isDying&&!BMLock.hostile(n)&&(n.type>=0||n.interactionVerb||n._guildProp||n.service||n._guildEntrance||n._guildFire||n._guildStandard)&&n.type!==99&&n.role!=='summoned_minion'&&n.role!=='sign'&&(!!n.service||!!n._bmDirector||['dialogue','shop','reward','quest_giver','become_ally','portal_invite'].includes(n.role))&&!['portal','internal_portal','dropped_card','notification'].includes(n.role)&&!n.artisanNode;}
  function reachable(n){if(globalThis.BMSuncat78?.isSuncat(n))return BMSuncat78.reachable(n);return friendly(n)&&Dungeon.npcs.includes(n)&&Math.hypot(n.x-Dungeon.x,n.y-Dungeon.y)<=2.1&&Math.abs(BMTerrainPhysics.feet(Dungeon,n)-BMPlayerMotion.feetZ)<=1.1&&(BMLock.sight(n)||Dungeon.mapID===32&&[0,3].includes(n.index)&&Math.floor(n.x)===Math.floor(Dungeon.x)&&Math.floor(Dungeon.y)===7);}
  function verb(n){
+  if(globalThis.BMRest112?.bed(n))return 'Rest';if(globalThis.BMRest112?.fire(n))return 'Use';
   if(n.interactionVerb)return n.interactionVerb;
   if(n.lockTile)return 'Unlock';
   if(n.role==='herb'||n._groundLoot)return 'Take';
@@ -47054,6 +47056,7 @@ const BMInteract=(()=>{
   if(n._groundLoot){const pile=BMGroundLoot.takeable(n);if(!pile)return false;BMGroundLoot.pickup(pile);return true;}
   if(n.artisanNode)return Dungeon.npcs.includes(n)&&BMHarvestReach.canReach(n)&&BMArtisan.openMine(n);
   if(!reachable(n))return false;
+  if(globalThis.BMRest112?.point(n))return BMRest112.use(n);
   BMTouch.cancel();BMLock.clear();BMPlayerMotion.cancelDodge();window.activeMoveKey=null;
   Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;
   markMet(n);if(globalThis.BMBranches?.interact(n,Dungeon))return true;if(globalThis.BMGuildFinale?.interact(n))return true;if(globalThis.BMGuildStory?.interact(n))return true;if(globalThis.BMClassPaths?.interact(n))return true;Dungeon.currentSpeaker=n;BMDialogueFlow.revisit(n,()=>{n.triggerInteraction(Dungeon);
@@ -47228,7 +47231,7 @@ function worldViewport(){
     // Keep the square HUD coordinate system. Widen only the 3D camera frustum.
     const h=Math.max(1,Math.round(tH||400)),dock=controlHUDLayout(),rail=Math.max(Math.min(184,Math.max(132,Math.min(wX,wY)*.40))+24,3*Math.max(38,Math.min(48,Math.min(wX,wY)*.115))+2*dock.gap+24);
     const w=Math.max(1,Math.floor(wX>wY?Math.min(h*1.3,Math.max(h*.6,wX-2*rail)):(tL||400)));
-    return {x:(wX-w)/2,y:tY,w,h};
+    return {x:(wX-w)/2,y:tY,w,h:startGame==='dialogue'?Math.max(h,wY-hudSafeInsets.bottom-tY):h};
 }
 /* Small shared water image: one masked fill per frame, refreshed at 12 Hz.
    Sky color and broken light streaks suggest reflection without reflecting the scene. */
@@ -54493,6 +54496,7 @@ super(BMActorRules, 'npc');
             dungeon.dCounter = 0;
             // --- SAVE CAMERA STATE ---
             BMView.captureDialogue(dungeon);
+            globalThis.BMConversationPose112?.prepare(dungeon,this);
             dungeon.savedViewMode = window.gameViewMode; 
             dungeon.savedCameraMode = dungeon.cameraMode; 
 
@@ -54521,22 +54525,6 @@ super(BMActorRules, 'npc');
                 let dy = this.y - dungeon.y;
                 let dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist < 0.6) {
-                    let safeX = dx === 0 ? 0.01 : dx;
-                    let safeY = dy === 0 ? 0.01 : dy;
-                    let safeDist = Math.sqrt(safeX * safeX + safeY * safeY);
-                    
-                    this.x = dungeon.x + (safeX / safeDist) * 0.6;
-                    this.y = dungeon.y + (safeY / safeDist) * 0.6;
-                    
-                    // --- THE FIX: Kill sliding momentum so they don't fly past you! ---
-                    this.isSliding = false;
-                    this.isAggroDashing = false;
-                    
-                    dx = this.x - dungeon.x;
-                    dy = this.y - dungeon.y;
-                }
-                
                 // 1. Pan the player's body left/right to face the NPC's general direction
                 let desiredAngle = Math.atan2(dx, -dy);
                 
@@ -65284,6 +65272,8 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
         show(x, y, z, l, h, text, type = 'frame', visible = 1, foe, originx = this.x, originy = this.y, originz = this.originz) {
             if (foe == 1 && typeof Player !== 'undefined' && Player[1] && Player[1].isCPU == 1) { return; }
             
+            if(startGame==='dialogue'&&globalThis.BMDialogueLayout112&&type==='dialogue'){BMDialogueLayout112.body(this,text);return;}
+            if(startGame==='dialogue'&&globalThis.BMDialogueLayout112&&type==='jrpg_btn'&&this._classicIndex!==undefined){Object.assign(this,{x,y,z,l,h,text,type,visible,foe});BMDialogueLayout112.choice(this);return;}
             ({x,y,z}=positionMovementControl(this,x,y,type,z));
             this.foe = foe;
             this.x = x; this.y = y; this.z = z;
@@ -97756,7 +97746,7 @@ const BMShell=(()=>{
         c.removeAttribute('aria-hidden');c.setAttribute('aria-label',card.name+' card');c.setAttribute('role','img');
         return c;
     }
-    function itemPortrait(parent,item,inventory=false){const resolved=BMItemArt.resolve(item),c=surface(parent,'item',inventory?BMItemArt.preview(resolved):resolved);c.className='thumb';c.removeAttribute('aria-hidden');c.setAttribute('aria-label',item.name||'Item');c.setAttribute('role','img');}
+    function itemPortrait(parent,item,inventory=false){if(globalThis.BMQuestItems112?.portrait(parent,item))return;const resolved=BMItemArt.resolve(item),c=surface(parent,'item',inventory?BMItemArt.preview(resolved):resolved);c.className='thumb';c.removeAttribute('aria-hidden');c.setAttribute('aria-label',item.name||'Item');c.setAttribute('role','img');}
     function shop(){
         heading.textContent=BMShop.isSage?(Dungeon.currentSpeaker?.name||'The card sage'):window.isWildernessShop?'Wilderness supplies':window.isGuildShop?'Guild stores':Dungeon.currentSpeaker?.name||'Merchant';
         const shopTabs=BMShop.isSage?[['reading','Reading'],['refine','Refine'],['combo','Combine'],['absorb','Channel']]:window.isGuildShop?[['browse','Stock']]:BMShop.isTavern?[['browse','Meals'],['sell','Ingredients']]:[['browse','Buy'],['sell','Sell']];
@@ -98106,13 +98096,13 @@ const BMShell=(()=>{
         if(activeDeckTab==='deck'){deckPanel();foot('Back to game');return;}
         if(activeDeckTab==='grimoire'){gallery(true);foot('Back to game');return;}
         if(activeDeckTab==='items'){
-            const row=el('div',body,null,'shop-categories');for(const [id,label]of [['equip','Equip'],['use','Use'],['treasure','Treasure'],['misc','Misc']]){const b=button(row,'',()=>{itemTab=id;invalidate();});b.setAttribute('aria-label',label);const art=surface(b,'mesh',BMShopModels.mesh(id));art.className='shop-icon';el('span',b,label);b.setAttribute('aria-pressed',String(itemTab===id));}
+            const row=el('div',body,null,'shop-categories');for(const [id,label]of [['equip','Equip'],['use','Use'],['treasure','Treasure'],['misc','Misc'],['quest','Quest Items']]){const b=button(row,'',()=>{itemTab=id;invalidate();});b.setAttribute('aria-label',label);const art=surface(b,'mesh',BMShopModels.mesh(id==='quest'?'treasure':id));art.className='shop-icon';el('span',b,label);b.setAttribute('aria-pressed',String(itemTab===id));}
             if(itemTab==='misc'){const tools=el('div',body,null,'row');button(tools,'Cook food',()=>BMCamp.open('cook'));button(tools,'Alchemy',()=>BMCamp.open('alchemy'));button(tools,'Sew fur boots',()=>BMCamp.open('sewing'));}
-            el('p',body,({equip:'Equipment lasts up to one day (24 hours), or until its buff is removed. Re-equip 60 seconds later. One item per gear slot; equipping another piece in that slot replaces its effect.',use:'Consume food, potions, medicine and one-shot spell scrolls. Potions affect their drinker; scrolls cast their spell once.',treasure:'Skillbooks, recipe books, story books, special artifacts and quest keepsakes. Read books here; learning consumes a copy.',misc:'Fish, meat, fur, herbs and powders stack here. Cook food, refine herbs or sew fur boots at camp.'})[itemTab],'muted');
+            el('p',body,({equip:'Equipment lasts up to one day (24 hours), or until its buff is removed. Re-equip 60 seconds later. One item per gear slot; equipping another piece in that slot replaces its effect.',use:'Consume food, potions, medicine and one-shot spell scrolls. Potions affect their drinker; scrolls cast their spell once.',treasure:'Skillbooks, recipe books, story books, special artifacts and keepsakes. Quest supplies have their own tab. Read books here; learning consumes a copy.',misc:'Fish, meat, fur, herbs and powders stack here. Cook food, refine herbs or sew fur boots at camp.',quest:'Items carried for quests. Deliver or use them at their quest destination; used and handed-over items leave this tab.'})[itemTab],'muted');
         }else el('p',body,'Enable spells and summons for the hotbar rotation. Hidden abilities remain yours; active summons keep their slots until dismissed or defeated.','muted');
-        el('p',body,`${BMHotbar.capacity(Dungeon)} hotbar slots. Active summons hold their slots. Waiting ready abilities fill used slots and rotate every ${Math.round((Dungeon.spellShuffleCooldown||5000)/1000)} seconds.`,'muted');
-        if(BMHotbar.isBattleMage(Dungeon))el('p',body,'Learned skills and extra cards share one button per ability. Use the learned cast first; while it cools down, another cast spends one matching extra card.','muted');
-        if(!BMHotbar.isBattleMage(Dungeon))el('p',body,'Your cards are for collecting, trading and card games. Only Battle-Mages invoke physical cards; learned skills and real consumable items remain usable.','muted');
+        if(itemTab!=='quest'||activeDeckTab!=='items')el('p',body,`${BMHotbar.capacity(Dungeon)} hotbar slots. Active summons hold their slots. Waiting ready abilities fill used slots and rotate every ${Math.round((Dungeon.spellShuffleCooldown||5000)/1000)} seconds.`,'muted');
+        if((itemTab!=='quest'||activeDeckTab!=='items')&&BMHotbar.isBattleMage(Dungeon))el('p',body,'Learned skills and extra cards share one button per ability. Use the learned cast first; while it cools down, another cast spends one matching extra card.','muted');
+        if((itemTab!=='quest'||activeDeckTab!=='items')&&!BMHotbar.isBattleMage(Dungeon))el('p',body,'Your cards are for collecting, trading and card games. Only Battle-Mages invoke physical cards; learned skills and real consumable items remain usable.','muted');
         const views=el('div',body,null,'row inventory-view');views.setAttribute('role','group');views.setAttribute('aria-label','Inventory display');
         for(const [id,label]of [['list','List'],['icons','Icons']]){const b=button(views,label,()=>{inventoryView=id;BMStorage.setItem('bm-inventory-view',id);expandedInventory=null;invalidate();});b.setAttribute('aria-pressed',String(inventoryView===id));}
         const list=el('div',body,null,inventoryView==='icons'?'inventory-tiles':'inventory-list');
@@ -98141,13 +98131,13 @@ const BMShell=(()=>{
         }
         if(activeDeckTab==='items'){
             if(BMLearning.message&&itemTab==='treasure')el('div',body,BMLearning.message,'card prose status');
-            for(const item of Object.values(BMInventory.entries())){
-                if(item.category!==itemTab||!(item.count>0))continue;
+            for(const item of BMQuestItems112.entries()){
+                if(BMQuestItems112.category(item)!==itemTab||!(item.count>0))continue;
                 count++;const card=el('article',list,null,'card inventory-entry');card.dataset.inventoryKey=item.key;
                 itemPortrait(card,item,true);
                 el('h3',card,item.name+' × '+item.count);
                 if(Number.isFinite(item.quality))el('p',card,'Quality '+Math.round(item.quality*100)+'%'+(item.kind==='powder'?' · carries into the next brew':''),'muted');
-                if(item.kind==='skillbook'||item.kind==='book'){
+                if(item.virtualQuest){el('p',card,item.description,'muted');el('p',card,'Quest item','status');}else if(item.kind==='skillbook'||item.kind==='book'){
                     if(item.kind==='skillbook')el('p',card,BMLearning.eligibility(item.spellId).text,'muted');
                     if(item.recipeId)el('p',card,BMInventory.description(item),'status');
                     el('p',card,item.kind==='skillbook'?'Read for insight. Choose Learn skill inside the book when ready.':'Open this volume to read its pages.','muted');
@@ -98168,7 +98158,7 @@ const BMShell=(()=>{
             if(itemTab==='misc'&&Dungeon.memory.fishingRecord?.catches)el('p',body,`Fishing record: ${Dungeon.memory.fishingRecord.catches} total catches · Best ${Dungeon.memory.fishingRecord.bestCm||0} cm. Earlier catches were recorded only as totals; new catches fill the stacks above.`,'muted');
         }
         inventoryTiles(list);
-        if(!count)el('p',body,activeDeckTab==='spells'?'No learned spells, summons, or usable extra cards here yet.':'Nothing here yet. Learn item skills or collect items during your adventure.','card');
+        if(!count)el('p',body,activeDeckTab==='spells'?'No learned spells, summons, or usable extra cards here yet.':itemTab==='quest'?'No quest items carried. Pickups appear here while you have them.':'Nothing here yet. Learn item skills or collect items during your adventure.','card');
         foot('Back to game');
     }
     function journalEntries(){
@@ -98488,10 +98478,13 @@ const BM_RELEASE=(()=>{
  return Object.freeze({version:match?Number(match[2]):null,date:match?match[1]:'',label:match?'v'+match[2]:'Unversioned build'});
 })();globalThis.BM_RELEASE=BM_RELEASE;
 const BM_DEVLOG = [
- [BM_RELEASE.label+' · Conaing’s Tower and readable dialogue', 'Current version · '+BM_RELEASE.date, [
-  'Rebuilt Conaing’s keep with a smaller footprint, a living hall, an upper records room, a climbable west stair and a rooftop watch turret. Damage opens a breach and breaks the turret while leaving the route usable.',
-  'Reworked the siege into three smaller assaults with committed pursuit, dedicated shield-and-spear raider art, a distinct armoured captain, and earned chapter XP. Rescues take place in the world; useful objects respond directly.',
-  'JRPG dialogue now uses one readable size linked to the chat setting. Long passages wrap and continue across pages; story choices wait until the passage is read. Original lines, actions and saved progress remain.']],
+ [BM_RELEASE.label+' · Dialogue, rest and quest items', 'Current version · '+BM_RELEASE.date, [
+  'Dialogue choices use the same readable size as dialogue text. The compact panel sits at the bottom of the screen, with the world filling the portrait space and controls hidden during conversation.',
+  'Talking from inside a character steps the player onto nearby clear floor and turns the existing speaker toward the camera. Original camera settings and the NPC’s usual facing return afterward.',
+  'Beds and campfires offer rest from day to nightfall or night to morning, saving the client clock. Campfire cooking and crafting remain available.',
+  'Inventory has a Quest Items tab with item sprites, including flag-based pickups such as the rescue rope, food chest, tribute roll and apprenticeship deliveries. Used or delivered items disappear without changing quest progress.']],
+ ['v111 · Conaing’s Tower and readable dialogue', 'Condensed', [
+  'Rebuilt the keep with stairs, upper records and a rooftop lookout; revised siege pursuit, raider art, physical rescues and chapter XP. Dialogue reading size follows the chat setting.']],
  ['v110 · Dialogue and court correction', 'Condensed', [
   'Removed the generic meal/social menu, restored ordinary NPC lines and reunited Tintagel’s four impostors in the Great Hall. Map 613 remains shelved; saved data and the real court rescue are preserved.']],
  ['v108 · Tintagel cliff fortress', 'Previous pass', [
@@ -98513,8 +98506,7 @@ const BM_DEVLOG = [
   'Refined touch movement, zoom, camera focus, obstacle sliding, water rendering, climbing, lockpicking and material-based destruction checks.']],
  ['Earlier passes · Craft, mastery and records', 'Historical summary', [
   'Integrated gathering, fishing, cooking, alchemy, blackjack, card refinement and discovered combinations; shops support stocked categories and barter.',
-  'Saved activity records feed journals and companion narration. Card and commanded-ally mastery retain their progression; server-backed narration needs the matching service.']],
- ['Earlier passes · Art, sound and world', 'Historical summary', [
+  'Saved activity records feed journals and companion narration. Card and commanded-ally mastery retain their progression; server-backed narration needs the matching service.',
   'Shared world sprites and portraits, equipment, attached auras and character motion received repeated fitting and animation passes. Preferred dancer and animal designs were retained.',
   'Scene music, jukebox voices and lyrics, staged loading and bounded mobile caches support the expanding world and its story.',
   'Body-part combat, Vampire Cherry, Gold progression and further regional expansion remain future work.']]
@@ -107048,7 +107040,7 @@ const BMClassicChoices=(()=>{
  const extra=[new btn(0,0,1,3,1,'','','',0,0),new btn(0,0,1,3,1,'','','',0,0)];let shown=null;
  const buttons=()=>[btnYes,btnNo,...extra];
  function hide(){for(const b of buttons())b.visible=false;shown=null;}
- function draw(n){if(globalThis.BMDialogueText111?.more()){hide();return;}shown=n;const count=Math.min(4,n.options?.length||0);buttons().forEach((b,i)=>{b._classicIndex=i;if(i>=count){b.visible=false;return;}const four=count>2;b.show(i%2?6.15:.35,four?4.6+Math.floor(i/2)*1.45:5.3,1,3.5,four?1.2:1.45,n.options[i],'jrpg_btn',BMClassicDialogue.disabled(n,i)?.4:1,i?'ai_no':'ai_yes');});}
+ function draw(n){if(globalThis.BMDialogueText111?.more()){hide();return;}shown=n;const count=Math.min(4,n.options?.length||0);buttons().forEach((b,i)=>{b._classicIndex=i;if(i>=count){b.visible=false;return;}const r=BMDialogueLayout112.button(i);if(!r){b.visible=false;return;}b.show(r.x,r.y,1,r.l,r.h,n.options[i],'jrpg_btn',BMClassicDialogue.disabled(n,i)?.4:1,i?'ai_no':'ai_yes');});}
  function choose(i){const n=Dungeon.currentSpeaker;if(startGame!=='dialogue'||!n||shown!==n||Dungeon.dCounter!==n.customDialogue.length-1||!n.options?.[i])return false;recordNpcChoice(Dungeon,i);
   if(BMClassicDialogue.owns(n))return BMClassicDialogue.choose(i);
   if(n.choiceActions?.[i]){const actions=n.choiceActions[i];hide();Dungeon.chooseDialogueActions(actions);return true;}if(i>1)return false;
@@ -107082,6 +107074,7 @@ const BMClassicDialogue=(()=>{
  }
  function show(data,onClose){dismiss();const n=data.speaker||Dungeon.currentSpeaker||{type:-37,role:'notification',name:data.title||'',x:Dungeon.x,y:Dungeon.y};
   BMView.captureDialogue(Dungeon);
+  globalThis.BMConversationPose112?.prepare(Dungeon,n);
   session={n,data,onClose,owner:Dungeon,map:Dungeon.mapID,page:0,lines:pages(data.text),saved:Object.fromEntries(fields.map(k=>[k,n[k]])),view:window.gameViewMode,camera:Dungeon.cameraMode};
   Dungeon.savedViewMode=window.gameViewMode;Dungeon.savedCameraMode=Dungeon.cameraMode;window.gameViewMode='3d';Dungeon.cameraMode='first_person';Dungeon.dCounter=0;Dungeon.currentSpeaker=n;const dx=Dungeon.x-n.x,dy=Dungeon.y-n.y,len=Math.hypot(dx,dy);if(len>0){n.dirX=dx/len;n.dirY=dy/len;}beginNpcConversation(n);BMTouch.cancel();BMLock.clear();window.activeMoveKey=null;paint();BMShell.invalidate();return true;
  }
@@ -107114,9 +107107,9 @@ const BMDialogueText111=(()=>{
  function matches(){return page&&page.speaker===Dungeon.currentSpeaker&&page.counter===Dungeon.dCounter&&startGame==='dialogue';}
  function more(){return !!(matches()&&page.at<page.layout.pages.length-1);}
  function advance(){if(!more())return false;page.at++;return true;}
- function draw(x,y,w,h,text,z=1){const px=tX+tL*x/10,py=tY+tH*y/10,pw=tL*w*z/10,ph=tH*h*z/10,fs=font(),key=[text,pw,ph,fs].join('|');
+ function draw(x,y,w,h,text,z=1,reserveFooter=true){const px=tX+tL*x/10,py=tY+tH*y/10,pw=tL*w*z/10,ph=tH*h*z/10,fs=font(),key=[text,pw,ph,fs,reserveFooter].join('|');
   const owner=Dungeon.currentSpeaker,counter=Dungeon.dCounter;
-  if(!page||page.speaker!==owner||page.counter!==counter||page.key!==key){const old=page;page={speaker:owner,counter,key,at:0,layout:layout(text,pw,Math.max(fs*1.35,ph-fs*1.2),fs)};if(old&&old.speaker===owner&&old.counter===counter&&old.text===text){const read=old.layout.pages.slice(0,old.at).flat().join('').replace(/\s/g,'').length;let consumed=0;for(let i=0;i<page.layout.pages.length;i++){const count=page.layout.pages[i].join('').replace(/\s/g,'').length;if(consumed+count>read)break;consumed+=count;page.at=Math.min(i+1,page.layout.pages.length-1);}}page.text=text;}
+  if(!page||page.speaker!==owner||page.counter!==counter||page.key!==key){const old=page;page={speaker:owner,counter,key,at:0,layout:layout(text,pw,Math.max(fs*1.35,ph-(reserveFooter?fs*1.2:0)),fs)};if(old&&old.speaker===owner&&old.counter===counter&&old.text===text){const read=old.layout.pages.slice(0,old.at).flat().join('').replace(/\s/g,'').length;let consumed=0;for(let i=0;i<page.layout.pages.length;i++){const count=page.layout.pages[i].join('').replace(/\s/g,'').length;if(consumed+count>read)break;consumed+=count;page.at=Math.min(i+1,page.layout.pages.length-1);}}page.text=text;}
   ctx.save();ctx.beginPath();ctx.rect(px,py,pw,ph);ctx.clip();ctx.textAlign='left';ctx.textBaseline='top';ctx.fillStyle='#fff';
   page.layout.pages[page.at].forEach((line,i)=>{let dx=px;for(const part of line.split(/\b(STR|CON|INT|AGI)\b/)){ctx.font=fs+'px '+face;if(icons[part]){drawPortrait(icons[part],(dx-tX)/(tL/10),(py+i*page.layout.lineH-tY)/(tH/10),fs/tH);dx+=fs;}else{ctx.fillText(part,dx,py+i*page.layout.lineH);dx+=ctx.measureText(part).width;}}});
   if(page.layout.pages.length>1){ctx.font=Math.max(11,fs-3)+'px '+face;ctx.fillStyle='#d4bf7d';ctx.textAlign='right';ctx.fillText((page.at+1)+' / '+page.layout.pages.length+(more()?' · tap to continue':''),px+pw,py+ph-fs);}
@@ -108155,7 +108148,7 @@ const BMBranches=(()=>{
  npc(woods,890089,18.5,6.5,9.1,'Hermit',{spawnCondition:d=>!!d.memory.mq_map2});
  function hermitTalk(n){
   const d=Dungeon,options=[opt('Share porridge',()=>{d.currentWardTime=Math.min(d.maxWards*d.timePerWard,d.currentWardTime+d.timePerWard);d.requestSave();show(n,'Hermit ladles grass porridge into a wooden bowl and puts it in your hands.');}),
-   opt('Rest',()=>{const dawn=night(d);if(dawn){d.memory.worldHour=7;if(d.skybox)d.skybox.time=7;}d.requestSave();syncActors(d,spirits);show(n,dawn?'You wake to birdsong outside the hut.':'You rest beside the fire while Hermit tends his pot.');})];
+   opt('Rest',()=>{if(!BMRest112.safe(d)){BMInteract.report('Find a safe moment before resting.');return;}const hour=BMRest112.advance(d);syncActors(d,spirits);show(n,hour===7?'You wake to birdsong outside the hut.':'You wake at nightfall beside Hermit’s fire.');})];
   if(d.MainQuest>=3&&!d.memory.mq_map2)options.push(opt('The apprentice',()=>{const story=hermit.dialogueFactory(d);d.executeActions([['notify',{sprite:9,text:story.text,endActions:story.endActions}]]);}));
   return show(n,d.memory.imp_ambush_defeated?'There is porridge on the fire. Sit with me.':'Be careful, traveler. At night the spirits come down from the caverns. There is room by my fire.',options);
  }
@@ -114366,6 +114359,111 @@ const BMRetiredRealm110=(()=>{
  const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...args){if(Number(id)===613){migrate(this);Object.assign(this,haven);id=2;}return load.call(this,id,...args);};
  return {point,migrate};
 })();globalThis.BMRetiredRealm110=BMRetiredRealm110;
+
+/* v112: CSS-pixel dialogue layout, using the existing world and choice buttons. */
+const BMDialogueLayout112=(()=>{
+ const face='Franklin Gothic, Helvetica, Arial, sans-serif';
+ let current=null;
+ const grid=r=>({x:(r.x-tX)*10/tL,y:(r.y-tY)*10/tH,z:1,l:r.w*10/tL,h:r.h*10/tH});
+ function measure(text){
+  const safe=hudSafeInsets,v=worldViewport(),fs=BMDialogueText111.font(),pad=12,gap=8;
+  const w=Math.max(120,Math.min(wX-safe.left-safe.right-16,Math.max(v.w,Math.min(640,wX-24)))) ,x=(wX-w)/2;
+  const n=Dungeon.currentSpeaker,labels=Dungeon.dCounter===(n?.customDialogue?.length||0)-1?(n.options||[]).slice(0,4):[];
+  const key=JSON.stringify([text,wX,wY,tX,tY,tL,tH,fs,labels,safe]);if(current?.owner===n&&current.key===key)return current;
+  const bw=(w-gap)/2,rows=[];ctx.font=fs+'px '+face;
+  for(let i=0;i<labels.length;i+=2){const a=BMDialogueText111.layout(labels[i],bw-pad*2,1e6,fs).pages[0],b=BMDialogueText111.layout(labels[i+1]||'',bw-pad*2,1e6,fs).pages[0];rows.push(Math.max(44,Math.max(a.length,b.length)*fs*1.35+16));}
+  const controls=rows.reduce((a,b)=>a+b,0)+Math.max(0,rows.length-1)*gap;
+  const bottom=wY-safe.bottom-8,available=Math.max(fs*1.35+pad*2,bottom-Math.max(safe.top+8,v.y)-controls-gap);
+  const maxBody=Math.max(fs*1.35+pad*2,Math.min(available,Math.max(96,(wY-safe.top-safe.bottom)*.30)));
+  const lines=BMDialogueText111.layout(text,w-pad*2,1e6,fs).pages[0].length;
+  const natural=lines*fs*1.35+pad*2,bodyH=Math.min(natural,maxBody),paged=natural>maxBody+.01;
+  const rect={x,y:bottom-controls-(controls?gap:0)-bodyH,w,h:bodyH};
+  const buttons=[];let y=rect.y+bodyH+gap;
+  for(let i=0;i<labels.length;i++){const row=Math.floor(i/2);buttons.push({x:x+(i%2)*(bw+gap),y,w:bw,h:rows[row]});if(i%2)y+=rows[row]+gap;}
+  current={rect,buttons,fs,paged,pad,owner:n,text,key};return current;
+ }
+ function body(b,text){const a=measure(text),r=a.rect;Object.assign(b,grid(r),{text,type:'dialogue',visible:1});ctx.save();ctx.fillStyle='rgba(10,15,40,.88)';ctx.fillRect(r.x,r.y,r.w,r.h);ctx.strokeStyle='#bda36d';ctx.lineWidth=1;ctx.strokeRect(r.x+.5,r.y+.5,r.w-1,r.h-1);ctx.restore();const g=grid({x:r.x+a.pad,y:r.y+a.pad,w:r.w-a.pad*2,h:r.h-a.pad*2});BMDialogueText111.draw(g.x,g.y,g.l,g.h,text,1,a.paged);}
+ function choice(b){const r={x:tX+b.x*tL/10,y:tY+b.y*tH/10,w:b.l*tL/10,h:b.h*tH/10},fs=BMDialogueText111.font();const key=JSON.stringify([b.text,r.w,fs]);if(b._dialogueLabel112?.key!==key)b._dialogueLabel112={key,lines:BMDialogueText111.layout(b.text,r.w-24,1e6,fs).pages[0]};const lines=b._dialogueLabel112.lines;ctx.save();ctx.globalAlpha=b.visible;ctx.fillStyle=b.isPressed?'#343e86':'#171d61';ctx.fillRect(r.x,r.y,r.w,r.h);ctx.strokeStyle='#bda36d';ctx.lineWidth=1;ctx.strokeRect(r.x+.5,r.y+.5,r.w-1,r.h-1);ctx.beginPath();ctx.rect(r.x+4,r.y+2,r.w-8,r.h-4);ctx.clip();ctx.font=fs+'px '+face;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#fff';lines.forEach((line,i)=>ctx.fillText(line,r.x+r.w/2,r.y+(r.h-lines.length*fs*1.35)/2+i*fs*1.35));ctx.restore();}
+ function button(i){if(!current||current.owner!==Dungeon.currentSpeaker)measure(Dungeon.currentSpeaker?.customDialogue?.[Dungeon.dCounter]||'');return current.buttons[i]?grid(current.buttons[i]):null;}
+ return {body,choice,button,measure,get current(){return current;}};
+})();globalThis.BMDialogueLayout112=BMDialogueLayout112;
+
+/* Conversation placement moves the player only over checked, supported floor. */
+const BMConversationPose112=(()=>{
+ const poses=new WeakMap();
+ function person(d,n){return !!n&&n.type>=0&&n.type<1100&&!['notification','decoration','dropped_card','herb','sign'].includes(n.role)&&(d.npcs.includes(n)||globalThis.BMSuncat78?.isSuncat(n));}
+ function safe(d,x,y,z,n){
+  const r=.20,height=BMLayers.body(d);for(const [ox,oy]of [[0,0],[r,0],[-r,0],[0,r],[0,-r],[r*.7,r*.7],[-r*.7,r*.7],[r*.7,-r*.7],[-r*.7,-r*.7]]){
+   const X=x+ox,Y=y+oy,ground=BMLayers.support(d,X,Y,z,0);
+   if(!Number.isFinite(ground)||Math.abs(ground-z)>.12||ground<.1&&TERRAIN_SURFACES[d.maze?.[Math.floor(Y)]?.[Math.floor(X)]]?.kind==='water'||BMLayers.blocked(d,X,Y,z,false,.12,height))return false;
+  }
+  return !d.npcs.some(a=>a!==n&&!a.nonBlocking&&!a.isDead&&!a.isDying&&a.visible!==false&&Math.abs(BMTerrainPhysics.feet(d,a)-z)<height&&Math.hypot(a.x-x,a.y-y)<.20+Math.min(.35,a.radius||.25));
+ }
+ function path(d,x,y,z,n){const distance=Math.hypot(x-d.x,y-d.y),steps=Math.ceil(distance/.08);for(let i=1;i<=steps;i++)if(!safe(d,d.x+(x-d.x)*i/steps,d.y+(y-d.y)*i/steps,z,n))return false;return BMTerrainPhysics.trace(d,x,y,z+BMBodySizes.actor(d,d).face,n.x,n.y,BMTerrainPhysics.eye(d,n),true);}
+ function restore(d){const p=poses.get(d);if(!p)return;poses.delete(d);for(const key of ['dirX','dirY','fixedWorldAngle']){if(p.own[key])p.n[key]=p.values[key];else delete p.n[key];}}
+ function prepare(d,n){if(!person(d,n))return false;const old=poses.get(d);if(old?.n===n)return true;if(old)restore(d);
+  poses.set(d,{n,own:Object.fromEntries(['dirX','dirY','fixedWorldAngle'].map(k=>[k,Object.hasOwn(n,k)])),values:{dirX:n.dirX,dirY:n.dirY,fixedWorldAngle:n.fixedWorldAngle}});
+  const dist=Math.hypot(d.x-n.x,d.y-n.y),z=BMTerrainPhysics.feet(d,d);
+  if(dist<.85){const angle=dist>.01?Math.atan2(d.y-n.y,d.x-n.x):(d.currentAngle||0)-Math.PI/2+Math.PI;let point=null;
+   for(const radius of [1.15,.95,.75]){for(const offset of [0,.4,-.4,.8,-.8,Math.PI/2,-Math.PI/2,Math.PI]){const x=n.x+Math.cos(angle+offset)*radius,y=n.y+Math.sin(angle+offset)*radius;if(path(d,x,y,z,n)){point={x,y};break;}}if(point)break;}
+   if(point){Object.assign(d,point,{groundZ:z,targetMapX:point.x,targetMapY:point.y,isSlidingToTile:false,isAggroDashing:false,moving:false});BMPlayerMotion.reset();BMTouch.cancel();window.activeMoveKey=null;}
+  }
+  const dx=d.x-n.x,dy=d.y-n.y,len=Math.hypot(dx,dy);if(len>.01){n.dirX=dx/len;n.dirY=dy/len;n.fixedWorldAngle=Math.atan2(dy,dx);}return len>=.6;
+ }
+ const restoreView=BMView.restoreDialogue;BMView.restoreDialogue=function(d=Dungeon,...args){restore(d);return restoreView.call(this,d,...args);};
+ const begin=BMView.beginDialogue;BMView.beginDialogue=function(d,n,...args){prepare(d,n);return begin.call(this,d,n,...args);};
+ return {prepare,restore,safe,path,person};
+})();globalThis.BMConversationPose112=BMConversationPose112;
+
+/* Rest changes the saved client clock only; ordinary simulation refreshes its actors. */
+const BMRest112=(()=>{
+ const bed=n=>Math.floor(n?.type)===1170;
+ const fire=n=>!!n&&(n._guildFire||n.service==='campfire'||Math.floor(n.type)===-205&&/\b(fire|campfire|watchfire|hearth|cookfire|bonfire)\b/i.test(n.name||''));
+ const point=n=>bed(n)||fire(n);
+ const alive=n=>n&&n.visible!==false&&!n.isDead&&!n.isDying&&!BMLock.hostile(n);
+ function advance(d=Dungeon){d.memory??={};const h=Number.isFinite(d.memory.worldHour)?d.memory.worldHour:Number.isFinite(d.skybox?.time)?d.skybox.time:12;const next=h<6||h>=19?7:19;d.memory.worldHour=next;if(d.skybox)d.skybox.time=next;d.requestSave();return next;}
+ function safe(d){return !d.isLoading&&!d.isDead&&!d.isDying&&!d.inCombat&&!d.isThreatNearby&&!d.isAggroDashing&&d.status!=='dueling'&&!d.npcs.some(n=>!n.isDead&&!n.isDying&&BMLock.hostile(n)&&Math.hypot(n.x-d.x,n.y-d.y)<8&&BMTerrainPhysics.sight(d,n,d.x,d.y,d));}
+ function rest(n,d=Dungeon){if(d!==Dungeon||!point(n)||!alive(n)||!BMInteract.reachable(n))return false;if(!safe(d)){BMInteract.report('Find a safe moment before resting.');return false;}BMClassicDialogue.dismiss();BMView.restoreDialogue(d);d.currentSpeaker=null;startGame='explore';BMTouch.cancel();BMPlayerMotion.cancelDodge();window.activeMoveKey=null;d.isSlidingToTile=false;d.targetMapX=d.x;d.targetMapY=d.y;const hour=advance(d);BMInteract.report(hour===7?'You rest until morning.':'You rest until nightfall.');BMShell.invalidate();return true;}
+ const oldFire=BMCamp.openAtFire;
+ function use(n,d=Dungeon){if(!point(n)||!alive(n)||!BMInteract.reachable(n))return false;if(bed(n))return rest(n,d);return BMClassicDialogue.show({speaker:n,text:'Warmth and a place to rest.',chat:false,options:[{label:'Cook & craft',action:()=>{if(!BMInteract.reachable(n))return;if(n._guildFire||d.mapID===700||d.mapID===999)oldFire.call(BMCamp,n);else BMCamp.open('cook');}},{label:'Rest',action:()=>rest(n,d)}]});}
+ BMCamp.openAtFire=function(n,...args){return n&&point(n)?use(n):oldFire.call(this,n,...args);};
+ return {bed,fire,point,alive,advance,safe,rest,use};
+})();globalThis.BMRest112=BMRest112;
+
+/* Read-only inventory projections: quest flags stay the source of truth. */
+const BMQuestItems112=(()=>{
+ const isQuest=v=>!!v&&(String(v.key||'').startsWith('quest:')||v.quest===true||v.questItem===true||v.category==='quest');
+ const category=v=>isQuest(v)?'quest':v.category;
+ const icon=v=>v.questIcon||(/cherry/i.test(v.key)?'cherry':/rope|cord|line/i.test(v.name)?'rope':/lamp/i.test(v.name)?'lamp':/moonleaf/i.test(v.name)?'moonleaf':/sunsage/i.test(v.name)?'sunsage':/powder/i.test(v.name)?'powder':/draught|medicine/i.test(v.name)?'medicine':/meal|food|stores/i.test(v.name)?'food':/parcel/i.test(v.name)?'parcel':/ledger/i.test(v.name)?'ledger':/letter|recommendation/i.test(v.name)?'letter':/roll|register/i.test(v.name)?'roll':/orders|dispatch/i.test(v.name)?'orders':'keepsake');
+ function entries(d=Dungeon){const out=Object.values(BMInventory.entries());const add=(key,name,questIcon,description,count=1)=>out.push({key:'quest:view112:'+key,name,questIcon,description,count,category:'quest',kind:'quest',virtualQuest:true});const m=d.memory||{},t=m.livingHallows;
+  if(t&&!t.claimed){if(t.stores?.recovered&&!t.stores.done)add('tower-stores','Salvaged food chest','chest','Bring the dry stores to Simeon in Conaing’s courtyard.');if(t.skiff?.rope&&!t.skiff.rescued&&!t.skiff.hauling111)add('tower-rope','Rescue rope','rope','Use at the outer mooring to bring the stranded sailor ashore.');if(t.names?.roll&&!t.names.done)add('tower-roll',t.names.checked?'Corrected family roll':'Conaing’s tribute roll','roll',t.names.checked?'Return the family roll to Iobáth.':'Compare these names with Eithne’s family list by the hearth.');}
+  for(const [id,r]of Object.entries(m.classPaths?.paths||{})){if(!r?.accepted||r.completed||r.finalized)continue;const w=r.work101||{};
+   if(id==='dancer'&&r.stage===2)add('costume','Dancer’s costume parcel','parcel','Deliver to Dancer for Cherry’s recommendation.');if(id==='dancer'&&r.stage===3)add('recommendation','Signed recommendation','letter','Present Dancer’s letter to Cherry at the village inn.');
+   if(id==='rogue'&&w.ledger)add('ledger','Sealed storehouse ledger','ledger','Return the binding intact to Rogue.');if(id==='assassin'&&w.orders)add('orders','Sealed dispatch','orders','Keep the dispatch sealed and take it to Rogue.');if(id==='hunter'&&w.meal)add('meal','Hunter’s packed meal','food','Bring your finished meal to Hunter.');
+   if(w.bandages)add(id+'-bandages','Relief bandages','bandages','Tend the wounded watch member after securing the road.');
+   if(w.dose)add(id+'-draught','Sealed recovery draught','medicine','Deliver during your apprenticeship; it is reserved for the patient.');if(w.doses>0)add(id+'-draughts','Recovery draughts','medicine','Give each pilgrim their own draught.',w.doses);
+  }return out.filter(v=>v.count>0);
+ }
+ // Pixel silhouettes drawn at a fixed resolution, shared by list and icon views.
+ function draw(canvas,v){const g=canvas.getContext('2d');canvas.width=canvas.height=96;g.imageSmoothingEnabled=false;g.save();g.scale(3,3);const box=(x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h);};const line=(points,c,width=1)=>{g.strokeStyle=c;g.lineWidth=width;g.beginPath();points.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.stroke();};const gold='#d1a35c',light='#f4dca0',dark='#4a3028',paper='#ddcf9e';
+  switch(icon(v)){
+   case 'rope':for(let i=0;i<4;i++){g.strokeStyle=i%2?light:gold;g.lineWidth=2;g.beginPath();g.ellipse(15,16,10-i*2,8-i*1.5,0,0,Math.PI*2);g.stroke();}line([[22,19],[25,24],[20,27],[17,26]],gold,2);break;
+   case 'chest':box(4,10,24,16,dark);box(5,8,22,7,gold);box(6,16,20,8,'#906137');box(8,9,2,17,'#abb7b6');box(22,9,2,17,'#abb7b6');box(14,14,4,6,light);break;
+   case 'parcel':box(6,7,21,21,dark);box(5,6,20,20,'#ae8350');box(7,8,16,16,gold);box(14,6,3,20,'#e2d9b8');box(5,14,20,3,'#e2d9b8');line([[15,14],[11,9],[8,10],[9,13],[15,14],[20,9],[22,11],[21,13],[15,14]],'#884c75',2);break;
+   case 'food':box(5,13,23,13,'#996f42');box(7,14,19,8,light);box(9,9,10,8,'#b88b50');box(10,7,8,3,'#e7c58a');box(18,12,7,7,'#924d38');box(7,22,19,3,'#616e53');line([[10,11],[12,14],[15,10]],'#fff0b3');break;
+   case 'ledger':box(7,4,19,25,dark);box(6,3,18,24,'#527773');box(9,4,2,22,gold);box(14,9,7,2,light);box(14,13,7,1,light);box(18,17,9,3,gold);box(21,17,3,5,light);break;
+   case 'letter':case 'orders':box(4,8,25,18,dark);box(3,7,25,17,paper);line([[3,7],[15,17],[28,7]],'#b5a16d');box(13,15,5,5,icon(v)==='orders'?'#7e4381':'#ad4350');box(14,16,2,2,light);break;
+   case 'roll':box(8,4,18,23,paper);box(5,3,22,4,gold);box(5,25,22,4,gold);box(6,4,2,2,light);box(6,26,2,2,light);for(let i=0;i<5;i++)box(11,9+i*3,11-i%2*3,1,'#7b7155');break;
+   case 'bandages':box(7,8,19,18,'#b7b5a4');box(6,6,19,18,'#e8e6d4');for(let i=0;i<5;i++)line([[7,8+i*3],[24,8+i*3]],'#b5b6a4');box(12,14,7,2,'#bd7d75');box(14,12,2,7,'#bd7d75');break;
+   case 'medicine':case 'powder':box(12,3,8,4,dark);box(11,7,10,5,'#adc9c3');box(7,12,18,15,'#6f9995');box(9,16,14,9,icon(v)==='medicine'?'#8c65b2':gold);box(10,12,2,11,'#d7e7d5');box(14,17,4,7,paper);box(12,19,8,3,paper);break;
+   case 'moonleaf':case 'sunsage':line([[11,27],[17,8]],'#6e8d5b',2);for(const [x,y]of [[9,19],[18,17],[12,12],[19,8]]){box(x,y,6,4,icon(v)==='moonleaf'?'#80bcb2':'#b0af58');box(x+1,y-2,4,2,icon(v)==='moonleaf'?'#c9e4d0':'#e8d47d');}break;
+   case 'lamp':box(9,15,16,7,gold);box(12,21,9,2,light);box(13,23,6,3,gold);line([[10,17],[4,12],[3,13],[6,18],[10,19]],gold,2);line([[24,15],[29,12],[28,19],[24,20]],gold,2);box(14,12,6,2,light);box(16,10,2,2,gold);break;
+   default:box(10,5,13,22,dark);box(9,4,13,22,'#697b91');box(11,7,9,16,paper);box(13,12,5,6,gold);box(14,13,3,3,light);
+  }g.restore();
+ }
+ function portrait(parent,v){if(!isQuest(v)||v.key==='quest:cherry87')return false;const c=document.createElement('canvas');c.className='thumb';c.setAttribute('role','img');c.setAttribute('aria-label',v.name);c.style.imageRendering='pixelated';parent.append(c);draw(c,v);return true;}
+ return {entries,isQuest,category,icon,draw,portrait};
+})();globalThis.BMQuestItems112=BMQuestItems112;
 
 BMContent.installEmbedded();await bootGame();BMMovementCourtyard.previewStart();BMCreator.previewStart();}catch(error){window.BattleMageStartup?.report(error,"Saved-game startup");if(window.BM_CREATOR_PREVIEW)parent.postMessage({type:"bm-creator-error",message:String(error.message||error)},"*");}})();
 </script>

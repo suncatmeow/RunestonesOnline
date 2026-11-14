@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.51",
+  "version": "1.10.52",
   "private": true,
-  "description": "BattleMage v111: active Conaing tower and fixed-size JRPG reading",
+  "description": "BattleMage v112: dialogue layout, conversation placement, local rest and quest inventory",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"

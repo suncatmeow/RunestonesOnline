@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 111,
-  "serverVersion": "1.10.51",
+  "version": 112,
+  "serverVersion": "1.10.52",
   "date": "2026-11-14",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v110 / server 1.10.50",
+  "supersedes": "BattleMage Runestones v111 / server 1.10.51",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,12 +23,12 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Matching v111 client, server 1.10.51 and terrain 111; motion 103. Replace the five files together. No commit, push or service deployment performed.",
+    "deployment": "v112 client, server package 1.10.52, terrain 111 and motion 103. Five ready-to-commit files; no commit, push or deployment. All new behavior is client-side. Server differs from v111 only in /version metadata; this pass does not require a server logic update.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
-    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v111 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
+    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v112 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "13e7d1c9a50a748c222cd99bf6c35a280c75903d153225413e91f07d80fb0b3d",
-  "serverSha256": "b627126b2ac160d75604974035e4319e96e90e557e527699f560d4dd88e1dba4",
+  "clientSha256": "58bd6b2d34d4fed917bd4b4dc4f2a7a212f0974d029bd68aed742a336075de23",
+  "serverSha256": "c89f9df2112bb0816c6e60f9c8c08613d5777de69f91a57d0efa9555f7cde23f",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -68,10 +68,8 @@
   },
   "geography": {
     "newMapIDs": [],
-    "modifiedExistingMapIDs": [
-      137
-    ],
-    "interpretation": "A fictional Conaing tower encounter site: narrow two-storey stone keep, exterior stair, upper records room, accessible roof and tall watch turret. Not a historical reconstruction. Existing Tintagel and continental terrain preserved."
+    "modifiedExistingMapIDs": [],
+    "interpretation": "No map geometry changes. Existing bed and campfire actors become usable through normal reach, height and line-of-sight checks."
   },
   "naming": {
     "maps": {
@@ -269,8 +267,8 @@
     }
   },
   "devlog": {
-    "current": "v111",
-    "history": "Eight entries; v110 and older passes condensed. Current changes appear first."
+    "current": "v112",
+    "history": "Eight entries: v112 first, v111 condensed, older craft/art/sound history combined."
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -296,33 +294,26 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Rebuilt the old 18-by-17 single-room tower as a 10-by-12 keep with separate floors at 0/3/6 units, a half-step west stair, upper records room and a watch turret over ten units high. The tribute roll is upstairs at (45.5,31.5,3). Ground hall, roof and turret are reachable without jumps.",
-    "Three siege assaults now contain 3/4/3 opponents (ten total), retaining the old tide-captain identity 977247 and saved phases/defeats. Raiders march toward the player, use the actual layered pathfinder and keep pursuit beyond the old six-tile leash. Normal NPC combat, collision and cooldowns still resolve hits; the landing remains protected. Guards support rather than overwhelm the baseline enemies.",
-    "Added dedicated spear-and-shield Fomorian models and a larger armoured crested captain, with bounded directional animation caches. Pirate and player art are unchanged. One store-thief gives the opening shore errand an early encounter and cannot be farmed by reloading.",
-    "Useful quest objects respond directly when their task is ready. The sailor rescue moves through the real shore route and waits if the player falls behind; progress resumes after reload. Shelter/launch work takes four seconds nearby in the world, pauses in dialogue and cancels if the player retreats or an enemy reaches the rescue.",
-    "Completed errands, the watchfire, each defeated assault and the departure council award one-use chapter XP (575 total before combat XP). A level-one character earns a level and stat points; already-completed work grants missing XP once on a return visit. Silver rewards, inventory and story chronology are preserved.",
-    "JRPG body text uses a fixed size tied to the chat text setting. It wraps and pages long passages, preserves stat symbols and long words, and waits until the final visual page before offering story choices. Visual paging does not rewrite authored dialogue or story counters. Short lines retain a single advance to finish.",
-    "Legacy saved positions that intersect the new keep recover before coordinates are restored. Saved chapter phases, defeated actors, inventory and the onward voyage remain. Client/server NPC context points to the upstairs roll and updated assaults. The current devlog is v111 with condensed history."
+    "Dialogue buttons use a fixed CSS-pixel font matching the body text setting. Labels wrap at that size and each shared row grows to fit, with at least 44px height. Existing choice objects, hit testing, shortcuts, disabled states and exactly-once actions are retained.",
+    "A compact dialogue panel is anchored above the screen safe-area bottom. Short text uses its measured height and longer passages use available reading space with visual paging. The 3D viewport extends into unused portrait space during conversation; movement/look controls are hidden. Camera framing accounts for the panel. Layout and label measurements are cached until content, font or viewport changes.",
+    "Native and classic conversations correct player/NPC overlap by checking nearby floor positions and the full swept path for body clearance, other actors, walls, water, height changes and line of sight. The player steps back on safe floor; the NPC remains at its authored coordinates and turns to the player. Original facing and view are restored on exit. No duplicate speaker sprite is created.",
+    "Beds offer direct Rest. Real campfires offer Cook & craft, Rest and Leave. Rest advances the saved client clock from day to 19:00 or night to 07:00. Existing Hermit rest follows the same rule. Combat, nearby visible enemies and out-of-reach points reject rest. No silver, XP, healing or server-global clock reward is added.",
+    "Items → Quest Items includes stored quest-prefixed supplies plus read-only projections of carried tower and apprenticeship objects: rescue rope, salvaged food chest, tribute/family roll, costume parcel, recommendation, sealed ledger/dispatch, packed meal, recovery draughts and relief bandages. Existing saves populate from their original flags; used or delivered objects disappear. These projections are not added as duplicate stacks and cannot be sold or consumed independently.",
+    "Quest objects have compact item sprites in both list and icon views; counts and destination descriptions remain visible in details. Existing quest supplies keep their recipe/handoff logic, quest sale protections and story-specific actions. Cherry retains her existing art.",
+    "Current devlog identifies v112 and condenses earlier logs. The package remains five files, with matching server metadata and preserved dependencies, map geometry, later story arcs and Dragonflight server section."
   ],
   "previousRelease": {
-    "version": 110,
-    "serverVersion": "1.10.50",
-    "summary": "Original NPC dialogue restored, fake court reunited in throne hall, map 613 shelved. Preserved in v111."
+    "version": 111,
+    "serverVersion": "1.10.51",
+    "summary": "Multi-level Conaing keep, active three-assault siege, physical rescues, chapter XP and fixed dialogue reading size. Preserved, with v110 original dialogue, reunited impostors and shelved realm 613."
   },
   "validation": {
-    "automatedCheckGroups": 194,
+    "automatedCheckGroups": 128,
     "counts": {
       "client": 73,
-      "navigation": 8,
-      "motion": 11,
-      "startup": 5,
-      "kraken": 19,
-      "serverCoast": 8,
-      "fortress": 16,
-      "serverFortress": 10,
-      "fortressNavigation": 4,
       "dialogue": 11,
       "towerAndReading": 18,
+      "dialogueRestQuestItems": 15,
       "clientStartup": 11
     },
     "checks": {
@@ -401,103 +392,6 @@
         "Solid portal and cargo art preserve their types, destinations and callbacks",
         "Dances start at zero Rhythm, stay free, switch exclusively, and clean up guard buffs"
       ],
-      "navigation": [
-        "Half-height Iberian mountain steps are represented as elevated ground",
-        "Actual worker walks from default Eastern Iberia spawn into Western Iberia",
-        "Iberian route uses bounded resumable search bursts",
-        "Walking samples include real elevated support",
-        "All 251 movement samples remain on dry support with bounded step length",
-        "Western Iberia to Aquitania is found across authored chart edges",
-        "A two-tile cliff does not become an invented jump-through route",
-        "A running burst search remains cancellable"
-      ],
-      "motion": [
-        "Server jump rises, falls, lands and restores both jumps",
-        "One double_jump action schedules two boosts and a higher peak",
-        "Third jump and rapid repeat do not create extra boosts",
-        "Ceilings stop upward movement without penetrating the roof",
-        "Low headroom, water and active binding prevent takeoff",
-        "Disconnect cancels flight and queued boost; map change settles on new ground",
-        "Walking uphill during a jump never places the body below support",
-        "Motion packet sequence increases through a jump and landing",
-        "Client applies authoritative height and ignores older or malformed jump packets",
-        "Client navigation report preserves natural step height and live obstacles",
-        "Both movement and full player snapshot handlers apply motion, disconnect resets it"
-      ],
-      "startup": [
-        "Public version endpoint reports matching client/server versions",
-        "Entire shipped server initializes with external services stubbed",
-        "Public player snapshot includes initialized Suncat ground and jump state",
-        "Server jump timer executes without initialization-order errors",
-        "LLM action schema advertises both jump actions"
-      ],
-      "kraken": [
-        "One identical client/server coast patch preserves map dimensions and applies only once",
-        "New island is connected, entirely surrounded by water and larger than the retired campsite",
-        "Every crew position, camp clue and landing is on reachable dry ground outside the ruin walls",
-        "Kraken battle area, eastern arrival, Avalon narrows and all outer map edges retain their terrain",
-        "Ghost ship sails an entire collision-free water circuit and stays clear of wrecks",
-        "Day/night boundaries are exact and malformed clock values do not fabricate a night event",
-        "Daytime shows cold ruins; dusk swaps to the full crew, fire and decoration without duplicates",
-        "Dawn removes the ship, crew, flame and lanterns and restores cold debris on the same visit",
-        "Clock-based sailing persists across reloads and pauses during dialogue, menus or hidden tabs",
-        "Party uses native moving poses, never translates crew through furniture or runs enemy AI",
-        "Mooring bell hails a docked ship, explains a distant ship and rejects stale off-map actions",
-        "Swim and ship choices use actual water and retain Queen-ship ownership requirement",
-        "Eastern landing directions and return-to-village action remain usable",
-        "Legacy camp save, respawn and map arrival migrate once without changing inventory or quests",
-        "Existing swimmers and later visits to the retired campsite water are never repeatedly relocated",
-        "Client repairs a stale unavailable party actor during a server handoff and fixes old mooring coordinates",
-        "Island floor paint stays on land and the old painted island is removed",
-        "Camp art caches only four bounded directional models and reuses their sprites",
-        "Headless inhabitants follow the same night phase and ghost route while restoring relocated positions"
-      ],
-      "serverCoast": [
-        "Full server installs matching island terrain and all camp catalog identities before listening",
-        "Actual headless world exposes the crew at night and hides them by day",
-        "Actual handoff packets override stale camp positions and daytime absence using the current clock",
-        "Headless ghost position advances with the observed world clock",
-        "Server restores a legacy campsite body on the new beach and writes a migration receipt",
-        "A new server save in the old campsite water is not migrated again after reconnect",
-        "Observer presence transports a sanitized clock without modifying reported quest progress",
-        "Version endpoint reports client 111, terrain 111 and matching server 1.10.51"
-      ],
-      "fortress": [
-        "Haven reaches both wards, hall, hollow, prison stair, Iron Gate, cave mouth, market, village and forest over ordinary half-steps",
-        "The new court has continuous six-unit cliff support, a lower hollow and usable headroom",
-        "Every new cliff and building segment fits the renderer’s height and layer limits without overlap",
-        "A west-facing eye ray through the hall windows passes above the rampart to open sea",
-        "Changed map borders agree with every adjacent map, including their corner cells",
-        "Fresh story loads only the impostor court; the Fool and guardhouse stair are reachable",
-        "The real court remains behind the two prison gates and its return door leads to the outer ward",
-        "Fool recruitment and the exposed Emperor still use the existing main-quest actions",
-        "After the impostors are defeated, the genuine court occupies the new hall and chapel and the cells empty",
-        "Haven, the village and eastern trading house have separate names, roles and directions",
-        "A legacy court save and Western Shore bind point recover once without changing quest, money, cards or completed errands",
-        "Already-swimming saves stay at sea and a village stage position retains its height",
-        "Guild construction and decoration refreshes preserve the fortress and never repaint ocean",
-        "The sea cave returns to Iron Gate and does not bypass the prison rescue",
-        "Real map-entry and movement recovery land on the guardhouse floor and the low cave landing",
-        "Actual court investigations and market errands create reachable props at their real elevation"
-      ],
-      "serverFortress": [
-        "Headless terrain and every changed map match the final initialized client byte for byte",
-        "Server actor catalog uses the new roles and locations without sharing both personal court phases",
-        "Every static resource has usable outdoor ground and preserves its harvest identity",
-        "Restoring an old NPC ledger relocates positions without restoring deaths or spent inventory",
-        "Suncat resumes an old Western Shore land position at Haven and records the terrain version",
-        "Suncat can later swim through the former shore coordinates without repeated save relocation",
-        "The isolated sea cave has public directions and a return portal but no personal captives",
-        "Retired map 613 installs no world, actor catalog, simulator or recurring timer",
-        "Both shared court placement records match the throne hall and retain the genuine court positions",
-        "An old Suncat realm location recovers at Haven and old-client requests receive a retirement response"
-      ],
-      "fortressNavigation": [
-        "Haven to island Great Hall traversed by the actual server worker (184 position samples)",
-        "Great Hall to Iron Gate landing traversed by the actual server worker (52 position samples)",
-        "Village to guarded prison stair traversed by the actual server worker (192 position samples)",
-        "Outer ward down to Haven traversed by the actual server worker (136 position samples)"
-      ],
       "dialogue": [
         "The retired companion interceptor and realm simulator are absent at runtime",
         "Both religious impostors stand inside the throne hall with the fake Emperor and Empress",
@@ -531,6 +425,23 @@
         "Legacy tower save migrates before coordinates restore, preserving inventory, quest and defeated waves",
         "Protected landing remains free of raiders without per-frame teleport clamping"
       ],
+      "dialogueRestQuestItems": [
+        "Short and long choice labels use identical fonts; portrait controls fill width and have 44px hit areas",
+        "Dialogue uses remaining portrait viewport and a long line pages without losing text or early choices",
+        "Rotating and changing text size reflows dialogue and buttons without shrinking any labels",
+        "Native overlap conversation repositions the player, keeps one NPC and restores original view/facing",
+        "Classic overlap uses same world NPC, handles a blocked first direction and stays on the upper floor",
+        "Unsafe wall, water and cliff routes are rejected; books and notification props do not move",
+        "Real bed is discoverable and usable through Interact, toggles day/night and saves without money or quest changes",
+        "Campfire keeps Cook & craft and offers Rest; rest returns to exploration and toggles clock once",
+        "Faraway and unsafe rest attempts cannot change time; decorative flames are not campfires",
+        "Clock changes correctly at dawn/dusk boundaries, including midnight",
+        "Existing tower flags populate rope, chest and roll without adding physical inventory or changing progress",
+        "Class deliveries reflect existing saved state, quantities, handover and completed recommendations",
+        "Stored quest supplies remain usable by original recipes and leave the view when consumed",
+        "Quest Items tab works through actual inventory DOM with sprites, quantities and no virtual-item sell/use action",
+        "Cook & craft reaches the actual workbench and keeps its cooking tools"
+      ],
       "clientStartup": [
         "Full offline startup reaches ready without errors.",
         "Full offline-saved startup reaches ready without errors and preserves saved progress.",
@@ -546,28 +457,42 @@
       ]
     },
     "methods": [
-      "Execute all client scripts in Node/jsdom with canvas/audio/network stubs. Run the real NPC update loop beyond the old aggro radius and up the actual stair geometry; assert actual player ward damage and legal enemy placement.",
-      "Use the actual layered pathfinder to reach both floors, the records objective, rooftop and turret in intact and damaged phases. Check every raider/rescue spawn and the protected landing collision boundary.",
-      "Run physical sailor travel, distance waiting, reload continuation, timed shelter rescue, menu pause and retreat cancellation. Verify one-use XP, level-one progression, saved defeated waves and raw legacy save migration.",
-      "Exercise actual native/classic dialogue rendering and paging, preserved source text and stat tokens, hidden early choices, exactly-once choice actions, one-advance short lines and repeated conversation reset.",
-      "Retain 165 regression groups for quests, court dialogue, retired map 613, fortress and Kraken terrain, server navigation/jump/double-jump and server startup. Run fresh/saved offline and simulated-connected full startup (11 groups)."
+      "Execute the full client in Node/jsdom with canvas/audio/network stubs; 15 new feature groups exercise actual native/classic dialogue, canvas text metrics, hit boxes, supported overlap placement, original-facing restoration, real authored bed/fire interactions, cooking workbench, clock boundaries and save/reload.",
+      "Check 360×760, 412×915, 684×1328 portrait and 740×360 landscape coordinate fixtures. Change the chat/dialogue text setting, rotate while reading, verify source text preservation, hidden early options and exactly-once choice execution.",
+      "Exercise actual Inventory DOM in list/icon architecture with quest sprites and quantities, saved tower/class flags, handover/consumption disappearance, original recipe inventory and sale protection. Inspect a contact sheet rendered from the sprite drawing commands.",
+      "Retain 73 client quest/core groups, 11 original-dialogue/court groups and 18 tower/reading groups. Full fresh/saved offline and simulated-connected initialization adds 11 startup groups."
     ],
     "syntax": "All 13 client scripts execute; node --check server.js passes.",
-    "integrity": "Matching package versions, five ZIP members, archive CRCs, SHA-256 hashes, unchanged dependencies and unchanged protected Dragonflight server section.",
-    "visual": "No new rendered browser/phone playtest; architecture and movement are checked through actual runtime geometry. Art appearance and pacing require device review.",
-    "live": "Not deployed; no live player, real model calls or production server session."
+    "integrity": "Matching package versions, five archive members, CRCs and client/server SHA-256; byte-identical server except version metadata, unchanged dependencies and protected Dragonflight section.",
+    "visual": "Quest sprite contact sheet visually inspected. Canvas dialogue coordinates and text measurement checked programmatically. No rendered phone/browser walkthrough of the complete game.",
+    "live": "Not deployed; no production session or real model calls."
   },
   "limitations": [
-    "Ready-to-commit files, not a deployed update. A phone playtest is still needed for the new tower silhouette, enemy art, perceived difficulty and dialogue sizing.",
-    "Earlier browser/local-preview access was denied in this session; no alternate browser, CDP or headless route was used.",
-    "The tower chapter remains a personal saved story instance. This pass does not create a separate shared headless tower simulation or change the later migration chapters.",
-    "Combat uses existing dice rolls and wards. Automated pursuit/damage checks do not establish that every player build finds the new pacing satisfying."
+    "Phone review is still needed for the expanded portrait view, speaker framing, touch ergonomics and perceived layout. No new browser/game rendering was performed; earlier denied preview access was not bypassed.",
+    "Conversation placement uses legal nearby supported floor. It does not push an NPC, cross walls or teleport across a cliff when a space is physically too tight.",
+    "Rest updates the personal client clock. Existing scripted/cursed lighting rules remain; this does not advance a shared global server clock or simulate every skipped hour.",
+    "Quest Items includes carried objects with identified storage/flags. Narrative facts, inspected documents not taken, and arbitrary future quest flags are not invented as items."
   ],
   "nextPass": [
-    "Replace all five matching files, confirm devlog v111 and server 1.10.51, then reload without clearing saved data.",
-    "With a fresh or unfinished tower chapter, check the shore thief, climb the west stair for the tribute roll, escort the sailor and fight the three smaller assaults. Try retreating to the safe landing and drawing a raider upstairs.",
-    "On an existing completed save, revisit the tower for one-use missing chapter XP. Verify onward voyages and inventory remain intact; completed assaults are not reset.",
-    "On a phone, compare a short and long NPC line, change the Chat & dialogue text setting, rotate during a passage and finish a real quest/service choice. Review appearance and pacing before further tower expansion.",
-    "Continue the prior Tintagel visual/rescue-route and hosted Suncat dialogue/journal/navigation backlog. Map 613 stays shelved; arena and global guild/desire systems remain proposals."
-  ]
+    "Load the new client and confirm Devlog v112; keep saved data. Server changes here are version metadata only.",
+    "On a phone, open a short and long conversation, compare all choice label sizes, rotate and change text size, then select an actual quest/service action.",
+    "Talk while overlapping a person, near a wall and upstairs. Verify a clear view of the existing speaker and normal camera behavior after leaving.",
+    "Use a bed during daytime and again at night. Try campfire Rest and Cook & craft. Reload and verify the clock persists.",
+    "Check Items → Quest Items with the tower rope/stores/roll or an apprenticeship delivery. Complete the handover and verify it disappears without resetting the quest.",
+    "Continue the existing hosted Suncat dialogue/journal/navigation and Tintagel/tower device-review backlog; map 613 remains shelved and broader arena/world systems remain proposals."
+  ],
+  "questInventory": {
+    "open": "Player → Items → Quest Items",
+    "source": "Existing quest stacks and current saved carrying/delivery flags; no duplicate material stacks",
+    "sprites": "Code-native pixel silhouettes for rope, chest, roll, parcel, letter, orders, ledger, food, draught, bandages, moonleaf, sunsage, lamp and generic keepsake; existing Cherry sprite retained",
+    "unknownFutureFlags": "New story-only pickup flags need explicit projections; arbitrary boolean quest progress is not automatically treated as a carried object."
+  },
+  "rest": {
+    "dayEndsAtHour": 19,
+    "nightEndsAtHour": 7,
+    "nightDefinition": "hour < 6 or hour >= 19",
+    "scope": "saved client worldHour; ordinary local day/night simulation reads it",
+    "serverGlobalClockMutation": false,
+    "healingAdded": false
+  }
 }
