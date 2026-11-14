@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.48",
+  "version": "1.10.49",
   "private": true,
-  "description": "BattleMage v108: Tintagel cliff fortress, island court, Haven cove and guarded prison approach",
+  "description": "BattleMage v109: isolated map 613 homestead, physical NPC economy and ecology",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"

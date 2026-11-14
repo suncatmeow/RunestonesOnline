@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 108,
-  "serverVersion": "1.10.48",
+  "version": 109,
+  "serverVersion": "1.10.49",
   "date": "2026-11-14",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v107 / server 1.10.47",
+  "supersedes": "BattleMage Runestones v108 / server 1.10.48",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,11 +23,12 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Matching v108 client, server 1.10.48 and terrain 108; motion 103. Files only, ready for the user to commit. Preserve browser saves, memory/account/world files and environment credentials. No deployment or live production verification was performed.",
-    "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority."
+    "deployment": "Matching v109 client, server 1.10.49 and terrain 109; motion 103. Five replacement files only. Not committed, pushed or deployed.",
+    "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
+    "realm613Persistence": "Online: SUNCAT_MEMORY_FILE + .realm613.json, or the existing default memory-file path + .realm613.json. Preserve this additional file on the same persistent disk. Offline: battlemage.realm613.v1 browser storage. Existing campaign/account/world files and environment credentials remain unchanged."
   },
-  "clientSha256": "025da8b9a1be061a23bf3bb26bb3fdec99b68b5d5855446e580e3f2e88da96c8",
-  "serverSha256": "fadde447df040bc02c15818bf8d112b1575fe23eb8fefa5f9d729b24a4b03044",
+  "clientSha256": "27ff4ef6b03f7d52bc06ff7acfeaf983289c3fda5925a1e411e25c3ca4d6834a",
+  "serverSha256": "7a4df8d351cf2ece90c6032beafd84787c362d33b6abce513b06150e52b527bd",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -67,17 +68,9 @@
   },
   "geography": {
     "newMapIDs": [
-      195
+      613
     ],
-    "modifiedExistingMapIDs": [
-      2,
-      3,
-      32,
-      101,
-      102,
-      103,
-      105
-    ],
+    "modifiedExistingMapIDs": [],
     "source": "English Heritage Tintagel description and phased plan; Historic England island survey and Haven harbour research. Earlier continental geography remains.",
     "sourceURL": "https://www.english-heritage.org.uk/visit/places/tintagel-castle/history-and-legend/description/",
     "interpretation": "A game adaptation of the island/mainland courts, high headland, central hollow, eastern Haven and side sea landing. The imperial court, inhabited hamlet and guarded prison are fantasy-world design, not claims of an exact historical reconstruction.",
@@ -258,6 +251,22 @@
           75.5
         ]
       }
+    },
+    "realm613": {
+      "dimensions": [
+        100,
+        100
+      ],
+      "cabinGroundZ": 6.5,
+      "frontRises": 13,
+      "backRises": 13,
+      "rooms": [
+        "Manu / INT",
+        "Yemo / STR",
+        "Trito / AGI",
+        "Player / CON"
+      ],
+      "atlasConnected": false
     }
   },
   "naming": {
@@ -453,15 +462,30 @@
       "paths": "556 authored path cells. Floor clipping occurs on load/decoration rebuild and keeps the existing 32-tile draw culling.",
       "newNetworkMessages": 0,
       "measuredMobilePerformance": false
+    },
+    "realm613": {
+      "slabs": 2093,
+      "resources": 17,
+      "staticProps": 18,
+      "residents": 3,
+      "rabbitCap": 8,
+      "undeadCap": 2,
+      "simulationHz": 1,
+      "onlineSnapshotHz": 1,
+      "observerHeartbeatSeconds": 3,
+      "observerTimeoutSeconds": 12,
+      "modelDecisionIntervalSeconds": 180,
+      "offlineCatchup": false,
+      "measuredMobilePerformance": false
     }
   },
   "devlog": {
     "currentVersionSource": "meta[name=suncat-build] → BM_RELEASE",
     "currentEntryFirst": true,
-    "historicalSummaries": 5,
+    "historicalSummaries": 6,
     "visibleWhileScrolling": "Version-labelled navigation tab is outside the scrolling reader.",
-    "currentVersion": 108,
-    "recentHistory": "v100–v107 condensed"
+    "currentVersion": 109,
+    "recentHistory": "v108 condensed into two bullets; v100–v107 remain grouped"
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -487,23 +511,23 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Rebuild Tintagel’s northwest as a continuous cliff-supported island court, six world height units above sea level, with a lower central hollow and well. Add a Great Hall with western sea-view windows, chapel, low sea-facing rampart, narrow stone neck, mainland outer ward and village-facing gatehouse.",
-    "Place the impostor Emperor and Empress in the hall and the counterfeit religious court in the chapel. Preserve every existing personal-story condition, actor identity, rescue step and confrontation action. The real court stays in the gated Court Gaol until rescued; its stair is in a separate mainland guardhouse, with the return portal adjusted. Freed court members occupy the new hall and chapel.",
-    "Relocate Haven to the sheltered sea-level cove east of the island, with a cottage, net shed, fishing boat, cargo and ferrymen. Retain the eastern trading house and southeastern village as separate places. Add an Iron Gate side landing and a separate small sea-cave interior (195), reached by cliff stairs.",
-    "Remove the Western Shore land spur. Its chart ID remains as ordinary ocean for swimming and save compatibility. Reconcile all changed adjacent coastlines and retain the existing continent grid. Tintagel’s complete layout fits its 100×100 footprint without changing neighboring map scale.",
-    "Move Noble into outer-ward lodging, guards to the gate and hall entrance, the gaoler to the prison stair, and the whole town stable/carriage yard below the castle approach. Update live spawn callbacks, practical court investigations, market errands, ferry/stable arrival points and local directions.",
-    "Share terrain, role placements and navigation ground between client and server. Recover displaced old saves and Suncat world positions once, preserve swimmers and unaffected stage heights, retain personal quest progress, and migrate NPC ledger positions without reviving dead actors or resetting harvest/sales records. Keep personal court phases out of the shared autonomous catalog.",
-    "Replace the former coast floor painter so guild rebuilding cannot repaint old paths over water or remove the new castle. Validate all newly authored layer segments. Retain v106/v107 startup fixes and the existing Suncat jump/double-jump and pathfinding systems.",
-    "Show v108 first in the in-game devlog and condense v100–v107 into one historical group. Update the continuing development notes. Five replacement files only; no GitHub push or service deployment."
+    "Add standalone map 613, The Thirteen Steps, outside the continental atlas. Enter with .hack//teleport 613 in the southeast player bedroom. The wooden cabin has thirteen front stone rises, four separate bedrooms with native stat symbols, central corridors, a back door and service stair. Add an open grass field, forest glades, visible resource patches, forge shelter, roofed mine and deeper undead chamber.",
+    "Implement three persistent residents: Manu is priest, cook and healer; Yemo is miner and smith; Trito is hunter and protector. Manu and Yemo use the same household purse and stores. Trito has his own carried items, earnings, equipment and bedroom savings chest. Residents physically navigate to resources, carry goods home, work for bounded durations, meet to trade, and return to their own beds at night when no urgent need intervenes.",
+    "Run a bounded ecology: rabbits consume the same herb patches that residents and players gather, lose energy and speed with hunger, and disappear without valuable loot after starvation. Herb, wood and ore patches recover gradually. Rabbit replenishment depends on available herbs and is capped; the deeper mine emits at most two undead during the night.",
+    "Transfer real items and weighed silver with receipts. Stock limits and available household silver constrain buying; prices decline with supply. Cooking consumes meat and fuel; herbal dressings consume herbs; repairs consume ore and fur; refining adds a recorded amount of silver. Silver blades consume sixteen silver as material and transfer four as the smith’s fee. Reusable hunting snares are available. Trito deposits excess money in a physically accessible, lootable chest.",
+    "Give each visitor a realm-only satchel, twelve opening silver, trial knife, equipment condition, hunger and health, plus a personal room chest. Native attack inputs invoke trial strikes. Undead can injure nearby observing visitors; defeat recovers the visitor in their room without deleting possessions. Inspect residents, stocks and transaction history from a responsive ledger, then approach the actor, resource or chest to interact.",
+    "Install one authoritative online simulation with authenticated presence, proximity checks, bounded receipt replay, serial mutation/persistence, rollback on a failed transaction save, reconnect recovery and private visitor inventories. Online state is saved beside the configured memory file as .realm613.json. Offline play uses a separate browser ledger; no offline state is uploaded or merged into shared play. No empty-server catch-up; simulation pauses with no observers.",
+    "Reuse the configured character model for nearby resident conversations and optional, constrained next-goal choices at most once per three observed minutes. Facts come from actual inventories, activity, needs and receipts. Model output cannot create goods, silver, rewards or arbitrary actions. Existing model-budget checks apply. Without a key, budget or successful response, deterministic decisions and factual dialogue continue.",
+    "Preserve the campaign on entry/exit: save before teleporting, isolate memory, inventory, cards, party and progression in memory, block realm autosaves from overwriting the campaign save, then restore campaign fields on exit. Keep v108 Tintagel geography, court story, startup repairs and Suncat navigation unchanged. Devlog shows v109 first, with a condensed v108 entry and older grouped summaries."
   ],
   "previousRelease": {
-    "version": 107,
-    "serverVersion": "1.10.47",
-    "clientSha256": "9cd3ded55bc23b54a5f4e19008a688468607fa9aebf3c7f6f799f1041da4a714",
-    "summary": "Online startup clock scope/readiness repair; retained v106 NPC initialization-order repair. Both remain in v108."
+    "version": 108,
+    "serverVersion": "1.10.48",
+    "clientSha256": "025da8b9a1be061a23bf3bb26bb3fdec99b68b5d5855446e580e3f2e88da96c8",
+    "summary": "Tintagel cliff fortress, mainland court approach, lower Haven and separate guardhouse prison; all retained."
   },
   "validation": {
-    "status": "162 automated checks passed; routes, actual story states, save migration, matching server geometry and fresh/saved connected/offline initialization verified in Node fixtures. Real phone rendering remains unverified.",
+    "status": "211 automated check groups passed; five simulated days and 65,064 sampled entity positions. Phone visuals and live deployment/model execution are not verified.",
     "counts": {
       "client": 73,
       "navigation": 8,
@@ -514,6 +538,10 @@
       "fortress": 16,
       "serverFortress": 7,
       "fortressNavigation": 4,
+      "realmSimulation": 25,
+      "realmClient": 8,
+      "realmServer": 11,
+      "realmOnlineClient": 5,
       "clientStartup": 11
     },
     "checks": {
@@ -651,7 +679,7 @@
         "Server restores a legacy campsite body on the new beach and writes a migration receipt",
         "A new server save in the old campsite water is not migrated again after reconnect",
         "Observer presence transports a sanitized clock without modifying reported quest progress",
-        "Version endpoint reports client 108, terrain 108 and matching server 1.10.48"
+        "Version endpoint reports client 109, terrain 109 and matching server 1.10.49"
       ],
       "fortress": [
         "Haven reaches both wards, hall, hollow, prison stair, Iron Gate, cave mouth, market, village and forest over ordinary half-steps",
@@ -686,11 +714,68 @@
         "Village to guarded prison stair traversed by the actual server worker (192 position samples)",
         "Outer ward down to Haven traversed by the actual server worker (136 position samples)"
       ],
+      "realmSimulation": [
+        "Installation reserves only the unused standalone map and refuses a collision",
+        "Four bedroom and resource routes cross walkable cells with no step exceeding 0.5",
+        "Household starts without magically stocked raw meat, herbs or fur",
+        "Remote trades fail and do not change either purse or inventory",
+        "A real delivery transfers actual goods and silver, and receipt retry cannot duplicate it",
+        "Saved receipts remain idempotent after reloading the realm",
+        "An empty purse stops buying, and full stores lower price and refuse excess supply",
+        "Negative, fractional and oversized quantities are rejected without mutations",
+        "Silver blades consume 16 silver as material and transfer only the 4-silver fee",
+        "The smith cannot craft away from the forge, even when the player stands next to him",
+        "Repair consumes real fur and ore, and the smith’s payment recirculates",
+        "Treatment consumes one actual dressing and healing stops at full health",
+        "Chest deposits, withdrawals and theft move the same silver instead of minting it",
+        "Gathering consumes a real patch, enforces work delay, then gradually regrows",
+        "Rabbits eat the same herbs available to players and regain energy",
+        "Starvation slows rabbits and eventually removes them without loot",
+        "Silver equipment deals greater damage to undead and weapon cooldown prevents spam",
+        "Snapshots expose only the visitor’s own satchel and omit private receipt identities",
+        "Optional model decisions are restricted to currently permitted goals",
+        "Nearby undead injure an observing visitor and recovery preserves the satchel",
+        "Nighttime residents return to their own reachable beds when no immediate need intervenes",
+        "Five simulated days preserve every silver transfer, bounded wildlife and traversable movement",
+        "Unscripted daily work produces hunting, cooking, medicines, mining, refinement and real receipts",
+        "The hunter purchases repairs/equipment, earns protection payments and saves excess silver",
+        "No resident remains stuck in meal-seeking with empty stores after five days"
+      ],
+      "realmClient": [
+        "Map 613 has the isolated cabin, forest, mine and four stat-marked rooms",
+        "Thirteen front rises and thirteen service rises connect ground to the actual 6.5-unit floor",
+        "Every authored layer validates without overlaps",
+        "Rooms, doors, resources and workstations are reachable with ordinary half-steps and real collision clearance",
+        "Entering uses the player room, restores height, creates residents and bypasses campaign autosaves",
+        "Native Talk and cast actions enter realm interactions without campaign rewards or spell consumption",
+        "Realm ledger and satchel render with safe text and no undefined values",
+        "Offline ticks persist a separate ledger, and leaving restores campaign vitals and party references"
+      ],
+      "realmServer": [
+        "The complete matching server boots and installs only its independent realm ledger",
+        "Visitors require authenticated identity and actual presence in map 613",
+        "Two observers share one simulation tick and receive only their own satchels",
+        "Server uses registered player coordinates instead of forged request positions",
+        "Concurrent repeated receipts commit once, with persistence before acknowledgement",
+        "A storage failure rolls back both sides of an exchange",
+        "Disconnect/rejoin keeps the same wallet, stocks and receipt history",
+        "Dialogue fallback describes actual needs and requires physical proximity",
+        "With no observers, ticks and model decisions leave the whole saved realm unchanged",
+        "Leaving map 613 or missing heartbeats removes stale observers",
+        "The persisted realm can be restored without resetting inventory or accumulated time"
+      ],
+      "realmOnlineClient": [
+        "Online entry installs the socket once, receives residents and never creates an offline ledger",
+        "Connected actions use the returned server stock and purse",
+        "Disconnect pauses shared mutations and reconnect resumes the same authoritative state",
+        "Server movement is interpolated along traversable cells, including the front stair",
+        "A late transaction acknowledgement cannot move or mutate a campaign character after exit"
+      ],
       "clientStartup": [
-        "Full offline startup reaches ready without errors.",
-        "Full offline-saved startup reaches ready without errors and preserves the saved quest, currency, deck and memory.",
-        "Full online startup reaches ready without errors.",
-        "Full online-saved startup reaches ready without errors and preserves the saved quest, currency, deck and memory.",
+        "Full offline initialization reaches ready without an error.",
+        "Full offline-saved initialization reaches ready without an error and preserves saved progress.",
+        "Full online initialization reaches ready without an error.",
+        "Full online-saved initialization reaches ready without an error and preserves saved progress.",
         "Connected presence timers wait while saved-world initialization is incomplete",
         "Connected portrait-loading timers execute without unhandled errors",
         "Connected presence uses the exported real clock with exact day/night and malformed-value rules",
@@ -700,30 +785,71 @@
         "Every registered recurring callback executes after initialization without a reference error"
       ]
     },
+    "simulation": {
+      "seconds": 7200,
+      "days": 5,
+      "routeSamples": 65064,
+      "events": 156,
+      "minted": 54,
+      "consumedSilver": 16,
+      "finalStock": {
+        "silver": 0,
+        "stock": {
+          "fur": 8,
+          "herb": 0,
+          "wood": 3,
+          "ore": 7,
+          "cookedMeat": 10
+        }
+      },
+      "finalResidents": {
+        "manu": {
+          "goal": "counter",
+          "food": 60.399999999999906,
+          "hp": 100,
+          "silver": 0
+        },
+        "yemo": {
+          "goal": "forge",
+          "food": 67.59999999999992,
+          "hp": 100,
+          "silver": 0
+        },
+        "trito": {
+          "goal": "rest",
+          "food": 65.19999999999992,
+          "hp": 99.59999999999911,
+          "silver": 27
+        }
+      }
+    },
     "methods": [
-      "Execute the actual full client loader and game modules in Node/jsdom with stubbed canvas/media and an in-process Socket.IO-shaped transport. No browser, network, live player or model call.",
-      "Load the actual pre-rescue and post-rescue maps. Verify impostor/genuine court exclusivity, gated captives, Fool/confrontation actions, live relocated NPC positions, genuine portal-entry recovery, guild rebuilds and practical field-prop placement.",
-      "Use the actual layer validator, collision/support model and server navigation worker. Walk four new height-aware routes over 564 sampled positions; verify all changed map seams and unobstructed westward hall window sightlines geometrically.",
-      "Boot the complete shipped server with external services stubbed; compare final client/server terrain and test private-story isolation, resource support, one-time NPC/world-position migration and retained death/harvest/sales state.",
-      "Rerun the apprenticeship, Iberia-navigation, jump/double-jump, startup-contract, pirate-island and observer regressions. Four startup modes preserve saved memory, main quest, currency and deck IDs; connected timer assertions are counted once."
+      "Execute all client scripts and full startup in Node/jsdom with stubbed canvas/media and simulated Socket.IO. Fresh/saved offline and connected initialization retain the existing startup and saved-progress guarantees.",
+      "Validate every map-613 slab with the actual game layer validator. Walk routes from the player room to every room, service point and resource against actual collision/headroom; verify both thirteen-rise stairways and native NPC creation, Talk and attack interception.",
+      "Advance the deterministic engine for five game days without model calls. Check every sampled entity location is traversable and verify the silver conservation equation after every second. Assert meaningful hunting, cooking, mining, refining, medicine, purchases, savings and protection events occur without scripted quest rewards.",
+      "Boot the complete server with network/model/disk fixtures. Check authentication, proximity, one simulation for two observers, simultaneous identical receipts, persistence before acknowledgement, rollback on save failure, reconnect, private visitor inventory, observer expiry and zero-observer pause.",
+      "Exercise the connected client adapter against simulated server responses. Check local/server separation, disconnect/reconnect, receipt responses, traversable movement interpolation and late acknowledgements after returning to the campaign.",
+      "Retain and rerun existing apprenticeship, navigation, jump/double-jump, startup, Kraken, fortress, court story, save migration and server-worker checks."
     ],
-    "syntax": "All 13 client scripts compile during full startup; node --check server.js passes.",
-    "integrity": "Five ZIP members, CRCs, hashes and version metadata verified. Dependencies and the protected Dragonflight shared-server section are unchanged.",
-    "visual": "A data-derived terrain plot and analytical sightlines were inspected. No actual game screenshot, phone rendering, frame-rate measurement or child playtest.",
-    "live": "Not deployed. Connected startup uses a simulated local transport, not the hosted service."
+    "syntax": "All 13 client scripts execute during startup; node --check server.js passes.",
+    "integrity": "Five ZIP members, CRCs, SHA-256 hashes, version metadata, unchanged dependencies and unchanged protected Dragonflight shared-server section.",
+    "visual": "No actual browser/phone rendering or touch playtest. Geometry and DOM interactions tested in Node fixtures.",
+    "live": "No production deployment, real online session, provider model request, or older-device frame-rate measurement."
   },
   "limitations": [
-    "No deployment was performed. The user must commit the five replacement files to publish v108 and server 1.10.48.",
-    "Browser/local-preview access was previously denied; no alternative browser, CDP, headless screenshot or shell-browser route was used. Rendering and touch feel require a phone playtest after publication.",
-    "Automated saves are fixtures, not the user’s browser save. Live multiplayer transport, production Suncat travel and older-phone performance remain unverified.",
-    "The coast and architectural arrangement are historically inspired; the imperial occupants, starting impostor story, Haven hamlet and prison are game fiction. The sea cave has a stable game landing rather than a new tide-locking mechanic.",
-    "Earlier unverified live lyric/journal/repeated-reply issues and the larger campaign backlog remain separate follow-up work."
+    "Files only. The user must commit all five matching replacements to publish the client and server.",
+    "Browser/local-preview access was previously denied. No alternate browser, headless browser, CDP or screenshot workaround was used. The cabin proportions, roof visibility, stat plaques, touch controls, shadows and actual phone performance need a playtest.",
+    "Live model conversation quality and optional goal selection are wired but unverified against the provider. Deterministic fallback and allowed-goal validation were tested. No model/API spending was performed for these tests.",
+    "This is a deliberately bounded household experiment, not a worldwide economy or open-ended NPC planner. Resources replenish on timers; the model chooses permitted goals. Hunting snares improve capture strikes rather than simulating a separate trap-setting profession.",
+    "Online and offline versions are separate realms with no merge. Shared online stock and Trito’s chest are visible to everyone observing this server realm; each visitor’s satchel and personal chest are private. Starting visitors receive twelve explicit opening silver.",
+    "The new server ledger requires the same durable hosting storage as the existing memory file. Periodic movement/need snapshots save every ten active seconds; trade receipts save before acknowledgement. There is no simulation catch-up during downtime.",
+    "Economic balancing may need tuning after player interference. Taking Trito’s savings really removes them; depleted reserves can stop buying until spending or refining replenishes the household. This is observable behavior, not a guarantee that arbitrary player disruption cannot cause shortages."
   ],
   "nextPass": [
-    "Publish the five replacements, reload without clearing site storage and confirm v108 plus /version server 1.10.48 / terrain 108.",
-    "Phone playtest in first person, third person and top-down/isometric views: Haven looking west, hall window outlook, cliff stair height, bridge, main gate, outer-ward prison trip, stable travel and sea-cave return. Check no grass land spur remains west of Tintagel.",
-    "Verify an existing real save and the complete Fool → gaol → lower dungeon → impostor confrontation → restored court route, plus a completed guild rebuild and Noble/court practical errands.",
-    "Observe hosted Suncat pathfinding, jump/double-jump, handoff and reconnect. Then investigate lyric validation, journal editorial messages and repetitive NPC/fox replies against current logs.",
-    "Resume the early Indian-subcontinent settlement, distinct Chinese communities and cultivation arc after stability checks. Vampire Cherry and unavailable Gold promotion remain deferred."
+    "Publish the five matching replacements, verify v109 / server 1.10.49, then enter .hack//teleport 613 without clearing campaign saves.",
+    "On the phone, walk the front and back stairs; inspect all four room symbols, forest resources, forge and mine. Follow Trito through a hunt, delivery, repair and savings deposit; follow Yemo carrying ore home and Manu preparing meals/dressings.",
+    "Test two real clients observing the same realm, a reconnect, returning to the campaign, hidden-tab/title pause, an empty-server pause, server restart on persistent storage, live resident dialogue and actual model-budget behavior.",
+    "Watch shortages and prices after stealing savings, buying out meals or harvesting all herbs; tune resource rates and service costs from observed behavior before any wider-world reuse.",
+    "Continue the pending Tintagel first-/third-person/2D visual inspection and full court rescue route, hosted Suncat movement/dialogue/journal investigation, then the established India/China and cultivation backlog. Arena and continent-wide guild reporting remain proposals. No campaign storyline expansion in this pass."
   ]
 }
