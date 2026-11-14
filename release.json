@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 107,
-  "serverVersion": "1.10.47",
+  "version": 108,
+  "serverVersion": "1.10.48",
   "date": "2026-11-14",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v106 / server 1.10.46",
+  "supersedes": "BattleMage Runestones v107 / server 1.10.47",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,18 +23,12 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Matching v107 client and server 1.10.47. Files only; no deployment performed. Preserve browser saves, memory/account/world files and environment credentials. GET /version identifies the installed server. Current production versions have not been verified after the user's reported commits.",
+    "deployment": "Matching v108 client, server 1.10.48 and terrain 108; motion 103. Files only, ready for the user to commit. Preserve browser saves, memory/account/world files and environment credentials. No deployment or live production verification was performed.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority."
   },
-  "clientSha256": "9cd3ded55bc23b54a5f4e19008a688468607fa9aebf3c7f6f799f1041da4a714",
-  "serverSha256": "97d8f60016d98baee12c31909c3249eb4664731de73d1ebbb95cd0931937805e",
+  "clientSha256": "025da8b9a1be061a23bf3bb26bb3fdec99b68b5d5855446e580e3f2e88da96c8",
+  "serverSha256": "fadde447df040bc02c15818bf8d112b1575fe23eb8fefa5f9d729b24a4b03044",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
-  "previousPassChanges": [
-    "Move the unchanged Suncat motion module into the existing post-definition integration script. Its NPC.prototype.update hook now installs only after the real NPC class has initialized.",
-    "Repair the Loading game scripts crash reported at 25207:15. The earlier isolated module checks supplied an initialized NPC class and did not test this dependency order.",
-    "Keep save formats, quests, inventory, maps, pathfinding, jump physics and all v105 features unchanged. The server changes only its public version metadata to client 106 / server 1.10.46; terrain remains 105 and motion remains 103.",
-    "Show v106 as the current devlog entry and condense v100–v105 into one historical group. Keep five historical groups total."
-  ],
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
     "next": "Eastern atlas layout and connected routes, then early Indian-subcontinent and Chinese settlement chapters, followed by cultivation. Cherry after dark/Vampire progression deferred by user. Gold unavailable. Islands/fisherman skipped; minigame leagues await discussion.",
@@ -48,7 +42,10 @@
     {
       "url": "https://celt.ucc.ie/published/T300011.html",
       "use": "Falias–stone, Gorias–spear, Findias–Sword of Nuada, Murias–cauldron. Quest tasks and three field outcomes are game adaptations."
-    }
+    },
+    "https://www.english-heritage.org.uk/siteassets/home/visit/places-to-visit/tintagel-castle/history-and-legend/tintagel-castle-phased-plan-2020.pdf",
+    "https://historicengland.org.uk/research/results/reports/6616/TintagelCastleandIslandCornwallArchaeologicalSurveyEnhancement",
+    "https://historicengland.org.uk/research/results/reports/34-2016"
   ],
   "relicEffects": {
     "stone": {
@@ -69,28 +66,21 @@
     }
   },
   "geography": {
-    "newMapIDs": [],
-    "modifiedExistingMapIDs": [
-      -2,
-      4,
-      22,
-      42,
-      43,
-      44,
-      46,
-      49,
-      67,
-      72,
-      74,
-      85,
-      111,
-      113,
-      114,
-      115
+    "newMapIDs": [
+      195
     ],
-    "source": "Natural Earth 1:110m modern land, lakes and rivers",
-    "sourceURL": "https://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-land/",
-    "interpretation": "Corrected Mediterranean water gaps with retained authored islands and locations; regional natural-ground palette correction.",
+    "modifiedExistingMapIDs": [
+      2,
+      3,
+      32,
+      101,
+      102,
+      103,
+      105
+    ],
+    "source": "English Heritage Tintagel description and phased plan; Historic England island survey and Haven harbour research. Earlier continental geography remains.",
+    "sourceURL": "https://www.english-heritage.org.uk/visit/places/tintagel-castle/history-and-legend/description/",
+    "interpretation": "A game adaptation of the island/mainland courts, high headland, central hollow, eastern Haven and side sea landing. The imperial court, inhabited hamlet and guarded prison are fantasy-world design, not claims of an exact historical reconstruction.",
     "roadCrossings": 6,
     "roadsideShelters": 4,
     "links": [
@@ -208,7 +198,67 @@
         "other": "north",
         "center": 53.5
       }
-    ]
+    ],
+    "tintagel108": {
+      "dimensions": [
+        100,
+        100
+      ],
+      "courtGroundZ": 6,
+      "hollowGroundZ": 5,
+      "havenGroundZ": 0,
+      "ironGateGroundZ": 0.5,
+      "prisonMap": 32,
+      "seaCaveMap": 195,
+      "formerWesternShore": 103,
+      "formerWesternShoreUse": "Ocean only; land relocated into Tintagel itself.",
+      "landmarks": {
+        "hall": [
+          25.5,
+          26.5
+        ],
+        "court": [
+          28.5,
+          29.5
+        ],
+        "hollow": [
+          20.5,
+          11.5
+        ],
+        "bridge": [
+          34.5,
+          32.5
+        ],
+        "gate": [
+          37.5,
+          41.5
+        ],
+        "prison": [
+          48.5,
+          37.5
+        ],
+        "haven": [
+          50.5,
+          25.5
+        ],
+        "ironGate": [
+          34.5,
+          21.5
+        ],
+        "cave": [
+          33.5,
+          21.5
+        ],
+        "market": [
+          21,
+          44.8
+        ],
+        "village": [
+          78.5,
+          75.5
+        ]
+      }
+    }
   },
   "naming": {
     "maps": {
@@ -397,13 +447,21 @@
       "animation": "Analytic clock-based ship position, five stationary crew animation states, four cached models × 8 directional frames × 128-pixel stamps. No path search each frame.",
       "network": "One bounded numeric clock field on the existing presence heartbeat; no new periodic message type.",
       "measuredMobilePerformance": false
+    },
+    "tintagel108": {
+      "terrain": "Precomputed 100×100 geometry; 2,416 total Tintagel slabs, with 1,073 newly authored cells; no more than four non-overlapping new layers per cell.",
+      "paths": "556 authored path cells. Floor clipping occurs on load/decoration rebuild and keeps the existing 32-tile draw culling.",
+      "newNetworkMessages": 0,
+      "measuredMobilePerformance": false
     }
   },
   "devlog": {
     "currentVersionSource": "meta[name=suncat-build] → BM_RELEASE",
     "currentEntryFirst": true,
     "historicalSummaries": 5,
-    "visibleWhileScrolling": "Version-labelled navigation tab is outside the scrolling reader."
+    "visibleWhileScrolling": "Version-labelled navigation tab is outside the scrolling reader.",
+    "currentVersion": 108,
+    "recentHistory": "v100–v107 condensed"
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -429,67 +487,34 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Expose the island module's existing hour(world) function on BMKraken105. Suncat presence now calls this public function instead of the inaccessible krakenHour105 function inside the async startup scope.",
-    "Skip observer presence until the saved world is initialized, while a map loads, or before the island module exists. Preserve the existing presence rate limits, menu withdrawal, world progress and clock validation.",
-    "Retain the v106 NPC initialization-order repair. Save formats, quests, inventory, world geometry, pathfinding and jump physics are unchanged. Server gameplay is byte-identical; only public version metadata changes to client 107 / server 1.10.47, with terrain 105 and motion 103.",
-    "Show v107 as the current devlog entry and merge v100–v106 into one historical group. Retain five historical groups."
+    "Rebuild Tintagel’s northwest as a continuous cliff-supported island court, six world height units above sea level, with a lower central hollow and well. Add a Great Hall with western sea-view windows, chapel, low sea-facing rampart, narrow stone neck, mainland outer ward and village-facing gatehouse.",
+    "Place the impostor Emperor and Empress in the hall and the counterfeit religious court in the chapel. Preserve every existing personal-story condition, actor identity, rescue step and confrontation action. The real court stays in the gated Court Gaol until rescued; its stair is in a separate mainland guardhouse, with the return portal adjusted. Freed court members occupy the new hall and chapel.",
+    "Relocate Haven to the sheltered sea-level cove east of the island, with a cottage, net shed, fishing boat, cargo and ferrymen. Retain the eastern trading house and southeastern village as separate places. Add an Iron Gate side landing and a separate small sea-cave interior (195), reached by cliff stairs.",
+    "Remove the Western Shore land spur. Its chart ID remains as ordinary ocean for swimming and save compatibility. Reconcile all changed adjacent coastlines and retain the existing continent grid. Tintagel’s complete layout fits its 100×100 footprint without changing neighboring map scale.",
+    "Move Noble into outer-ward lodging, guards to the gate and hall entrance, the gaoler to the prison stair, and the whole town stable/carriage yard below the castle approach. Update live spawn callbacks, practical court investigations, market errands, ferry/stable arrival points and local directions.",
+    "Share terrain, role placements and navigation ground between client and server. Recover displaced old saves and Suncat world positions once, preserve swimmers and unaffected stage heights, retain personal quest progress, and migrate NPC ledger positions without reviving dead actors or resetting harvest/sales records. Keep personal court phases out of the shared autonomous catalog.",
+    "Replace the former coast floor painter so guild rebuilding cannot repaint old paths over water or remove the new castle. Validate all newly authored layer segments. Retain v106/v107 startup fixes and the existing Suncat jump/double-jump and pathfinding systems.",
+    "Show v108 first in the in-game devlog and condense v100–v107 into one historical group. Update the continuing development notes. Five replacement files only; no GitHub push or service deployment."
   ],
   "previousRelease": {
-    "version": 106,
-    "serverVersion": "1.10.46",
-    "clientSha256": "1db0c02ee095bf951e3e67a0c921de76fd96ed04c8bfa219870ddfaaad089d51",
-    "summary": "Repaired early NPC hook initialization. Fresh/saved offline tests passed, but did not execute connected presence timers; the subsequent screenshot exposed a separate private-clock scope error fixed by v107.",
-    "earlier": {
-      "version": 105,
-      "serverVersion": "1.10.45",
-      "clientSha256": "26bd94104718573df8f8efbf5cb1b93ce2faebac580606b4928f70af509a3c2c",
-      "summary": "Southern pirate island, sailing ghost ship, day/night camp and shared world clock. The user subsequently reported a startup crash; v106 reproduces and fixes it.",
-      "earlier": {
-        "version": 104,
-        "serverVersion": "1.10.44",
-        "clientSha256": "7b9aa8a2bdb21e16326038df2f01e40c8659c9965e7459c5e500350ee23c2da7",
-        "summary": "Tintagel raised coastal headland, connected shore and landings, floor clipping and first-step hints; 112 automated checks. No deployment.",
-        "earlier": {
-          "version": 103,
-          "serverVersion": "1.10.43",
-          "clientSha256": "ce237b1b4d0246648120e64dbc77655ce6495d13756d6345236ebb0b75ee2b31",
-          "summary": "Suncat navigation bursts and jumps, practical-task clarity, free dances and solid entrance/cargo art; 96 automated checks. Visual and live checks remained pending.",
-          "earlier": {
-            "version": 102,
-            "serverVersion": "1.10.42",
-            "clientSha256": "8c646dd36aca200a1e8dece17e4b61bee5b040d2f92399cf360082832bc46658",
-            "summary": "Ten advanced practical apprenticeships, metadata-driven condensed devlog and 66 focused checks; visual playtesting pending.",
-            "earlier": {
-              "version": 101,
-              "clientSha256": "a6d3e3e43eb3490e358cda662a26de5383a5dea6b5a7d57e1463dea5add0d22b",
-              "summary": "Seven starter field apprenticeships; 35 focused checks passed. Visual playtesting remained pending. Server 1.10.42 unchanged.",
-              "earlier": [
-                {
-                  "version": 100,
-                  "summary": "Recovered interrupted build; repaired class state, quest props, dialogue cameras, water and swimming jumps."
-                },
-                {
-                  "versions": "97–99",
-                  "summary": "Quest tracking, Cherry stage and tavern audience work, western terrain/water corrections."
-                }
-              ]
-            }
-          }
-        }
-      }
-    }
+    "version": 107,
+    "serverVersion": "1.10.47",
+    "clientSha256": "9cd3ded55bc23b54a5f4e19008a688468607fa9aebf3c7f6f799f1041da4a714",
+    "summary": "Online startup clock scope/readiness repair; retained v106 NPC initialization-order repair. Both remain in v108."
   },
   "validation": {
-    "status": "151 automated checks passed; connected/offline full startup and saved test games covered in Node DOM/transport fixtures; visual phone and production gameplay pending",
+    "status": "162 automated checks passed; routes, actual story states, save migration, matching server geometry and fresh/saved connected/offline initialization verified in Node fixtures. Real phone rendering remains unverified.",
     "counts": {
       "client": 73,
-      "tintagel": 15,
       "navigation": 8,
       "motion": 11,
       "startup": 5,
       "kraken": 19,
       "serverCoast": 8,
-      "clientStartup": 12
+      "fortress": 16,
+      "serverFortress": 7,
+      "fortressNavigation": 4,
+      "clientStartup": 11
     },
     "checks": {
       "client": [
@@ -563,26 +588,9 @@
         "Animal feedback covers distance, sight and completion without repeated chat every tick",
         "Each practical route has help and final-step feedback points to its actual next objective",
         "Every practical quest prop fits dry reachable ground on the authored maps",
-        "Noble residence is reachable from its door and the server catalog uses the same position",
+        "Noble has a walkable lodging in the mainland outer ward",
         "Solid portal and cargo art preserve their types, destinations and callbacks",
         "Dances start at zero Rhythm, stay free, switch exclusively, and clean up guard buffs"
-      ],
-      "tintagel": [
-        "Client and server ship the identical terrain patch and apply it idempotently",
-        "Haven reaches court, island well, old ferry, market, Noble, forest road and western path over dry half-steps",
-        "Castle walls/roofs rise with their support and every old portal coordinate survives",
-        "Two-chart seam and each changed neighboring border agree cell for cell",
-        "Existing swimming saves remain in place; formerly dry drowned cells recover once without losing quests",
-        "Saved and portal arrivals plus NPCs stand on the headland without shifting their story coordinates",
-        "Curved floor paint is clipped off water and sits at each stair height",
-        "Coastal paths survive a guild-hall floor rebuild and do not duplicate on append",
-        "Raised court feet and ceilings use actual layer support and collision",
-        "New-player and clue hints appear once, without opening menus or advancing tasks",
-        "Floor paint on adjacent chart seams also respects the changed water",
-        "New direction signs occupy dry ground and are represented in the headless catalog",
-        "Actual server worker walks from Haven to raised court (90 movement samples)",
-        "Actual server worker walks from Haven to island landing (160 movement samples)",
-        "Actual server worker walks from Haven to western shore (145 movement samples)"
       ],
       "navigation": [
         "Half-height Iberian mountain steps are represented as elevated ground",
@@ -643,14 +651,46 @@
         "Server restores a legacy campsite body on the new beach and writes a migration receipt",
         "A new server save in the old campsite water is not migrated again after reconnect",
         "Observer presence transports a sanitized clock without modifying reported quest progress",
-        "Version endpoint reports client 107, terrain 105 and matching server 1.10.47"
+        "Version endpoint reports client 108, terrain 108 and matching server 1.10.48"
+      ],
+      "fortress": [
+        "Haven reaches both wards, hall, hollow, prison stair, Iron Gate, cave mouth, market, village and forest over ordinary half-steps",
+        "The new court has continuous six-unit cliff support, a lower hollow and usable headroom",
+        "Every new cliff and building segment fits the renderer’s height and layer limits without overlap",
+        "A west-facing eye ray through the hall windows passes above the rampart to open sea",
+        "Changed map borders agree with every adjacent map, including their corner cells",
+        "Fresh story loads only the impostor court; the Fool and guardhouse stair are reachable",
+        "The real court remains behind the two prison gates and its return door leads to the outer ward",
+        "Fool recruitment and the exposed Emperor still use the existing main-quest actions",
+        "After the impostors are defeated, the genuine court occupies the new hall and chapel and the cells empty",
+        "Haven, the village and eastern trading house have separate names, roles and directions",
+        "A legacy court save and Western Shore bind point recover once without changing quest, money, cards or completed errands",
+        "Already-swimming saves stay at sea and a village stage position retains its height",
+        "Guild construction and decoration refreshes preserve the fortress and never repaint ocean",
+        "The sea cave returns to Iron Gate and does not bypass the prison rescue",
+        "Real map-entry and movement recovery land on the guardhouse floor and the low cave landing",
+        "Actual court investigations and market errands create reachable props at their real elevation"
+      ],
+      "serverFortress": [
+        "Headless terrain and every changed map match the final initialized client byte for byte",
+        "Server actor catalog uses the new roles and locations without sharing both personal court phases",
+        "Every static resource has usable outdoor ground and preserves its harvest identity",
+        "Restoring an old NPC ledger relocates positions without restoring deaths or spent inventory",
+        "Suncat resumes an old Western Shore land position at Haven and records the terrain version",
+        "Suncat can later swim through the former shore coordinates without repeated save relocation",
+        "The isolated sea cave has public directions and a return portal but no personal captives"
+      ],
+      "fortressNavigation": [
+        "Haven to island Great Hall traversed by the actual server worker (184 position samples)",
+        "Great Hall to Iron Gate landing traversed by the actual server worker (52 position samples)",
+        "Village to guarded prison stair traversed by the actual server worker (192 position samples)",
+        "Outer ward down to Haven traversed by the actual server worker (136 position samples)"
       ],
       "clientStartup": [
-        "The actual connected v106 loader reproduces the reported private-clock error at 24762:183 and its timer at 24883:71.",
         "Full offline startup reaches ready without errors.",
-        "Full offline-saved startup reaches ready without errors and retains saved memory, currency, main quest and deck IDs.",
+        "Full offline-saved startup reaches ready without errors and preserves the saved quest, currency, deck and memory.",
         "Full online startup reaches ready without errors.",
-        "Full online-saved startup reaches ready without errors and retains saved memory, currency, main quest and deck IDs.",
+        "Full online-saved startup reaches ready without errors and preserves the saved quest, currency, deck and memory.",
         "Connected presence timers wait while saved-world initialization is incomplete",
         "Connected portrait-loading timers execute without unhandled errors",
         "Connected presence uses the exported real clock with exact day/night and malformed-value rules",
@@ -661,29 +701,29 @@
       ]
     },
     "methods": [
-      "Execute the actual full client loader in Node + jsdom 26.1.0 with drawing/media stubs and no browser or network. Use an in-process Socket.IO-shaped fixture for the connected scenarios, execute the real socket-load handler, dispatch connection/player/online-state messages and exercise both registered presence callbacks during portrait caching.",
-      "Reproduce v106 at the screenshot's exact source line, then run v107 in four modes: fresh offline, saved offline, fresh connected, saved connected. Saved fixtures retain memory, currency, main quest and deck IDs.",
-      "Exercise incomplete initialization, map-loading pause, valid/invalid clock values, disconnect/reconnect, active observer/menu snapshots and every registered recurring callback after startup. Count the seven repeated behavior assertions once, although both connected modes run them.",
-      "Rerun all 139 retained apprenticeship, coast, navigation, motion, server-startup, island and observer checks. No live player or model calls."
+      "Execute the actual full client loader and game modules in Node/jsdom with stubbed canvas/media and an in-process Socket.IO-shaped transport. No browser, network, live player or model call.",
+      "Load the actual pre-rescue and post-rescue maps. Verify impostor/genuine court exclusivity, gated captives, Fool/confrontation actions, live relocated NPC positions, genuine portal-entry recovery, guild rebuilds and practical field-prop placement.",
+      "Use the actual layer validator, collision/support model and server navigation worker. Walk four new height-aware routes over 564 sampled positions; verify all changed map seams and unobstructed westward hall window sightlines geometrically.",
+      "Boot the complete shipped server with external services stubbed; compare final client/server terrain and test private-story isolation, resource support, one-time NPC/world-position migration and retained death/harvest/sales state.",
+      "Rerun the apprenticeship, Iberia-navigation, jump/double-jump, startup-contract, pirate-island and observer regressions. Four startup modes preserve saved memory, main quest, currency and deck IDs; connected timer assertions are counted once."
     ],
-    "syntax": "All 13 client scripts compile; node --check server.js passes.",
-    "integrity": "Five ZIP members, CRCs and hashes verified. Server gameplay, dependencies and protected Dragonflight code unchanged. No private clock reference remains outside its owning async scope.",
-    "visual": "Canvas/media are stubbed and animation is bounded. These tests do not verify real rendering, phone input, frame rate or a real child playtest.",
-    "live": "No deployment or production gameplay performed. Connected refers to the local transport simulation, not the hosted service."
+    "syntax": "All 13 client scripts compile during full startup; node --check server.js passes.",
+    "integrity": "Five ZIP members, CRCs, hashes and version metadata verified. Dependencies and the protected Dragonflight shared-server section are unchanged.",
+    "visual": "A data-derived terrain plot and analytical sightlines were inspected. No actual game screenshot, phone rendering, frame-rate measurement or child playtest.",
+    "live": "Not deployed. Connected startup uses a simulated local transport, not the hosted service."
   },
   "limitations": [
-    "Files only; not deployed. The exact second screenshot error is reproduced and repaired locally. Reloading the published v107 build remains to be verified.",
-    "Connected startup uses a simulated transport and DOM with real game scripts; network conditions, real rendering, phone controls and production multiplayer remain unverified.",
-    "Save restoration uses focused test saves, not the user's actual browser save or an exhaustive archive.",
-    "The ghost ship is moving scenery with a Hail interaction; it is not an added rideable transport. Queen-ship and swimming travel remain.",
-    "The day/night phase follows the selected saved world and observer clock; old clients without the new clock field give the server a daytime fallback.",
-    "Suncat still uses bounded dry-ground pathfinding. Gap-jump and sea-route planning are not added.",
-    "Early Indian/Chinese settlement chapters, cultivation and retained campaign backlog remain future work. Gold promotion and Vampire Cherry continuation remain deferred."
+    "No deployment was performed. The user must commit the five replacement files to publish v108 and server 1.10.48.",
+    "Browser/local-preview access was previously denied; no alternative browser, CDP, headless screenshot or shell-browser route was used. Rendering and touch feel require a phone playtest after publication.",
+    "Automated saves are fixtures, not the user’s browser save. Live multiplayer transport, production Suncat travel and older-phone performance remain unverified.",
+    "The coast and architectural arrangement are historically inspired; the imperial occupants, starting impostor story, Haven hamlet and prison are game fiction. The sea cave has a stable game landing rather than a new tide-locking mechanic.",
+    "Earlier unverified live lyric/journal/repeated-reply issues and the larger campaign backlog remain separate follow-up work."
   ],
   "nextPass": [
-    "After the user commits the five replacement files, reload without clearing site storage; verify v107 loads and the saved adventure opens online and offline.",
-    "Verify server /version, then observe Suncat's real Iberia route, jump/double-jump, observer handoff and reconnect on the hosted build.",
-    "Complete the first-hour phone playtest: apprenticeship clues, optional help, cooking/brewing recovery, Tintagel stairs and camera return. Check pirate-island dawn/dusk, ship and bell in all three views.",
-    "Revisit live lyric validation, journal editorial messages and repeated NPC/fox replies before choosing targeted fixes. Resume the early Indian-subcontinent settlement, Chinese communities and cultivation arc after stability checks."
+    "Publish the five replacements, reload without clearing site storage and confirm v108 plus /version server 1.10.48 / terrain 108.",
+    "Phone playtest in first person, third person and top-down/isometric views: Haven looking west, hall window outlook, cliff stair height, bridge, main gate, outer-ward prison trip, stable travel and sea-cave return. Check no grass land spur remains west of Tintagel.",
+    "Verify an existing real save and the complete Fool → gaol → lower dungeon → impostor confrontation → restored court route, plus a completed guild rebuild and Noble/court practical errands.",
+    "Observe hosted Suncat pathfinding, jump/double-jump, handoff and reconnect. Then investigate lyric validation, journal editorial messages and repetitive NPC/fox replies against current logs.",
+    "Resume the early Indian-subcontinent settlement, distinct Chinese communities and cultivation arc after stability checks. Vampire Cherry and unavailable Gold promotion remain deferred."
   ]
 }

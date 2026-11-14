@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.47",
+  "version": "1.10.48",
   "private": true,
-  "description": "BattleMage v107: repair online Suncat presence clock scope during startup",
+  "description": "BattleMage v108: Tintagel cliff fortress, island court, Haven cove and guarded prison approach",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"
