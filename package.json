@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.42",
+  "version": "1.10.45",
   "private": true,
-  "description": "BattleMage v99: tavern audience, terrain palettes and Mediterranean coast correction",
+  "description": "BattleMage v105: sailing ghost ship and day/night pirate island",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"
