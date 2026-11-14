@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-14-bm-v106-startup-order-hotfix"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v106</title>
+      <meta name="suncat-build" content="2026-11-14-bm-v107-online-startup-hotfix"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content">      <title>Battle-Mage · v107</title>
       <style>
         html,body {
           width:100%;
@@ -53295,6 +53295,8 @@ const BMCombatAttribution={
             },
             sight(world,a,b){const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)*8));for(let i=1;i<=steps;i++){const x=a.x+(b.x-a.x)*i/steps,y=a.y+(b.y-a.y)*i/steps,tile=world.maze?.[Math.floor(y)]?.[Math.floor(x)];if(!TERRAIN_SURFACES[tile]&&world.isWall(x,y,world.getFloorElevation?.(a.x,a.y)??0))return false;}return true;},
             observe(world){
+                // v107: wait for the restored world and use the island module's public clock.
+                if(world?._gameInitialized!==true||world.isLoading||!globalThis.BMKraken105)return;
                 if(typeof socket==='undefined'||!socket.connected||Date.now()-this.lastPresence<750)return;
                 this.lastPresence=Date.now();const s=this.fairy();if(!s)return;
                 const active=['explore','npc_chat'].includes(startGame)&&!world.isDead&&!world.isDying&&!document.hidden;
@@ -53303,7 +53305,7 @@ const BMCombatAttribution={
                     const v=this.snapshot(n);if(n.role==='dropped_card'||n.type===-27){v.kind='loot';v.cardId=n.deck?.[0]?.index??n.deck?.[0];}return v;
                 }):[];
                 if(active&&s.mapID===world.mapID&&Math.hypot(world.x-s.x,world.y-s.y)<=range&&this.sight(world,s,world))entities.push(this.snapshot(world,'player'));
-                socket.emit('suncat_presence',{version:1,worldVersion:92,mapID:world.mapID,worldId:globalThis.BMSuncat78?.worldId(world),progress:BMNPCChat.progress(world),coastHour:krakenHour105(world.memory?.worldHour??world.skybox?.time),active:!world.isDead&&!world.isDying&&!document.hidden,observing:active,entities,self:active?this.snapshot(world,'player'):null});
+                socket.emit('suncat_presence',{version:1,worldVersion:92,mapID:world.mapID,worldId:globalThis.BMSuncat78?.worldId(world),progress:BMNPCChat.progress(world),coastHour:globalThis.BMKraken105.hour(world),active:!world.isDead&&!world.isDying&&!document.hidden,observing:active,entities,self:active?this.snapshot(world,'player'):null});
             },
             hit(attacker,spellId=null,projectileId=null){
                 const s=this.fairy();if(!s||s.mapID!==Dungeon.mapID||s.isDead||typeof socket==='undefined'||!socket.connected)return;
@@ -98484,12 +98486,13 @@ const BM_RELEASE=(()=>{
  return Object.freeze({version:match?Number(match[2]):null,date:match?match[1]:'',label:match?'v'+match[2]:'Unversioned build'});
 })();globalThis.BM_RELEASE=BM_RELEASE;
 const BM_DEVLOG = [
- [BM_RELEASE.label+' · Startup loading repair', 'Current version · '+BM_RELEASE.date, [
-  'Fixed the startup error “Cannot access NPC before initialization”. The Suncat jump-animation hook now installs in the existing post-definition stage, after the NPC class is available.',
-  'Saved adventures, class progress, inventory and world geometry are unchanged. The Suncat movement fixes, Tintagel coast and sailing ghost ship remain.',
-  'The loading-order regression is checked against the actual sequence of game scripts; the earlier module-only checks had supplied an initialized NPC class and missed this error.']],
+ [BM_RELEASE.label+' · Online startup repair', 'Current version · '+BM_RELEASE.date, [
+  'Fixed the “krakenHour105 is not defined” error when a connected Suncat presence timer ran during portrait loading. The observer now uses the island module’s public clock and waits for the saved world to initialize.',
+  'The previous NPC initialization fix remains. Both connected and offline startup paths are checked, including presence timers, saved test games and reconnects.',
+  'Saved adventures, quests, inventory, Suncat movement, Tintagel and the ghost ship remain unchanged.']],
 
- ['v100–v105 · Apprenticeships, Suncat and the coasts', 'Previous versions · condensed', [
+ ['v100–v106 · Apprenticeships, Suncat and the coasts', 'Previous versions · condensed', [
+  'The v106 loading repair moved the Suncat jump-animation hook after the NPC class definition, fixing the first startup error.',
   'The pirate camp moved to a larger southern island with an abandoned daytime camp, a night feast and a sailing ghost ship. Save recovery and matching server geometry/clock keep the new coast consistent.',
   'Tintagel gained a raised royal headland, walking stairs, an island causeway, connected western shore and Haven fishing slip, old-save recovery, water-clipped paths, direction signs and first-step hints.',
   'Recovered the interrupted build and repaired saved classes, retiring props, camera restoration, water colours and swimming jumps. Seven starter and ten advanced recommendations became practical field tasks with optional help.',
@@ -114167,7 +114170,7 @@ const BMKraken105=(()=>{
  const update=NPC.prototype.update;NPC.prototype.update=function(maze,x,y,d,dt){if(animate(this,d,dt))return;return update.call(this,maze,x,y,d,dt);};
  let signature='';const tick=F.tick;F.tick=function(d,...a){tick.call(this,d,...a);if(d.mapID!==9){signature='';return;}const key=night(d)?'night':'day';if(key!==signature){signature=key;sync(d);}};
  const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...a){const result=load.apply(this,a);if(this.mapID===9){sync(this);for(const n of this.npcs)animate(n,this,0);}signature='';return result;};
- return {migrate,sync,animate,hail,depart,floor,crew,art};
+ return {hour,migrate,sync,animate,hail,depart,floor,crew,art};
 })();globalThis.BMKraken105=BMKraken105;
 
 BMContent.installEmbedded();await bootGame();BMMovementCourtyard.previewStart();BMCreator.previewStart();}catch(error){window.BattleMageStartup?.report(error,"Saved-game startup");if(window.BM_CREATOR_PREVIEW)parent.postMessage({type:"bm-creator-error",message:String(error.message||error)},"*");}})();

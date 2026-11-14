@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 106,
-  "serverVersion": "1.10.46",
+  "version": 107,
+  "serverVersion": "1.10.47",
   "date": "2026-11-14",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v105 / server 1.10.45",
+  "supersedes": "BattleMage Runestones v106 / server 1.10.46",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,20 +23,17 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Matching v106 client and server 1.10.46. Files only; not deployed by this repair. Preserve existing memory/account/world files, browser saves and environment credentials. GET /version identifies this server after installation. Current production versions have not been verified since the user reported committing changes.",
+    "deployment": "Matching v107 client and server 1.10.47. Files only; no deployment performed. Preserve browser saves, memory/account/world files and environment credentials. GET /version identifies the installed server. Current production versions have not been verified after the user's reported commits.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority."
   },
-  "clientSha256": "1db0c02ee095bf951e3e67a0c921de76fd96ed04c8bfa219870ddfaaad089d51",
-  "serverSha256": "7708117f69ac1be97476d1fd2f81c483b4c79c5f66d9d3e9ac090e9e00702bee",
+  "clientSha256": "9cd3ded55bc23b54a5f4e19008a688468607fa9aebf3c7f6f799f1041da4a714",
+  "serverSha256": "97d8f60016d98baee12c31909c3249eb4664731de73d1ebbb95cd0931937805e",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "previousPassChanges": [
-    "Relocate and enlarge the pirate island near (54,85), in the southern centre of the 100×100 Boreal Sea. Add a northern wooden mooring, open beaches, a tidal cove, roofless stone ruins, a beached wreck and a lookout.",
-    "Use abandoned daytime scenery: no crew or flames, a salt-filled cold fire ring and a broken table. At night show five crew members, a fire, lanterns, sailcloth pennants, bedroll and supper table with mugs. Animate the crew with existing native movement poses without translating them through props or activating combat.",
-    "Sail the white-gull ghost ship around a deterministic water circuit, pausing at the northern mooring on each turn. Use the saved world clock so reloading retains its phase. Dialogue, menus and hidden tabs pause local motion. A rope-bell action hails a docked ship and explains when to wait.",
-    "Keep Kraken and tentacle encounter definitions, the victory gate, eastern arrival, Queen-ship ownership and existing sea crossings. Give the eastern landing actual island directions and retain its shore/swim/ship actions.",
-    "Recover legacy saves from the old dry campsite to the new open beach once, including respawn/map-arrival locations and persisted Suncat bodies. Retain quest/inventory state, existing swimming positions and new visits to the retired campsite water.",
-    "Share geometry, actor identities, night thresholds and ship course with the server. Carry a sanitized world clock on the existing observer heartbeat. Filter headless inhabitants by phase and normalize stale camp positions and availability at handoff.",
-    "Update client/server NPC knowledge with real island and mooring directions. Expose v105 / 1.10.45 through the version endpoint. Keep the current devlog entry first and merge v100–v104 into one condensed historical group."
+    "Move the unchanged Suncat motion module into the existing post-definition integration script. Its NPC.prototype.update hook now installs only after the real NPC class has initialized.",
+    "Repair the Loading game scripts crash reported at 25207:15. The earlier isolated module checks supplied an initialized NPC class and did not test this dependency order.",
+    "Keep save formats, quests, inventory, maps, pathfinding, jump physics and all v105 features unchanged. The server changes only its public version metadata to client 106 / server 1.10.46; terrain remains 105 and motion remains 103.",
+    "Show v106 as the current devlog entry and condense v100–v105 into one historical group. Keep five historical groups total."
   ],
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -408,51 +405,6 @@
     "historicalSummaries": 5,
     "visibleWhileScrolling": "Version-labelled navigation tab is outside the scrolling reader."
   },
-  "changes": [
-    "Move the unchanged Suncat motion module into the existing post-definition integration script. Its NPC.prototype.update hook now installs only after the real NPC class has initialized.",
-    "Repair the Loading game scripts crash reported at 25207:15. The earlier isolated module checks supplied an initialized NPC class and did not test this dependency order.",
-    "Keep save formats, quests, inventory, maps, pathfinding, jump physics and all v105 features unchanged. The server changes only its public version metadata to client 106 / server 1.10.46; terrain remains 105 and motion remains 103.",
-    "Show v106 as the current devlog entry and condense v100–v105 into one historical group. Keep five historical groups total."
-  ],
-  "previousRelease": {
-    "version": 105,
-    "serverVersion": "1.10.45",
-    "clientSha256": "26bd94104718573df8f8efbf5cb1b93ce2faebac580606b4928f70af509a3c2c",
-    "summary": "Southern pirate island, sailing ghost ship, day/night camp and shared world clock. The user subsequently reported a startup crash; v106 reproduces and fixes it.",
-    "earlier": {
-      "version": 104,
-      "serverVersion": "1.10.44",
-      "clientSha256": "7b9aa8a2bdb21e16326038df2f01e40c8659c9965e7459c5e500350ee23c2da7",
-      "summary": "Tintagel raised coastal headland, connected shore and landings, floor clipping and first-step hints; 112 automated checks. No deployment.",
-      "earlier": {
-        "version": 103,
-        "serverVersion": "1.10.43",
-        "clientSha256": "ce237b1b4d0246648120e64dbc77655ce6495d13756d6345236ebb0b75ee2b31",
-        "summary": "Suncat navigation bursts and jumps, practical-task clarity, free dances and solid entrance/cargo art; 96 automated checks. Visual and live checks remained pending.",
-        "earlier": {
-          "version": 102,
-          "serverVersion": "1.10.42",
-          "clientSha256": "8c646dd36aca200a1e8dece17e4b61bee5b040d2f92399cf360082832bc46658",
-          "summary": "Ten advanced practical apprenticeships, metadata-driven condensed devlog and 66 focused checks; visual playtesting pending.",
-          "earlier": {
-            "version": 101,
-            "clientSha256": "a6d3e3e43eb3490e358cda662a26de5383a5dea6b5a7d57e1463dea5add0d22b",
-            "summary": "Seven starter field apprenticeships; 35 focused checks passed. Visual playtesting remained pending. Server 1.10.42 unchanged.",
-            "earlier": [
-              {
-                "version": 100,
-                "summary": "Recovered interrupted build; repaired class state, quest props, dialogue cameras, water and swimming jumps."
-              },
-              {
-                "versions": "97–99",
-                "summary": "Quest tracking, Cherry stage and tavern audience work, western terrain/water corrections."
-              }
-            ]
-          }
-        }
-      }
-    }
-  },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
     "workspace": "Suncat’s workspace",
@@ -476,8 +428,59 @@
     "limits": "Read-only metadata/log inspection. No player joined, production Suncat location read, actual jump/reconnect test, health endpoint verification or deployment performed.",
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
+  "changes": [
+    "Expose the island module's existing hour(world) function on BMKraken105. Suncat presence now calls this public function instead of the inaccessible krakenHour105 function inside the async startup scope.",
+    "Skip observer presence until the saved world is initialized, while a map loads, or before the island module exists. Preserve the existing presence rate limits, menu withdrawal, world progress and clock validation.",
+    "Retain the v106 NPC initialization-order repair. Save formats, quests, inventory, world geometry, pathfinding and jump physics are unchanged. Server gameplay is byte-identical; only public version metadata changes to client 107 / server 1.10.47, with terrain 105 and motion 103.",
+    "Show v107 as the current devlog entry and merge v100–v106 into one historical group. Retain five historical groups."
+  ],
+  "previousRelease": {
+    "version": 106,
+    "serverVersion": "1.10.46",
+    "clientSha256": "1db0c02ee095bf951e3e67a0c921de76fd96ed04c8bfa219870ddfaaad089d51",
+    "summary": "Repaired early NPC hook initialization. Fresh/saved offline tests passed, but did not execute connected presence timers; the subsequent screenshot exposed a separate private-clock scope error fixed by v107.",
+    "earlier": {
+      "version": 105,
+      "serverVersion": "1.10.45",
+      "clientSha256": "26bd94104718573df8f8efbf5cb1b93ce2faebac580606b4928f70af509a3c2c",
+      "summary": "Southern pirate island, sailing ghost ship, day/night camp and shared world clock. The user subsequently reported a startup crash; v106 reproduces and fixes it.",
+      "earlier": {
+        "version": 104,
+        "serverVersion": "1.10.44",
+        "clientSha256": "7b9aa8a2bdb21e16326038df2f01e40c8659c9965e7459c5e500350ee23c2da7",
+        "summary": "Tintagel raised coastal headland, connected shore and landings, floor clipping and first-step hints; 112 automated checks. No deployment.",
+        "earlier": {
+          "version": 103,
+          "serverVersion": "1.10.43",
+          "clientSha256": "ce237b1b4d0246648120e64dbc77655ce6495d13756d6345236ebb0b75ee2b31",
+          "summary": "Suncat navigation bursts and jumps, practical-task clarity, free dances and solid entrance/cargo art; 96 automated checks. Visual and live checks remained pending.",
+          "earlier": {
+            "version": 102,
+            "serverVersion": "1.10.42",
+            "clientSha256": "8c646dd36aca200a1e8dece17e4b61bee5b040d2f92399cf360082832bc46658",
+            "summary": "Ten advanced practical apprenticeships, metadata-driven condensed devlog and 66 focused checks; visual playtesting pending.",
+            "earlier": {
+              "version": 101,
+              "clientSha256": "a6d3e3e43eb3490e358cda662a26de5383a5dea6b5a7d57e1463dea5add0d22b",
+              "summary": "Seven starter field apprenticeships; 35 focused checks passed. Visual playtesting remained pending. Server 1.10.42 unchanged.",
+              "earlier": [
+                {
+                  "version": 100,
+                  "summary": "Recovered interrupted build; repaired class state, quest props, dialogue cameras, water and swimming jumps."
+                },
+                {
+                  "versions": "97–99",
+                  "summary": "Quest tracking, Cherry stage and tavern audience work, western terrain/water corrections."
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
   "validation": {
-    "status": "142 automated checks passed, including full fresh/saved startup in a Node DOM fixture; phone and live gameplay unverified",
+    "status": "151 automated checks passed; connected/offline full startup and saved test games covered in Node DOM/transport fixtures; visual phone and production gameplay pending",
     "counts": {
       "client": 73,
       "tintagel": 15,
@@ -486,7 +489,7 @@
       "startup": 5,
       "kraken": 19,
       "serverCoast": 8,
-      "bootstrap": 3
+      "clientStartup": 12
     },
     "checks": {
       "client": [
@@ -640,39 +643,47 @@
         "Server restores a legacy campsite body on the new beach and writes a migration receipt",
         "A new server save in the old campsite water is not migrated again after reconnect",
         "Observer presence transports a sanitized clock without modifying reported quest progress",
-        "Version endpoint reports client 106, terrain 105 and matching server 1.10.46"
+        "Version endpoint reports client 107, terrain 105 and matching server 1.10.47"
       ],
-      "bootstrap": [
-        "Actual v105 script sequence reproduces the reported NPC initialization crash at 25207:15 and 25209:3.",
-        "All actual v106 scripts load in order and fresh-game initialization reaches ready without startup errors.",
-        "The full v106 loader restores a saved-game fixture with its memory marker, currency, main quest and deck IDs intact."
+      "clientStartup": [
+        "The actual connected v106 loader reproduces the reported private-clock error at 24762:183 and its timer at 24883:71.",
+        "Full offline startup reaches ready without errors.",
+        "Full offline-saved startup reaches ready without errors and retains saved memory, currency, main quest and deck IDs.",
+        "Full online startup reaches ready without errors.",
+        "Full online-saved startup reaches ready without errors and retains saved memory, currency, main quest and deck IDs.",
+        "Connected presence timers wait while saved-world initialization is incomplete",
+        "Connected portrait-loading timers execute without unhandled errors",
+        "Connected presence uses the exported real clock with exact day/night and malformed-value rules",
+        "Presence pauses during map loading and resumes with the restored clock",
+        "Disconnect stops presence and reconnect resumes without duplicate timer installation",
+        "Active observer and menu withdrawal both emit valid clock-bearing snapshots",
+        "Every registered recurring callback executes after initialization without a reference error"
       ]
     },
     "methods": [
-      "Run the actual full client script-loading sequence and game initialization in Node + jsdom 26.1.0, with DOM/canvas/image/media fixtures, no network, no browser and no real rendering.",
-      "Reproduce the old NPC temporal-dead-zone failure at the exact reported source coordinates, then execute the fixed loader with fresh storage and with a saved-game fixture.",
-      "Use the real saveGame and restore paths to preserve fixture memory, currency, main quest and card IDs. This is not a test of the user's actual browser save.",
-      "Rerun all 139 v105 automated checks for apprenticeships, Tintagel, Iberia worker routes, jump/double-jump, startup contracts, pirate island and server observers."
+      "Execute the actual full client loader in Node + jsdom 26.1.0 with drawing/media stubs and no browser or network. Use an in-process Socket.IO-shaped fixture for the connected scenarios, execute the real socket-load handler, dispatch connection/player/online-state messages and exercise both registered presence callbacks during portrait caching.",
+      "Reproduce v106 at the screenshot's exact source line, then run v107 in four modes: fresh offline, saved offline, fresh connected, saved connected. Saved fixtures retain memory, currency, main quest and deck IDs.",
+      "Exercise incomplete initialization, map-loading pause, valid/invalid clock values, disconnect/reconnect, active observer/menu snapshots and every registered recurring callback after startup. Count the seven repeated behavior assertions once, although both connected modes run them.",
+      "Rerun all 139 retained apprenticeship, coast, navigation, motion, server-startup, island and observer checks. No live player or model calls."
     ],
-    "syntax": "All 13 inline client scripts compile; node --check server.js passes.",
-    "integrity": "Exactly five ZIP members with verified CRC and client/server hashes. Motion module is byte-identical after relocation. Server differs only in version metadata. Dependency graph and protected Dragonflight shared-server code are unchanged.",
-    "visual": "No browser, phone, real-child or visual gameplay test. Canvas calls are stubbed; reaching ready does not verify rendered output.",
-    "live": "No deployment or live gameplay performed. Current production versions remain unverified after the user reported committing changes."
+    "syntax": "All 13 client scripts compile; node --check server.js passes.",
+    "integrity": "Five ZIP members, CRCs and hashes verified. Server gameplay, dependencies and protected Dragonflight code unchanged. No private clock reference remains outside its owning async scope.",
+    "visual": "Canvas/media are stubbed and animation is bounded. These tests do not verify real rendering, phone input, frame rate or a real child playtest.",
+    "live": "No deployment or production gameplay performed. Connected refers to the local transport simulation, not the hosted service."
   },
   "limitations": [
-    "Files only; not deployed. The screenshot failure is reproduced locally and repaired; a reload after publishing still needs verification.",
-    "The startup integration fixture stubs rendering, media, images, online services and recurring animation. Actual phone rendering, performance, touch controls and online behavior remain unverified.",
-    "Saved-game compatibility is covered by focused fixtures, not the user's actual browser save or an exhaustive archive.",
+    "Files only; not deployed. The exact second screenshot error is reproduced and repaired locally. Reloading the published v107 build remains to be verified.",
+    "Connected startup uses a simulated transport and DOM with real game scripts; network conditions, real rendering, phone controls and production multiplayer remain unverified.",
+    "Save restoration uses focused test saves, not the user's actual browser save or an exhaustive archive.",
     "The ghost ship is moving scenery with a Hail interaction; it is not an added rideable transport. Queen-ship and swimming travel remain.",
     "The day/night phase follows the selected saved world and observer clock; old clients without the new clock field give the server a daytime fallback.",
     "Suncat still uses bounded dry-ground pathfinding. Gap-jump and sea-route planning are not added.",
     "Early Indian/Chinese settlement chapters, cultivation and retained campaign backlog remain future work. Gold promotion and Vampire Cherry continuation remain deferred."
   ],
   "nextPass": [
-    "After the user commits the replacement files, reload without clearing site storage and verify the title/devlog shows v106 and the saved game opens.",
-    "Verify the matching server /version, then observe Suncat's actual Iberia route, jump, double-jump, observer handoff and reconnect.",
-    "Play first-hour apprentice tasks and Tintagel/pirate-coast routes on a phone in all three views, including dusk/dawn and camera return.",
-    "Recheck lyric-validation, journal editorial and repeated NPC/fox replies on the matching live build before making targeted changes.",
-    "Resume the early Indian-subcontinent settlement chapter, distinct early Chinese communities and later cultivation arc after stability checks."
+    "After the user commits the five replacement files, reload without clearing site storage; verify v107 loads and the saved adventure opens online and offline.",
+    "Verify server /version, then observe Suncat's real Iberia route, jump/double-jump, observer handoff and reconnect on the hosted build.",
+    "Complete the first-hour phone playtest: apprenticeship clues, optional help, cooking/brewing recovery, Tintagel stairs and camera return. Check pirate-island dawn/dusk, ship and bell in all three views.",
+    "Revisit live lyric validation, journal editorial messages and repeated NPC/fox replies before choosing targeted fixes. Resume the early Indian-subcontinent settlement, Chinese communities and cultivation arc after stability checks."
   ]
 }
