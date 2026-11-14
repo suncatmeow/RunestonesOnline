@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.45",
+  "version": "1.10.46",
   "private": true,
-  "description": "BattleMage v105: sailing ghost ship and day/night pirate island",
+  "description": "BattleMage v106: repair NPC startup hook initialization order",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"

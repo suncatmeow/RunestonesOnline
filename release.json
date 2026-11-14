@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 105,
-  "serverVersion": "1.10.45",
-  "date": "2026-11-13",
+  "version": 106,
+  "serverVersion": "1.10.46",
+  "date": "2026-11-14",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v104 / server 1.10.44",
+  "supersedes": "BattleMage Runestones v105 / server 1.10.45",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,22 +23,20 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Matching v105 client and server 1.10.45. Files only; not deployed. Preserve existing memory/account/world files and environment credentials. GET /version identifies this server after installation. The inspected live Render deploy still uses v99 / server 1.10.42.",
+    "deployment": "Matching v106 client and server 1.10.46. Files only; not deployed by this repair. Preserve existing memory/account/world files, browser saves and environment credentials. GET /version identifies this server after installation. Current production versions have not been verified since the user reported committing changes.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority."
   },
-  "clientSha256": "26bd94104718573df8f8efbf5cb1b93ce2faebac580606b4928f70af509a3c2c",
-  "serverSha256": "8deb678d93200a18f840e61770c9d16316b6fe63d42991145563491318465865",
+  "clientSha256": "1db0c02ee095bf951e3e67a0c921de76fd96ed04c8bfa219870ddfaaad089d51",
+  "serverSha256": "7708117f69ac1be97476d1fd2f81c483b4c79c5f66d9d3e9ac090e9e00702bee",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "previousPassChanges": [
-    "Raise Tintagel’s royal hall onto a two-tile coastal headland. Shift its existing walls, roofs and NPC support together, retain story coordinates, and provide broad half-step stairs from the market plus a northern stair at Haven.",
-    "Give the old island a surrounding water channel, a dry causeway and a ferry landing. Connect Haven’s fishing slip to its quay and shingle shore; preserve ferry destinations and original portal coordinates.",
-    "Treat charts 2 and 103 as a continuous Tintagel coast while retaining their 100×100 dimensions and save identities. Rename chart 103 Tintagel · Western Shore, add a dry shore path, and synchronize bordering terrain/landing cells on adjacent charts.",
-    "Use one embedded terrain patch in client and server. Lift saved/NPC castle arrivals onto their support and recover formerly dry positions now covered by water once; retain existing swimming positions and saved quest state.",
-    "Clip road/floor polygons against actual water, including curved paths, and render them at the correct raised ground height. Keep the new paths after guild-hall floor rebuilding.",
-    "Add island, court-step and western-shore direction signs to the client and headless catalog; update Haven’s first-lesson directions.",
-    "Add one short Read hint for new Haven arrivals and one-time Inspect hints for nearby lesson clues. Enlarge blue ground clues from 0.28 to 0.42 scale and fit Inspect text inside its existing 44-pixel touch control.",
-    "Make apprenticeship prop placement and escort movement respect half-step elevation changes. Keep completed recommendations, class requirements, story gates and optional per-step help.",
-    "Show current v104 metadata in the devlog and Settings, condense v100–v103 history, and expose a read-only /version endpoint for future live build matching."
+    "Relocate and enlarge the pirate island near (54,85), in the southern centre of the 100×100 Boreal Sea. Add a northern wooden mooring, open beaches, a tidal cove, roofless stone ruins, a beached wreck and a lookout.",
+    "Use abandoned daytime scenery: no crew or flames, a salt-filled cold fire ring and a broken table. At night show five crew members, a fire, lanterns, sailcloth pennants, bedroll and supper table with mugs. Animate the crew with existing native movement poses without translating them through props or activating combat.",
+    "Sail the white-gull ghost ship around a deterministic water circuit, pausing at the northern mooring on each turn. Use the saved world clock so reloading retains its phase. Dialogue, menus and hidden tabs pause local motion. A rope-bell action hails a docked ship and explains when to wait.",
+    "Keep Kraken and tentacle encounter definitions, the victory gate, eastern arrival, Queen-ship ownership and existing sea crossings. Give the eastern landing actual island directions and retain its shore/swim/ship actions.",
+    "Recover legacy saves from the old dry campsite to the new open beach once, including respawn/map-arrival locations and persisted Suncat bodies. Retain quest/inventory state, existing swimming positions and new visits to the retired campsite water.",
+    "Share geometry, actor identities, night thresholds and ship course with the server. Carry a sanitized world clock on the existing observer heartbeat. Filter headless inhabitants by phase and normalize stale camp positions and availability at handoff.",
+    "Update client/server NPC knowledge with real island and mooring directions. Expose v105 / 1.10.45 through the version endpoint. Keep the current devlog entry first and merge v100–v104 into one condensed historical group."
   ],
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -411,48 +409,51 @@
     "visibleWhileScrolling": "Version-labelled navigation tab is outside the scrolling reader."
   },
   "changes": [
-    "Relocate and enlarge the pirate island near (54,85), in the southern centre of the 100×100 Boreal Sea. Add a northern wooden mooring, open beaches, a tidal cove, roofless stone ruins, a beached wreck and a lookout.",
-    "Use abandoned daytime scenery: no crew or flames, a salt-filled cold fire ring and a broken table. At night show five crew members, a fire, lanterns, sailcloth pennants, bedroll and supper table with mugs. Animate the crew with existing native movement poses without translating them through props or activating combat.",
-    "Sail the white-gull ghost ship around a deterministic water circuit, pausing at the northern mooring on each turn. Use the saved world clock so reloading retains its phase. Dialogue, menus and hidden tabs pause local motion. A rope-bell action hails a docked ship and explains when to wait.",
-    "Keep Kraken and tentacle encounter definitions, the victory gate, eastern arrival, Queen-ship ownership and existing sea crossings. Give the eastern landing actual island directions and retain its shore/swim/ship actions.",
-    "Recover legacy saves from the old dry campsite to the new open beach once, including respawn/map-arrival locations and persisted Suncat bodies. Retain quest/inventory state, existing swimming positions and new visits to the retired campsite water.",
-    "Share geometry, actor identities, night thresholds and ship course with the server. Carry a sanitized world clock on the existing observer heartbeat. Filter headless inhabitants by phase and normalize stale camp positions and availability at handoff.",
-    "Update client/server NPC knowledge with real island and mooring directions. Expose v105 / 1.10.45 through the version endpoint. Keep the current devlog entry first and merge v100–v104 into one condensed historical group."
+    "Move the unchanged Suncat motion module into the existing post-definition integration script. Its NPC.prototype.update hook now installs only after the real NPC class has initialized.",
+    "Repair the Loading game scripts crash reported at 25207:15. The earlier isolated module checks supplied an initialized NPC class and did not test this dependency order.",
+    "Keep save formats, quests, inventory, maps, pathfinding, jump physics and all v105 features unchanged. The server changes only its public version metadata to client 106 / server 1.10.46; terrain remains 105 and motion remains 103.",
+    "Show v106 as the current devlog entry and condense v100–v105 into one historical group. Keep five historical groups total."
   ],
   "previousRelease": {
-    "version": 104,
-    "serverVersion": "1.10.44",
-    "clientSha256": "7b9aa8a2bdb21e16326038df2f01e40c8659c9965e7459c5e500350ee23c2da7",
-    "summary": "Tintagel raised coastal headland, connected shore and landings, floor clipping and first-step hints; 112 automated checks. No deployment.",
+    "version": 105,
+    "serverVersion": "1.10.45",
+    "clientSha256": "26bd94104718573df8f8efbf5cb1b93ce2faebac580606b4928f70af509a3c2c",
+    "summary": "Southern pirate island, sailing ghost ship, day/night camp and shared world clock. The user subsequently reported a startup crash; v106 reproduces and fixes it.",
     "earlier": {
-      "version": 103,
-      "serverVersion": "1.10.43",
-      "clientSha256": "ce237b1b4d0246648120e64dbc77655ce6495d13756d6345236ebb0b75ee2b31",
-      "summary": "Suncat navigation bursts and jumps, practical-task clarity, free dances and solid entrance/cargo art; 96 automated checks. Visual and live checks remained pending.",
+      "version": 104,
+      "serverVersion": "1.10.44",
+      "clientSha256": "7b9aa8a2bdb21e16326038df2f01e40c8659c9965e7459c5e500350ee23c2da7",
+      "summary": "Tintagel raised coastal headland, connected shore and landings, floor clipping and first-step hints; 112 automated checks. No deployment.",
       "earlier": {
-        "version": 102,
-        "serverVersion": "1.10.42",
-        "clientSha256": "8c646dd36aca200a1e8dece17e4b61bee5b040d2f92399cf360082832bc46658",
-        "summary": "Ten advanced practical apprenticeships, metadata-driven condensed devlog and 66 focused checks; visual playtesting pending.",
+        "version": 103,
+        "serverVersion": "1.10.43",
+        "clientSha256": "ce237b1b4d0246648120e64dbc77655ce6495d13756d6345236ebb0b75ee2b31",
+        "summary": "Suncat navigation bursts and jumps, practical-task clarity, free dances and solid entrance/cargo art; 96 automated checks. Visual and live checks remained pending.",
         "earlier": {
-          "version": 101,
-          "clientSha256": "a6d3e3e43eb3490e358cda662a26de5383a5dea6b5a7d57e1463dea5add0d22b",
-          "summary": "Seven starter field apprenticeships; 35 focused checks passed. Visual playtesting remained pending. Server 1.10.42 unchanged.",
-          "earlier": [
-            {
-              "version": 100,
-              "summary": "Recovered interrupted build; repaired class state, quest props, dialogue cameras, water and swimming jumps."
-            },
-            {
-              "versions": "97–99",
-              "summary": "Quest tracking, Cherry stage and tavern audience work, western terrain/water corrections."
-            }
-          ]
+          "version": 102,
+          "serverVersion": "1.10.42",
+          "clientSha256": "8c646dd36aca200a1e8dece17e4b61bee5b040d2f92399cf360082832bc46658",
+          "summary": "Ten advanced practical apprenticeships, metadata-driven condensed devlog and 66 focused checks; visual playtesting pending.",
+          "earlier": {
+            "version": 101,
+            "clientSha256": "a6d3e3e43eb3490e358cda662a26de5383a5dea6b5a7d57e1463dea5add0d22b",
+            "summary": "Seven starter field apprenticeships; 35 focused checks passed. Visual playtesting remained pending. Server 1.10.42 unchanged.",
+            "earlier": [
+              {
+                "version": 100,
+                "summary": "Recovered interrupted build; repaired class state, quest props, dialogue cameras, water and swimming jumps."
+              },
+              {
+                "versions": "97–99",
+                "summary": "Quest tracking, Cherry stage and tavern audience work, western terrain/water corrections."
+              }
+            ]
+          }
         }
       }
     }
   },
-  "liveInspection": {
+  "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
     "workspace": "Suncat’s workspace",
     "service": "BattleMage",
@@ -472,10 +473,11 @@
       "2026-11-13T19:42:37Z: Suncat journal sources remained pending for another editorial pass."
     ],
     "metrics": "Requested CPU, memory, limits and latency series were empty. No current performance conclusion.",
-    "limits": "Read-only metadata/log inspection. No player joined, production Suncat location read, actual jump/reconnect test, health endpoint verification or deployment performed."
+    "limits": "Read-only metadata/log inspection. No player joined, production Suncat location read, actual jump/reconnect test, health endpoint verification or deployment performed.",
+    "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "validation": {
-    "status": "139 automated checks passed; visual/mobile gameplay and matching live v105 verification pending",
+    "status": "142 automated checks passed, including full fresh/saved startup in a Node DOM fixture; phone and live gameplay unverified",
     "counts": {
       "client": 73,
       "tintagel": 15,
@@ -483,7 +485,8 @@
       "motion": 11,
       "startup": 5,
       "kraken": 19,
-      "serverCoast": 8
+      "serverCoast": 8,
+      "bootstrap": 3
     },
     "checks": {
       "client": [
@@ -637,35 +640,39 @@
         "Server restores a legacy campsite body on the new beach and writes a migration receipt",
         "A new server save in the old campsite water is not migrated again after reconnect",
         "Observer presence transports a sanitized clock without modifying reported quest progress",
-        "Version endpoint reports client 105, terrain 105 and matching server 1.10.45"
+        "Version endpoint reports client 106, terrain 105 and matching server 1.10.46"
+      ],
+      "bootstrap": [
+        "Actual v105 script sequence reproduces the reported NPC initialization crash at 25207:15 and 25209:3.",
+        "All actual v106 scripts load in order and fresh-game initialization reaches ready without startup errors.",
+        "The full v106 loader restores a saved-game fixture with its memory marker, currency, main quest and deck IDs intact."
       ]
     },
     "methods": [
-      "Execute shipped client modules and full server in Node VM with external sockets/models stubbed. No live model calls.",
-      "Retain all 112 v104 checks, including real workshop simulations, server/client jumps, Iberia navigation-worker routing and raised Tintagel routes.",
-      "Sample an entire ghost-ship circuit at 18,001 points, checking water beneath an oriented 4.8×1.6-tile footprint, continuity and more than 4.2 tiles of centre clearance from wrecks.",
-      "Flood-fill actual compiled ground: all camp actors and clues connect to the beach/landing outside wall collisions. Verify unchanged map borders, northern encounter area and east arrival.",
-      "Exercise dawn/dusk on the same visit, repeated synchronization without duplicates, menu pauses, bell actions, ownership checks, legacy save migration, new swimmer saves and server observer handoffs.",
-      "Inspect a source-terrain diagram for layout; it is not a rendered gameplay screenshot."
+      "Run the actual full client script-loading sequence and game initialization in Node + jsdom 26.1.0, with DOM/canvas/image/media fixtures, no network, no browser and no real rendering.",
+      "Reproduce the old NPC temporal-dead-zone failure at the exact reported source coordinates, then execute the fixed loader with fresh storage and with a saved-game fixture.",
+      "Use the real saveGame and restore paths to preserve fixture memory, currency, main quest and card IDs. This is not a test of the user's actual browser save.",
+      "Rerun all 139 v105 automated checks for apprenticeships, Tintagel, Iberia worker routes, jump/double-jump, startup contracts, pirate island and server observers."
     ],
     "syntax": "All 13 inline client scripts compile; node --check server.js passes.",
-    "integrity": "Exactly five ZIP members with verified CRC and client/server hashes. Dependency graph and protected Dragonflight shared-server section unchanged.",
-    "visual": "No browser/phone/real-child gameplay test. The earlier local-preview policy restriction remains; no alternate route used.",
-    "live": "Confirmed the live Render commit is v99 / 1.10.42. New v105 features and the earlier v103–104 fixes are packaged, not live-tested."
+    "integrity": "Exactly five ZIP members with verified CRC and client/server hashes. Motion module is byte-identical after relocation. Server differs only in version metadata. Dependency graph and protected Dragonflight shared-server code are unchanged.",
+    "visual": "No browser, phone, real-child or visual gameplay test. Canvas calls are stubbed; reaching ready does not verify rendered output.",
+    "live": "No deployment or live gameplay performed. Current production versions remain unverified after the user reported committing changes."
   },
   "limitations": [
-    "Files only, not deployed. The inspected live service still runs v99 / 1.10.42, so the later Suncat fixes require matching installation before live verification.",
-    "No visual/mobile performance or real-child playtest; sprite facing, lighting, camera movement, clue readability and pacing need an actual gameplay pass.",
+    "Files only; not deployed. The screenshot failure is reproduced locally and repaired; a reload after publishing still needs verification.",
+    "The startup integration fixture stubs rendering, media, images, online services and recurring animation. Actual phone rendering, performance, touch controls and online behavior remain unverified.",
+    "Saved-game compatibility is covered by focused fixtures, not the user's actual browser save or an exhaustive archive.",
     "The ghost ship is moving scenery with a Hail interaction; it is not an added rideable transport. Queen-ship and swimming travel remain.",
     "The day/night phase follows the selected saved world and observer clock; old clients without the new clock field give the server a daytime fallback.",
     "Suncat still uses bounded dry-ground pathfinding. Gap-jump and sea-route planning are not added.",
-    "Historical saves are covered by focused fixtures, not an exhaustive archive of real player saves.",
     "Early Indian/Chinese settlement chapters, cultivation and retained campaign backlog remain future work. Gold promotion and Vampire Cherry continuation remain deferred."
   ],
   "nextPass": [
-    "Install matching client/server under explicit deployment authorization, then verify GET /version and actual Suncat Iberia progress, jump/double-jump and reconnect behavior.",
-    "Play the island by day and night in 2D/isometric/3D on a phone, including waiting at the bell, sailing nearby, dusk/dawn, old saves and Kraken-gated crossings. Recheck Tintagel and first-step clues.",
-    "Revisit the observed lyric-validation/journal messages on the matching build before changing those systems.",
-    "Continue the researched early Indian-subcontinent settlement chapter, followed by distinct early Chinese communities and the cultivation discussion."
+    "After the user commits the replacement files, reload without clearing site storage and verify the title/devlog shows v106 and the saved game opens.",
+    "Verify the matching server /version, then observe Suncat's actual Iberia route, jump, double-jump, observer handoff and reconnect.",
+    "Play first-hour apprentice tasks and Tintagel/pirate-coast routes on a phone in all three views, including dusk/dawn and camera return.",
+    "Recheck lyric-validation, journal editorial and repeated NPC/fox replies on the matching live build before making targeted changes.",
+    "Resume the early Indian-subcontinent settlement chapter, distinct early Chinese communities and later cultivation arc after stability checks."
   ]
 }
