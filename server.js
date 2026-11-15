@@ -749,7 +749,7 @@ const studioHandler = SuncatStudioAPI.createStudioHandler({
 });
 // END SUNCAT STUDIO API
     const server = http.createServer((req, res) => {
-        if(req.method==='GET'&&req.url?.split('?')[0]==='/version'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({application:'BattleMage Runestones',clientVersion:112,serverVersion:'1.10.52',terrainVersion:111,suncatMotionVersion:103}));return;}
+        if(req.method==='GET'&&req.url?.split('?')[0]==='/version'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({application:'BattleMage Runestones',clientVersion:126,serverVersion:'1.10.66',terrainVersion:111,suncatMotionVersion:103}));return;}
         if (dragonflightHTTP(req, res)) return;
         if (studioHandler(req, res)) return;
         res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -3566,7 +3566,7 @@ function suncatOracleRequest94(input){const t=String(input||'').toLowerCase();re
             // 1. CREATE CUSTOM MAP
             {
                 name: "createCustomMap",
-                description: "Creates a massive procedural map and adventure. Execute this immediately when a player asks for a new map, quest, or adventure.",            
+                description: "Creates a shared 160x160 adventure realm with blended flower meadow, woodland, marsh and a themed verge. The meadow is near the safe arrival outpost, with wildlife and combat encounters. Execute this when a player asks for a new map, flower-biome test, quest, or adventure.",            
                 parameters: {
                     type: SchemaType.OBJECT,
                     properties: {
@@ -5523,6 +5523,89 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
                 miniCenter: { x: mini.cx, y: mini.cy }
             };
     }
+/* v126: shared, deterministic biome description; scenery is not simulation state. */
+const BMRealmTerrain126=(()=>{
+ const palettes={
+  meadow:{name:'Flower meadow',ground:[105,123,76],density:.86,height:.68},
+  woodland:{name:'Woodland',ground:[60,82,51],density:.38,height:.55},
+  marsh:{name:'Reed marsh',ground:[83,103,73],density:.50,height:.81},
+  highland:{name:'Rocky heath',ground:[120,115,91],density:.24,height:.35},
+  alpine:{name:'Alpine verge',ground:[155,166,155],density:.18,height:.27},
+  dry:{name:'Dry scrub',ground:[167,145,101],density:.13,height:.40},
+  ruins:{name:'Overgrown ruins',ground:[107,109,93],density:.24,height:.34}
+ };
+ const hash=(x,y,s=0)=>{let n=Math.imul(x+37,73856093)^Math.imul(y+53,19349663)^Math.imul(s+71,83492791);n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;};
+ const smooth=t=>t*t*(3-2*t);
+ function noise(x,y,s){const ix=Math.floor(x),iy=Math.floor(y),u=smooth(x-ix),v=smooth(y-iy);return (1-v)*((1-u)*hash(ix,iy,s)+u*hash(ix+1,iy,s))+v*((1-u)*hash(ix,iy+1,s)+u*hash(ix+1,iy+1,s));}
+ function valid(t,maze){return t?.version===1&&Number.isInteger(t.seed)&&Number.isInteger(t.size)&&t.size>=120&&t.size<=192&&maze?.length===t.size&&maze.every(r=>Array.isArray(r)&&r.length===t.size)&&Array.isArray(t.regions)&&t.regions.length===4&&t.regions.every(r=>palettes[r.kind]&&Number.isFinite(r.x)&&Number.isFinite(r.y)&&r.x>1&&r.y>1&&r.x<t.size-1&&r.y<t.size-1)&&Array.isArray(t.paths)&&t.paths.length<=16&&t.paths.every(p=>Array.isArray(p)&&p.length<=400&&p.every(v=>Number.isFinite(v.x)&&Number.isFinite(v.y)&&v.x>=1&&v.y>=1&&v.x<t.size-1&&v.y<t.size-1));}
+ function sample(t,x,y){
+  const wx=x+(noise(x/25,y/25,t.seed)-.5)*17,wy=y+(noise(y/29,x/29,t.seed+3)-.5)*17;
+  let sum=0,largest=-1,kind='meadow';const weights=t.regions.map(r=>{const w=Math.exp(-((wx-r.x)**2+(wy-r.y)**2)/1000);sum+=w;if(w>largest){largest=w;kind=r.kind;}return w;});
+  const rgb=[0,0,0];for(let i=0;i<weights.length;i++){weights[i]/=sum;for(let k=0;k<3;k++)rgb[k]+=palettes[t.regions[i].kind].ground[k]*weights[i];}
+  const shade=(noise(x/6,y/6,t.seed+9)-.5)*12;
+  return {kind,weights,color:'#'+rgb.map(c=>Math.max(0,Math.min(255,Math.round(c+shade))).toString(16).padStart(2,'0')).join('')};
+ }
+ function roads(t){const mask=new Uint8Array(t.size*t.size);for(const path of t.paths)for(const p of path)for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const x=Math.floor(p.x)+dx,y=Math.floor(p.y)+dy;if(x>0&&y>0&&x<t.size-1&&y<t.size-1&&Math.hypot(x+.5-p.x,y+.5-p.y)<1.85)mask[y*t.size+x]=1;}return mask;}
+ return {palettes,hash,noise,valid,sample,roads};
+})();globalThis.BMRealmTerrain126=BMRealmTerrain126;
+
+/* v126: an outdoor expedition, retaining the scenario/outpost/refuge contract. */
+function generateBlendedRealm126(theme='Sylvan',seed=(Math.random()*4294967296)>>>0){
+ const T=BMRealmTerrain126,size=160,turn=seed%4,mirror=T.hash(1,1,seed)<.5;
+ const point=(x,y)=>{if(mirror)x=size-1-x;for(let i=0;i<turn;i++)[x,y]=[size-1-y,x];return {x,y};};
+ const fourth=theme==='Snow'?'alpine':theme==='Desert'?'dry':['Ruins','Tomb','Castle','Void'].includes(theme)?'ruins':'highland';
+ const regions=[['meadow',52,107],['woodland',110,105],['marsh',43,49],[fourth,112,43]].map(([kind,x,y],i)=>({kind,...point(x+Math.floor(T.hash(i,3,seed)*9)-4,y+Math.floor(T.hash(i,7,seed)*9)-4)}));
+ const nodes={start:{...point(40,132),radius:10,theme:'CITY'},allyCamp:{...point(40,132),radius:7,theme:'CITY'},
+  ambush1:{x:regions[1].x,y:regions[1].y,radius:6,theme:'FOREST'},ambush2:{x:regions[2].x+9,y:regions[2].y,radius:6,theme:'PARK'},
+  bossLair:{...point(120,25),radius:8,theme:'CASTLE'},discovery0:{x:regions[0].x,y:regions[0].y,radius:5,theme:'MEADOW'},discovery1:{...point(79,77),radius:5,theme:'BASIC'}};
+ nodes.allyCamp.y-=3;
+ const terrain126={version:1,size,seed,regions,paths:[]};
+ for(const [a,b]of [['start','discovery0'],['discovery0','ambush1'],['discovery0','ambush2'],['ambush1','bossLair'],['ambush2','bossLair'],['discovery0','discovery1'],['discovery1','bossLair']]){
+  const p=nodes[a],q=nodes[b],length=Math.hypot(q.x-p.x,q.y-p.y),steps=Math.ceil(length*2),line=[];
+  for(let i=0;i<=steps;i++){const u=i/steps,bend=Math.sin(u*Math.PI*2)*2;line.push({x:p.x+.5+(q.x-p.x)*u-(q.y-p.y)/length*bend,y:p.y+.5+(q.y-p.y)*u+(q.x-p.x)/length*bend});}terrain126.paths.push(line);
+ }
+ const road=T.roads(terrain126),grid=Array.from({length:size},()=>Array(size).fill(0));
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  if(x<2||y<2||x>=size-2||y>=size-2){grid[y][x]=3;continue;}
+  const k=T.sample(terrain126,x+.5,y+.5).kind,n=T.noise(x/7,y/7,seed+18),h=T.hash(x,y,seed);
+  if(k==='marsh'&&n>.63)grid[y][x]=93;
+  else if(k==='woodland'&&n>.57&&h<.16)grid[y][x]=23;
+  else if(['highland','alpine','dry'].includes(k)&&n>.69&&h<.25)grid[y][x]=k==='alpine'?13:3;
+  else if(k==='ruins'&&n>.58&&((x%15===0&&y%15<9)||(y%15===0&&x%15<9)))grid[y][x]=25;
+  if(road[y*size+x])grid[y][x]=0;
+ }
+ // Clear encounter approaches, then add the distant keep and its four entrances.
+ for(const n of Object.values(nodes))for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++)grid[n.y+dy][n.x+dx]=0;
+ const boss=nodes.bossLair;for(let dy=-7;dy<=7;dy++)for(let dx=-7;dx<=7;dx++)grid[boss.y+dy][boss.x+dx]=(Math.abs(dx)===7||Math.abs(dy)===7)&&Math.abs(dx)>1&&Math.abs(dy)>1?25:0;
+ const town=nodes.start;
+ for(let dy=-10;dy<=10;dy++)for(let dx=-10;dx<=10;dx++)grid[town.y+dy][town.x+dx]=0;
+ for(const [ox,oy,w]of [[-8,-8,5],[3,-8,5],[-7,5,3],[5,5,3]]){
+  for(let dy=0;dy<w;dy++)for(let dx=0;dx<w;dx++)grid[town.y+oy+dy][town.x+ox+dx]=(dy===0||dy===w-1||dx===0||dx===w-1)?25:0;
+  grid[town.y+oy+w-1][town.x+ox+Math.floor(w/2)]=0;
+ }
+ const outpost={name:'Travelers’ Outpost',x:town.x+.5,y:town.y+.5,radius:10,servicesVersion:2,campfire:{x:town.x+.5,y:town.y-1.5},merchant:{x:town.x-5.5,y:town.y-5.5},guild:{x:town.x+5.5,y:town.y-5.5}};
+ const safeRoom=BMServerRefuge.build(grid,town,0);
+ const validFloors=suncatReachable(grid,town,0).filter(p=>!BMServerRefuge.contains(safeRoom,p.x+.5,p.y+.5));
+ const connected=new Set(validFloors.map(p=>p.x+','+p.y));
+ for(const n of Object.values(nodes))if(!connected.has(n.x+','+n.y))throw Error('Disconnected blended-realm landmark.');
+ return {grid,nodes,validFloors,outpost,safeRoom,terrain126,hasWaterFeature:true,layoutName:'The Woven Frontier',layoutDesc:`A 160 by 160 outdoor realm. ${regions.map(r=>T.palettes[r.kind].name+' at '+r.x+','+r.y).join('; ')}. These regions blend along irregular borders. Wide winding paths connect the refuge, outpost, meadow, woodland, marsh and distant keep; alternate roads cross the central clearing. The meadow is a short walk from arrival. Services are indoors in the outpost; the return portal remains in the refuge.`};
+}
+function populateRealm126(mapData,npcs){
+ const T=BMRealmTerrain126,t=mapData.terrain126;if(!t)return;
+ // Existing combatants keep their normal AI and stats. Spread scouts into small groups.
+ const scouts=npcs.filter(n=>n.classification==='wild_scout');
+ for(let i=0;i<scouts.length;i++){
+  const r=t.regions[i%4],a=i*2.4,desired={x:r.x+Math.cos(a)*11,y:r.y+Math.sin(a)*11};
+  let p=null,best=Infinity;for(const q of mapData.validFloors){const distance=(q.x-desired.x)**2+(q.y-desired.y)**2;if(distance>=best||Math.hypot(q.x-mapData.nodes.start.x,q.y-mapData.nodes.start.y)<=24||npcs.some(n=>n!==scouts[i]&&Math.hypot(n.x-q.x-.5,n.y-q.y-.5)<=3))continue;p=q;best=distance;}
+  if(p){scouts[i].x=p.x+.5;scouts[i].y=p.y+.5;scouts[i].state='wandering';}
+ }
+ for(const [i,card,region]of [[0,225,0],[1,225,0],[2,231,0],[3,234,1],[4,228,1],[5,279,2]]){
+  if(!CARD_MANIFEST_DB[card])continue;const r=t.regions[region];
+  const p=mapData.validFloors.filter(p=>Math.hypot(p.x-r.x,p.y-r.y)<16&&npcs.every(n=>Math.hypot(n.x-p.x-.5,n.y-p.y-.5)>3)).sort((a,b)=>T.hash(a.x,a.y,t.seed+i)-T.hash(b.x,b.y,t.seed+i))[0];if(!p)continue;
+  npcs.push({type:CARD_MANIFEST_DB[card].sprite||card,name:CARD_MANIFEST_DB[card].name,x:p.x+.5,y:p.y+.5,state:'wandering',role:'battle',alignment:'friendly',deck:[card],classification:'realm_wildlife',dialogue:[]});
+ }
+}
+
     function generateActorDrivenMap(size, baseWallType, floorType = 0, waterTile = null, cliffTile = null, scenarioKind = 'bounty') {
         if(size!==100) throw new Error('This generator currently uses a 100 by 100 layout.');
         let grid = Array(size).fill().map(() => Array(size).fill(baseWallType));
@@ -8669,7 +8752,7 @@ function suncatSight103(grid,a,b){if(!grid)return false;const count=Math.ceil(Ma
                                     let cTile = biome.cliffTile || null;
 
                                     // Pass them into the updated generator!
-                                    const mapData = generateActorDrivenMap(100, biome.walls[0], 0, wTile, cTile, scenarioType);
+                                    const mapData = generateBlendedRealm126(biome.name);
 
                                     // Build a spatial layout string to feed the LLM
                                     let spatialLayout = `
@@ -8684,7 +8767,7 @@ function suncatSight103(grid,a,b){if(!grid)return false;const count=Math.ceil(Ma
 
                                     // ---> NEW: IF WATER GENERATED, TELL THE AI! <---
                                     if (mapData.hasWaterFeature) {
-                                        spatialLayout += `- GEOGRAPHY: This map features deep bodies of water and impassable cliffs. The AI characters MUST reference the water, drowning, bridges, or the cliffs in their dialogue!\n`;
+                                        spatialLayout += `- GEOGRAPHY: Reed marsh pools, sparse woodland, flower meadows and a rocky or ruined verge share this outdoor region. Paths cross the pools on dry causeways. Characters may mention nearby terrain when relevant; do not invent cliffs or additional exits.\n`;
                                     }
 
                                 // ==========================================
@@ -8803,7 +8886,7 @@ function suncatSight103(grid,a,b){if(!grid)return false;const count=Math.ceil(Ma
                                 // --- D. SCATTER WANDERERS ON VALID FLOORS ---
                                 let shuffledFloors = suncatShuffle(mapData.validFloors);
                                 let placedWanderers = 0;
-                                let totalWanderers = 15; // Set a fixed number of extra wanderers
+                                let totalWanderers = 9; // Six peaceful animals replace six scouts; population stays bounded.
                                 
                                 for (let i = 0; i < shuffledFloors.length && placedWanderers < totalWanderers; i++) {
                                     let tile = shuffledFloors[i];
@@ -8828,17 +8911,18 @@ function suncatSight103(grid,a,b){if(!grid)return false;const count=Math.ceil(Ma
                                 SUNCAT_SCENARIOS.decorate(mapData,mapNPCs,script,scenarioType,friendlyMinions);
                                 SUNCAT_SCENARIOS.roadScenes(mapData,mapNPCs,hostileMinions);
                                 // Apply global indices to all array items
+                                populateRealm126(mapData,mapNPCs);
                                 suncatPlaceActors(mapData,mapNPCs);                        
 
                                 // ==========================================
                                 // 5. CACHE INSTANCE & DISPATCH MESSENGER
                                 // ==========================================
                                 const customMapData = {
-                                    id:999, maze:mapData.grid,outpost:mapData.outpost,safeRoom:mapData.safeRoom,
+                                    id:999, maze:mapData.grid,outpost:mapData.outpost,safeRoom:mapData.safeRoom,terrain126:mapData.terrain126,
                                     instanceId:String(SUNCAT_RUNTIME.id()),exitIndex:SUNCAT_RUNTIME.id(),scenarioType,
-                                    skyColor: biome.skies[0], floorColor: biome.floors[0], 
-                                    name: `${biome.name}: ${CARD_MANIFEST_DB[antagID].name}`,
-                                    npcs: mapNPCs, weather: biome.weather[0],
+                                    skyColor: "#8ba6b5", floorColor: "#697b4c", 
+                                    name: `Woven Frontier · ${biome.name}: ${CARD_MANIFEST_DB[antagID].name}`,
+                                    npcs: mapNPCs, weather: "clear",
                                     
                                     // Link the physical radar names to the nodes we just created!
                                     spawnX: mapData.safeRoom.spawn.x, 
@@ -11364,13 +11448,25 @@ const BMOnline = (() => {
   async function saveLoot(){await save();if(saveError)throw Error("Loot pickup could not be saved. Please try again.");}
   async function pickupLoot(socket,data){
     const r=requireReady(socket),p=player(r),drop=r.groundDrops?.[data.id];if(!drop)throw Error('This loot is no longer available.');
-    if(drop.claimed){await saveLoot();return {claimed:true};}
-    if(!p||![p.x,p.y,p.combatZ||0,drop.x,drop.y,drop.z].every(Number.isFinite)||p.isDead||p.mapID!==drop.mapID||Math.hypot(p.x-drop.x,p.y-drop.y)>.95||Math.abs((p.combatZ||0)-drop.z)>.6)throw Error('Move onto the loot to collect it.');
+    const partial=data.parts!==undefined;
+    if(partial&&!Array.isArray(data.parts))throw Error('Invalid loot selection.');
+    const parts=partial?[...new Set(data.parts)]:null;
+    if(partial&&(!parts.length||parts.length>64||parts.some(v=>typeof v!=='string'||v.length>240||!(/^(silver|c:\d{1,5}|i:[A-Za-z0-9_%!~*'().:-]+)$/.test(v)))))throw Error('Invalid loot selection.');
+    const claimed=drop.parts119||[];
+    if(drop.claimed||partial&&parts.every(v=>claimed.includes(v))){await saveLoot();return {claimed:true,...(partial?{partial:1}: {})};}
+    const reachX=data.tile===true?Math.max(Math.floor(drop.x),Math.min(Math.floor(drop.x)+1,p?.x)):drop.x,reachY=data.tile===true?Math.max(Math.floor(drop.y),Math.min(Math.floor(drop.y)+1,p?.y)):drop.y;
+    if(!p||![p.x,p.y,p.combatZ||0,drop.x,drop.y,drop.z].every(Number.isFinite)||p.isDead||p.mapID!==drop.mapID||Math.hypot(p.x-reachX,p.y-reachY)>(partial?2.1:.95)||Math.abs((p.combatZ||0)-drop.z)>.6)throw Error('Move within reach of the loot to collect it.');
     if(drop.mapID===999&&drop.instanceId!==activeCustomMap?.instanceId)throw Error('That loot belongs to another region.');
     if(!sight(grid(drop.mapID),p,drop))throw Error('The loot is beyond a wall.');
-    drop.claimed=true;drop.claimedAt=now();dirty=true;await saveLoot();return {claimed:true};
+    if(partial){if(new Set([...claimed,...parts]).size>128)throw Error('Too many parts in this loot receipt.');drop.parts119=[...new Set([...claimed,...parts])];}
+    else{if(claimed.length)throw Error('Use the updated client to collect the rest of this loot.');drop.claimed=true;}
+    drop.claimedAt=now();dirty=true;await saveLoot();return {claimed:true,...(partial?{partial:1}: {})};
   }
-  function acknowledgeLoot(socket,data){const r=requireReady(socket),drop=r.groundDrops?.[data.id];if(drop?.claimed){delete r.groundDrops[data.id];dirty=true;}return {};}
+  function acknowledgeLoot(socket,data){
+    const r=requireReady(socket),drop=r.groundDrops?.[data.id];
+    if(drop&&(drop.claimed||data.partial===1&&drop.parts119?.length)){delete r.groundDrops[data.id];dirty=true;}
+    return {};
+  }
   // Durable personal chapters; a party borrows its host's phase, never a global dungeon.
   store.guildChapters ??= {};
   for(const phase of Object.values(store.guildChapters))if(phase.map&&BM_WORLD.maps[8841])BM_WORLD.maps[phase.map]={...BM_WORLD.maps[8841],guildPhase:phase.id};
@@ -12138,7 +12234,7 @@ const npcConversation=createNPCConversationService(host,socket,BMNPCCatalog);
 context.on('request_npc_conversation',npcConversation.handle);
 const routes = {
 "identity": {
-"online_hello": (_data,ack)=>{host.BMOnline.hello(socket);socket.emit("online_capabilities",{legacyCombat:true,parties:true,combatReceipts:2,respawnAck:true,groundLoot:1});if(typeof ack==='function')ack({ok:true});},
+"online_hello": (_data,ack)=>{host.BMOnline.hello(socket);socket.emit("online_capabilities",{legacyCombat:true,parties:true,combatReceipts:2,respawnAck:true,groundLoot:1,groundLootParts:1});if(typeof ack==='function')ack({ok:true});},
 "admin_auth": (data,ack)=>{socket.data.isAdmin=host.SuncatIdentity.admin(socket,data?.token);if(typeof ack==='function')ack({ok:socket.data.isAdmin});},
 "setIdentity": (data) => {
             if (host.players[socket.id]) {
@@ -13702,7 +13798,7 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
 }
 };
 
-    socket.emit("online_capabilities",{legacyCombat:true,parties:true,combatReceipts:2,respawnAck:true,groundLoot:1});
+    socket.emit("online_capabilities",{legacyCombat:true,parties:true,combatReceipts:2,respawnAck:true,groundLoot:1,groundLootParts:1});
     context.on("online_hello", routes.identity["online_hello"]);
     host.BMOnline.bind(socket,context);
     socket.data ||= {};socket.use((packet,next)=>host.SuncatIdentity.guard(socket,packet,next));

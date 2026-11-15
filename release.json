@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 112,
-  "serverVersion": "1.10.52",
-  "date": "2026-11-14",
+  "version": 126,
+  "serverVersion": "1.10.66",
+  "date": "2026-11-15",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v111 / server 1.10.51",
+  "supersedes": "BattleMage Runestones v125 / server package 1.10.65",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,12 +23,12 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "v112 client, server package 1.10.52, terrain 111 and motion 103. Five ready-to-commit files; no commit, push or deployment. All new behavior is client-side. Server differs from v111 only in /version metadata; this pass does not require a server logic update.",
+    "deployment": "v126 client / server package 1.10.66 / terrain 111 / motion 103. Five files; no commit, push or deployment. This pass changes generated-realm server logic. Update both index.html and server.js (with matching package files) before asking Suncat for a new realm. Existing live realms retain their old layout until replaced through the normal invitation flow.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
-    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v112 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
+    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v126 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "58bd6b2d34d4fed917bd4b4dc4f2a7a212f0974d029bd68aed742a336075de23",
-  "serverSha256": "c89f9df2112bb0816c6e60f9c8c08613d5777de69f91a57d0efa9555f7cde23f",
+  "clientSha256": "0d2e6916c589de544afdec1b654e8fe711859a94060af4e32b909c679226ba23",
+  "serverSha256": "3be289f8fd5773846622ac4c45139a7d671bc8e331e899903d73ef314bed2ff2",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -69,7 +69,7 @@
   "geography": {
     "newMapIDs": [],
     "modifiedExistingMapIDs": [],
-    "interpretation": "No map geometry changes. Existing bed and campfire actors become usable through normal reach, height and line-of-sight checks."
+    "interpretation": "No terrain, map, NPC placement or campaign changes."
   },
   "naming": {
     "maps": {
@@ -267,8 +267,8 @@
     }
   },
   "devlog": {
-    "current": "v112",
-    "history": "Eight entries: v112 first, v111 condensed, older craft/art/sound history combined."
+    "current": "v126",
+    "history": "Nine entries: current blended realms, condensed v125 meadow/Lore, condensed v113–v124, and older summaries."
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -294,192 +294,99 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Dialogue buttons use a fixed CSS-pixel font matching the body text setting. Labels wrap at that size and each shared row grows to fit, with at least 44px height. Existing choice objects, hit testing, shortcuts, disabled states and exactly-once actions are retained.",
-    "A compact dialogue panel is anchored above the screen safe-area bottom. Short text uses its measured height and longer passages use available reading space with visual paging. The 3D viewport extends into unused portrait space during conversation; movement/look controls are hidden. Camera framing accounts for the panel. Layout and label measurements are cached until content, font or viewport changes.",
-    "Native and classic conversations correct player/NPC overlap by checking nearby floor positions and the full swept path for body clearance, other actors, walls, water, height changes and line of sight. The player steps back on safe floor; the NPC remains at its authored coordinates and turns to the player. Original facing and view are restored on exit. No duplicate speaker sprite is created.",
-    "Beds offer direct Rest. Real campfires offer Cook & craft, Rest and Leave. Rest advances the saved client clock from day to 19:00 or night to 07:00. Existing Hermit rest follows the same rule. Combat, nearby visible enemies and out-of-reach points reject rest. No silver, XP, healing or server-global clock reward is added.",
-    "Items → Quest Items includes stored quest-prefixed supplies plus read-only projections of carried tower and apprenticeship objects: rescue rope, salvaged food chest, tribute/family roll, costume parcel, recommendation, sealed ledger/dispatch, packed meal, recovery draughts and relief bandages. Existing saves populate from their original flags; used or delivered objects disappear. These projections are not added as duplicate stacks and cannot be sold or consumed independently.",
-    "Quest objects have compact item sprites in both list and icon views; counts and destination descriptions remain visible in details. Existing quest supplies keep their recipe/handoff logic, quest sale protections and story-specific actions. Cherry retains her existing art.",
-    "Current devlog identifies v112 and condenses earlier logs. The package remains five files, with matching server metadata and preserved dependencies, map geometry, later story arcs and Dragonflight server section."
+    "New Suncat-generated custom realms (map 999) use a deterministic 160 by 160 outdoor layout, 2.56 times the former tile area. A compact seed/region/road recipe travels with the authoritative server maze.",
+    "Four regions meld through warped, smooth biome weights: flower meadow near arrival, woodland, reed marsh and a rocky heath, alpine verge, dry scrub or overgrown ruins selected by the scenario theme. Winding roads and alternate approaches connect the refuge, outpost, encounters and distant keep.",
+    "Meadow art uses the existing pale flowers; woodland bell flowers, reeds with occasional marsh irises, low heath, alpine rosettes, sparse dry scrub and ruin plants use small cached procedural sprites. Plants mix near boundaries and remain off roads, pools, walls, the outpost, actor starting positions and major combat clearings.",
+    "Ground colors blend between regions in both 3D and overhead views. Two-tile ground patches split at solid/water borders; spatial buckets restrict work to the camera neighborhood. Plants follow the existing 720/520/360/220 budgets and reduced-motion setting, share depth sorting, and use existing layered world occlusion.",
+    "Six peaceful animals replace six extra hostile wanderers; scouts are distributed around the biome regions. Existing services, scenario quests, defenders, wildlife and combat use existing behavior. This pass does not add a new NPC intelligence model or increase the starting population.",
+    "Biome scenery is client-side decoration, with no NPC simulation, collision, target rings, item drops or individual network updates. A new instance or legacy custom map clears the scenery cache; saved generated realms keep their recipe and restore deterministically.",
+    "Map 777, Moors, Tintagel and general NPC distribution are unchanged. No dens, continent expansion or story rewrites. Lore Previous/Next at both chapter ends is preserved. Devlog displays v126; no external dependencies or assets added."
   ],
   "previousRelease": {
-    "version": 111,
-    "serverVersion": "1.10.51",
-    "summary": "Multi-level Conaing keep, active three-assault siege, physical rescues, chapter XP and fixed dialogue reading size. Preserved, with v110 original dialogue, reunited impostors and shelved realm 613."
+    "version": 125,
+    "serverVersion": "1.10.65",
+    "summary": "Retains isolated map 777, both Lore chapter navigators, acquired classes, stacked bonuses, quests and HUD."
   },
   "validation": {
-    "automatedCheckGroups": 128,
+    "automatedCheckGroups": 50,
     "counts": {
-      "client": 73,
-      "dialogue": 11,
-      "towerAndReading": 18,
-      "dialogueRestQuestItems": 15,
-      "clientStartup": 11
+      "savedConnectedChecks": 42,
+      "generatorChecks": 4,
+      "actualScriptInitialization": 1,
+      "preservedSaveProgress": 1,
+      "freshOfflineStartup": 1,
+      "savedRealmResume": 1
     },
-    "checks": {
-      "client": [
-        "13 client scripts parse",
-        "warrior preserves completed recommendations and skills",
-        "squire preserves completed recommendations and skills",
-        "acolyte preserves completed recommendations and skills",
-        "apprentice preserves completed recommendations and skills",
-        "rogue preserves completed recommendations and skills",
-        "hunter preserves completed recommendations and skills",
-        "dancer preserves completed recommendations and skills",
-        "Legacy courier dressing is preserved as a sealed dose",
-        "Existing class branch restrictions remain",
-        "Hunter follows two clues and the correct monster",
-        "Early monster defeat still requires reading both clues",
-        "Hunter forage rejects stripping the bush",
-        "Hunter cooking uses the actual workshop and reserves one meal",
-        "Priest gathering, real brew and courier handoff",
-        "A failed brew grants no quest progress and can be retried",
-        "Unrelated workshop result cannot complete the lesson",
-        "Mage requires both observations and a correct explanation",
-        "Rogue daytime access is blocked and night access works",
-        "Rogue successful bluff creates a temporary opening",
-        "Rogue expired opening cannot be used through a stale menu",
-        "Dancer asks the guest before approaching the patron",
-        "Low-stat Dancer can seek help without being locked out",
-        "warrior requires protection and walking to shelter",
-        "squire requires protection and walking to shelter",
-        "Quest state and world props survive serialization without duplicates",
-        "Stale dialogue callback cannot advance after leaving its map",
-        "Ground placement avoids water, walls and disconnected rooms",
-        "Simultaneous apprenticeships do not stack props on the same tile",
-        "Escort can find a route around a wall",
-        "An in-progress workshop batch survives save and reload",
-        "Hunter delivers the reserved meal once",
-        "Legacy Rogue ledger remains deliverable",
-        "Mage can answer at the later Athenian teaching desk",
-        "Class menu offers practical help and does not auto-complete a field task",
-        "Devlog derives version/date from build metadata and automatically follows the next version",
-        "knight completed recommendation and receipts survive migration",
-        "mage completed recommendation and receipts survive migration",
-        "priest completed recommendation and receipts survive migration",
-        "centurion completed recommendation and receipts survive migration",
-        "royal-knight completed recommendation and receipts survive migration",
-        "dragon-knight completed recommendation and receipts survive migration",
-        "high-priest completed recommendation and receipts survive migration",
-        "assassin completed recommendation and receipts survive migration",
-        "ranger completed recommendation and receipts survive migration",
-        "archmage completed recommendation and receipts survive migration",
-        "Advanced changes preserve original rewards and every promotion prerequisite",
-        "Mage must inspect and clear the channel before setting the correct ward direction",
-        "Priest uses a real recovery brew and examines before treating",
-        "High Priest gathers, brews two real batches and cares for two pilgrims separately",
-        "Legacy Priest and High Priest deliveries retain care credit",
-        "Knight checks both documents, restores provisions and escorts the resident home",
-        "Centurion secures supplies, forms the watch, fights and tends the wounded",
-        "Royal Knight must verify both arrivals before deciding",
-        "Assassin requires a studied night opening, intact dispatch and erased signal",
-        "Assassin cannot use an expired opening from an already open dialogue",
-        "Ranger reads both signs, frees the wolf and waits at a distance",
-        "Animal recovery requires sustained nearby space and does not tick while a menu is open",
-        "Dragon Knight must observe the wind before leaving food and waiting",
-        "Archmage audits both circuits and restores regulators in order with save recovery",
-        "Prestige assignments retain the old guild-finale gate",
-        "Avalon tier, class, level and permanent stat requirements still block promotion",
-        "Retired dialogue and stale combat callbacks cannot alter a later stage",
-        "All simultaneous advanced investigations remain unstarred and occupy separate walkable cells",
-        "Priest care and High Priest vigil follow Priest to the later healing house",
-        "Saved old advanced training rooms still return and award their original stage credit",
-        "Optional help explains the current step without granting progress",
-        "Animal feedback covers distance, sight and completion without repeated chat every tick",
-        "Each practical route has help and final-step feedback points to its actual next objective",
-        "Every practical quest prop fits dry reachable ground on the authored maps",
-        "Noble has a walkable lodging in the mainland outer ward",
-        "Solid portal and cargo art preserve their types, destinations and callbacks",
-        "Dances start at zero Rhythm, stay free, switch exclusively, and clean up guard buffs"
-      ],
-      "dialogue": [
-        "The retired companion interceptor and realm simulator are absent at runtime",
-        "Both religious impostors stand inside the throne hall with the fake Emperor and Empress",
-        "The fake Empress, Priestess and Hierophant open on their exact authored line without any menu",
-        "A repeat explicit interaction restores the same line and still closes in one advance",
-        "Saved companion history cannot recreate the removed social menu or consume food",
-        "The fake Emperor still opens with the original introduction and retains the reveal choice",
-        "The real court remains captive before rescue, with no duplicate genuine actors in the hall",
-        "After rescue the fake court is absent and the genuine Priestess lesson remains functional",
-        "Ordinary authored lines across multiple maps open directly and finish without a Talk submenu",
-        "Class trainers retain their real training choices after generic companionship removal",
-        "Old realm-only locations recover at Haven without wiping campaign progress or archived ledgers"
-      ],
-      "towerAndReading": [
-        "Tower has two usable rooms, an upper records objective, roof and distinct tall turret",
-        "Actual layered pathfinder connects landing to hall, upstairs roll and rooftop turret",
-        "Every wave spawn and every court/shelter rescue actor is outside solid stone in each siege phase",
-        "Tower damage leaves upstairs and roof routes traversable and the shelter opens after rescue",
-        "Dedicated raider and captain models have bounded cached animation frames and separate identities",
-        "Real NPC update pursues beyond the old six-tile leash and lands actual ward damage",
-        "Raider follows the player up real stairs instead of freezing against the wall",
-        "Level-one quest progress earns a level and stat points once, including existing completed saves",
-        "Saved defeated raiders and the boss remain defeated after reload; no wave replay or paid reward reset",
-        "Opening food chest has one early opponent; death is remembered without respawn farming",
-        "Sailor rescue walks the authored shore path, waits for the player, persists and reaches the hearth",
-        "Shelter rescue requires time in the world, pauses in menus and cancels on retreat",
-        "Fixed dialogue font does not change with length, preserves long words, paragraphs and stat tokens",
-        "Native long dialogue pages advance before the story counter and choices remain hidden until final page",
-        "Classic choices cannot execute early and execute exactly once after visual pages",
-        "A short authored line retains one-advance finish, and repeat conversations start on page one",
-        "Legacy tower save migrates before coordinates restore, preserving inventory, quest and defeated waves",
-        "Protected landing remains free of raiders without per-frame teleport clamping"
-      ],
-      "dialogueRestQuestItems": [
-        "Short and long choice labels use identical fonts; portrait controls fill width and have 44px hit areas",
-        "Dialogue uses remaining portrait viewport and a long line pages without losing text or early choices",
-        "Rotating and changing text size reflows dialogue and buttons without shrinking any labels",
-        "Native overlap conversation repositions the player, keeps one NPC and restores original view/facing",
-        "Classic overlap uses same world NPC, handles a blocked first direction and stays on the upper floor",
-        "Unsafe wall, water and cliff routes are rejected; books and notification props do not move",
-        "Real bed is discoverable and usable through Interact, toggles day/night and saves without money or quest changes",
-        "Campfire keeps Cook & craft and offers Rest; rest returns to exploration and toggles clock once",
-        "Faraway and unsafe rest attempts cannot change time; decorative flames are not campfires",
-        "Clock changes correctly at dawn/dusk boundaries, including midnight",
-        "Existing tower flags populate rope, chest and roll without adding physical inventory or changing progress",
-        "Class deliveries reflect existing saved state, quantities, handover and completed recommendations",
-        "Stored quest supplies remain usable by original recipes and leave the view when consumed",
-        "Quest Items tab works through actual inventory DOM with sprites, quantities and no virtual-item sell/use action",
-        "Cook & craft reaches the actual workbench and keeps its cooking tools"
-      ],
-      "clientStartup": [
-        "Full offline startup reaches ready without errors.",
-        "Full offline-saved startup reaches ready without errors and preserves saved progress.",
-        "Full online startup reaches ready without errors.",
-        "Full online-saved startup reaches ready without errors and preserves saved progress.",
-        "Connected presence timers wait while saved-world initialization is incomplete",
-        "Connected portrait-loading timers execute without unhandled errors",
-        "Connected presence uses the exported real clock with exact day/night and malformed-value rules",
-        "Presence pauses during map loading and resumes with the restored clock",
-        "Disconnect stops presence and reconnect resumes without duplicate timer installation",
-        "Active observer and menu withdrawal both emit valid clock-bearing snapshots",
-        "Every registered recurring callback executes after initialization without a reference error"
-      ]
-    },
-    "methods": [
-      "Execute the full client in Node/jsdom with canvas/audio/network stubs; 15 new feature groups exercise actual native/classic dialogue, canvas text metrics, hit boxes, supported overlap placement, original-facing restoration, real authored bed/fire interactions, cooking workbench, clock boundaries and save/reload.",
-      "Check 360×760, 412×915, 684×1328 portrait and 740×360 landscape coordinate fixtures. Change the chat/dialogue text setting, rotate while reading, verify source text preservation, hidden early options and exactly-once choice execution.",
-      "Exercise actual Inventory DOM in list/icon architecture with quest sprites and quantities, saved tower/class flags, handover/consumption disappearance, original recipe inventory and sale protection. Inspect a contact sheet rendered from the sprite drawing commands.",
-      "Retain 73 client quest/core groups, 11 original-dialogue/court groups and 18 tower/reading groups. Full fresh/saved offline and simulated-connected initialization adds 11 startup groups."
+    "checks": [
+      "Connected presence timers wait while saved-world initialization is incomplete",
+      "Connected portrait-loading timers execute without unhandled errors",
+      "Connected presence uses the exported real clock with exact day/night and malformed-value rules",
+      "Presence pauses during map loading and resumes with the restored clock",
+      "Disconnect stops presence and reconnect resumes without duplicate timer installation",
+      "Active observer and menu withdrawal both emit valid clock-bearing snapshots",
+      "Every registered recurring callback executes after initialization without a reference error",
+      "Saved completed classes migrate once; incomplete errands retain their work",
+      "Fresh Player Classes tracks Warrior to Warrior on the guild ground floor",
+      "Unstarted class tracking follows mentors after their regional journeys",
+      "Warrior starts and finishes his own quest through JRPG dialogue and retains held progress",
+      "Six acquired class bonuses stack once and apply through actual stat spending",
+      "Acquired Mage allows mage techniques under another title; stat and class locks stay distinct",
+      "All original guild mentors offer their own class while Dancer opens the full directory",
+      "Knight class screen contains Knight only; no unrelated starter or prestige recommendations",
+      "Listen lists its class quest separately and unavailable/learned filters work",
+      "Cherry route keeps parcel and letter stages; her completed quest acquires Dancer without automatic skills",
+      "Core Mage/Priest/Knight are earned from their quest without the old branch restriction",
+      "Advanced titles retain campaign/tier requirements and accept acquired prerequisite titles",
+      "Moors masks are removed without changing dry ground, water, paths or map adjacency",
+      "Squire, Knight and Dragon Knight have distinct baked idle, walk and attack families",
+      "Sword blade extends away from the forearm throughout its local grip axis",
+      "Equipped player sword clears the forearm in all sampled idle, walk and attack poses",
+      "Dialogue choices sit above a larger fixed-font bottom text box on portrait, landscape and square screens",
+      "Landscape Jump grows and rises without changing the pad, Target or centered hotbar",
+      "Map 777 is a separate test realm with a walkable path and no decorative NPC population",
+      "Meadow loads at its safe spawn and uses local visual night without changing the world clock",
+      "Scenery budgets and camera culling work in four directions and all graphics settings",
+      "Flower rendering uses cached art, normal depth ordering and wall clipping without target rings",
+      "Meadow save retains map identity and deterministic scenery without serializing decorative actors",
+      "The trail marker opens normal dialogue and returns to Haven safely",
+      "Existing Moors and Tintagel terrain, wildlife definitions and world atlas remain unchanged",
+      "Both ends of every main Lore chapter navigate in order with correct disabled boundaries",
+      "Both ends of every guild Lore chapter navigate in order with correct disabled boundaries",
+      "Server-generated 160x160 blueprint loads with matching collision, safe spawn, exit and biome scenery",
+      "Biome plants remain off paths, pools, walls, services and actor positions",
+      "Flower budgets and spatial floor selection stay local in all graphics tiers",
+      "All biome flower variants draw from cached art with world occlusion; no new per-frame canvases",
+      "A hostile NPC crosses meadow ground and reaches its normal melee attack with foliage active",
+      "Saved shared realm keeps its biome recipe; same-instance updates preserve scenery identity",
+      "A new realm instance replaces terrain caches, and legacy custom maps retain their old behavior",
+      "Leaving the generated realm restores ordinary maps and the standalone map 777 test",
+      "108 deterministic biome/seed combinations: dimensions, refuge, roads and all landmarks reachable",
+      "Every placed combatant and peaceful animal uses a unique, reachable floor outside the refuge",
+      "Near-arrival meadow exists in every theme; starting NPC count substitutes six wildlife for six scouts",
+      "Repeated generation of one seed produces identical geometry and biome metadata",
+      "A saved shared 160x160 realm resumes with matching seeded scenery and world collision"
     ],
-    "syntax": "All 13 client scripts execute; node --check server.js passes.",
-    "integrity": "Matching package versions, five archive members, CRCs and client/server SHA-256; byte-identical server except version metadata, unchanged dependencies and protected Dragonflight section.",
-    "visual": "Quest sprite contact sheet visually inspected. Canvas dialogue coordinates and text measurement checked programmatically. No rendered phone/browser walkthrough of the complete game.",
-    "live": "Not deployed; no production session or real model calls."
+    "methods": [
+      "108 seed/theme combinations exercise the actual server generator, refuge, road/landmark reachability, unique reachable actor placement, near-arrival meadow, climate variants and deterministic repeatability.",
+      "Node/jsdom executes all 13 actual client scripts with stub canvas and an in-process simulated transport. It tests server-blueprint loading, local floor/plant selection, image-cache reuse, wall clipping calls, reduced graphics budgets, new instance/legacy resets, and fresh-runtime saved-realm resume.",
+      "An actual hostile NPC update loop crosses meadow terrain and reaches the normal player contact-attack callback while foliage is active. Damage resolution is intercepted in this controlled test; this is not a full combat balance/playthrough test.",
+      "Preserved v124/v125 class, dialogue, HUD, save and Lore navigation regressions, including all 69 Fool and 27 Guild chapters and the isolated meadow return marker.",
+      "All embedded scripts and server syntax pass. Both story archives are byte-identical; protected Dragonflight section hash, dependency equivalence, five-file ZIP membership, CRC and client/server hashes pass."
+    ],
+    "visual": "Browser preview remains unavailable after automatic approval review blocked it. No browser restriction was bypassed. Canvas-stub tests do not establish phone visuals, touch feel or FPS.",
+    "live": "Not deployed; no actual multiplayer or physical-phone test."
   },
   "limitations": [
-    "Phone review is still needed for the expanded portrait view, speaker framing, touch ergonomics and perceived layout. No new browser/game rendering was performed; earlier denied preview access was not bypassed.",
-    "Conversation placement uses legal nearby supported floor. It does not push an NPC, cross walls or teleport across a cliff when a space is physically too tight.",
-    "Rest updates the personal client clock. Existing scripted/cursed lighting rules remain; this does not advance a shared global server clock or simulate every skipped hour.",
-    "Quest Items includes carried objects with identified storage/flags. Narrative facts, inspected documents not taken, and arbitrary future quest flags are not invented as items."
+    "Phone frame rate with foliage, NPCs, spells and loot requires live playtesting on Pixel/S9. No raster/browser/phone performance result is claimed.",
+    "Only newly generated server realms use the new layout; existing realms and the main atlas retain their geometry.",
+    "NPCs retain existing AI and combat. This pass adds habitat placement and peaceful wildlife, not a new autonomous economy or advanced planner.",
+    "Server-generated stories still require the configured LLM service; no live LLM/network scenario was generated during verification."
   ],
   "nextPass": [
-    "Load the new client and confirm Devlog v112; keep saved data. Server changes here are version metadata only.",
-    "On a phone, open a short and long conversation, compare all choice label sizes, rotate and change text size, then select an actual quest/service action.",
-    "Talk while overlapping a person, near a wall and upstairs. Verify a clear view of the existing speaker and normal camera behavior after leaving.",
-    "Use a bed during daytime and again at night. Try campfire Rest and Cook & craft. Reload and verify the clock persists.",
-    "Check Items → Quest Items with the tower rope/stores/roll or an apprenticeship delivery. Complete the handover and verify it disappears without resetting the quest.",
-    "Continue the existing hosted Suncat dialogue/journal/navigation and Tintagel/tower device-review backlog; map 613 remains shelved and broader arena/world systems remain proposals."
+    "Deploy matching client/server and request a new realm; test meadow exploration with a few NPCs, then a small fight and a larger fight on Pixel and S9. Compare graphics tiers.",
+    "Assess daylight/nighttime flower contrast, enemy and loot visibility, road/keep readability, swimming/causeways, and save/rejoin in the generated realm.",
+    "Keep the standalone 777 test and main world separate until this playtest provides feedback.",
+    "Target ward/status ring and the older Suncat/world backlog remain pending; dens are still a discussion idea."
   ],
   "questInventory": {
     "open": "Player → Items → Quest Items",
@@ -494,5 +401,128 @@
     "scope": "saved client worldHour; ordinary local day/night simulation reads it",
     "serverGlobalClockMutation": false,
     "healingAdded": false
+  },
+  "responsiveView": {
+    "baseline": "Square projection at min(viewport width, viewport height); centered horizon retained from v113.",
+    "world": "Full available browser canvas in 3D exploration and dialogue.",
+    "hud": "Movement, Jump/Target and skill geometry retained from v117. Landscape chat uses a top-aligned text area with a small icon strip beside the map.",
+    "upperHUD": "Transparent landscape messages and top-edge chat icons; map/settings right. Portrait shaded chat retained.",
+    "ordinary2D": "Square board retained.",
+    "preferences": "Original left/right movement and control size settings preserved.",
+    "maxDialogueWidthCSSPixels": 720,
+    "landscape": "Top-flow message log, three compact top-edge icons, larger movement pad and raised actions retained, single centered hotbar unchanged.",
+    "chatComposer": "resizes-visual keyboard policy; live viewport/window/keyboard bounds; short views use an inline editor and Send/Hide controls, with messages above.",
+    "chatVisibility": "Persistent Hide/Show and incoming History retained."
+  },
+  "implementationReferences": [
+    {
+      "url": "https://developer.chrome.com/blog/viewport-resize-behavior",
+      "use": "Keyboard overlay versus visual-viewport resize policy."
+    },
+    {
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport",
+      "use": "Visual viewport dimensions, offsets and resize/scroll events."
+    }
+  ],
+  "loot": {
+    "mode": "manual items/cards; automatic silver",
+    "tap": "one stack or card",
+    "hold": "500 ms; same logical map/tile/floor only",
+    "keyboard": "F, or Enter/Space on the focused Loot button",
+    "feedback": "next sprite, chat summary, loot chime or quiet coin-purse sound; no ground-loot dialogue",
+    "online": "groundLootParts:1 capability; server 1.10.60 required for the expanded reach",
+    "saveMigration": "v1 ground-loot notices cleared because their contents were already granted; piles/inventory and story state preserved",
+    "reach": "Manual Loot and Talk: 2.1 horizontal tiles; exact selected tile/floor remains the hold collection boundary."
+  },
+  "statHUD": {
+    "stats": "Native STR/CON/INT/AGI symbols and BMPlayerStats.snapshot().roll; same calculation as Player details",
+    "placement": "Landscape: 2x2 stats in the sidebar between chat text and minimap, beneath chat tools. Portrait/square: divided row beneath chat extending to ward/minimap column. XP: full viewport width at the physical bottom in every orientation.",
+    "updates": "100 ms snapshots, with layout/visibility checked each HUD refresh; changed values highlight for 1.1 seconds",
+    "typography": "Uniform 13 px stats in divided cells. Portrait long-value reflow; landscape sidebar width follows measured values. XP is graphics only.",
+    "interaction": "Stat button opens Player; bottom XP is display-only with pointer-events:none. Both stay through Hide Chat and hide while typing, in dialogue/menus, or otherwise blocked.",
+    "verySmallViews": "Defer only the stat group if no safe placement fits, restoring chat geometry. The full-width bottom XP strip remains visible; stats return when room is available.",
+    "xp": "Ten yellow rectangular segments; sequential and partial active-segment fill. Four pixels high, full width, no visible text/numbers/tooltip. Accessible numeric progress remains."
+  },
+  "guildFixes": {
+    "cause": "Shared world restore used a Tintagel-only ground lookup with zero fallback for every map, erasing the authored guild floor.",
+    "positions": {
+      "205": {
+        "name": "Elder / Dullahan",
+        "x": 49.5,
+        "y": 18.5,
+        "groundZ": 2.125
+      },
+      "206": {
+        "name": "Queen / A-rank officer",
+        "x": 58.5,
+        "y": 19.5,
+        "groundZ": 2.125
+      },
+      "207": {
+        "name": "King / Guildmaster",
+        "x": 53.5,
+        "y": 17.5,
+        "groundZ": 2.125
+      },
+      "8004": {
+        "name": "Priest",
+        "x": 49.5,
+        "y": 27.5,
+        "groundZ": 0
+      }
+    },
+    "migration": "Repair live guild stations after map load, preserving persistent quest/currency/history records. Ignore obsolete heard-once Drunk flags without deleting history."
+  },
+  "guildLore": {
+    "entries": 27,
+    "words": 4297,
+    "location": "Journal & Quests → Lore → Guild history",
+    "mainStoryUnchanged": true,
+    "entryIDsPreserved": true,
+    "reader": "Existing archive reader and access rules; paragraphs use existing pre-wrap typography.",
+    "scope": "A literary retelling of the campaign, not a record of the current save. Optional clues are one narrative route; the Beast Dilemma’s choice is left open.",
+    "future": "Guild history and The Fool’s Journey are preserved from v123. No origin novel or worldwide conspiracy reveal added."
+  },
+  "testRealm777": {
+    "name": "Moonlit Meadow · Test Realm",
+    "dimensions": [
+      48,
+      48
+    ],
+    "command": ".hack//teleport 777",
+    "spawn": {
+      "x": 24.5,
+      "y": 39.5,
+      "dir": 0
+    },
+    "exit": "Use the nearby trail marker → Return to Haven, or .hack//teleport 2",
+    "sceneryClumps": 2184,
+    "cachedImages": 37,
+    "authoredNPCs": 1,
+    "worldClockUnchanged": true,
+    "atlasRegion": false,
+    "status": "Experimental playable scenery test; native phone appearance and frame rate require playtesting."
+  },
+  "customRealm126": {
+    "dimensions": [
+      160,
+      160
+    ],
+    "mapID": 999,
+    "entry": "Update client and server; ask Suncat to make a new map/adventure; accept the messenger invitation. Follow the road from the outpost to the nearby meadow.",
+    "exit": "Existing refuge return portal",
+    "biomes": [
+      "meadow",
+      "woodland",
+      "marsh",
+      "one of highland/alpine/dry/ruins"
+    ],
+    "clock": "Normal world day/night; map 777 retains its local visual night.",
+    "population": "Six peaceful animals replace six hostile extra wanderers. Scenario services, bosses, guards, optional encounters and siege waves retained.",
+    "oldRealms": "Existing instances keep their old geometry; metadata-free legacy maps load without new flora.",
+    "testExample": {
+      "decorativeClumps": 8815,
+      "note": "Count varies by seed; not an NPC count or a measured performance claim."
+    }
   }
 }

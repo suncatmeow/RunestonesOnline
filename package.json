@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.52",
+  "version": "1.10.66",
   "private": true,
-  "description": "BattleMage v112: dialogue layout, conversation placement, local rest and quest inventory",
+  "description": "BattleMage v126: larger blended server realms and biome foliage",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"
