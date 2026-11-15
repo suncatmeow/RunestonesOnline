@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.68",
+  "version": "1.10.70",
   "private": true,
-  "description": "BattleMage v128: world biome flowers and passable refuge doors",
+  "description": "BattleMage v130: overhead biome plants, atlas browsing, guild prose and third-person DM",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"

@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 128,
-  "serverVersion": "1.10.68",
+  "version": 130,
+  "serverVersion": "1.10.70",
   "date": "2026-11-15",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v127 / server package 1.10.67",
+  "supersedes": "BattleMage Runestones v129 / server package 1.10.69",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,12 +23,12 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "v128 client / server package 1.10.68 / terrain 112 / motion 103. Update all five files for matching generated-room thresholds and client migrations. Preserve existing saved memory files. No commit, push or deployment performed.",
+    "deployment": "v130 client / server package 1.10.70 / terrain 129 / motion 103. Update both client and server for overhead foliage, atlas browsing and the corrected DM/NPC dialogue behavior. Preserve saved memory files. No commit, push or deployment performed.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
-    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v128 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
+    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v130 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "ff3a05e8cdfadaf5b016280d409374e756377017f1488638793b205054fafb00",
-  "serverSha256": "188d81b6895a21bd90b3468ea43f4d2de9d5d012d21232f8e617f0709d42c927",
+  "clientSha256": "fadbba8cac540b7bed0dd0fc4f5580d185e5488a9797266a129acb995f10f9b5",
+  "serverSha256": "8a8f2cf8c861ca1e8a5d61b7063044ea830a6fa6fdf049a54dad71826e2ccee0",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -67,110 +67,126 @@
     }
   },
   "geography": {
-    "newMapIDs": [],
-    "modifiedExistingMapIDs": [
-      999
+    "newMapIDs": [
+      320,
+      321,
+      322,
+      323,
+      324,
+      325,
+      326,
+      327,
+      328,
+      329,
+      330,
+      331,
+      332,
+      333,
+      334,
+      335,
+      336,
+      337,
+      338,
+      339,
+      340,
+      341,
+      342,
+      343,
+      344,
+      345,
+      346,
+      347,
+      348,
+      349,
+      350,
+      351,
+      352,
+      353,
+      354,
+      355,
+      356,
+      357,
+      358,
+      359,
+      360,
+      361,
+      362,
+      363,
+      364,
+      365,
+      366,
+      367,
+      368,
+      369,
+      370,
+      371,
+      372,
+      373,
+      374,
+      375,
+      376,
+      377,
+      378,
+      379,
+      380,
+      381,
+      382,
+      383,
+      384,
+      385,
+      386,
+      387,
+      388,
+      389,
+      390,
+      391,
+      392,
+      393,
+      394,
+      395,
+      396,
+      397
     ],
-    "renderOnlyVegetationMapIDs": [
-      0,
-      2,
-      3,
-      4,
-      5,
-      6,
-      9,
-      10,
-      14,
-      22,
-      33,
-      38,
-      39,
-      40,
-      42,
-      43,
-      44,
-      45,
-      46,
-      47,
-      48,
-      49,
-      66,
-      67,
-      71,
-      72,
-      73,
-      74,
-      78,
-      81,
-      83,
-      85,
-      87,
-      88,
-      101,
-      109,
-      111,
-      113,
-      114,
-      115,
-      116,
-      118,
-      119,
-      120,
-      121,
-      122,
-      123,
-      124,
-      125,
-      126,
-      127,
-      128,
-      131,
-      132,
-      133,
-      134,
-      135,
-      136,
-      137,
-      140,
-      141,
-      142,
-      143,
-      144,
-      145,
-      146,
-      147,
-      148,
-      149,
-      150,
-      151,
-      160,
-      161,
-      162,
-      163,
-      164,
-      165,
-      166,
-      167,
-      168,
-      169,
-      170,
-      171,
-      173,
-      174,
-      175,
-      176,
-      177,
-      180,
-      181,
-      182,
-      184,
-      185,
-      187,
-      191,
-      192,
-      -2
-    ],
-    "interpretation": "Atlas geometry, settlements, actors and quests unchanged. Generated safe-room doorway tile becomes floor 0; scenery forms its open door. Dacia is the existing atlas name of the Transylvania region."
+    "modifiedExistingMapIDs": [],
+    "atlasDimensions": {
+      "columns": 17,
+      "rows": 10
+    },
+    "totalAtlasCharts": 170,
+    "sharedBordersChecked": 152,
+    "source": "Google Maps visual coastline reference; Natural Earth public-domain 1:110m land, lakes and rivers. Existing eastern chart scale retained; relief and vegetation are authored game terrain, not measured elevations.",
+    "projection": {
+      "longitudes": [
+        35.0,
+        48.0,
+        61.0,
+        74.0,
+        87.0,
+        100.0,
+        113.0,
+        126.0,
+        139.0,
+        152.0,
+        166.0,
+        180.0
+      ],
+      "latitudes": [
+        80.0,
+        72.0,
+        64.0,
+        56.0,
+        48.0,
+        36.0,
+        24.0,
+        12.0,
+        0.0,
+        -12.0,
+        -24.0
+      ],
+      "columnOrigin": 6,
+      "sharedEdge": 99
+    },
+    "interpretation": "Fill the 38 formerly empty atlas slots, plus 40 eastward charts, preserving all 147 existing map definitions. New geography includes the northern Eurasian continent, Korean peninsula, Japanese islands, Russian Far East, Southeast Asian archipelago, northern Australian coast and connecting seas. Australia is only the northern coast within this atlas extent; its full continent and the Americas remain outside this pass."
   },
   "naming": {
     "maps": {
@@ -368,8 +384,8 @@
     }
   },
   "devlog": {
-    "current": "v128",
-    "history": "Current flora/door pass; v125–v127 condensed together, older summaries retained."
+    "current": "v130",
+    "history": "Flowers/maps/guild-prose pass added; v129 identified as the previous terrain release."
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -395,28 +411,28 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Biome vegetation appears on 97 eligible outdoor maps. Coastal grasses and thrift-like flowers, moorland heather, woodland ferns/bells, meadow flowers, dry scrub, alpine tufts and waterside reeds use distinct procedural art and density profiles. Fully wet and paved maps remain bare where there is no suitable ground.",
-    "Dacia (Transylvania) and outdoor Night Court grounds share map 777’s original pale flower art, fern undergrowth and blue night-sky colors. Existing time rules, mountain geometry, villages and story are unchanged. Map 777 and its cottage/cave remain unchanged.",
-    "Vegetation stays off water, roads, painted interiors, structural slabs, stairs, entrances and authored NPC spaces. Flat natural plateaus use the correct world height, with step/cliff edges clear. Nearby forage plants are kept visible. Scenery has no collision, AI, save-state or server payload.",
-    "Plant generation happens on map load; only the current map is retained. Cached art, spatial chunks, distance/frustum culling and the existing 220/360/520/720 graphics-tier limits bound the visible plant cost.",
-    "Safe rooms have a transparent wooden door frame and an open hinged leaf rendered as fixed world planes. Passage tile is floor 0, so players and allies can cross without a roll or dialogue. Hostile exclusion, protected spawn and return portal remain.",
-    "Client repairs legacy and same-instance room thresholds and updates the cached map; the server emits the matching version-2 refuge. Existing save progress is preserved.",
-    "Ordinary generated-realm wall destruction is restored when the layer table is used solely for plant occlusion. Magical barriers, refuge walls, map borders and authored layered structures retain protection. No new general building-destruction system is introduced.",
-    "Current-version devlog updated and older entries condensed. No dependencies added. Existing 160×160 generated biome blend retained; full continent generation remains pending."
+    "Isometric and top-down views now draw the same cached flower, grass, heather, fern and other biome sprites used by 3D, replacing colored-dot approximations. Includes Suncat’s map777 meadow, generated custom realms, original regions and the v129 terrain extension.",
+    "Overhead vegetation uses current-map spatial chunks, existing quality caps, line-of-sight checks, ground heights, nearby-herb clearance and the isometric wall/actor depth queue. No decorative actors, collision or network traffic are added.",
+    "The ISO/2D switch and rotation toolbar reserves the actual stat and XP bar rectangles, chat blocks and existing controls. Its placement cache reacts to stat-width and chat-layout changes. Tested across 40 portrait, landscape and square configurations, including both movement hands and standard/extra-large controls.",
+    "A World globe button appears in the expanded minimap. It opens the entire world atlas with all charts visible, without changing local exploration flags. This opening cannot travel, even if an old teleport flag remains. The hack atlas and item/spell teleport entry points retain explicit travel behavior.",
+    "Nineteen of 27 guild-history chapters are polished with concrete combat, resource pressure, earned rank progression, character exchanges and dry humor. IDs, sequence, hooks and system outcomes are unchanged. All 69 entries of the Fool / Dark Emperor archive are byte-for-byte unchanged.",
+    "The server applies an explicit third-person DM contract after role/persona selection, including routine narration. One speech-only repair handles first/second-person viewpoint slips; failed repair suppresses that narration without rerunning tools or inventing a substitute event. Character speech and oracle readings keep their own viewpoints.",
+    "Valid repeated NPC answers are no longer discarded as silence after revision. Deliberate silence remains attached to its own visible question in the conversation transcript instead of producing an ambiguous footer under an older answer.",
+    "Oceanus Atlanticus · South (map116) west of Ger is an existing ocean chart whose land fringe continues Ger’s shoreline. Its coast and all other terrain are unchanged in this pass."
   ],
   "previousRelease": {
-    "version": 127,
-    "serverVersion": "1.10.67",
-    "summary": "Cottage discovery, readable notes, functional garden and containers, independent Suncat actions, separate cave and quieter routine combat notices retained."
+    "version": 129,
+    "serverVersion": "1.10.69",
+    "summary": "The complete 170-chart atlas, 78 new Eurasian charts, all terrain, population and harvest locations remain unchanged."
   },
   "validation": {
-    "automatedCheckGroups": 76,
+    "automatedCheckGroups": 94,
     "counts": {
-      "savedConnectedClient": 58,
-      "fullServer": 13,
-      "generatorGroups": 4,
-      "generatorSeedThemeCases": 108,
-      "freshOffline": 1
+      "savedConnectedClient": 70,
+      "freshOffline": 1,
+      "fullServer": 17,
+      "narratorAndNPCSpeech": 6,
+      "hudLayoutCombinations": 40
     },
     "checks": [
       "Connected presence timers wait while saved-world initialization is incomplete",
@@ -477,6 +493,19 @@
       "Legacy safe-room thresholds migrate to floor with an open, fixed door frame and leaf",
       "Refuge still excludes hostile NPCs and retains its return portal while allies can cross the door",
       "Generated-realm ordinary walls can break again, but refuge walls, borders and magic barriers stay protected",
+      "All circled gaps are filled, and the eastward atlas extension has unique, reachable chart entries",
+      "Every new map loads real actors with safe arrivals, working collision and biome scenery",
+      "Every added chart border matches its neighbour tile-for-tile and height-for-height",
+      "New regions have no invented dialogue menus or quest state; saved progress stays intact",
+      "Overhead plants use the exact cached biome art; current map and scenery caps are respected",
+      "Generated server realm vegetation is available in both overhead views",
+      "Top-down uses sprite draws with separate X/Y projection scales and respects unseen terrain",
+      "Isometric plants enter the shared depth queue at their ground height for all four rotations",
+      "View and rotation toolbar clears the stat bar in portrait, landscape and square layouts",
+      "Expanded minimap opens the complete browse-only atlas without revealing local exploration or allowing travel",
+      "A separate teleport-enabled atlas opening still permits an explicit destination transfer",
+      "NPC silence remains beside its own question and cannot overwrite a received answer",
+      "Fresh v130 initializes with current devlog and preserves the cottage and world foliage",
       "Fresh server body starts outside the cottage; saved locations still resume exactly",
       "Headless maps and actors match the initialized client; every object has a walking approach",
       "Headless inspection exposes nearby objects without revealing unread pages",
@@ -490,26 +519,42 @@
       "Unknown live opening recovers from its receipt exactly once",
       "Server/client handoff carries opened containers both directions",
       "Routine death records remain in journals, while only milestones have chat text",
-      "108 deterministic biome/seed combinations: dimensions, refuge, roads and all landmarks reachable",
-      "Every placed combatant and peaceful animal uses a unique, reachable floor outside the refuge",
-      "Near-arrival meadow exists in every theme; starting NPC count substitutes six wildlife for six scouts",
-      "Repeated generation of one seed produces identical geometry and biome metadata",
-      "Fresh v128 initializes with current devlog and preserves the cottage and world foliage"
+      "All 78 new charts and their atlas neighbours match the initialized client",
+      "Independent world observation exposes every new monster and matching forage nodes",
+      "Northern land uses real stepped ground for server movement and sight",
+      "New encounters retain normal loot tables and version metadata reports the matching release",
+      "DM viewpoint detection distinguishes narration from quoted NPC speech",
+      "Third-person prose passes without a model call; a viewpoint slip gets one speech-only repair",
+      "Failed repairs suppress the bad narration without inventing events; deliberate silence stays silent",
+      "All narrator requests receive the contract after persona selection; oracle and character speech are excluded",
+      "A repeated NPC response remains a visible answer after one revision, rather than false silence",
+      "Only explicit NPC silence returns a silent outcome"
     ],
-    "method": "Actual script startup and UI logic in jsdom with stubbed canvas/audio and in-process socket-shaped transport. Every eligible map checked for vegetation placement and read-only geography. Full server VM with network/model/persistence disabled. Real generated terrain tested across 108 seed/theme combinations. Player collision sampled across the doorway both ways, with actual NPC movement and hostile exclusion checks. No browser, raster, phone FPS or live LLM result claimed."
+    "static": {
+      "darkEmperorArchiveUnchanged": true,
+      "mainChapters": 69,
+      "guildChapters": 27,
+      "polishedChapters": 19,
+      "guildMetadataUnchanged": true,
+      "worldTerrainModuleUnchanged": true,
+      "oceanChartsUnchanged": true,
+      "sharedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
+      "atlasTeleportEntryPointsRetained": true
+    },
+    "method": "Actual client startup and map loading in jsdom with stubbed canvas/audio and in-process sockets; full server VM with network/model/persistence disabled; actual NPC conversation service exercised with controlled model responses. Sprite draw calls, culling, map rotation and UI bounds checked numerically. No real phone rendering or live LLM claim."
   },
   "limitations": [
-    "Phone rendering and frame rate across the expanded flora coverage still require playtesting. Stubbed canvas checks verify logic and clipping calls, not visual quality or device FPS.",
-    "No live multiplayer, model decisions or deployed server behavior was observed.",
-    "The 160×160 mixed-biome prototype is retained; the requested continent with distant desert/snow/coast regions, elevation, settlements and dungeons is still pending.",
-    "Plants added by this pass are decorative; existing forage herbs keep their usual gathering behavior.",
-    "Protected authored structures remain protected. This pass restores ordinary generated-realm breaking rather than adding destructible multi-floor buildings."
+    "Phone rendering, sprite readability, touch comfort, frame rate and combat performance require playtesting. Canvas stubs validate behavior and coordinates, not final gameplay pixels.",
+    "DM and NPC dialogue tests use controlled model responses. Live model latency, reliability and literary quality are unverified; a failed viewpoint repair omits the offending narration.",
+    "Third-person correction applies to new DM narration. Existing saved journal records remain untouched, as do personal Suncat diary voice and the Dark Emperor story.",
+    "World-atlas browsing reveals geography, not hidden local NPCs or dungeon exploration. It does not grant a teleport spell or item.",
+    "No map expansion, terrain alteration, new Chinese plot or Phoenix Empress content is included. The larger generated server continent remains a separate pending request."
   ],
   "nextPass": [
-    "Phone playtest on Pixel/S9: Dacia flowers during combat; Tintagel low coastal plants and cliff heights; Moors heather; desert and snow variants. Check readable resource plants and entrances.",
-    "Generate a new shared realm and reopen a cached old one. Walk into/out of its refuge, use the return portal, and confirm ordinary outside walls break while enemies cannot enter.",
-    "Build the larger continent generator as a separate pass: coastlines, highlands, distant snow/desert/woodland/plains, towns and dungeon entrances. Keep map 777 as Suncat’s home and performance reference.",
-    "Retain the target ward/status-ring backlog and further guild dialogue playtesting."
+    "Playtest flowers and herb visibility in ISO, top-down and 3D on Pixel/S9 during movement and combat.",
+    "Use the expanded minimap World button; browse unvisited charts, then verify the teleport crystal and spell separately.",
+    "Check new live DM location narration and a repeated broker question using the matching server.",
+    "Continue discussing the Chinese cultivation story and Phoenix Empress before adding plot content."
   ],
   "questInventory": {
     "open": "Player → Items → Quest Items",
@@ -545,6 +590,14 @@
     {
       "url": "https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport",
       "use": "Visual viewport dimensions, offsets and resize/scroll events."
+    },
+    {
+      "url": "https://www.google.com/maps/@51,99,3z",
+      "use": "Visual reference for Eurasian mainland, Far Eastern peninsulas, Japanese islands and Southeast Asian island separation."
+    },
+    {
+      "url": "https://www.naturalearthdata.com/downloads/110m-physical-vectors/",
+      "use": "Public-domain land, lake and river outlines for new terrain; no Google map imagery is shipped."
     }
   ],
   "loot": {
@@ -1985,5 +2038,1895 @@
     "sameInstanceRepair": true,
     "hostileExclusionPreserved": true,
     "doorArt": "Transparent open frame and hinged wooden leaf; fixed world planes, no new interactive NPC."
+  },
+  "eurasia129": {
+    "maps": [
+      {
+        "id": 320,
+        "col": 6,
+        "row": 0,
+        "name": "Barents Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 0.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 321,
+        "col": 7,
+        "row": 0,
+        "name": "Novaya Zemlya",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 46.5,
+          "y": 92.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 322,
+        "col": 8,
+        "row": 0,
+        "name": "Kara Sea",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 71.5,
+          "y": 99.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 323,
+        "col": 9,
+        "row": 0,
+        "name": "Taimyr Coast",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 98.5,
+          "y": 99.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 324,
+        "col": 10,
+        "row": 0,
+        "name": "Taimyr Tundra",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 67.5,
+          "y": 63.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 325,
+        "col": 11,
+        "row": 0,
+        "name": "Laptev Sea",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 25.5,
+          "y": 45.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 326,
+        "col": 12,
+        "row": 0,
+        "name": "Laptev Coast",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 25.5,
+          "y": 99.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 327,
+        "col": 13,
+        "row": 0,
+        "name": "Siberian Islands",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 98.5,
+          "y": 56.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 328,
+        "col": 14,
+        "row": 0,
+        "name": "East Siberian Sea",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 20.5,
+          "y": 56.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 329,
+        "col": 15,
+        "row": 0,
+        "name": "Kolyma Coast",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 330,
+        "col": 16,
+        "row": 0,
+        "name": "Chukchi Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 331,
+        "col": 6,
+        "row": 1,
+        "name": "Kanin Coast",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 12.5,
+          "y": 44.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 332,
+        "col": 7,
+        "row": 1,
+        "name": "Pechora Tundra",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 43.5,
+          "y": 0.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 333,
+        "col": 8,
+        "row": 1,
+        "name": "Ob Estuary",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 68.5,
+          "y": 9.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 334,
+        "col": 9,
+        "row": 1,
+        "name": "Lower Yenisei",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 99.5,
+          "y": 11.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 335,
+        "col": 10,
+        "row": 1,
+        "name": "Tunguska Taiga",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 0.5,
+          "y": 0.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 336,
+        "col": 11,
+        "row": 1,
+        "name": "Northern Lena",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 69.5,
+          "y": 9.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 337,
+        "col": 12,
+        "row": 1,
+        "name": "Lena Taiga",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 55.5,
+          "y": 25.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 338,
+        "col": 13,
+        "row": 1,
+        "name": "Verkhoyansk",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 65.5,
+          "y": 31.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 339,
+        "col": 14,
+        "row": 1,
+        "name": "Kolyma Highlands",
+        "biome": "Tundra",
+        "spawn": {
+          "x": 0.5,
+          "y": 28.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 340,
+        "col": 15,
+        "row": 1,
+        "name": "Chukotka",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 0.5,
+          "y": 28.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 341,
+        "col": 16,
+        "row": 1,
+        "name": "Anadyr Tundra",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 47.5,
+          "y": 42.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 342,
+        "col": 6,
+        "row": 2,
+        "name": "Northern Forest",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 37.5,
+          "y": 62.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 343,
+        "col": 7,
+        "row": 2,
+        "name": "Ural Forest",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 50.5,
+          "y": 64.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 344,
+        "col": 8,
+        "row": 2,
+        "name": "Ob Taiga",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 47.5,
+          "y": 52.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 345,
+        "col": 9,
+        "row": 2,
+        "name": "Yenisei Taiga",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 44.5,
+          "y": 64.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 346,
+        "col": 10,
+        "row": 2,
+        "name": "Central Taiga",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 37.5,
+          "y": 78.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 347,
+        "col": 11,
+        "row": 2,
+        "name": "Lena Headwaters",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 98.5,
+          "y": 32.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 348,
+        "col": 12,
+        "row": 2,
+        "name": "Stanovoy Highlands",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 41.5,
+          "y": 47.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 349,
+        "col": 13,
+        "row": 2,
+        "name": "Okhotsk Coast",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 38.5,
+          "y": 70.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 350,
+        "col": 14,
+        "row": 2,
+        "name": "Sea of Okhotsk",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 46.5,
+          "y": 54.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 351,
+        "col": 15,
+        "row": 2,
+        "name": "Northern Kamchatka",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 61.5,
+          "y": 66.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 352,
+        "col": 16,
+        "row": 2,
+        "name": "Bering Sea",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 21.5,
+          "y": 38.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 353,
+        "col": 6,
+        "row": 3,
+        "name": "Volga Uplands",
+        "biome": "Steppe",
+        "spawn": {
+          "x": 0.5,
+          "y": 99.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 354,
+        "col": 7,
+        "row": 3,
+        "name": "Ural Steppe",
+        "biome": "Steppe",
+        "spawn": {
+          "x": 58.5,
+          "y": 73.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 355,
+        "col": 8,
+        "row": 3,
+        "name": "Kazakh Steppe",
+        "biome": "Steppe",
+        "spawn": {
+          "x": 23.5,
+          "y": 59.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 356,
+        "col": 9,
+        "row": 3,
+        "name": "Altai",
+        "biome": "Steppe",
+        "spawn": {
+          "x": 0.5,
+          "y": 81.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 357,
+        "col": 10,
+        "row": 3,
+        "name": "Sayan Foothills",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 27.5,
+          "y": 99.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 358,
+        "col": 11,
+        "row": 3,
+        "name": "Baikal",
+        "biome": "Steppe",
+        "spawn": {
+          "x": 59.5,
+          "y": 76.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 359,
+        "col": 12,
+        "row": 3,
+        "name": "Amur Forest",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 0.5,
+          "y": 70.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 360,
+        "col": 13,
+        "row": 3,
+        "name": "Manchurian Forest",
+        "biome": "Woodland",
+        "spawn": {
+          "x": 54.5,
+          "y": 42.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 361,
+        "col": 14,
+        "row": 3,
+        "name": "Sakhalin",
+        "biome": "Woodland",
+        "spawn": {
+          "x": 24.5,
+          "y": 51.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 362,
+        "col": 15,
+        "row": 3,
+        "name": "Kamchatka",
+        "biome": "Boreal Forest",
+        "spawn": {
+          "x": 29.5,
+          "y": 12.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 363,
+        "col": 16,
+        "row": 3,
+        "name": "North Pacific",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 364,
+        "col": 13,
+        "row": 4,
+        "name": "Korean Peninsula",
+        "biome": "Woodland",
+        "spawn": {
+          "x": 59.5,
+          "y": 35.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 365,
+        "col": 14,
+        "row": 4,
+        "name": "Hokkaido",
+        "biome": "Woodland",
+        "spawn": {
+          "x": 11.5,
+          "y": 42.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 366,
+        "col": 15,
+        "row": 4,
+        "name": "Northwest Pacific",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 367,
+        "col": 16,
+        "row": 4,
+        "name": "Pacific Horizon",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 368,
+        "col": 13,
+        "row": 5,
+        "name": "Southern Japan",
+        "biome": "Sea",
+        "spawn": {
+          "x": 35.5,
+          "y": 24.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 369,
+        "col": 14,
+        "row": 5,
+        "name": "Japanese Pacific Coast",
+        "biome": "Woodland",
+        "spawn": {
+          "x": 10.5,
+          "y": 0.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 370,
+        "col": 15,
+        "row": 5,
+        "name": "Western Pacific",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 371,
+        "col": 16,
+        "row": 5,
+        "name": "Eastern Horizon",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 372,
+        "col": 13,
+        "row": 6,
+        "name": "Philippine Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 373,
+        "col": 14,
+        "row": 6,
+        "name": "Mariana Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 374,
+        "col": 15,
+        "row": 6,
+        "name": "Eastern Mariana Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 375,
+        "col": 16,
+        "row": 6,
+        "name": "Open Pacific",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 376,
+        "col": 11,
+        "row": 7,
+        "name": "Malay Peninsula",
+        "biome": "Tropical Forest",
+        "spawn": {
+          "x": 0.5,
+          "y": 99.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 377,
+        "col": 12,
+        "row": 7,
+        "name": "Borneo and Sulu",
+        "biome": "Tropical Forest",
+        "spawn": {
+          "x": 43.5,
+          "y": 55.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 378,
+        "col": 13,
+        "row": 7,
+        "name": "Halmahera",
+        "biome": "Sea",
+        "spawn": {
+          "x": 0.5,
+          "y": 39.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 379,
+        "col": 14,
+        "row": 7,
+        "name": "Palau Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 380,
+        "col": 15,
+        "row": 7,
+        "name": "Caroline Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 381,
+        "col": 16,
+        "row": 7,
+        "name": "Equatorial Pacific",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 382,
+        "col": 9,
+        "row": 8,
+        "name": "Eastern Indian Ocean",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 383,
+        "col": 10,
+        "row": 8,
+        "name": "Sumatra",
+        "biome": "Sea",
+        "spawn": {
+          "x": 99.5,
+          "y": 0.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 384,
+        "col": 11,
+        "row": 8,
+        "name": "Java Sea",
+        "biome": "Tropical Forest",
+        "spawn": {
+          "x": 51.5,
+          "y": 51.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 385,
+        "col": 12,
+        "row": 8,
+        "name": "Sulawesi",
+        "biome": "Tropical Forest",
+        "spawn": {
+          "x": 53.5,
+          "y": 34.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 386,
+        "col": 13,
+        "row": 8,
+        "name": "Western New Guinea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 52.5,
+          "y": 24.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 387,
+        "col": 14,
+        "row": 8,
+        "name": "New Guinea Highlands",
+        "biome": "Tropical Forest",
+        "spawn": {
+          "x": 49.5,
+          "y": 42.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 388,
+        "col": 15,
+        "row": 8,
+        "name": "Solomon Isles",
+        "biome": "Sea",
+        "spawn": {
+          "x": 35.5,
+          "y": 58.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 389,
+        "col": 16,
+        "row": 8,
+        "name": "Southern Pacific",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 390,
+        "col": 9,
+        "row": 9,
+        "name": "Southern Indian Ocean",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 391,
+        "col": 10,
+        "row": 9,
+        "name": "Cocos Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 392,
+        "col": 11,
+        "row": 9,
+        "name": "Western Timor Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 50.5,
+          "y": 50.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 393,
+        "col": 12,
+        "row": 9,
+        "name": "Kimberley Coast",
+        "biome": "Desert",
+        "spawn": {
+          "x": 99.5,
+          "y": 65.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 394,
+        "col": 13,
+        "row": 9,
+        "name": "Arnhem Land",
+        "biome": "Desert",
+        "spawn": {
+          "x": 99.5,
+          "y": 94.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 395,
+        "col": 14,
+        "row": 9,
+        "name": "Cape York",
+        "biome": "Tropical Forest",
+        "spawn": {
+          "x": 0.5,
+          "y": 53.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 396,
+        "col": 15,
+        "row": 9,
+        "name": "Coral Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 89.5,
+          "y": 70.5,
+          "dir": 1
+        }
+      },
+      {
+        "id": 397,
+        "col": 16,
+        "row": 9,
+        "name": "Eastern Coral Sea",
+        "biome": "Sea",
+        "spawn": {
+          "x": 81.5,
+          "y": 48.5,
+          "dir": 1
+        }
+      }
+    ],
+    "creaturesAndWildlife": 446,
+    "forageNodes": 598,
+    "floraCoverage": [
+      {
+        "id": 320,
+        "name": "Barents Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 28,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 321,
+        "name": "Novaya Zemlya",
+        "biome": "Tundra",
+        "monsters": 4,
+        "plants": 264,
+        "kinds": [
+          "coast",
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 322,
+        "name": "Kara Sea",
+        "biome": "Tundra",
+        "monsters": 4,
+        "plants": 244,
+        "kinds": [
+          "coast",
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 323,
+        "name": "Taimyr Coast",
+        "biome": "Tundra",
+        "monsters": 4,
+        "plants": 187,
+        "kinds": [
+          "coast",
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 324,
+        "name": "Taimyr Tundra",
+        "biome": "Tundra",
+        "monsters": 8,
+        "plants": 1022,
+        "kinds": [
+          "coast",
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 325,
+        "name": "Laptev Sea",
+        "biome": "Tundra",
+        "monsters": 8,
+        "plants": 1160,
+        "kinds": [
+          "coast",
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 326,
+        "name": "Laptev Coast",
+        "biome": "Tundra",
+        "monsters": 4,
+        "plants": 304,
+        "kinds": [
+          "grass",
+          "coast",
+          "alpine"
+        ]
+      },
+      {
+        "id": 327,
+        "name": "Siberian Islands",
+        "biome": "Tundra",
+        "monsters": 4,
+        "plants": 101,
+        "kinds": [
+          "coast",
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 328,
+        "name": "East Siberian Sea",
+        "biome": "Tundra",
+        "monsters": 4,
+        "plants": 310,
+        "kinds": [
+          "coast",
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 329,
+        "name": "Kolyma Coast",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 330,
+        "name": "Chukchi Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 331,
+        "name": "Kanin Coast",
+        "biome": "Boreal Forest",
+        "monsters": 6,
+        "plants": 1373,
+        "kinds": [
+          "grass",
+          "alpine",
+          "coast",
+          "woodland",
+          "fern"
+        ]
+      },
+      {
+        "id": 332,
+        "name": "Pechora Tundra",
+        "biome": "Boreal Forest",
+        "monsters": 8,
+        "plants": 1699,
+        "kinds": [
+          "alpine",
+          "grass",
+          "coast",
+          "fern",
+          "woodland"
+        ]
+      },
+      {
+        "id": 333,
+        "name": "Ob Estuary",
+        "biome": "Boreal Forest",
+        "monsters": 8,
+        "plants": 1898,
+        "kinds": [
+          "grass",
+          "coast",
+          "alpine",
+          "fern",
+          "woodland"
+        ]
+      },
+      {
+        "id": 334,
+        "name": "Lower Yenisei",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 2865,
+        "kinds": [
+          "grass",
+          "alpine",
+          "coast",
+          "fern",
+          "woodland"
+        ]
+      },
+      {
+        "id": 335,
+        "name": "Tunguska Taiga",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 2960,
+        "kinds": [
+          "grass",
+          "alpine",
+          "fern",
+          "woodland"
+        ]
+      },
+      {
+        "id": 336,
+        "name": "Northern Lena",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 2958,
+        "kinds": [
+          "grass",
+          "alpine",
+          "woodland",
+          "fern"
+        ]
+      },
+      {
+        "id": 337,
+        "name": "Lena Taiga",
+        "biome": "Tundra",
+        "monsters": 10,
+        "plants": 2178,
+        "kinds": [
+          "grass",
+          "alpine",
+          "woodland",
+          "fern"
+        ]
+      },
+      {
+        "id": 338,
+        "name": "Verkhoyansk",
+        "biome": "Tundra",
+        "monsters": 9,
+        "plants": 1289,
+        "kinds": [
+          "grass",
+          "alpine",
+          "coast",
+          "fern",
+          "woodland"
+        ]
+      },
+      {
+        "id": 339,
+        "name": "Kolyma Highlands",
+        "biome": "Tundra",
+        "monsters": 10,
+        "plants": 1869,
+        "kinds": [
+          "alpine",
+          "grass",
+          "fern",
+          "woodland"
+        ]
+      },
+      {
+        "id": 340,
+        "name": "Chukotka",
+        "biome": "Boreal Forest",
+        "monsters": 8,
+        "plants": 2536,
+        "kinds": [
+          "grass",
+          "coast",
+          "alpine",
+          "woodland",
+          "fern"
+        ]
+      },
+      {
+        "id": 341,
+        "name": "Anadyr Tundra",
+        "biome": "Boreal Forest",
+        "monsters": 9,
+        "plants": 2402,
+        "kinds": [
+          "coast",
+          "grass",
+          "alpine",
+          "fern",
+          "woodland"
+        ]
+      },
+      {
+        "id": 342,
+        "name": "Northern Forest",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 4006,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "coast"
+        ]
+      },
+      {
+        "id": 343,
+        "name": "Ural Forest",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 3398,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "alpine"
+        ]
+      },
+      {
+        "id": 344,
+        "name": "Ob Taiga",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 3449,
+        "kinds": [
+          "grass",
+          "fern",
+          "woodland",
+          "coast",
+          "alpine"
+        ]
+      },
+      {
+        "id": 345,
+        "name": "Yenisei Taiga",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 4055,
+        "kinds": [
+          "woodland",
+          "fern",
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 346,
+        "name": "Central Taiga",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 4167,
+        "kinds": [
+          "grass",
+          "woodland",
+          "fern"
+        ]
+      },
+      {
+        "id": 347,
+        "name": "Lena Headwaters",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 3632,
+        "kinds": [
+          "woodland",
+          "grass",
+          "fern",
+          "coast"
+        ]
+      },
+      {
+        "id": 348,
+        "name": "Stanovoy Highlands",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 2678,
+        "kinds": [
+          "grass",
+          "fern",
+          "woodland",
+          "coast",
+          "alpine"
+        ]
+      },
+      {
+        "id": 349,
+        "name": "Okhotsk Coast",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 1878,
+        "kinds": [
+          "woodland",
+          "alpine",
+          "grass",
+          "fern"
+        ]
+      },
+      {
+        "id": 350,
+        "name": "Sea of Okhotsk",
+        "biome": "Boreal Forest",
+        "monsters": 8,
+        "plants": 724,
+        "kinds": [
+          "grass",
+          "fern",
+          "woodland",
+          "alpine",
+          "coast"
+        ]
+      },
+      {
+        "id": 351,
+        "name": "Northern Kamchatka",
+        "biome": "Boreal Forest",
+        "monsters": 8,
+        "plants": 1645,
+        "kinds": [
+          "woodland",
+          "fern",
+          "grass",
+          "coast",
+          "alpine"
+        ]
+      },
+      {
+        "id": 352,
+        "name": "Bering Sea",
+        "biome": "Boreal Forest",
+        "monsters": 5,
+        "plants": 1156,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "coast"
+        ]
+      },
+      {
+        "id": 353,
+        "name": "Volga Uplands",
+        "biome": "Steppe",
+        "monsters": 10,
+        "plants": 4116,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass",
+          "meadow"
+        ]
+      },
+      {
+        "id": 354,
+        "name": "Ural Steppe",
+        "biome": "Steppe",
+        "monsters": 10,
+        "plants": 3574,
+        "kinds": [
+          "woodland",
+          "fern",
+          "grass",
+          "alpine",
+          "meadow"
+        ]
+      },
+      {
+        "id": 355,
+        "name": "Kazakh Steppe",
+        "biome": "Steppe",
+        "monsters": 10,
+        "plants": 4040,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass",
+          "coast",
+          "meadow"
+        ]
+      },
+      {
+        "id": 356,
+        "name": "Altai",
+        "biome": "Steppe",
+        "monsters": 10,
+        "plants": 3453,
+        "kinds": [
+          "coast",
+          "woodland",
+          "fern",
+          "grass",
+          "meadow",
+          "alpine"
+        ]
+      },
+      {
+        "id": 357,
+        "name": "Sayan Foothills",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 1539,
+        "kinds": [
+          "grass",
+          "fern",
+          "woodland",
+          "alpine",
+          "meadow"
+        ]
+      },
+      {
+        "id": 358,
+        "name": "Baikal",
+        "biome": "Steppe",
+        "monsters": 9,
+        "plants": 1792,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "coast",
+          "alpine",
+          "meadow"
+        ]
+      },
+      {
+        "id": 359,
+        "name": "Amur Forest",
+        "biome": "Boreal Forest",
+        "monsters": 10,
+        "plants": 3300,
+        "kinds": [
+          "woodland",
+          "fern",
+          "grass",
+          "meadow"
+        ]
+      },
+      {
+        "id": 360,
+        "name": "Manchurian Forest",
+        "biome": "Woodland",
+        "monsters": 9,
+        "plants": 3938,
+        "kinds": [
+          "woodland",
+          "fern",
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 361,
+        "name": "Sakhalin",
+        "biome": "Woodland",
+        "monsters": 4,
+        "plants": 534,
+        "kinds": [
+          "coast",
+          "grass",
+          "woodland",
+          "fern"
+        ]
+      },
+      {
+        "id": 362,
+        "name": "Kamchatka",
+        "biome": "Boreal Forest",
+        "monsters": 4,
+        "plants": 265,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "coast"
+        ]
+      },
+      {
+        "id": 363,
+        "name": "North Pacific",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 364,
+        "name": "Korean Peninsula",
+        "biome": "Woodland",
+        "monsters": 7,
+        "plants": 1605,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "coast"
+        ]
+      },
+      {
+        "id": 365,
+        "name": "Hokkaido",
+        "biome": "Woodland",
+        "monsters": 4,
+        "plants": 185,
+        "kinds": [
+          "fern",
+          "grass",
+          "coast",
+          "woodland"
+        ]
+      },
+      {
+        "id": 366,
+        "name": "Northwest Pacific",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 367,
+        "name": "Pacific Horizon",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 368,
+        "name": "Southern Japan",
+        "biome": "Sea",
+        "monsters": 4,
+        "plants": 69,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 369,
+        "name": "Japanese Pacific Coast",
+        "biome": "Woodland",
+        "monsters": 2,
+        "plants": 13,
+        "kinds": [
+          "woodland",
+          "fern",
+          "grass"
+        ]
+      },
+      {
+        "id": 370,
+        "name": "Western Pacific",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 371,
+        "name": "Eastern Horizon",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 372,
+        "name": "Philippine Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 373,
+        "name": "Mariana Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 374,
+        "name": "Eastern Mariana Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 375,
+        "name": "Open Pacific",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 376,
+        "name": "Malay Peninsula",
+        "biome": "Tropical Forest",
+        "monsters": 5,
+        "plants": 581,
+        "kinds": [
+          "coast",
+          "grass",
+          "fern",
+          "woodland",
+          "marsh",
+          "alpine"
+        ]
+      },
+      {
+        "id": 377,
+        "name": "Borneo and Sulu",
+        "biome": "Tropical Forest",
+        "monsters": 5,
+        "plants": 616,
+        "kinds": [
+          "grass",
+          "coast",
+          "woodland",
+          "fern"
+        ]
+      },
+      {
+        "id": 378,
+        "name": "Halmahera",
+        "biome": "Sea",
+        "monsters": 3,
+        "plants": 55,
+        "kinds": [
+          "coast",
+          "grass",
+          "fern",
+          "woodland"
+        ]
+      },
+      {
+        "id": 379,
+        "name": "Palau Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 380,
+        "name": "Caroline Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 381,
+        "name": "Equatorial Pacific",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 382,
+        "name": "Eastern Indian Ocean",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 383,
+        "name": "Sumatra",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 384,
+        "name": "Java Sea",
+        "biome": "Tropical Forest",
+        "monsters": 5,
+        "plants": 420,
+        "kinds": [
+          "fern",
+          "grass",
+          "coast",
+          "woodland"
+        ]
+      },
+      {
+        "id": 385,
+        "name": "Sulawesi",
+        "biome": "Tropical Forest",
+        "monsters": 4,
+        "plants": 553,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "coast"
+        ]
+      },
+      {
+        "id": 386,
+        "name": "Western New Guinea",
+        "biome": "Sea",
+        "monsters": 4,
+        "plants": 287,
+        "kinds": [
+          "coast",
+          "grass",
+          "fern",
+          "woodland"
+        ]
+      },
+      {
+        "id": 387,
+        "name": "New Guinea Highlands",
+        "biome": "Tropical Forest",
+        "monsters": 5,
+        "plants": 642,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 388,
+        "name": "Solomon Isles",
+        "biome": "Sea",
+        "monsters": 4,
+        "plants": 85,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 389,
+        "name": "Southern Pacific",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 390,
+        "name": "Southern Indian Ocean",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 391,
+        "name": "Cocos Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 392,
+        "name": "Western Timor Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 0,
+        "kinds": []
+      },
+      {
+        "id": 393,
+        "name": "Kimberley Coast",
+        "biome": "Desert",
+        "monsters": 6,
+        "plants": 461,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass",
+          "coast",
+          "dry"
+        ]
+      },
+      {
+        "id": 394,
+        "name": "Arnhem Land",
+        "biome": "Desert",
+        "monsters": 9,
+        "plants": 1637,
+        "kinds": [
+          "fern",
+          "grass",
+          "coast",
+          "woodland",
+          "dry"
+        ]
+      },
+      {
+        "id": 395,
+        "name": "Cape York",
+        "biome": "Tropical Forest",
+        "monsters": 7,
+        "plants": 1877,
+        "kinds": [
+          "coast",
+          "fern",
+          "grass",
+          "woodland",
+          "dry"
+        ]
+      },
+      {
+        "id": 396,
+        "name": "Coral Sea",
+        "biome": "Sea",
+        "monsters": 2,
+        "plants": 1,
+        "kinds": [
+          "woodland"
+        ]
+      },
+      {
+        "id": 397,
+        "name": "Eastern Coral Sea",
+        "biome": "Sea",
+        "monsters": 3,
+        "plants": 23,
+        "kinds": [
+          "coast",
+          "grass",
+          "woodland"
+        ]
+      }
+    ],
+    "questsAdded": 0,
+    "populationPolicy": "Authored habitat-based sparse spawns, clear arrivals, no new quest NPCs."
+  },
+  "guildPolish130": {
+    "chapters": [
+      "g_ch1_1",
+      "g_ch1_2",
+      "g_ch1_3",
+      "g_ch1_4",
+      "g_ch1_5",
+      "g_ch2_1",
+      "g_ch2_2",
+      "g_ch2_5",
+      "g_ch3_1",
+      "g_ch3_3",
+      "g_ch3_4",
+      "g_ch4_1",
+      "g_ch4_2",
+      "g_ch4_3",
+      "g_ch4_5",
+      "g_ch4_7",
+      "g_ch4_8",
+      "g_ch4_9",
+      "g_ch5_1"
+    ],
+    "darkEmperorUntouched": true,
+    "chronologyAndOutcomesUnchanged": true
   }
 }
