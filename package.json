@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.66",
+  "version": "1.10.68",
   "private": true,
-  "description": "BattleMage v126: larger blended server realms and biome foliage",
+  "description": "BattleMage v128: world biome flowers and passable refuge doors",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"

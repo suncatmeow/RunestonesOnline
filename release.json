@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 126,
-  "serverVersion": "1.10.66",
+  "version": 128,
+  "serverVersion": "1.10.68",
   "date": "2026-11-15",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v125 / server package 1.10.65",
+  "supersedes": "BattleMage Runestones v127 / server package 1.10.67",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,12 +23,12 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "v126 client / server package 1.10.66 / terrain 111 / motion 103. Five files; no commit, push or deployment. This pass changes generated-realm server logic. Update both index.html and server.js (with matching package files) before asking Suncat for a new realm. Existing live realms retain their old layout until replaced through the normal invitation flow.",
+    "deployment": "v128 client / server package 1.10.68 / terrain 112 / motion 103. Update all five files for matching generated-room thresholds and client migrations. Preserve existing saved memory files. No commit, push or deployment performed.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
-    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v126 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
+    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v128 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "0d2e6916c589de544afdec1b654e8fe711859a94060af4e32b909c679226ba23",
-  "serverSha256": "3be289f8fd5773846622ac4c45139a7d671bc8e331e899903d73ef314bed2ff2",
+  "clientSha256": "ff3a05e8cdfadaf5b016280d409374e756377017f1488638793b205054fafb00",
+  "serverSha256": "188d81b6895a21bd90b3468ea43f4d2de9d5d012d21232f8e617f0709d42c927",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -68,8 +68,109 @@
   },
   "geography": {
     "newMapIDs": [],
-    "modifiedExistingMapIDs": [],
-    "interpretation": "No terrain, map, NPC placement or campaign changes."
+    "modifiedExistingMapIDs": [
+      999
+    ],
+    "renderOnlyVegetationMapIDs": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      6,
+      9,
+      10,
+      14,
+      22,
+      33,
+      38,
+      39,
+      40,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      66,
+      67,
+      71,
+      72,
+      73,
+      74,
+      78,
+      81,
+      83,
+      85,
+      87,
+      88,
+      101,
+      109,
+      111,
+      113,
+      114,
+      115,
+      116,
+      118,
+      119,
+      120,
+      121,
+      122,
+      123,
+      124,
+      125,
+      126,
+      127,
+      128,
+      131,
+      132,
+      133,
+      134,
+      135,
+      136,
+      137,
+      140,
+      141,
+      142,
+      143,
+      144,
+      145,
+      146,
+      147,
+      148,
+      149,
+      150,
+      151,
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      168,
+      169,
+      170,
+      171,
+      173,
+      174,
+      175,
+      176,
+      177,
+      180,
+      181,
+      182,
+      184,
+      185,
+      187,
+      191,
+      192,
+      -2
+    ],
+    "interpretation": "Atlas geometry, settlements, actors and quests unchanged. Generated safe-room doorway tile becomes floor 0; scenery forms its open door. Dacia is the existing atlas name of the Transylvania region."
   },
   "naming": {
     "maps": {
@@ -267,8 +368,8 @@
     }
   },
   "devlog": {
-    "current": "v126",
-    "history": "Nine entries: current blended realms, condensed v125 meadow/Lore, condensed v113–v124, and older summaries."
+    "current": "v128",
+    "history": "Current flora/door pass; v125–v127 condensed together, older summaries retained."
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -294,28 +395,28 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "New Suncat-generated custom realms (map 999) use a deterministic 160 by 160 outdoor layout, 2.56 times the former tile area. A compact seed/region/road recipe travels with the authoritative server maze.",
-    "Four regions meld through warped, smooth biome weights: flower meadow near arrival, woodland, reed marsh and a rocky heath, alpine verge, dry scrub or overgrown ruins selected by the scenario theme. Winding roads and alternate approaches connect the refuge, outpost, encounters and distant keep.",
-    "Meadow art uses the existing pale flowers; woodland bell flowers, reeds with occasional marsh irises, low heath, alpine rosettes, sparse dry scrub and ruin plants use small cached procedural sprites. Plants mix near boundaries and remain off roads, pools, walls, the outpost, actor starting positions and major combat clearings.",
-    "Ground colors blend between regions in both 3D and overhead views. Two-tile ground patches split at solid/water borders; spatial buckets restrict work to the camera neighborhood. Plants follow the existing 720/520/360/220 budgets and reduced-motion setting, share depth sorting, and use existing layered world occlusion.",
-    "Six peaceful animals replace six extra hostile wanderers; scouts are distributed around the biome regions. Existing services, scenario quests, defenders, wildlife and combat use existing behavior. This pass does not add a new NPC intelligence model or increase the starting population.",
-    "Biome scenery is client-side decoration, with no NPC simulation, collision, target rings, item drops or individual network updates. A new instance or legacy custom map clears the scenery cache; saved generated realms keep their recipe and restore deterministically.",
-    "Map 777, Moors, Tintagel and general NPC distribution are unchanged. No dens, continent expansion or story rewrites. Lore Previous/Next at both chapter ends is preserved. Devlog displays v126; no external dependencies or assets added."
+    "Biome vegetation appears on 97 eligible outdoor maps. Coastal grasses and thrift-like flowers, moorland heather, woodland ferns/bells, meadow flowers, dry scrub, alpine tufts and waterside reeds use distinct procedural art and density profiles. Fully wet and paved maps remain bare where there is no suitable ground.",
+    "Dacia (Transylvania) and outdoor Night Court grounds share map 777’s original pale flower art, fern undergrowth and blue night-sky colors. Existing time rules, mountain geometry, villages and story are unchanged. Map 777 and its cottage/cave remain unchanged.",
+    "Vegetation stays off water, roads, painted interiors, structural slabs, stairs, entrances and authored NPC spaces. Flat natural plateaus use the correct world height, with step/cliff edges clear. Nearby forage plants are kept visible. Scenery has no collision, AI, save-state or server payload.",
+    "Plant generation happens on map load; only the current map is retained. Cached art, spatial chunks, distance/frustum culling and the existing 220/360/520/720 graphics-tier limits bound the visible plant cost.",
+    "Safe rooms have a transparent wooden door frame and an open hinged leaf rendered as fixed world planes. Passage tile is floor 0, so players and allies can cross without a roll or dialogue. Hostile exclusion, protected spawn and return portal remain.",
+    "Client repairs legacy and same-instance room thresholds and updates the cached map; the server emits the matching version-2 refuge. Existing save progress is preserved.",
+    "Ordinary generated-realm wall destruction is restored when the layer table is used solely for plant occlusion. Magical barriers, refuge walls, map borders and authored layered structures retain protection. No new general building-destruction system is introduced.",
+    "Current-version devlog updated and older entries condensed. No dependencies added. Existing 160×160 generated biome blend retained; full continent generation remains pending."
   ],
   "previousRelease": {
-    "version": 125,
-    "serverVersion": "1.10.65",
-    "summary": "Retains isolated map 777, both Lore chapter navigators, acquired classes, stacked bonuses, quests and HUD."
+    "version": 127,
+    "serverVersion": "1.10.67",
+    "summary": "Cottage discovery, readable notes, functional garden and containers, independent Suncat actions, separate cave and quieter routine combat notices retained."
   },
   "validation": {
-    "automatedCheckGroups": 50,
+    "automatedCheckGroups": 76,
     "counts": {
-      "savedConnectedChecks": 42,
-      "generatorChecks": 4,
-      "actualScriptInitialization": 1,
-      "preservedSaveProgress": 1,
-      "freshOfflineStartup": 1,
-      "savedRealmResume": 1
+      "savedConnectedClient": 58,
+      "fullServer": 13,
+      "generatorGroups": 4,
+      "generatorSeedThemeCases": 108,
+      "freshOffline": 1
     },
     "checks": [
       "Connected presence timers wait while saved-world initialization is incomplete",
@@ -343,7 +444,7 @@
       "Equipped player sword clears the forearm in all sampled idle, walk and attack poses",
       "Dialogue choices sit above a larger fixed-font bottom text box on portrait, landscape and square screens",
       "Landscape Jump grows and rises without changing the pad, Target or centered hotbar",
-      "Map 777 is a separate test realm with a walkable path and no decorative NPC population",
+      "Map 777 is a cottage meadow with a walkable path and no decorative NPC population",
       "Meadow loads at its safe spawn and uses local visual night without changing the world clock",
       "Scenery budgets and camera culling work in four directions and all graphics settings",
       "Flower rendering uses cached art, normal depth ordering and wall clipping without target rings",
@@ -360,33 +461,55 @@
       "Saved shared realm keeps its biome recipe; same-instance updates preserve scenery identity",
       "A new realm instance replaces terrain caches, and legacy custom maps retain their old behavior",
       "Leaving the generated realm restores ordinary maps and the standalone map 777 test",
+      "777 keeps its bounded decorative meadow; cottage, garden and cave path are clear",
+      "Cave is a separate small dungeon with three real hostile actors and a safe entrance",
+      "Garden exposes nine stable harvestable plants, honors cooldowns and allows regrowth",
+      "Cottage furniture uses real readable, chest, bed and hearth interactions",
+      "Live object observation exposes actions; reading returns authored text at the object",
+      "Live read rejects a distant actor and does not invent an NPC reply",
+      "Live chest receipts are idempotent; a second operation finds an empty chest",
+      "Human cannot loot a chest already opened by Suncat",
+      "Outdoor vegetation covers appropriate atlas regions without changing terrain, actors, roads or world time",
+      "Tintagel has low coastal vegetation, Moors have heather, and Transylvania uses the original pale meadow flowers",
+      "World plants are locally culled and capped at every graphics level; save data and NPC counts stay unchanged",
+      "Decorative plants do not enable layered collision or change ordinary wall-breaking rules",
+      "Native wall occlusion uses projected wall tops and raised plant drawing uses world elevation",
+      "Legacy safe-room thresholds migrate to floor with an open, fixed door frame and leaf",
+      "Refuge still excludes hostile NPCs and retains its return portal while allies can cross the door",
+      "Generated-realm ordinary walls can break again, but refuge walls, borders and magic barriers stay protected",
+      "Fresh server body starts outside the cottage; saved locations still resume exactly",
+      "Headless maps and actors match the initialized client; every object has a walking approach",
+      "Headless inspection exposes nearby objects without revealing unread pages",
+      "Suncat reads authored notebook text into his actual activity history",
+      "Opening the bedroom chest grants one owned sword; repeated opening and reload grant none",
+      "Equipping the real sword increases actual combat STR without consuming it; repeats do not stack",
+      "Independent gathering depletes a real garden node and records its item only once",
+      "Actual entrance action moves only Suncat into the cave and back",
+      "Independent container receipt survives save/restore and synchronizes claims",
+      "Body-only checkpoints recognize both new places",
+      "Unknown live opening recovers from its receipt exactly once",
+      "Server/client handoff carries opened containers both directions",
+      "Routine death records remain in journals, while only milestones have chat text",
       "108 deterministic biome/seed combinations: dimensions, refuge, roads and all landmarks reachable",
       "Every placed combatant and peaceful animal uses a unique, reachable floor outside the refuge",
       "Near-arrival meadow exists in every theme; starting NPC count substitutes six wildlife for six scouts",
       "Repeated generation of one seed produces identical geometry and biome metadata",
-      "A saved shared 160x160 realm resumes with matching seeded scenery and world collision"
+      "Fresh v128 initializes with current devlog and preserves the cottage and world foliage"
     ],
-    "methods": [
-      "108 seed/theme combinations exercise the actual server generator, refuge, road/landmark reachability, unique reachable actor placement, near-arrival meadow, climate variants and deterministic repeatability.",
-      "Node/jsdom executes all 13 actual client scripts with stub canvas and an in-process simulated transport. It tests server-blueprint loading, local floor/plant selection, image-cache reuse, wall clipping calls, reduced graphics budgets, new instance/legacy resets, and fresh-runtime saved-realm resume.",
-      "An actual hostile NPC update loop crosses meadow terrain and reaches the normal player contact-attack callback while foliage is active. Damage resolution is intercepted in this controlled test; this is not a full combat balance/playthrough test.",
-      "Preserved v124/v125 class, dialogue, HUD, save and Lore navigation regressions, including all 69 Fool and 27 Guild chapters and the isolated meadow return marker.",
-      "All embedded scripts and server syntax pass. Both story archives are byte-identical; protected Dragonflight section hash, dependency equivalence, five-file ZIP membership, CRC and client/server hashes pass."
-    ],
-    "visual": "Browser preview remains unavailable after automatic approval review blocked it. No browser restriction was bypassed. Canvas-stub tests do not establish phone visuals, touch feel or FPS.",
-    "live": "Not deployed; no actual multiplayer or physical-phone test."
+    "method": "Actual script startup and UI logic in jsdom with stubbed canvas/audio and in-process socket-shaped transport. Every eligible map checked for vegetation placement and read-only geography. Full server VM with network/model/persistence disabled. Real generated terrain tested across 108 seed/theme combinations. Player collision sampled across the doorway both ways, with actual NPC movement and hostile exclusion checks. No browser, raster, phone FPS or live LLM result claimed."
   },
   "limitations": [
-    "Phone frame rate with foliage, NPCs, spells and loot requires live playtesting on Pixel/S9. No raster/browser/phone performance result is claimed.",
-    "Only newly generated server realms use the new layout; existing realms and the main atlas retain their geometry.",
-    "NPCs retain existing AI and combat. This pass adds habitat placement and peaceful wildlife, not a new autonomous economy or advanced planner.",
-    "Server-generated stories still require the configured LLM service; no live LLM/network scenario was generated during verification."
+    "Phone rendering and frame rate across the expanded flora coverage still require playtesting. Stubbed canvas checks verify logic and clipping calls, not visual quality or device FPS.",
+    "No live multiplayer, model decisions or deployed server behavior was observed.",
+    "The 160×160 mixed-biome prototype is retained; the requested continent with distant desert/snow/coast regions, elevation, settlements and dungeons is still pending.",
+    "Plants added by this pass are decorative; existing forage herbs keep their usual gathering behavior.",
+    "Protected authored structures remain protected. This pass restores ordinary generated-realm breaking rather than adding destructible multi-floor buildings."
   ],
   "nextPass": [
-    "Deploy matching client/server and request a new realm; test meadow exploration with a few NPCs, then a small fight and a larger fight on Pixel and S9. Compare graphics tiers.",
-    "Assess daylight/nighttime flower contrast, enemy and loot visibility, road/keep readability, swimming/causeways, and save/rejoin in the generated realm.",
-    "Keep the standalone 777 test and main world separate until this playtest provides feedback.",
-    "Target ward/status ring and the older Suncat/world backlog remain pending; dens are still a discussion idea."
+    "Phone playtest on Pixel/S9: Dacia flowers during combat; Tintagel low coastal plants and cliff heights; Moors heather; desert and snow variants. Check readable resource plants and entrances.",
+    "Generate a new shared realm and reopen a cached old one. Walk into/out of its refuge, use the return portal, and confirm ordinary outside walls break while enemies cannot enter.",
+    "Build the larger continent generator as a separate pass: coastlines, highlands, distant snow/desert/woodland/plains, towns and dungeon entrances. Keep map 777 as Suncat’s home and performance reference.",
+    "Retain the target ward/status-ring backlog and further guild dialogue playtesting."
   ],
   "questInventory": {
     "open": "Player → Items → Quest Items",
@@ -484,24 +607,25 @@
     "future": "Guild history and The Fool’s Journey are preserved from v123. No origin novel or worldwide conspiracy reveal added."
   },
   "testRealm777": {
-    "name": "Moonlit Meadow · Test Realm",
+    "name": "Moonlit Meadow · The unclaimed cottage",
     "dimensions": [
       48,
       48
     ],
     "command": ".hack//teleport 777",
     "spawn": {
-      "x": 24.5,
-      "y": 39.5,
+      "x": 22.5,
+      "y": 35.8,
       "dir": 0
     },
     "exit": "Use the nearby trail marker → Return to Haven, or .hack//teleport 2",
-    "sceneryClumps": 2184,
     "cachedImages": 37,
-    "authoredNPCs": 1,
+    "authoredNPCs": 11,
     "worldClockUnchanged": true,
     "atlasRegion": false,
-    "status": "Experimental playable scenery test; native phone appearance and frame rate require playtesting."
+    "status": "Playable cottage home with server-supported discovery; fresh Suncat spawn only. Existing saves preserved.",
+    "gardenPlants": 9,
+    "linkedCave": 778
   },
   "customRealm126": {
     "dimensions": [
@@ -524,5 +648,1342 @@
       "decorativeClumps": 8815,
       "note": "Count varies by seed; not an NPC count or a measured performance claim."
     }
+  },
+  "homeDiscovery127": {
+    "maps": [
+      777,
+      778
+    ],
+    "swordBonus": {
+      "stat": "STR",
+      "amount": 1,
+      "durationSeconds": 86400,
+      "reEquipDelaySeconds": 60,
+      "consumed": false
+    },
+    "contents": [
+      "previous owner’s door note",
+      "notebook",
+      "garden label",
+      "cave warning",
+      "bedroom sword chest",
+      "pantry supplies",
+      "bed",
+      "hearth"
+    ],
+    "agentActions": [
+      "read",
+      "open",
+      "enter",
+      "equip",
+      "unequip"
+    ],
+    "freshSpawnOnly": true,
+    "npcPromptOverride": false,
+    "quietEventKinds": [
+      "scenario_defeat"
+    ]
+  },
+  "flora128": {
+    "eligibleOutdoorMaps": 115,
+    "vegetatedMaps": 97,
+    "profiles": [
+      "alpine",
+      "coast",
+      "dry",
+      "field",
+      "forest",
+      "moonlit",
+      "moor",
+      "river",
+      "tropical"
+    ],
+    "transylvaniaMapID": 45,
+    "homeMapID": 777,
+    "mapCoverage": [
+      {
+        "id": 0,
+        "name": "Moors",
+        "profile": "moor",
+        "plants": 2148,
+        "raised": 0,
+        "kinds": [
+          "marsh",
+          "grass",
+          "heather"
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Tintagel",
+        "profile": "coast",
+        "plants": 1460,
+        "raised": 92,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Logres",
+        "profile": "field",
+        "plants": 2939,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "meadow"
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Realm of the Witch Queen (Desert)",
+        "profile": "dry",
+        "plants": 674,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Savage Forest",
+        "profile": "forest",
+        "plants": 2902,
+        "raised": 0,
+        "kinds": [
+          "woodland",
+          "fern",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 6,
+        "name": "Cairngorm",
+        "profile": "alpine",
+        "plants": 565,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 9,
+        "name": "Boreal Sea",
+        "profile": "alpine",
+        "plants": 25,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 10,
+        "name": "Realm of the Fairy Queen (Avalon)",
+        "profile": "field",
+        "plants": 2383,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "meadow"
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Armorica",
+        "profile": "field",
+        "plants": 2398,
+        "raised": 0,
+        "kinds": [
+          "meadow",
+          "grass"
+        ]
+      },
+      {
+        "id": 22,
+        "name": "Eastern Iberia",
+        "profile": "field",
+        "plants": 1323,
+        "raised": 0,
+        "kinds": [
+          "meadow",
+          "grass"
+        ]
+      },
+      {
+        "id": 33,
+        "name": "Armorica · The ruined keep",
+        "profile": "coast",
+        "plants": 244,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 38,
+        "name": "Orcynia",
+        "profile": "forest",
+        "plants": 3203,
+        "raised": 0,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 39,
+        "name": "Aquitania",
+        "profile": "field",
+        "plants": 3167,
+        "raised": 0,
+        "kinds": [
+          "meadow",
+          "grass"
+        ]
+      },
+      {
+        "id": 40,
+        "name": "Iberia · La Rioja",
+        "profile": "field",
+        "plants": 735,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "meadow"
+        ]
+      },
+      {
+        "id": 42,
+        "name": "Deshret · The Red Land",
+        "profile": "dry",
+        "plants": 902,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 43,
+        "name": "Kemet · The river and the healing house",
+        "profile": "dry",
+        "plants": 893,
+        "raised": 0,
+        "kinds": [
+          "marsh",
+          "grass",
+          "dry"
+        ]
+      },
+      {
+        "id": 44,
+        "name": "Qedar",
+        "profile": "dry",
+        "plants": 648,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "marsh",
+          "grass"
+        ]
+      },
+      {
+        "id": 45,
+        "name": "Dacia",
+        "profile": "moonlit",
+        "plants": 5773,
+        "raised": 0,
+        "kinds": [
+          "moonflower",
+          "fern"
+        ]
+      },
+      {
+        "id": 46,
+        "name": "Hellas · The southern coast",
+        "profile": "coast",
+        "plants": 1395,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 47,
+        "name": "Rhine frontier · Gaul and Orcynia",
+        "profile": "forest",
+        "plants": 3818,
+        "raised": 0,
+        "kinds": [
+          "woodland",
+          "fern",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 48,
+        "name": "Hatti",
+        "profile": "coast",
+        "plants": 1977,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 49,
+        "name": "Ret",
+        "profile": "dry",
+        "plants": 770,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 66,
+        "name": "Nori Pass",
+        "profile": "alpine",
+        "plants": 585,
+        "raised": 24,
+        "kinds": [
+          "alpine",
+          "grass"
+        ]
+      },
+      {
+        "id": 67,
+        "name": "Oenos",
+        "profile": "coast",
+        "plants": 1307,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 71,
+        "name": "Southern Ret",
+        "profile": "dry",
+        "plants": 1063,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 72,
+        "name": "Maf",
+        "profile": "dry",
+        "plants": 577,
+        "raised": 1,
+        "kinds": [
+          "dry",
+          "marsh",
+          "grass"
+        ]
+      },
+      {
+        "id": 73,
+        "name": "Great Dunes",
+        "profile": "dry",
+        "plants": 725,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass"
+        ]
+      },
+      {
+        "id": 74,
+        "name": "Eastern Deshret",
+        "profile": "dry",
+        "plants": 873,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass"
+        ]
+      },
+      {
+        "id": 78,
+        "name": "Nile Delta",
+        "profile": "dry",
+        "plants": 838,
+        "raised": 0,
+        "kinds": [
+          "marsh",
+          "dry",
+          "grass"
+        ]
+      },
+      {
+        "id": 81,
+        "name": "Gaul Foothills",
+        "profile": "forest",
+        "plants": 4326,
+        "raised": 0,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass"
+        ]
+      },
+      {
+        "id": 83,
+        "name": "Libyan Desert",
+        "profile": "dry",
+        "plants": 1117,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass"
+        ]
+      },
+      {
+        "id": 85,
+        "name": "Western Iberia",
+        "profile": "coast",
+        "plants": 1952,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 87,
+        "name": "Black Forest",
+        "profile": "forest",
+        "plants": 2218,
+        "raised": 0,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass"
+        ]
+      },
+      {
+        "id": 88,
+        "name": "Alpine Foothills",
+        "profile": "alpine",
+        "plants": 1533,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 100,
+        "name": "Oceanus Britannicus · North",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 101,
+        "name": "Oceanus Britannicus · Inner",
+        "profile": "coast",
+        "plants": 41,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 102,
+        "name": "Oceanus Britannicus · West",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 103,
+        "name": "Oceanus Britannicus · Coastal Sea",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 104,
+        "name": "Oceanus Atlanticus · North",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 105,
+        "name": "Mare Britannicum",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 106,
+        "name": "Oceanus Atlanticus · Outer",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 107,
+        "name": "Mare Gallicum",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 108,
+        "name": "Oceanus Atlanticus · West",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 109,
+        "name": "Sinus Aquitanicus",
+        "profile": "coast",
+        "plants": 1279,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 110,
+        "name": "Oceanus Atlanticus · Lusitania",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 111,
+        "name": "Mare Aegaeum",
+        "profile": "coast",
+        "plants": 127,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 112,
+        "name": "Oceanus Atlanticus · Pillars",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 113,
+        "name": "Mare Balearicum",
+        "profile": "coast",
+        "plants": 34,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 114,
+        "name": "Mare Siculum",
+        "profile": "coast",
+        "plants": 226,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 115,
+        "name": "Mare Libycum",
+        "profile": "coast",
+        "plants": 14,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 116,
+        "name": "Oceanus Atlanticus · South",
+        "profile": "coast",
+        "plants": 208,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 118,
+        "name": "Southern Lochlann",
+        "profile": "alpine",
+        "plants": 612,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 119,
+        "name": "Northern Lochlann",
+        "profile": "alpine",
+        "plants": 103,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 120,
+        "name": "Northern Scandia",
+        "profile": "alpine",
+        "plants": 722,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 121,
+        "name": "Southern Scandia",
+        "profile": "alpine",
+        "plants": 861,
+        "raised": 0,
+        "kinds": [
+          "alpine",
+          "grass"
+        ]
+      },
+      {
+        "id": 122,
+        "name": "Northern Sound",
+        "profile": "coast",
+        "plants": 31,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 123,
+        "name": "Orcynia · Northern Plains",
+        "profile": "field",
+        "plants": 3651,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "meadow"
+        ]
+      },
+      {
+        "id": 124,
+        "name": "Orcynia · Eastern Plains",
+        "profile": "field",
+        "plants": 4313,
+        "raised": 0,
+        "kinds": [
+          "meadow",
+          "grass"
+        ]
+      },
+      {
+        "id": 125,
+        "name": "Orcynia · Eastern Marches",
+        "profile": "field",
+        "plants": 4234,
+        "raised": 0,
+        "kinds": [
+          "meadow",
+          "grass"
+        ]
+      },
+      {
+        "id": 126,
+        "name": "Dacia · Northern Reach",
+        "profile": "coast",
+        "plants": 3150,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 127,
+        "name": "Orcynia · Northern Coast",
+        "profile": "forest",
+        "plants": 2169,
+        "raised": 0,
+        "kinds": [
+          "fern",
+          "grass",
+          "marsh",
+          "woodland"
+        ]
+      },
+      {
+        "id": 128,
+        "name": "Scandia · Southern Coast",
+        "profile": "alpine",
+        "plants": 1604,
+        "raised": 0,
+        "kinds": [
+          "alpine",
+          "grass"
+        ]
+      },
+      {
+        "id": 129,
+        "name": "Atlantic Channel",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 130,
+        "name": "Western Channel",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 131,
+        "name": "Armorican Channel",
+        "profile": "coast",
+        "plants": 205,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 132,
+        "name": "Orcynia · Western Coast",
+        "profile": "forest",
+        "plants": 4316,
+        "raised": 0,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 133,
+        "name": "Dacia · Eastern Coast",
+        "profile": "coast",
+        "plants": 2782,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 134,
+        "name": "Logres Coast",
+        "profile": "moor",
+        "plants": 822,
+        "raised": 0,
+        "kinds": [
+          "marsh",
+          "heather",
+          "grass"
+        ]
+      },
+      {
+        "id": 135,
+        "name": "Moors Coast",
+        "profile": "moor",
+        "plants": 2820,
+        "raised": 14,
+        "kinds": [
+          "heather",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 136,
+        "name": "The Wilderness",
+        "profile": "forest",
+        "plants": 1953,
+        "raised": 0,
+        "kinds": [
+          "woodland",
+          "grass",
+          "fern",
+          "marsh"
+        ]
+      },
+      {
+        "id": 137,
+        "name": "Ériu · Conaing’s Tower",
+        "profile": "coast",
+        "plants": 762,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 138,
+        "name": "Athens · The Migrants’ Quay",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 140,
+        "name": "Thrace · The Stoneworkers’ Estate",
+        "profile": "field",
+        "plants": 1567,
+        "raised": 0,
+        "kinds": [
+          "meadow",
+          "grass"
+        ]
+      },
+      {
+        "id": 141,
+        "name": "Thrace · The Seized Harbour",
+        "profile": "coast",
+        "plants": 662,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 142,
+        "name": "Aegean · The Free Shore",
+        "profile": "coast",
+        "plants": 993,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 143,
+        "name": "Murias · The Common Hearth",
+        "profile": "forest",
+        "plants": 778,
+        "raised": 0,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "marsh"
+        ]
+      },
+      {
+        "id": 144,
+        "name": "Alba · Briotán’s Harbour",
+        "profile": "coast",
+        "plants": 817,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 145,
+        "name": "Ériu · The Settled Shore",
+        "profile": "coast",
+        "plants": 795,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 146,
+        "name": "The Weight of a Promise",
+        "profile": "forest",
+        "plants": 554,
+        "raised": 0,
+        "kinds": [
+          "woodland",
+          "grass",
+          "fern",
+          "marsh"
+        ]
+      },
+      {
+        "id": 147,
+        "name": "The Banked Flame",
+        "profile": "forest",
+        "plants": 610,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "woodland",
+          "fern"
+        ]
+      },
+      {
+        "id": 148,
+        "name": "The Unerring Edge",
+        "profile": "forest",
+        "plants": 609,
+        "raised": 0,
+        "kinds": [
+          "fern",
+          "woodland",
+          "grass"
+        ]
+      },
+      {
+        "id": 149,
+        "name": "Mag Tuired · The Contested Field",
+        "profile": "forest",
+        "plants": 1600,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "fern",
+          "woodland",
+          "marsh"
+        ]
+      },
+      {
+        "id": 150,
+        "name": "Eastern Wilderness · The two trails",
+        "profile": "forest",
+        "plants": 3580,
+        "raised": 8,
+        "kinds": [
+          "marsh",
+          "woodland",
+          "fern",
+          "grass"
+        ]
+      },
+      {
+        "id": 151,
+        "name": "Vampire Kingdom · The Night Court",
+        "profile": "moonlit",
+        "plants": 3744,
+        "raised": 0,
+        "kinds": [
+          "moonflower",
+          "fern"
+        ]
+      },
+      {
+        "id": 160,
+        "name": "Varkana",
+        "profile": "coast",
+        "plants": 2565,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 161,
+        "name": "Bakhdi",
+        "profile": "alpine",
+        "plants": 1632,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "alpine"
+        ]
+      },
+      {
+        "id": 162,
+        "name": "Tarim",
+        "profile": "dry",
+        "plants": 996,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 163,
+        "name": "Xiaohe",
+        "profile": "dry",
+        "plants": 1015,
+        "raised": 0,
+        "kinds": [
+          "marsh",
+          "grass",
+          "dry"
+        ]
+      },
+      {
+        "id": 164,
+        "name": "Majiayao",
+        "profile": "alpine",
+        "plants": 1628,
+        "raised": 0,
+        "kinds": [
+          "alpine",
+          "grass"
+        ]
+      },
+      {
+        "id": 165,
+        "name": "Hongshan",
+        "profile": "field",
+        "plants": 3763,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "meadow"
+        ]
+      },
+      {
+        "id": 166,
+        "name": "Anzan",
+        "profile": "dry",
+        "plants": 768,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 167,
+        "name": "Meluhha",
+        "profile": "dry",
+        "plants": 1044,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 168,
+        "name": "Kuru",
+        "profile": "field",
+        "plants": 3553,
+        "raised": 0,
+        "kinds": [
+          "meadow",
+          "grass"
+        ]
+      },
+      {
+        "id": 169,
+        "name": "Kunlun",
+        "profile": "alpine",
+        "plants": 1344,
+        "raised": 0,
+        "kinds": [
+          "alpine",
+          "grass"
+        ]
+      },
+      {
+        "id": 170,
+        "name": "Baodun",
+        "profile": "tropical",
+        "plants": 4172,
+        "raised": 0,
+        "kinds": [
+          "woodland",
+          "grass",
+          "fern",
+          "marsh"
+        ]
+      },
+      {
+        "id": 171,
+        "name": "Liangzhu",
+        "profile": "coast",
+        "plants": 1777,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 173,
+        "name": "Meluhha Coast",
+        "profile": "coast",
+        "plants": 274,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 174,
+        "name": "Dakshinapatha",
+        "profile": "tropical",
+        "plants": 3374,
+        "raised": 0,
+        "kinds": [
+          "woodland",
+          "fern",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 175,
+        "name": "Vanga",
+        "profile": "tropical",
+        "plants": 2096,
+        "raised": 0,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "marsh"
+        ]
+      },
+      {
+        "id": 176,
+        "name": "Suvarnabhumi",
+        "profile": "tropical",
+        "plants": 3165,
+        "raised": 0,
+        "kinds": [
+          "woodland",
+          "grass",
+          "fern",
+          "marsh"
+        ]
+      },
+      {
+        "id": 177,
+        "name": "Shixia",
+        "profile": "tropical",
+        "plants": 504,
+        "raised": 0,
+        "kinds": [
+          "fern",
+          "grass",
+          "woodland",
+          "marsh"
+        ]
+      },
+      {
+        "id": 180,
+        "name": "Tamilakam and Lanka",
+        "profile": "tropical",
+        "plants": 448,
+        "raised": 0,
+        "kinds": [
+          "marsh",
+          "fern",
+          "woodland",
+          "grass"
+        ]
+      },
+      {
+        "id": 181,
+        "name": "Samudra",
+        "profile": "coast",
+        "plants": 319,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "coast"
+        ]
+      },
+      {
+        "id": 182,
+        "name": "Kengir",
+        "profile": "river",
+        "plants": 3537,
+        "raised": 0,
+        "kinds": [
+          "grass",
+          "marsh",
+          "meadow"
+        ]
+      },
+      {
+        "id": 184,
+        "name": "Dilmun",
+        "profile": "dry",
+        "plants": 998,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 185,
+        "name": "Makkan",
+        "profile": "dry",
+        "plants": 419,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 186,
+        "name": "Samudra · Western Reach",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 187,
+        "name": "Samudra · Gulf Approach",
+        "profile": "coast",
+        "plants": 218,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      },
+      {
+        "id": 188,
+        "name": "Samudra · Open Waters",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 189,
+        "name": "Samudra · Southwestern Waters",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 191,
+        "name": "Qedar · Southern Uplands",
+        "profile": "dry",
+        "plants": 481,
+        "raised": 12,
+        "kinds": [
+          "dry",
+          "grass",
+          "marsh"
+        ]
+      },
+      {
+        "id": 192,
+        "name": "Qedar · Southern Coast",
+        "profile": "dry",
+        "plants": 276,
+        "raised": 0,
+        "kinds": [
+          "dry",
+          "marsh",
+          "grass"
+        ]
+      },
+      {
+        "id": 193,
+        "name": "Samudra · Outer Reach",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": 194,
+        "name": "Samudra · Far Waters",
+        "profile": "coast",
+        "plants": 0,
+        "raised": 0,
+        "kinds": []
+      },
+      {
+        "id": -2,
+        "name": "Gibraltar",
+        "profile": "coast",
+        "plants": 329,
+        "raised": 0,
+        "kinds": [
+          "coast",
+          "grass"
+        ]
+      }
+    ],
+    "drawCaps": [
+      220,
+      360,
+      520,
+      720
+    ],
+    "plantNetworkTraffic": false,
+    "plantCollision": false
+  },
+  "refuge128": {
+    "version": 2,
+    "doorTile": 0,
+    "legacyCacheRepair": true,
+    "sameInstanceRepair": true,
+    "hostileExclusionPreserved": true,
+    "doorArt": "Transparent open frame and hinged wooden leaf; fixed world planes, no new interactive NPC."
   }
 }

@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-15-bm-v126-woven-biomes"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">      <title>Battle-Mage · v126</title>
+      <meta name="suncat-build" content="2026-11-15-bm-v128-world-flowers"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">      <title>Battle-Mage · v128</title>
       <style>
         html,body {
           width:100%;
@@ -44743,7 +44743,9 @@ render(scene, dt) {
                             scene.renderList.length = 0;
                             for(const herb of host.BMHerbs.world())if((herb.x-camX)**2+(herb.y-camY)**2<=cullDistSq)scene.renderList.push(herb);
                              if(scene.mapID===777)host.window.BMMeadow125?.append(scene,scene.renderList,camX,camY,dirX,dirY,planeX,planeY);
-                             else if(scene.mapID===999)host.window.BMRealmFlora126?.append(scene,scene.renderList,camX,camY,dirX,dirY,planeX,planeY); 
+                             else if(scene.mapID===999)host.window.BMRealmFlora126?.append(scene,scene.renderList,camX,camY,dirX,dirY,planeX,planeY);
+                             else host.window.BMWorldFlora128?.append(scene,scene.renderList,camX,camY,dirX,dirY,planeX,planeY);
+                             host.window.BMRefugeDoor128?.append(scene,scene.renderList); 
 
                     // 1. NPCs
                         for (let i = 0; i < scene.npcs.length; i++) {
@@ -50782,7 +50784,7 @@ const BMObstacles=(()=>{
  }
  function canPick(d){return ['rogue','battle-mage'].includes(String(d.playerClass||'').toLowerCase())||!!d.spellsLearned?.[41];}
  function open(d,x,y){
-  if(!d.maze?.[y]||!Number.isFinite(profile(d,d.maze[y][x])?.toughness)||(BMLayers.active(d)&&profile(d,d.maze[y][x]).lockDC==null))return false;
+  if(!d.maze?.[y]||!Number.isFinite(profile(d,d.maze[y][x])?.toughness)||(BMLayers.active(d)&&profile(d,d.maze[y][x]).lockDC==null&&!(d.mapID===999&&Object.keys(d.layerCells).length===0&&!BMRefuge.inside(d,x+.5,y+.5)&&x>0&&y>0&&x<d.maze[0].length-1&&y<d.maze.length-1)))return false;
   if(d.mapID===32&&d.maze[y][x]===91){const opened=d.memory.destroyed_tiles_32??=[];if(!opened.some(t=>t.x===x&&t.y===y))opened.push({x,y});d.requestSave();}
   d.maze[y][x]=0;d.flowCacheKey=null;d.flowField=[];
   if(typeof socket!=='undefined')socket.emit('tile_destroyed',{mapID:d.mapID,x,y});
@@ -53706,7 +53708,7 @@ const SUNCAT_LIFE_CLIENT = (() => {
   }
   function services(a,d){return d.npcs.filter(n=>!n.isDead&&!n.isDying&&!String(n.alignment).startsWith('foe')&&reachable(a,n,d,20)).map(n=>{
     const store=shop(n,d),guild=n.service==='guild'||n.endActions?.some(v=>v?.[0]==='open_guild_menu');
-    return {npcIndex:n.index,name:n.name,x:n.x,y:n.y,service:n.service==='campfire'?'campfire':guild?'guild':store?'merchant':'conversation',shop:store,
+    return {npcIndex:n.index,name:n.name,x:n.x,y:n.y,service:n.service==='campfire'?'campfire':globalThis.BMCottage127?.observed(d.mapID,n.index,d.memory)?'world-object':guild?'guild':store?'merchant':'conversation',shop:store,worldObject:globalThis.BMCottage127?.observed(d.mapID,n.index,d.memory),
       dialogue:SUNCAT_CLIENT.publicNPC(n,d).publicDialogue,choices:Array.isArray(n.options)?n.options.filter(v=>typeof v==='string').slice(0,8):[],
       contracts:guild&&d.mapID===999?(window.latestCustomMapData?.wilderness?.contracts||[]):[]};
   });}
@@ -53727,6 +53729,8 @@ const SUNCAT_LIFE_CLIENT = (() => {
       if(d.npcs.some(n=>!n.isDead&&String(n.alignment).startsWith('foe')&&reachable(a,n,d,5)))throw Error('A nearby threat prevents careful harvesting.');
       const h=BMHerbs.species[p.speciesIndex];d.memory.herbHarvests??={};d.memory.herbHarvests[p.key]=Date.now()+(args.success?600000:30000);
       result={ok:true,status:args.success?'gathered':'failed',resourceId:p.key,item:args.success?{key:'herb:'+h.id,name:h.name,kind:'herb',herbId:h.id}:null};
+    }else if(['read','open'].includes(args.action)){
+      result=BMCottage127.action(args,a,d);
     }else if(['buy','sell'].includes(args.action)){
       const n=d.npcs.find(n=>n.index===args.npcIndex&&!n.isDead&&!n.isDying),q=n&&shop(n,d);
       if(!q||!reachable(a,n,d))throw Error('No available merchant within speaking distance.');
@@ -53815,6 +53819,7 @@ const SUNCAT_LIFE_CLIENT = (() => {
                 const n=world.npcs.find(n=>n.index===a.index&&!n.isDead&&!n.isDying);
                 if(!n||(a.type!==undefined&&a.type!==n.type))throw Error('NPC is no longer available.');
                 if(String(n.alignment||'').startsWith('foe')||['reward','dropped_card','portal'].includes(n.role))throw Error('NPC is not available for a peaceful conversation.');
+                if(globalThis.BMHome127?.get(world.mapID,n.index))throw Error('This is an object. Inspect its actions and read or open it instead.');
                 const distance=Math.hypot(a.actor.x-n.x,a.actor.y-n.y);
                 if(distance>2.5)throw Error('Suncat must approach the NPC before speaking.');
                 // Actor-relative sight check, independent of the human player's camera.
@@ -53962,7 +53967,7 @@ const BMSuncatWorld92=(()=>{
  const key=p=>p.worldId+'|'+p.mapKey;
  function pending(){const p=identity();return !!p&&(!session||session.key!==key(p)||!session.ready)&&(!session||Date.now()-session.started<6000);}
  function capture(p,leaving=false){const row=ledger.get(key(p)),ids=row?.trackedActors||[];return {...p,revision:row?.revision,leaving,
-  actors:ids.map(index=>{const n=Dungeon.npcs.find(n=>n.index===index);return n?{index,x:n.x,y:n.y,wardSeconds:n.currentWardTime,shatterSeconds:n.wardShatterCooldown||0,dead:!!n.isDead||!!n.isDying}: {index,unavailable:true};}),harvests:Dungeon.memory.herbHarvests||{},sales:Dungeon.memory.suncatShopSales||{}};}
+  actors:ids.map(index=>{const n=Dungeon.npcs.find(n=>n.index===index);return n?{index,x:n.x,y:n.y,wardSeconds:n.currentWardTime,shatterSeconds:n.wardShatterCooldown||0,dead:!!n.isDead||!!n.isDying}: {index,unavailable:true};}),harvests:Dungeon.memory.herbHarvests||{},sales:Dungeon.memory.suncatShopSales||{},objects:Dungeon.memory.worldObjectClaims||{}};}
  function apply(p){if(!p?.ok||!identity()||key(p)!==key(identity()))return false;
   const initial=!ledger.has(key(p))||!session?.ready||session.key!==key(p);
   for(const[index,v]of Object.entries(initial?p.actors||{}:{})){const n=Dungeon.npcs.find(n=>n.index===+index);if(!n)continue;
@@ -53981,6 +53986,7 @@ const BMSuncatWorld92=(()=>{
    n.cachedPrey=null;if(v.chasing)n.state='wandering';
   }
   Dungeon.npcs=Dungeon.npcs.filter(n=>!n.isDead||!p.actors?.[n.index]?.dead&&!p.actors?.[n.index]?.unavailable);
+   Dungeon.memory.worldObjectClaims??={};for(const[id,taken]of Object.entries(p.objects||{}))if(taken===true)Dungeon.memory.worldObjectClaims[id]=true;
   Dungeon.memory.herbHarvests??={};for(const[id,until]of Object.entries(p.harvests||{}))Dungeon.memory.herbHarvests[id]=Math.max(Number(Dungeon.memory.herbHarvests[id])||0,Number(until)||0);
   Dungeon.memory.suncatShopSales??={};for(const[id,values]of Object.entries(p.sales||{}))Dungeon.memory.suncatShopSales[id]=[...new Set([...(Dungeon.memory.suncatShopSales[id]||[]),...values])];
   const resources=p.resources?(p.resources||[]).map(r=>({x:r.x,y:r.y,groundZ:0,key:r.id,speciesIndex:r.speciesIndex,type:-201-r.speciesIndex,role:'herb',alignment:'plant',visible:true,isDead:false,cachedBillboard:BMHerbs.imageFor(r.speciesIndex),name:r.item.name})):ledger.get(key(p))?.plants||[];
@@ -97042,6 +97048,7 @@ const BMHerbs=(()=>{
     }
     function hash(x,y,id){let n=Math.imul(x+11,73856093)^Math.imul(y+7,19349663)^Math.imul(id+29,83492791);n=Math.imul(n^(n>>>13),1274126177);return (n^(n>>>16))>>>0;}
     function world(){
+        if(Dungeon.mapID===777&&globalThis.BMCottage127)return BMCottage127.herbs(Dungeon);
         if(cacheMaze!==Dungeon.maze||cacheMap!==Dungeon.mapID){
             cacheMaze=Dungeon.maze;cacheMap=Dungeon.mapID;plants=[];
             if(!cacheMaze?.length||cacheMap<0||cacheMap===888||MAP_DB[cacheMap]?.noWildHerbs)return plants;
@@ -98753,13 +98760,16 @@ const BM_RELEASE=(()=>{
  return Object.freeze({version:match?Number(match[2]):null,date:match?match[1]:'',label:match?'v'+match[2]:'Unversioned build'});
 })();globalThis.BM_RELEASE=BM_RELEASE;
 const BM_DEVLOG = [
- [BM_RELEASE.label+' · Woven realms and biome plants', 'Current version · '+BM_RELEASE.date, [
-  'New Suncat adventures use a 160×160 outdoor realm with a flower meadow near arrival, woodland, reed marsh and a themed rocky, alpine, dry or ruined verge. Winding roads link the outpost, encounters and distant keep.',
-  'Flowers change with their habitat and blend at the borders: pale meadow blooms, woodland bells, reeds and marsh irises, low heath, alpine rosettes or sparse dry scrub. Paths, ponds, services and starting combat spaces stay clear.',
-  'Six peaceful animals replace six extra hostile scouts. Existing quests, services, defenders and combat use the same systems; decorative plants add no AI or network actors. Graphics quality still controls visible plant density.',
-  'Online realm generation requires the matching server update. Ask Suncat for a new adventure and accept the invitation. Existing generated realms keep their original layout.']],
- ['v125 · Meadow test and Lore navigation', 'Condensed', [
-  'Map 777 remains the isolated moonlit meadow test, with its trail marker back to Haven. Enter with .hack//teleport 777. Both Lore archives retain Previous/Next at the top and bottom of chapters.']],
+ [BM_RELEASE.label+' · Flowers across the world', 'Current version · '+BM_RELEASE.date, [
+  'Outdoor regions gain biome-specific scenery: short coastal grasses and thrift-like flowers, moorland heather, woodland ferns and bells, meadow flowers, sparse dry plants, alpine tufts and waterside reeds. Paths, building interiors, entrances and authored NPC spaces stay clear. Plants follow raised natural ground and remain decorative rather than becoming extra NPCs.',
+  'Dacia, the Transylvania region, and the outdoor Night Court grounds use the pale flower family from Suncat’s home, with darker foliage and the meadow’s blue night-sky palette. Existing terrain, settlements, quests and the region’s normal clock rules are retained. Map 777 remains Suncat’s home.',
+  'Generated safe rooms now have an open wooden door and a walkable threshold. Old cached rooms are repaired on load, including same-instance refreshes. Hostile monsters stay outside; the return portal remains inside.',
+  'Ordinary generated-realm walls can be broken again: the flower renderer no longer inadvertently disables their destruction. Refuge walls, outer boundaries, magical barriers and protected layered structures stay protected.',
+  'Plants use local visibility culling, cached art and existing graphics quality caps. The larger continent generator is still pending; this pass retains the 160×160 mixed-biome prototype. Update both client and server for the matching doorway fix.']],
+ ['v125–v127 · Meadow, cottage and blended realms', 'Condensed', [
+  'Both Lore archives have Previous/Next at the top and bottom. Map 777’s cottage, readable owner notes, functional garden, sword/pantry chests and cave 778 remain. Fresh Suncat starts at the home; existing saved positions are preserved.',
+  'Generic observed read/open/enter/equip actions support independent server exploration and client observation, with once-only chest claims. Routine realm defeat notices stay out of chat while important scenario announcements and journal records remain.',
+  'Server adventures retain the 160×160 meadow, woodland, marsh and themed-verge blend. The broader desert/snow/coast/elevation continent remains future work.']],
  ['v113–v124 · Classes, lore and controls', 'Condensed', [
   'Core class quests grant permanent stacking bonuses; skills remain separate. Player Classes tracks each mentor, Dancer still leads to Cherry, and old saves retain learned skills and unfinished work.',
   'JRPG buttons moved above larger bottom text. Sword grips, Squire/Dragon Knight art, landscape Jump and redundant Moors grass overlays were refined.',
@@ -106259,7 +106269,7 @@ const BMRefuge=(()=>{
   }
   const r=data.safeRoom;
   for(let y=r.top;y<=r.bottom;y++)for(let x=r.left;x<=r.right;x++)data.maze[y][x]=(x===r.left||x===r.right||y===r.top||y===r.bottom)?25:0;
-  data.maze[Math.floor(r.door.y)][Math.floor(r.door.x)]=2;
+  data.maze[Math.floor(r.door.y)][Math.floor(r.door.x)]=0;r.version=2;
   data.spawnX=r.spawn.x;data.spawnY=r.spawn.y;
   // Migrate legacy village occupants out of the new room without deleting them.
   for(const n of data.npcs||[])if(contains(r,n.x,n.y)){
@@ -114908,9 +114918,9 @@ const BMMeadow125=(()=>{
  }
  function append(d,list,camX,camY,dirX,dirY,planeX,planeY){list.push(...visible(d,camX,camY,dirX,dirY,planeX,planeY));}
  function draw(d,c,p,{transformX,transformY,viewX,viewY,viewW,viewH,horizon,wallScale,frameNow}){
-  if((+d.mapID!==MAP&&!p._realm126)||transformY<=.16)return;
+  if((+d.mapID!==MAP&&!p._realm126&&!p._worldFlora128)||transformY<=.16)return;
   const depth=transformY,scale=wallScale/depth,w=scale*p.width,h=scale*p.height;
-  const x=viewX+viewW*.5*(1+transformX/depth)-w*.5,y=viewY+horizon+scale*d.camZ-h;
+  const x=viewX+viewW*.5*(1+transformX/depth)-w*.5,y=viewY+horizon+scale*(d.camZ-(p.groundZ||0))-h;
   if(x+w<viewX||x>viewX+viewW||y+h<viewY||y>viewY+viewH)return;
   const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const frame=p.kind==='tree'||reduced?0:Math.floor(frameNow/280+p.phase)%4;
@@ -114918,8 +114928,9 @@ const BMMeadow125=(()=>{
   // Distant flowers merge into the blue haze; nearby stems retain their contrast.
   c.globalAlpha=Math.max(0,Math.min(1,(limits().distance-depth)/6));
   c.beginPath();c.rect(viewX,viewY,viewW,viewH);c.clip();
-  if(BMLayers.active(d))c.clip(BMLayers.clip(d,x,y,x+w,y+h,depth,viewX,viewY,viewW,viewH));
-  c.drawImage(p._realm126?BMRealmFlora126.image(p.kind,p.variant,frame):image(p.kind,p.variant,frame),Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)));c.restore();
+  if(p._worldFlora128)BMWorldFlora128.clip(d,c,x,y,x+w,y+h,depth,viewX,viewY,viewW,viewH);
+  else if(BMLayers.active(d))c.clip(BMLayers.clip(d,x,y,x+w,y+h,depth,viewX,viewY,viewW,viewH));
+  c.drawImage(p._worldFlora128?BMWorldFlora128.image(p.kind,p.variant,frame):p._realm126?BMRealmFlora126.image(p.kind,p.variant,frame):image(p.kind,p.variant,frame),Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)));c.restore();
  }
  const herb2D=BMHerbs.draw2D;BMHerbs.draw2D=function(centerX,centerY,cellSize,range){
   if(+Dungeon.mapID===MAP){const u=tL/10*cellSize;ctx.save();for(const p of plants){const dx=p.x-Dungeon.x,dy=p.y-Dungeon.y;if(Math.abs(dx)>range||Math.abs(dy)>range)continue;ctx.fillStyle=p.kind==='tree'?'#14242d':p.variant===7?'#2e4246':'#bca9be';ctx.fillRect(tX+tL/10*centerX+dx*u,tY+tH/10*centerY+dy*u,Math.max(1,u*.12),Math.max(1,u*.12));}ctx.restore();}
@@ -115048,6 +115059,112 @@ const BMRealmFlora126=(()=>{
  return {image,install,active,visible,append,floorQuads,get current(){return current;},images};
 })();globalThis.BMRealmFlora126=BMRealmFlora126;
 
+/* v127: authored places and generic readable/container/entrance contracts, shared by both owners. */
+const BMHome127=(()=>{
+ const HOME=777,CAVE=778,spawn={mapID:HOME,x:22.5,y:35.8,dir:0};
+ const sword={key:'equipment:meadow-sword',name:'Cottage sword',kind:'equipment',spellId:50,description:'A plain, serviceable sword left in the cottage chest.'};
+ const objects=[
+  {mapID:HOME,index:777010,x:23.8,y:33.2,sprite:1163,name:'Note on the cottage door',kind:'readable',text:'To whoever finds this place: the cabin has no owner now. You may inhabit it if you wish. The bed is through the left-hand doorway; my notebook is beside the books on the right. I left the garden growing. There is no rent, and no task you owe me.'},
+  {mapID:HOME,index:777011,x:23.7,y:28.7,sprite:1165,name:'Previous owner’s notebook',kind:'readable',text:'I planted moonleaf, sunsage and bitterroot in the three beds east of the cottage. Pick them for your own use; leave the roots sound and they will grow back. The hearth is a safe place to cook and prepare herbs. Supplies are in the pantry chest. There is a sword in the bedroom chest: take it and equip it if you wish. The old cave northeast of the garden shelters undead. I kept its path marked, but never brought those creatures home. The southern trail leads back to Haven. Stay, wander, or leave; the choice is yours.'},
+  {mapID:HOME,index:777012,x:28.2,y:32.8,sprite:1163,name:'Herb garden label',kind:'readable',text:'Moonleaf, sunsage, bitterroot. I planted these herbs long ago. Feel free to gather them for your own use. The pale flowers in the meadow are simply flowers; the broad-leafed plants in these beds are the herbs.'},
+  {mapID:HOME,index:777013,x:18.4,y:29.4,sprite:1169,name:'Bedroom chest',kind:'container',loot:[{item:sword,count:1}]},
+  {mapID:HOME,index:777014,x:24.1,y:31.7,sprite:1169,name:'Pantry chest',kind:'container',loot:[{item:{key:'material:raw_meat',name:'Raw meat',kind:'material'},count:2},{item:{key:'herb:moonleaf',name:'Moonleaf',kind:'herb',herbId:'moonleaf'},count:2}]},
+  {mapID:HOME,index:777015,x:33.7,y:18.7,sprite:1163,name:'Weathered cave warning',kind:'readable',text:'Undead within. The path back to the meadow is just inside the entrance. Bring a weapon and leave while you can still walk. Nothing in there is worth losing your home over.'},
+  {mapID:HOME,index:777016,x:35.5,y:16.5,sprite:1163,name:'Old cave entrance',kind:'entrance',destination:{mapID:CAVE,x:15.5,y:27.5,dir:0}},
+  {mapID:CAVE,index:778001,x:15.5,y:28.2,sprite:1163,name:'Moonlit cave mouth',kind:'entrance',destination:{mapID:HOME,x:35.5,y:18.2,dir:Math.PI}},
+  {mapID:HOME,index:777001,x:26.4,y:39.8,sprite:1163,name:'Southern trail to Haven',kind:'entrance',destination:{mapID:2,x:50.5,y:25.5,dir:3}}
+ ];
+ const props=[{mapID:HOME,index:777020,x:18.2,y:28.3,sprite:1170,name:'Cottage bed',service:'bed'},
+  {mapID:HOME,index:777021,x:18.1,y:32.4,sprite:-205,name:'Cottage hearth',service:'campfire'},
+  {mapID:HOME,index:777022,x:22.9,y:29.3,sprite:1166,name:'Reading candle'},
+  {mapID:CAVE,index:778002,x:13.8,y:26.2,sprite:1166,name:'Entrance candle'}];
+ const herbIds=['moonleaf','sunsage','bitterroot'],herbNames=['Moonleaf','Sunsage','Bitterroot'];
+ const garden=herbIds.flatMap((id,i)=>[0,1,2].map(j=>({id:`777:garden:${i}:${j}`,x:28.5+i*2,y:28.5+j*1.5,speciesIndex:i,difficulty:i,item:{key:'herb:'+id,name:herbNames[i],kind:'herb',herbId:id}})));
+ const get=(map,index)=>objects.find(o=>o.mapID===+map&&o.index===+index);
+ const claim=o=>o.mapID+':'+o.index;
+ const actions=o=>o.kind==='readable'?['read']:o.kind==='container'?['open']:['enter'];
+ function describe(o,claims={}){return {kind:o.kind,actions:actions(o),...(o.kind==='container'?{opened:!!claims[claim(o)]}:{})};}
+ function resolve(o,action,claims){if(!o||!actions(o).includes(action))throw Error('That action is not offered by this object.');
+  if(action==='read')return {ok:true,status:'read',name:o.name,text:o.text,npcIndex:o.index,mapID:o.mapID};
+  if(action==='open'){const k=claim(o);if(claims[k])return {ok:true,status:'empty',name:o.name,npcIndex:o.index,mapID:o.mapID,loot:[]};claims[k]=true;return {ok:true,status:'opened',name:o.name,npcIndex:o.index,mapID:o.mapID,loot:JSON.parse(JSON.stringify(o.loot))};}
+  return {ok:true,status:'entered',name:o.name,npcIndex:o.index,mapID:o.mapID,destination:{...o.destination}};
+ }
+ function geometry(m){
+  m.name='Moonlit Meadow · The unclaimed cottage';m.description='A wooden cottage rests among the pale flowers. Three planted herb beds lie east of its door; a marked path climbs toward an old cave.';m.noWildHerbs=true;m.spawn={...spawn};m.slabs??=[];
+  // Two rooms behind a generous hearth room. Full-height open doorways and broad paths.
+  for(let y=27;y<=34;y++)for(let x=16;x<=25;x++){
+   m.maze[y][x]=0;m.slabs=m.slabs.filter(s=>s.x!==x||s.y!==y);
+   const wall=y===27||y===34||x===16||x===25,door=y===34&&(x===22||x===23);
+   if(wall&&!door)m.slabs.push({x,y,bottom:0,top:2.1,tile:1});
+   if(door)m.slabs.push({x,y,bottom:1.75,top:2.1,tile:1});
+   m.slabs.push({x,y,bottom:2.1,top:2.32+(.5-Math.abs(x-20.5)/10)*.5,tile:1});
+  }
+  for(let y=28;y<=30;y++)m.slabs.push({x:21,y,bottom:0,top:2.1,tile:1});
+  for(let x=17;x<=24;x++)if(![19,23].includes(x))m.slabs.push({x,y:31,bottom:0,top:2.1,tile:1});
+  m.slabs.push({x:17,y:32,bottom:0,top:2.9,tile:10}); // stone chimney
+  for(let y=12;y<=16;y++)for(let x=33;x<=38;x++){
+   const opening=(x===35||x===36)&&y>=14;
+   m.slabs.push({x,y,bottom:opening?1.8:0,top:2.4+.5*Math.sin(x+y),tile:10});
+  }
+  return m;
+ }
+ function cave(){const maze=Array.from({length:32},()=>Array(32).fill(10));const dig=(x,y,w,h)=>{for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)maze[j][i]=0;};
+  dig(12,24,8,6);dig(14,17,3,9);dig(9,12,12,7);dig(18,9,8,6);dig(21,5,6,6);dig(4,7,8,7);dig(9,12,5,3);
+  return {name:'Old Cave · Beneath the meadow',description:'The air is cold beneath the rock. Daylight marks the way out behind you.',maze,slabs:[],npcs:[],wildlife:[],outdoors:false,mapKind:'dungeon',biome:'Cave',weather:'clear',floorColor:'#42444a',skyColor:'#090b10',noWildHerbs:true,spawn:{x:15.5,y:27.5,dir:0}};
+ }
+ const clear=(x,y)=>x>15&&x<26.5&&y>26&&y<36.6||x>27&&x<34&&y>27&&y<34||x>32&&x<40&&y>11&&y<19||Math.hypot(x-22.5,y-36)<2||Math.abs(y-34.8)<.8&&x>23&&x<33||Math.hypot(x-(33.5+(26-y)*.2),0)<.85&&y>17&&y<29;
+ return {HOME,CAVE,spawn,sword,objects,props,garden,get,claim,actions,describe,resolve,geometry,cave,clear};
+})();globalThis.BMHome127=BMHome127;
+
+const BMCottage127=(()=>{
+ const H=BMHome127,R=BMSouthernRoads;
+ if(MAP_DB[H.CAVE])throw Error('Cottage cave map 778 is already occupied');
+ const m=H.geometry(MAP_DB[H.HOME]);MAP_DB[H.CAVE]=H.cave();
+ H.objects.find(o=>o.index===777001).destination={...BMTintagelCoast.haven,mapID:2};
+ Dungeon.defaultSpawns[H.HOME]={...H.spawn};Dungeon.defaultSpawns[H.CAVE]={...MAP_DB[H.CAVE].spawn};
+ Dungeon.mapEnvironments[H.CAVE]={fade:.4,mid:'#13151b'};
+ const floor=[{x:17,y:28,w:8,h:6,color:'#766052'},{x:21.7,y:34,w:2.6,h:4,color:'#53504a'},{x:23,y:34,w:10,h:1.5,color:'#494739'}];
+ for(let i=0;i<3;i++)floor.push({x:28+i*2,y:28,w:1.1,h:4,color:'#342c29'});
+ for(let y=18;y<29;y++)floor.push({x:32.8+(26-y)*.2,y,w:1.6,h:1,color:'#454541'});
+ BMGuildDecor.rawAppendSurface(H.HOME,floor);
+ BMGuildDecor.addSurface(H.CAVE,[{x:12,y:24,w:8,h:6,color:'#4c4a46'},{x:14,y:17,w:3,h:8,color:'#454447'}]);
+ const plants=BMMeadow125.plants;for(let i=plants.length-1;i>=0;i--)if(H.clear(plants[i].x,plants[i].y))plants.splice(i,1);
+ BMMeadow125.cells.clear();for(const p of plants){const key=Math.floor(p.x/4)+','+Math.floor(p.y/4);if(!BMMeadow125.cells.has(key))BMMeadow125.cells.set(key,[]);BMMeadow125.cells.get(key).push(p);}
+ const garden=H.garden.map(p=>({x:p.x,y:p.y,groundZ:0,key:p.id,speciesIndex:p.speciesIndex,type:-201-p.speciesIndex,role:'herb',alignment:'plant',visible:true,isDead:false,cachedBillboard:BMHerbs.imageFor(p.speciesIndex),name:p.item.name}));
+ function herbs(d=Dungeon){return garden.filter(p=>!(Number(d.memory?.herbHarvests?.[p.key])>Date.now())&&d.memory?.herbHarvests?.[p.key]!==true);}
+ function claims(d){return d.memory.worldObjectClaims??={};}
+ function nearby(n,d){return n&&!n.isDead&&Math.hypot(d.x-n.x,d.y-n.y)<=2.5&&SUNCAT_FIELD.sight(d,d,n);}
+ function open(o,n,d){if(!nearby(n,d))return false;
+  if(claims(d)[H.claim(o)]){BMClassicDialogue.show({speaker:n,text:'The chest is empty.'});return false;}
+  // Inventory is checked before the world claim is committed.
+  for(const q of o.loot)if(!BMInventory.add({...q.item},q.count))return false;
+  H.resolve(o,'open',claims(d));d.requestSave();
+  BMClassicDialogue.show({speaker:n,text:'You take '+o.loot.map(q=>q.item.name+' × '+q.count).join(', ')+'.'});
+  BMActivity.record('container_opened','Opened '+o.name+'.',{mapID:d.mapID,npcIndex:o.index,loot:o.loot});return true;
+ }
+ function interact(o,n,d){if(!nearby(n,d))return false;
+  if(o.kind==='readable')return BMClassicDialogue.show({speaker:n,text:o.text});
+  if(o.kind==='container')return open(o,n,d);
+  return BMClassicDialogue.show({speaker:n,text:o.mapID===H.CAVE?'The mouth of the cave opens onto the flower meadow.':o.index===777001?'The southern trail returns to Haven.':'Cold air drifts out between the rocks.',options:[{label:o.mapID===H.CAVE?'Return to meadow':o.index===777001?'Return to Haven':'Enter cave',action(){if(nearby(n,d))R.enter(d,o.destination.mapID,o.destination);}},{label:'Stay here',action:()=>BMClassicDialogue.dismiss()}]});
+ }
+ for(const o of H.objects){
+  const existing=MAP_DB[o.mapID].npcs.find(n=>n.index===o.index);
+  if(existing){existing.name=o.name;existing.service='world-object';existing.interactionVerb='Use';}
+  else R.actor(o.mapID,o.index,o.x,o.y,o.sprite,o.name,{service:'world-object',interactionVerb:o.kind==='readable'?'Read':o.kind==='container'?'Loot':'Use',onSpawn(n){BMClassArt.resource(n,o.sprite);n.fixedWorldAngle=Math.PI/2;n.worldObject=H.describe(o);}});
+  R.bind(o.mapID,o.index,(n,d)=>interact(o,n,d));
+ }
+ for(const p of H.props){R.actor(p.mapID,p.index,p.x,p.y,p.sprite,p.name,{service:p.service,role:p.service?'dialogue':'decoration',interactionVerb:p.service==='bed'?'Rest':'Use',onSpawn(n){if(p.sprite>0)BMClassArt.resource(n,p.sprite);n.fixedWorldAngle=Math.PI/2;n.hideMinimap=!p.service;}});if(p.service)R.bind(p.mapID,p.index,(n,d)=>BMRest112.use(n,d));}
+ const enemies=[{index:778101,x:11.5,y:15.5,sprite:276,name:'Restless skeleton'}, {index:778102,x:6.5,y:9.5,sprite:276,name:'Buried guard'}, {index:778103,x:24.5,y:7.5,sprite:318,name:'Cave ghoul'}];
+ for(const n of enemies)MAP_DB[H.CAVE].npcs.push({...n,role:'battle',alignment:'foe',state:'wandering',deck:[n.sprite,50],homeX:n.x,homeY:n.y,onSpawn(actor){actor.name=n.name;actor.homeX=n.x;actor.homeY=n.y;}});
+ for(const id of[H.HOME,H.CAVE])BMLayers.invalidate(MAP_DB[id]);
+ function observed(map,index,memory){const o=H.get(map,index);return o?H.describe(o,memory.worldObjectClaims||{}):null;}
+ function action(args,a,d){const n=d.npcs.find(n=>n.index===args.npcIndex&&!n.isDead&&!n.isDying),o=H.get(d.mapID,args.npcIndex);
+  if(!o||!n||Math.hypot(a.x-n.x,a.y-n.y)>2.5||!SUNCAT_FIELD.sight(d,a,n))throw Error('The object is absent, obstructed or out of reach.');
+  if(!['read','open'].includes(args.action))throw Error('Unsupported object transaction.');return H.resolve(o,args.action,claims(d));
+ }
+ return {herbs,garden,observed,action,open,interact};
+})();globalThis.BMCottage127=BMCottage127;
+
 /* v124: distinct class appearances, with the existing animated knight rig. */
 const BMClassSprites124={squire:1395,knight:158,'dragon-knight':1398};
 {const previous=spriteDefinition;spriteDefinition=function(id){id=Number(id);if(id>=1395&&id<=1400){const start=id<1398?1395:1398;return {id,base:58+id-start,variant:start===1395?'squire124':'dragon124',start,end:start+2};}return previous(id);};
@@ -115162,6 +115279,147 @@ const BMQuestItems112=(()=>{
  function portrait(parent,v){if(!isQuest(v)||v.key==='quest:cherry87')return false;const c=document.createElement('canvas');c.className='thumb';c.setAttribute('role','img');c.setAttribute('aria-label',v.name);c.style.imageRendering='pixelated';parent.append(c);draw(c,v);return true;}
  return {entries,isQuest,category,icon,draw,portrait};
 })();globalThis.BMQuestItems112=BMQuestItems112;
+
+/* v128: local, render-only biome vegetation. No actors, collision or network updates. */
+const BMWorldFlora128=(()=>{
+ const H=BMRealmTerrain126.hash,N=BMRealmTerrain126.noise,images=new Map();let current=null;
+ const profiles={
+  coast:{density:.49,height:.30,kinds:['coast','grass','grass','coast']},
+  moor:{density:.64,height:.38,kinds:['heather','grass','heather','grass']},
+  forest:{density:.65,height:.48,kinds:['fern','woodland','grass','fern']},
+  field:{density:.59,height:.43,kinds:['meadow','grass','grass','meadow']},
+  dry:{density:.16,height:.28,kinds:['dry','dry','grass','dry']},
+  alpine:{density:.23,height:.22,kinds:['alpine','grass','alpine','grass']},
+  river:{density:.58,height:.44,kinds:['meadow','grass','marsh','grass']},
+  tropical:{density:.71,height:.52,kinds:['fern','woodland','grass','fern']},
+  moonlit:{density:1.05,height:.63,kinds:['moonflower','moonflower','fern','moonflower']}
+ };
+ function profile(id,m=MAP_DB[id]){
+  if(!m?.outdoors||[139,777,999].includes(+id)||m.mapKind==='interior'||m.mapKind==='dungeon')return null;
+  if([45,151].includes(+id))return 'moonlit'; // Dacia is the atlas name of the Transylvania region.
+  if(+id===0)return 'moor';if(+id===2||+id===-2)return 'coast';
+  if([6,9,118,119,120,121,128].includes(+id))return 'alpine';
+  if([4,42,43,44,49,71,72,73,74,78,83,162,163,166,167,184,185,191,192].includes(+id))return 'dry';
+  if([170,174,175,176,177,180].includes(+id))return 'tropical';
+  if(+id===182)return 'river';if([123,124,125,165,168].includes(+id))return 'field';
+  const b=[m.biome,m.name].join(' ').toLowerCase();
+  if(/sea|ocean|samudra|channel|mare |sinus/.test(b))return 'coast';
+  if(/mountain|snow|ice|alpine|cairngorm|kunlun/.test(b))return 'alpine';
+  if(/desert|dunes|tarim/.test(b))return 'dry';
+  if(/moor|upland|heath/.test(b))return 'moor';
+  if(/forest|sylvan|wood|wilderness|orcynia/.test(b))return 'forest';
+  if(/coast|harbour|shore|quay/.test(b))return 'coast';
+  return 'field';
+ }
+ function image(kind,v,f=0){
+  if(kind==='moonflower'||kind==='meadow')return BMMeadow125.images.get('flowers:'+v+':'+f);
+  if(['woodland','marsh','alpine','dry'].includes(kind))return BMRealmFlora126.image(kind,v%4,f);
+  const key=kind+':'+v+':'+f;if(images.has(key))return images.get(key);
+  const c=document.createElement('canvas');c.width=48;c.height=64;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+  for(let j=0;j<6;j++){
+   const base=4+j*8,top=20+Math.floor(H(j,v)*24),sway=Math.round(Math.sin(f*Math.PI/2+v+j*.4)*(kind==='coast'?3:2)),x=base+sway;
+   g.strokeStyle=kind==='coast'?'#78825a':kind==='heather'?'#59664a':'#455b43';g.lineWidth=1;
+   g.beginPath();g.moveTo(base,63);g.lineTo(base+1,top+10);g.lineTo(x,top);g.stroke();
+   if(kind==='fern'){
+    for(let k=0;k<6;k++){const y=top+6+k*5,w=2+Math.min(k,5-k)*2;g.fillStyle=k%2?'#4c6b4d':'#385943';g.fillRect(base-w,y,w,2);g.fillRect(base+1,y+2,w,2);}
+   }else if(kind==='heather'){
+    for(let k=0;k<4;k++){g.fillStyle=(j+k+v)%3?'#98658e':'#c196ad';g.fillRect(x-2+(k%2),top+k*4,4,3);}
+    g.fillStyle='#4c6343';g.fillRect(base-3,49,7,2);
+   }else if(kind==='coast'){
+    g.fillStyle='#8e9b68';g.fillRect(base-2,51,2,10);g.fillRect(base+2,47,1,14);
+    if(v%3===0&&j%2===0){g.fillStyle='#d8a4bc';g.fillRect(x-3,top,7,3);g.fillRect(x-2,top-2,5,7);g.fillStyle='#edcfce';g.fillRect(x-1,top,3,2);}
+   }else{
+    g.strokeStyle=v%2?'#6b7950':'#829065';g.beginPath();g.moveTo(base,63);g.lineTo(base-4,top+12);g.moveTo(base,63);g.lineTo(base+5,top+7);g.stroke();
+   }
+  }images.set(key,c);return c;
+ }
+ function naturalColor(color){if(!color)return true;const m=/^#([0-9a-f]{6})$/i.exec(color);if(!m)return false;const v=parseInt(m[1],16),r=v>>>16,g=v>>8&255,b=v&255;return g>r+3&&g>b;}
+ function build(d){
+  const id=+d.mapID,m=MAP_DB[id],name=profile(id,m);if(!name)return null;
+  const grid=d.maze,w=grid[0].length,h=grid.length,mask=new Uint8Array(w*h),height=new Float32Array(w*h),mountain=new Uint8Array(w*h),cells=new Map(),plants=[],p=profiles[name];
+  const slabs=m.creator?.slabs||m.slabs||[];
+  for(const s of slabs){const i=s.y*w+s.x;if(s.mountain){height[i]=Math.max(height[i],s.top);mountain[i]=1;}else mask[i]=1;}
+  // Authored floor paint marks roads, rooms, yards and entrances. Natural green ground is retained.
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+   const i=y*w+x,shade=BMGuildDecor.color(id,x,y);
+   if(grid[y][x]!==0||shade&&!naturalColor(shade)&&!['#ad9977','#ae9976','#bcb08c','#9b998b','#9e9f72','#a29f89','#e6ecee','#e8eef4','#878b82','#94989c'].includes(shade)&&!(mountain[i]&&['#797b6a','#989b94'].includes(shade)))mask[i]=1;
+  }
+  const clear=(x,y,r)=>{if(!Number.isFinite(x+y))return;for(let yy=Math.max(0,Math.floor(y-r));yy<Math.min(h,Math.ceil(y+r));yy++)for(let xx=Math.max(0,Math.floor(x-r));xx<Math.min(w,Math.ceil(x+r));xx++)if(Math.hypot(xx+.5-x,yy+.5-y)<r+.55)mask[yy*w+xx]=1;};
+  for(const n of m.npcs||[])clear(n.x,n.y,1.15);
+  for(const n of d.npcs||[])if(n.role!=='battle'&&n.role!=='wildlife'&&n.state==='stationary')clear(n.x,n.y,1.15);
+  const spawn=m.spawn||Dungeon.defaultSpawns[id];if(spawn)clear(spawn.x,spawn.y,2);
+  const wet=(x,y)=>TERRAIN_SURFACES[grid[y]?.[x]]?.kind==='water';
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+   const i=y*w+x;if(mask[i])continue;
+   // Keep the step/cliff edges bare; plants sit on the actual plateau height.
+   const z=height[i];if(mountain[i]&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>Math.abs(height[(y+dy)*w+x+dx]-z)>.12))continue;
+   const water=[[-2,0],[2,0],[0,-2],[0,2]].some(([dx,dy])=>wet(x+dx,y+dy));
+   const snow=mountain[i]&&Number.isFinite(m.snowLine)&&z>=m.snowLine,seed=id+128;
+   const density=p.density*(.30+.95*N(x/6,y/6,seed))*(snow?.10:mountain[i]&&id!==2?.35:1);
+   for(let j=0;j<(name==='moonlit'?2:1);j++){
+    if(H(x,y,seed+j*41)>density/(name==='moonlit'?1.3:1))continue;
+    let kind=p.kinds[Math.floor(H(y,x,seed+20+j)*p.kinds.length)];
+    if(snow)kind='alpine';else if(water&&['moor','forest','river','tropical','dry'].includes(name))kind='marsh';
+    const px=x+.17+.66*H(x,y,seed+j*11+1),py=y+.17+.66*H(y,x,seed+j*13+2),variant=Math.floor(H(x,y,seed+17+j)*((kind==='moonflower'||kind==='meadow')?8:4));
+    const plant={x:px,y:py,kind,variant,height:(kind==='marsh'?.52:p.height)*(.72+H(y,x,seed+j+29)*.4),width:.62+H(y,x,seed+j+30)*.25,groundZ:z,phase:H(x,y,seed+j+31)*6.28,_meadow125:true,_worldFlora128:true,type:-777,role:'scenery',visible:true};
+    plants.push(plant);const key=Math.floor(px/8)+','+Math.floor(py/8);if(!cells.has(key))cells.set(key,[]);cells.get(key).push(plant);
+   }
+  }
+  for(const kind of new Set(plants.map(p=>p.kind)))for(let v=0;v<((kind==='moonflower'||kind==='meadow')?8:4);v++)for(let f=0;f<4;f++)image(kind,v,f);
+  return {id,name,plants,cells,mask,height,w,h};
+ }
+ function install(d){current=build(d);return current;}
+ function nearby(c,x,y,r){const out=[];for(let yy=Math.floor((y-r)/8);yy<=Math.floor((y+r)/8);yy++)for(let xx=Math.floor((x-r)/8);xx<=Math.floor((x+r)/8);xx++)for(const p of c.cells.get(xx+','+yy)||[])out.push(p);return out;}
+ function visible(d,x,y,dx,dy,px,py){
+  if(current?.id!==+d.mapID)return [];const {count,distance}=BMMeadow125.limits(),inv=1/(px*dy-dx*py),rows=[],herbs=d===Dungeon?BMHerbs.world():[];
+  for(const p of nearby(current,x,y,distance)){
+   if(d.maze[Math.floor(p.y)]?.[Math.floor(p.x)]!==0||herbs.some(h=>Math.hypot(h.x-p.x,h.y-p.y)<.75))continue;
+   const xx=p.x-x,yy=p.y-y,dist=xx*xx+yy*yy,z=inv*(-py*xx+px*yy),sx=inv*(dy*xx-dx*yy);
+   if(dist<distance*distance&&z>.16&&Math.abs(sx)<z*1.2+p.width)rows.push({p,dist});
+  }rows.sort((a,b)=>a.dist-b.dist);return rows.slice(0,count).map(r=>r.p);
+ }
+ function append(d,list,...args){list.push(...visible(d,...args));}
+ function clip(d,c,left,top,right,bottom,depth,vx,vy,vw,vh){
+  if(BMLayers.active(d)){c.clip(BMLayers.clip(d,left,top,right,bottom,depth,vx,vy,vw,vh));return;}
+  // Ordinary maps keep their existing collision mode; use their native projected wall spans.
+  const path=new Path2D(),stride=d.maxHitsPerRay*3;
+  for(let x=Math.max(0,Math.floor(left-vx));x<Math.min(vw,Math.ceil(right-vx));x+=2){
+   let spans=[[Math.max(top,vy),Math.min(bottom,vy+vh)]];
+   for(let i=x*stride,end=i+(d.zBufferCounts?.[x]||0)*3;i<end;i+=3){if(d.zBuffer[i]>=depth)continue;const a=vy+d.zBuffer[i+2],b=vy+vh,next=[];for(const[l,h]of spans){if(b<=l||a>=h)next.push([l,h]);else{if(a>l)next.push([l,a]);if(b<h)next.push([b,h]);}}spans=next;}
+   for(const[a,b]of spans)if(b>a)path.rect(vx+x,a,Math.min(2,vw-x),b-a);
+  }c.clip(path);
+ }
+ const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(...args){const result=load.apply(this,args);if(result!==false)install(this);return result;};
+ const draw2D=BMHerbs.draw2D;BMHerbs.draw2D=function(cx,cy,size,range){
+  if(current?.id===+Dungeon.mapID){const u=tL/10*size;ctx.save();for(const p of nearby(current,Dungeon.x,Dungeon.y,range)){const dx=p.x-Dungeon.x,dy=p.y-Dungeon.y;if(Math.abs(dx)>range||Math.abs(dy)>range)continue;ctx.fillStyle=p.kind==='moonflower'?'#bbaebe':p.kind==='heather'?'#9a7293':p.kind==='coast'?'#a2a67d':'#75896a';ctx.fillRect(tX+tL/10*cx+dx*u,tY+tH/10*cy+dy*u,Math.max(1,u*.10),Math.max(1,u*.10));}ctx.restore();}return draw2D.call(this,cx,cy,size,range);
+ };
+ const colors=BMGothic67.colors;BMGothic67.colors=function(d,top,bottom){const hour=BMGothic67.hour(d,d.memory?.worldHour??12);return [45,151].includes(+d.mapID)&&(hour>=19||hour<6)?{top:'#050913',bottom:'#263448'}:colors(d,top,bottom);};
+ return {profiles,profile,image,images,build,install,visible,append,clip,get current(){return current;}};
+})();globalThis.BMWorldFlora128=BMWorldFlora128;
+
+/* An open refuge door is scenery, not a solid tile or a second interactive NPC. */
+const BMRefugeDoor128=(()=>{
+ let current=null;const art={};
+ function image(kind){if(art[kind])return art[kind];const c=document.createElement('canvas');c.width=64;c.height=96;const g=c.getContext('2d');
+  if(kind==='frame'){g.fillStyle='#58422d';g.fillRect(0,0,6,96);g.fillRect(58,0,6,96);g.fillRect(0,0,64,8);g.fillStyle='#b3986c';g.fillRect(2,9,2,86);g.fillRect(60,9,2,86);g.fillRect(6,2,52,2);}
+  else{g.fillStyle='#765235';g.fillRect(0,0,64,96);for(let x=2;x<64;x+=10){g.fillStyle='#4e3828';g.fillRect(x,0,1,96);g.fillStyle='#a17c4e';g.fillRect(x+3,3,1,89);}g.fillStyle='#3b3b36';g.fillRect(0,16,61,5);g.fillRect(0,75,61,5);g.fillStyle='#bcaa78';g.fillRect(51,43,4,9);for(const x of[4,23,43])for(const y of[17,76])g.fillRect(x,y,2,2);}
+  return art[kind]=c;
+ }
+ function install(d,data){
+  current=null;if(+d.mapID!==999||d.customMapInstance!==data?.instanceId||!data.safeRoom)return;
+  const r=data.safeRoom,x=Math.floor(r.door.x),y=Math.floor(r.door.y);d.maze[y][x]=0;r.version=2;
+  // Repair cached old instances even when loadCustomMap takes its same-instance fast path.
+  const cached=window.latestCustomMapData;if(cached?.instanceId===data.instanceId){cached.maze[y][x]=0;cached.safeRoom={...r};BMStorage.setItem('suncat.lastCustomMap',JSON.stringify(cached));}
+  current={id:data.instanceId,sprites:[
+   {x:r.door.x,y:r.door.y,worldZ:.54,type:-778,role:'scenery',visible:true,nonBlocking:true,wallFaces:[{normalX:0,normalY:1,width:1,height:1.08,twoSided:true,image:image('frame')}]},
+   {x:x+.07,y:r.door.y+.39,worldZ:.50,type:-778,role:'scenery',visible:true,nonBlocking:true,wallFaces:[{normalX:1,normalY:0,width:.78,height:1,twoSided:true,image:image('leaf')}]}
+  ]};
+ }
+ const load=Explore.prototype.loadCustomMap;Explore.prototype.loadCustomMap=function(data){const result=load.call(this,data);install(this,data);return result;};
+ const append=(d,list)=>{if(+d.mapID===999&&current?.id===d.customMapInstance)list.push(...current.sprites);};
+ return {image,install,append,get current(){return current;}};
+})();globalThis.BMRefugeDoor128=BMRefugeDoor128;
+
 
 globalThis.BMResponsive113={upper:upperHUDLayout,controls:controlHUDLayout};
 BMContent.installEmbedded();await bootGame();BMMovementCourtyard.previewStart();BMCreator.previewStart();}catch(error){window.BattleMageStartup?.report(error,"Saved-game startup");if(window.BM_CREATOR_PREVIEW)parent.postMessage({type:"bm-creator-error",message:String(error.message||error)},"*");}})();
