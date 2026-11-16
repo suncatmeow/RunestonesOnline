@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 130,
-  "serverVersion": "1.10.70",
+  "version": 132,
+  "serverVersion": "1.10.71",
   "date": "2026-11-15",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v129 / server package 1.10.69",
+  "supersedes": "BattleMage Runestones v131 / server package 1.10.71",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,12 +23,12 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "v130 client / server package 1.10.70 / terrain 129 / motion 103. Update both client and server for overhead foliage, atlas browsing and the corrected DM/NPC dialogue behavior. Preserve saved memory files. No commit, push or deployment performed.",
+    "deployment": "v132 client / unchanged server package 1.10.71 / terrain 131 / motion 103. This pass requires only the client update if v131 is already installed. The bundled server, package metadata and dependencies are byte-identical to v131. Preserve saved memory files. No commit, push or deployment performed.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
-    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v130 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
+    "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "fadbba8cac540b7bed0dd0fc4f5580d185e5488a9797266a129acb995f10f9b5",
-  "serverSha256": "8a8f2cf8c861ca1e8a5d61b7063044ea830a6fa6fdf049a54dad71826e2ccee0",
+  "clientSha256": "66036eee52046dafd9047b504922534ff53917d35464bbc8541b5bb029a9e16f",
+  "serverSha256": "90b7140c2cb96b9da9c407ffedb9afb8b953d66980c866c502914ed81ad57697",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -67,126 +67,37 @@
     }
   },
   "geography": {
-    "newMapIDs": [
-      320,
-      321,
-      322,
-      323,
-      324,
-      325,
-      326,
-      327,
-      328,
-      329,
-      330,
-      331,
-      332,
-      333,
-      334,
-      335,
-      336,
-      337,
-      338,
-      339,
-      340,
-      341,
-      342,
-      343,
-      344,
-      345,
-      346,
-      347,
-      348,
-      349,
-      350,
-      351,
-      352,
-      353,
-      354,
-      355,
-      356,
-      357,
-      358,
-      359,
-      360,
-      361,
-      362,
-      363,
-      364,
-      365,
-      366,
-      367,
-      368,
-      369,
-      370,
-      371,
-      372,
-      373,
-      374,
-      375,
-      376,
-      377,
-      378,
-      379,
-      380,
-      381,
-      382,
-      383,
-      384,
-      385,
-      386,
-      387,
-      388,
-      389,
-      390,
-      391,
-      392,
-      393,
-      394,
-      395,
-      396,
-      397
+    "newMapIDs": [],
+    "modifiedExistingMapIDs": [
+      100,
+      102
     ],
-    "modifiedExistingMapIDs": [],
     "atlasDimensions": {
       "columns": 17,
       "rows": 10
     },
     "totalAtlasCharts": 170,
     "sharedBordersChecked": 152,
-    "source": "Google Maps visual coastline reference; Natural Earth public-domain 1:110m land, lakes and rivers. Existing eastern chart scale retained; relief and vegetation are authored game terrain, not measured elevations.",
+    "source": "Natural Earth public-domain 1:10m land, Ireland outline; compressed to the existing atlas. Tory is enlarged for playability.",
     "projection": {
-      "longitudes": [
-        35.0,
-        48.0,
-        61.0,
-        74.0,
-        87.0,
-        100.0,
-        113.0,
-        126.0,
-        139.0,
-        152.0,
-        166.0,
-        180.0
+      "scope": "Ireland only",
+      "chartedCells": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ]
       ],
-      "latitudes": [
-        80.0,
-        72.0,
-        64.0,
-        56.0,
-        48.0,
-        36.0,
-        24.0,
-        12.0,
-        0.0,
-        -12.0,
-        -24.0
-      ],
-      "columnOrigin": 6,
       "sharedEdge": 99
     },
-    "interpretation": "Fill the 38 formerly empty atlas slots, plus 40 eastward charts, preserving all 147 existing map definitions. New geography includes the northern Eurasian continent, Korean peninsula, Japanese islands, Russian Far East, Southeast Asian archipelago, northern Australian coast and connecting seas. Australia is only the northern coast within this atlas extent; its full continent and the Americas remain outside this pass."
+    "interpretation": "Add real Ireland terrain in two previously ocean-only charts, with an enlarged Tory island off the northwest coast. Existing British regions remain unchanged; Cairngorm is a broad eastern-Highlands game region, not a precisely bounded mountain-range map.",
+    "atlasAnchorUpdates": [
+      137,
+      145
+    ]
   },
   "naming": {
     "maps": {
@@ -325,6 +236,20 @@
           "Eastern Indian Ocean"
         ],
         "nameOrigin": "Ancient Sanskrit word for sea or ocean, adopted as a game label, not a recovered prehistoric proper name."
+      },
+      "100": {
+        "name": "Ériu · Northern Coast",
+        "aliases": [
+          "Ireland"
+        ],
+        "nameOrigin": "Traditional Irish name used for an adapted fantasy region."
+      },
+      "102": {
+        "name": "Ériu · Southern Coast",
+        "aliases": [
+          "Ireland"
+        ],
+        "nameOrigin": "Traditional Irish name used for an adapted fantasy region."
       }
     },
     "approvedWesternNames": "Preserved exactly, including Kemet, Ger and Dacia.",
@@ -384,8 +309,8 @@
     }
   },
   "devlog": {
-    "current": "v130",
-    "history": "Flowers/maps/guild-prose pass added; v129 identified as the previous terrain release."
+    "current": "v132",
+    "history": "Original guild novel and Mastermind fixes added; v131 now labeled previous pass."
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -411,30 +336,40 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Isometric and top-down views now draw the same cached flower, grass, heather, fern and other biome sprites used by 3D, replacing colored-dot approximations. Includes Suncat’s map777 meadow, generated custom realms, original regions and the v129 terrain extension.",
-    "Overhead vegetation uses current-map spatial chunks, existing quality caps, line-of-sight checks, ground heights, nearby-herb clearance and the isometric wall/actor depth queue. No decorative actors, collision or network traffic are added.",
-    "The ISO/2D switch and rotation toolbar reserves the actual stat and XP bar rectangles, chat blocks and existing controls. Its placement cache reacts to stat-width and chat-layout changes. Tested across 40 portrait, landscape and square configurations, including both movement hands and standard/extra-large controls.",
-    "A World globe button appears in the expanded minimap. It opens the entire world atlas with all charts visible, without changing local exploration flags. This opening cannot travel, even if an old teleport flag remains. The hack atlas and item/spell teleport entry points retain explicit travel behavior.",
-    "Nineteen of 27 guild-history chapters are polished with concrete combat, resource pressure, earned rank progression, character exchanges and dry humor. IDs, sequence, hooks and system outcomes are unchanged. All 69 entries of the Fool / Dark Emperor archive are byte-for-byte unchanged.",
-    "The server applies an explicit third-person DM contract after role/persona selection, including routine narration. One speech-only repair handles first/second-person viewpoint slips; failed repair suppresses that narration without rerunning tools or inventing a substitute event. Character speech and oracle readings keep their own viewpoints.",
-    "Valid repeated NPC answers are no longer discarded as silence after revision. Deliberate silence remains attached to its own visible question in the conversation transcript instead of producing an ambiguous footer under an older answer.",
-    "Oceanus Atlanticus · South (map116) west of Ger is an existing ocean chart whose land fringe continues Ger’s shoreline. Its coast and all other terrain are unchanged in this pass."
+    "Guild history becomes an original 39-episode novel covering all 28 guild-board commission entries from F-rank through the finale. The 27 established chapter IDs remain; 12 new episodes make escorts, rescue, infestation, repeatable bounties, extraction and the splitting raid visible in the story. The prose expands from 5,235 to 14,636 words, plus 1,802 words of guide notes.",
+    "Each episode has an expandable Quest guide with objectives, progression gates and supported branches. Both ends retain Previous/Next navigation. The reader identifies this as one dramatized spoiler route; reading does not accept a quest, award an item or change player progression. No fixed 1,000-quest requirement is added.",
+    "The recruit has a practical original voice: useful loot, supply costs, awkward early victories and increasingly reliable field judgment. The 1,065-word Mastermind episode draws on the earlier jobs. No hack, fourth-wall exploit, borrowed novel passage, recreated outside scene or new identity reveal is introduced.",
+    "Mastermind combat uses fixed encounter-only STR 2d8+2, CON 3d8+2, INT 3d8+2 and AGI 2d10+2 in place of the weak generic avatar baseline. His existing two reserve calls, one Protect Orb and one Elixir remain finite. Fire and Defense remain repeatable. The ordinary avatar and other encounters retain their stats.",
+    "Protect Orb item wards are now recognized by tactical melee, projectiles, dash attacks and the ward display. Zero-charge wards no longer absorb extra hits while awaiting their owner’s next turn. Spell wards and item wards both stop exactly the remaining number of successful hits, for either side.",
+    "All 69 Fool/Dark Emperor entries, guild quest definitions, stronghold/finale progression and rewards, Solgata’s disappearance, the world terrain and the complete server are unchanged."
   ],
   "previousRelease": {
-    "version": 129,
-    "serverVersion": "1.10.69",
-    "summary": "The complete 170-chart atlas, 78 new Eurasian charts, all terrain, population and harvest locations remain unchanged."
+    "version": 131,
+    "serverVersion": "1.10.71",
+    "summary": "Eriu/Tory geography, atlas placement and rest/day-night skies retained."
   },
   "validation": {
-    "automatedCheckGroups": 94,
+    "automatedCheckGroups": 91,
     "counts": {
-      "savedConnectedClient": 70,
-      "freshOffline": 1,
-      "fullServer": 17,
-      "narratorAndNPCSpeech": 6,
-      "hudLayoutCombinations": 40
+      "focusedGuildAndCombat": 14,
+      "savedConnectedRegression": 76,
+      "freshOffline": 1
     },
     "checks": [
+      "39 linked guild episodes retain every original chapter ID and cover all 28 actual guild board entries",
+      "Promotion thresholds, examination interruption and repeatable bounty notes agree with live quest blueprints",
+      "Every guild chapter navigates forward and backward at both ends without changing player progress",
+      "Every main chapter navigates forward and backward at both ends without changing player progress",
+      "Mastermind receives fixed encounter-only stats with isolated previews and unchanged ordinary avatar stats",
+      "Boss spends only two calls, one Elixir and one Protect Orb through the real AI action path",
+      "Spell ward absorbs exactly three successful melee hits, then permits defeat before the next owner turn",
+      "Protect Orb absorbs exactly three successful melee hits, then permits defeat before the next owner turn",
+      "Spell ward absorbs exactly three successful projectile hits, then permits defeat before the next owner turn",
+      "Protect Orb absorbs exactly three successful projectile hits, then permits defeat before the next owner turn",
+      "Spell ward absorbs exactly three successful dash hits, then permits defeat before the next owner turn",
+      "Protect Orb absorbs exactly three successful dash hits, then permits defeat before the next owner turn",
+      "A depleted spell ward cannot mask a live item ward and failed attacks do not spend its charges",
+      "The real board entry installs the Mastermind setup and preserves the Solgata-only opening",
       "Connected presence timers wait while saved-world initialization is incomplete",
       "Connected portrait-loading timers execute without unhandled errors",
       "Connected presence uses the exported real clock with exact day/night and malformed-value rules",
@@ -461,7 +396,7 @@
       "Dialogue choices sit above a larger fixed-font bottom text box on portrait, landscape and square screens",
       "Landscape Jump grows and rises without changing the pad, Target or centered hotbar",
       "Map 777 is a cottage meadow with a walkable path and no decorative NPC population",
-      "Meadow loads at its safe spawn and uses local visual night without changing the world clock",
+      "Meadow loads at its safe spawn and uses the real clock without changing saved time",
       "Scenery budgets and camera culling work in four directions and all graphics settings",
       "Flower rendering uses cached art, normal depth ordering and wall clipping without target rings",
       "Meadow save retains map identity and deterministic scenery without serializing decorative actors",
@@ -505,56 +440,41 @@
       "Expanded minimap opens the complete browse-only atlas without revealing local exploration or allowing travel",
       "A separate teleport-enabled atlas opening still permits an explicit destination transfer",
       "NPC silence remains beside its own question and cannot overwrite a received answer",
-      "Fresh v130 initializes with current devlog and preserves the cottage and world foliage",
-      "Fresh server body starts outside the cottage; saved locations still resume exactly",
-      "Headless maps and actors match the initialized client; every object has a walking approach",
-      "Headless inspection exposes nearby objects without revealing unread pages",
-      "Suncat reads authored notebook text into his actual activity history",
-      "Opening the bedroom chest grants one owned sword; repeated opening and reload grant none",
-      "Equipping the real sword increases actual combat STR without consuming it; repeats do not stack",
-      "Independent gathering depletes a real garden node and records its item only once",
-      "Actual entrance action moves only Suncat into the cave and back",
-      "Independent container receipt survives save/restore and synchronizes claims",
-      "Body-only checkpoints recognize both new places",
-      "Unknown live opening recovers from its receipt exactly once",
-      "Server/client handoff carries opened containers both directions",
-      "Routine death records remain in journals, while only milestones have chat text",
-      "All 78 new charts and their atlas neighbours match the initialized client",
-      "Independent world observation exposes every new monster and matching forage nodes",
-      "Northern land uses real stepped ground for server movement and sight",
-      "New encounters retain normal loot tables and version metadata reports the matching release",
-      "DM viewpoint detection distinguishes narration from quoted NPC speech",
-      "Third-person prose passes without a model call; a viewpoint slip gets one speech-only repair",
-      "Failed repairs suppress the bad narration without inventing events; deliberate silence stays silent",
-      "All narrator requests receive the contract after persona selection; oracle and character speech are excluded",
-      "A repeated NPC response remains a visible answer after one revision, rather than false silence",
-      "Only explicit NPC silence returns a silent outcome"
+      "Ireland has a continuous mainland and a separate playable Tory island",
+      "New coasts load sparse wildlife, preserve aquatic habitat and grow biome plants",
+      "Existing tower and settled-shore maps use mainland anchors; atlas player dot appears on Tory",
+      "Tower travel keeps quest progress; distant interaction and early settled-shore entry are rejected",
+      "Rest advances noon to full night, night to daylight, and survives saving and reloading",
+      "Clear, rain and storm skies follow rest, while intentional cursed night remains explicit",
+      "Fresh v132 initializes with current devlog and preserves the cottage and world foliage"
     ],
     "static": {
-      "darkEmperorArchiveUnchanged": true,
-      "mainChapters": 69,
-      "guildChapters": 27,
-      "polishedChapters": 19,
-      "guildMetadataUnchanged": true,
-      "worldTerrainModuleUnchanged": true,
-      "oceanChartsUnchanged": true,
-      "sharedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
-      "atlasTeleportEntryPointsRetained": true
+      "darkEmperorByteIdentical": true,
+      "darkEmperorSha256": "46a15ab9d8298ac1b0c17e08194c1ffacf54a91103c604bdd833c20360cd617a",
+      "guildStoryByteIdentical": true,
+      "guildStorySha256": "f4b4d9019b0c47aa7d8e01be736f3001790f25b4b8e840fe57a46ecf47db1835",
+      "guildFinaleByteIdentical": true,
+      "guildFinaleSha256": "43a8ad99d22feacd344e3ff4b72437af41f7f91485b607d27ce5da5678798c6f",
+      "guildCommissionDefinitionsByteIdentical": true,
+      "server.jsByteIdentical": true,
+      "server.jsSha256": "90b7140c2cb96b9da9c407ffedb9afb8b953d66980c866c502914ed81ad57697",
+      "package.jsonByteIdentical": true,
+      "package.jsonSha256": "49a70963471b8ec0b25a27957c0c906f6ba34a3d061db863f0e5d9a14bb5613d",
+      "package-lock.jsonByteIdentical": true,
+      "package-lock.jsonSha256": "7a4a4a2b3eda2440c2e99c468a83d1b2e906435cae0fe568ae4f3a1fe13c6613"
     },
-    "method": "Actual client startup and map loading in jsdom with stubbed canvas/audio and in-process sockets; full server VM with network/model/persistence disabled; actual NPC conversation service exercised with controlled model responses. Sprite draw calls, culling, map rotation and UI bounds checked numerically. No real phone rendering or live LLM claim."
+    "method": "Actual HTML startup in Node/jsdom with canvas/audio/socket stubs, native reader navigation across all 108 lore entries, actual tactical action and update paths, finite enemy inventory, encounter-only stat rolls, save preservation, and existing world/HUD regressions. No browser, phone rendering, live server or combat-balance playtest claim. Server code and packages are unchanged and syntax checked."
   },
   "limitations": [
-    "Phone rendering, sprite readability, touch comfort, frame rate and combat performance require playtesting. Canvas stubs validate behavior and coordinates, not final gameplay pixels.",
-    "DM and NPC dialogue tests use controlled model responses. Live model latency, reliability and literary quality are unverified; a failed viewpoint repair omits the offending narration.",
-    "Third-person correction applies to new DM narration. Existing saved journal records remain untouched, as do personal Suncat diary voice and the Dark Emperor story.",
-    "World-atlas browsing reveals geography, not hidden local NPCs or dungeon exploration. It does not grant a teleport spell or item.",
-    "No map expansion, terrain alteration, new Chinese plot or Phoenix Empress content is included. The larger generated server continent remains a separate pending request."
+    "The revised boss’s balance, phone visuals, touch feel and performance require a real playthrough. Automated fixtures verify rules and state transitions, not subjective difficulty or literary satisfaction.",
+    "The novel dramatizes one route. Generated target locations and ordinary rewards vary; optional and random branches remain available. Dialogue and incidental action are prose rather than added cutscenes.",
+    "This release does not deploy the game or change the server, maps, class paths, Phoenix Empress storyline, attack animations or the Fool/Dark Emperor archive."
   ],
   "nextPass": [
-    "Playtest flowers and herb visibility in ISO, top-down and 3D on Pixel/S9 during movement and combat.",
-    "Use the expanded minimap World button; browse unvisited charts, then verify the teleport crystal and spell separately.",
-    "Check new live DM location narration and a repeated broker question using the matching server.",
-    "Continue discussing the Chinese cultivation story and Phoenix Empress before adding plot content."
+    "Read Guild history from its first episode; compare the separate quest guide to a fresh character’s commission board.",
+    "Replay the Mastermind with a representative A-rank build, checking item ward consumption, pressure from the initial defenders, and the limited reserve summons. Record if it feels too brief or too slow.",
+    "Confirm the S-rank reward arrives once and continue the existing gathering/rebuilding route.",
+    "Keep Phoenix Empress/China, attack animation and larger procedural continent work separate from this lore pass."
   ],
   "questInventory": {
     "open": "Player → Items → Quest Items",
@@ -568,7 +488,14 @@
     "nightDefinition": "hour < 6 or hour >= 19",
     "scope": "saved client worldHour; ordinary local day/night simulation reads it",
     "serverGlobalClockMutation": false,
-    "healingAdded": false
+    "healingAdded": false,
+    "restDestinationHours": {
+      "morning": 7,
+      "night": 21
+    },
+    "weatherPaletteFollowsClock": true,
+    "cottageClockFollowsWorld": true,
+    "explicitCursedNightPreserved": true
   },
   "responsiveView": {
     "baseline": "Square projection at min(viewport width, viewport height); centered horizon retained from v113.",
@@ -650,14 +577,18 @@
     "migration": "Repair live guild stations after map load, preserving persistent quest/currency/history records. Ignore obsolete heard-once Drunk flags without deleting history."
   },
   "guildLore": {
-    "entries": 27,
-    "words": 4297,
+    "entries": 39,
+    "words": 14636,
     "location": "Journal & Quests → Lore → Guild history",
     "mainStoryUnchanged": true,
     "entryIDsPreserved": true,
-    "reader": "Existing archive reader and access rules; paragraphs use existing pre-wrap typography.",
-    "scope": "A literary retelling of the campaign, not a record of the current save. Optional clues are one narrative route; the Beast Dilemma’s choice is left open.",
-    "future": "Guild history and The Fool’s Journey are preserved from v123. No origin novel or worldwide conspiracy reveal added."
+    "reader": "Previous and Next at the top and bottom of every chapter; expandable guide notes below original prose.",
+    "scope": "Original dramatized route through all current guild-board contracts. Repeatable targets vary. Beast Dilemma, escort betrayal and infestation payment branches remain player choices; the novel discloses alternatives in its guide notes.",
+    "future": "Regional guild foundations, rebuilding and Avalon reunion remain their separate playable follow-ups. The Fool/Dark Emperor archive is unchanged.",
+    "guideWords": 1802,
+    "previousEntries": 27,
+    "previousWords": 5235,
+    "questEntriesCovered": 28
   },
   "testRealm777": {
     "name": "Moonlit Meadow · The unclaimed cottage",
@@ -678,7 +609,8 @@
     "atlasRegion": false,
     "status": "Playable cottage home with server-supported discovery; fresh Suncat spawn only. Existing saves preserved.",
     "gardenPlants": 9,
-    "linkedCave": 778
+    "linkedCave": 778,
+    "lighting": "Real saved world clock; original moonlit blue palette at night, ordinary daylight by day."
   },
   "customRealm126": {
     "dimensions": [
@@ -3928,5 +3860,65 @@
     ],
     "darkEmperorUntouched": true,
     "chronologyAndOutcomesUnchanged": true
+  },
+  "eriu131": {
+    "maps": [
+      100,
+      102
+    ],
+    "tower": {
+      "map": 137,
+      "parent": 100,
+      "anchor": {
+        "x": 39.5,
+        "y": 40.5,
+        "dir": 0
+      }
+    },
+    "settledShore": {
+      "map": 145,
+      "parent": 102,
+      "requiresReunionPhase": 7
+    },
+    "wildlifeAdded": 24,
+    "existingSeaActors": 16,
+    "source": "https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-land/",
+    "coastlineData": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_land.geojson",
+    "mythologicalPlacement": "Tory is the conventional game adaptation of Conaing/Conand’s offshore tower; not a claim of verified historical archaeology."
+  },
+  "guildRefinement132": {
+    "chapters": 39,
+    "previousChapters": 27,
+    "storyWords": 14636,
+    "previousStoryWords": 5235,
+    "guideWords": 1802,
+    "questEntriesCovered": 28,
+    "darkEmperorUnchanged": true,
+    "serverByteIdentical": true,
+    "tacticalWardSites": 4,
+    "newEpisodes": 12,
+    "bossStats": {
+      "STR": "2d8+2",
+      "CON": "3d8+2",
+      "INT": "3d8+2",
+      "AGI": "2d10+2"
+    },
+    "bossScaling": "fixed, encounter-only; independent of player level",
+    "bossStock": {
+      "calls": [
+        276,
+        203
+      ],
+      "items": [
+        30,
+        25
+      ],
+      "repeatableSpells": [
+        26,
+        28
+      ]
+    },
+    "wardFix": "Both ward and item_ward with positive hits protect against tactical melee/projectile/dash; zero-hit wards do not intercept. Display includes item wards.",
+    "originality": "Written from this game’s established characters, commissions and mechanics. Broad genre pleasures inform pacing; no outside novel text or recreated scene was used."
   }
 }
