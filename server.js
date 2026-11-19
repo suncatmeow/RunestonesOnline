@@ -765,7 +765,7 @@ const studioHandler = SuncatStudioAPI.createStudioHandler({
 });
 // END SUNCAT STUDIO API
     const server = http.createServer((req, res) => {
-        if(req.method==='GET'&&req.url?.split('?')[0]==='/version'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({application:'BattleMage Runestones',clientVersion:131,serverVersion:'1.10.71',terrainVersion:131,suncatMotionVersion:103}));return;}
+        if(req.method==='GET'&&req.url?.split('?')[0]==='/version'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({application:'BattleMage Runestones',clientVersion:141,serverVersion:'1.10.74',terrainVersion:131,suncatMotionVersion:103}));return;}
         if (dragonflightHTTP(req, res)) return;
         if (studioHandler(req, res)) return;
         res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -5878,7 +5878,9 @@ function populateRealm126(mapData,npcs){
         let randomTheme = themes[Math.floor(Math.random() * themes.length)];
         let randomTwist = twists[Math.floor(Math.random() * twists.length)];
 
-        const prompt = `[ROOT DIRECTIVE]: You are the Lead Narrative Designer and Writer for the dark fantasy MMORPG "Runestones".
+        const prompt = scenarioType==='eternal'
+         ? `Write a sword-and-sorcery battlefield script set in the world of Runestones. Return the custom map script schema. The western marshal is ${questGiverName}, the eastern marshal is ${bossCardName}. Theme: ${randomTheme}. Use this field evidence as the basis of the twist. ${spatialLayout} Keep the physical locations and clues accurate. mapLore is two short sentences, friendlyLore is something the western leader personally witnessed, bossTaunt is the eastern leader speaking. No third army. Use empty arrays for unrelated encounters. Do not invent playable objectives or directions.`
+         : `[ROOT DIRECTIVE]: You are the Lead Narrative Designer and Writer for the dark fantasy MMORPG "Runestones".
             
             [PLAYER PSYCHOLOGY]: 
             Current Conciousness: ${currentVibe}
@@ -15066,6 +15068,193 @@ const SUNCAT_QUEST92=(()=>{
  return {definitions,options,progress,inspect,choose,defeated,snapshot:()=>copy(worlds),restore};
 })();
 {const t=toolsDef[0].functionDeclarations.find(t=>t.name==='actInWorld');t.parameters.properties.action.enum.push('quest_inspect','quest_choice');Object.assign(t.parameters.properties,{questId:{type:'STRING'},choice:{type:'STRING'}});t.description+=' quest_inspect lists your own authored road quests and nearby choices; quest_choice performs one offered choice using questId, choice and npcIndex. You may meet residents and progress supported quests on unvisited maps. Required travel, actual kills and deliveries must occur; dialogue alone does not complete them.';}
+
+// Shared field rules. Offline play and the online room run the same fixed-step simulation.
+const BMEternalRules = (() => {
+ const mapID=77141, size=160, spawn={x:15.5,y:82.5,dir:1}, step=.25;
+ const tales=[
+  ['The river carries letters addressed to soldiers buried a century ago. Both keeps still answer the mail.','The seal on my orders belonged to my grandmother. Yesterday she wrote back.','Two field-post ledgers share a single roll of the dead.','I came to collect the last letter.'],
+  ['Each fortress rings its bell for the dead. Across the water, the other army rises to the sound.','Our bell has a crack. Listen, and you can hear the enemy bell inside it.','The bellfounder cast the bronze for both bells in the same pit.','I have heard that bell through seven lifetimes.'],
+  ['The river changed course in a single night. Each army holds a deed to the land beneath the other castle.','My mother planted an orchard on what is now the eastern bank.','Two survey stones mark the same orchard, on opposite banks.','You stand on the roots of my orchard.'],
+  ['At every sunrise the quartermasters count one more company than went to sleep. Someone keeps signing for the missing.','I know my own handwriting. Who signed for me before I was born?','The muster roll is written on both sides in the same hand.','Read the last name on that roll.']
+ ];
+ function random(w){let n=w.rng|0;n^=n<<13;n^=n>>>17;n^=n<<5;w.rng=n>>>0;return w.rng/4294967296;}
+ function ground(){
+  const maze=Array.from({length:size},()=>Array(size).fill(0)), surfaces=[];
+  const fill=(x,y,w,h,t)=>{for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)maze[j][i]=t;};
+  const paint=(x,y,w,h,color)=>surfaces.push({x,y,w,h,color});
+  const box=(x,y,w,h,t)=>{fill(x,y,w,1,t);fill(x,y+h-1,w,1,t);fill(x,y,1,h,t);fill(x+w-1,y,1,h,t);};
+  for(let y=1;y<159;y++){const x=78+Math.round(2*Math.sin(y*.097));fill(x,y,5,1,92);fill(x+2,y,2,1,93);}
+  for(const [x,y,w,h] of [[28,13,35,3],[37,19,18,2],[91,18,43,3],[102,26,16,2],[33,127,28,3],[100,142,31,3],[122,119,15,2]])fill(x,y,w,h,11);
+  for(const [x,y,w,h] of [[40,56,6,5],[110,52,5,6],[47,100,6,5],[97,100,4,4],[55,28,7,5],[101,123,8,4]]){
+   box(x,y,w,h,1);fill(x+2,y+h-1,2,1,0);paint(x+1,y+1,w-2,h-2,'#897e63');
+  }
+  for(const base of [4,130]){
+   paint(base+1,62,24,36,'#8c816c');box(base,61,26,39,19);
+   const front=base===4?29:130;fill(front,76,1,9,0);
+   for(const x of [base,base+21])for(const y of [60,94]){box(x,y,5,7,19);fill(x+2,y===60?66:94,1,1,0);}
+   box(base+6,69,13,20,1);fill(base===4?base+18:base+6,77,1,7,0);
+   fill(base===130?144:base+12,88,2,1,0);
+  }
+  // A dry postern cuts into the east curtain and emerges behind the inner guard.
+  fill(144,99,2,1,0);
+  for(const [y,width,color] of [[76,9,'#9c8869'],[38,3,'#a49572'],[115,3,'#82795c']]){
+   fill(73,y,15,width,0);paint(72,y,17,width,color);
+  }
+  for(const p of [[29,76,44,9],[88,76,42,9],[33,38,40,3],[88,38,35,3],[32,38,3,39],[120,38,3,39],[34,115,39,3],[88,115,59,3],[34,84,3,33],[144,99,2,18],[144,89,2,10]])paint(...p,p[1]===76?'#988261':'#807957');
+  box(61,34,8,9,25);fill(63,42,3,1,0);fill(68,38,1,3,0);fill(61,38,1,3,0);
+  box(92,111,9,9,1);fill(92,115,1,3,0);fill(100,115,1,3,0);
+  // Mixed groves leave the roads, camps, and river approaches clear.
+  for(const [cx,cy,rx,ry] of [[19,34,11,13],[53,48,8,6],[111,15,14,7],[134,48,11,7],[20,123,9,9],[60,138,13,10],[125,134,11,8]]){
+   for(let y=cy-ry;y<=cy+ry;y++)for(let x=cx-rx;x<=cx+rx;x++){
+    const f=(x-cx)**2/(rx*rx)+(y-cy)**2/(ry*ry),hash=Math.abs(Math.imul(x+741,73856093)^Math.imul(y+116,19349663));
+    if(f<1&&hash%13<2&&maze[y][x]===0)maze[y][x]=hash%3?3:23;
+   }
+  }
+  for(const [x,y] of [[9,73],[131,71],[9,86],[131,86]])paint(x,y,3,1,'#aa875f');
+  box(0,0,160,160,11);
+  return {maze,surfaces};
+ }
+ const terrain=ground();
+ function walk(x,y){const t=terrain.maze[Math.floor(y)]?.[Math.floor(x)];return t===0||t===92;}
+ function clear(x,y,a,b){const steps=Math.ceil(Math.hypot(a-x,b-y)*2);for(let i=1;i<=steps;i++)if(!walk(x+(a-x)*i/steps,y+(b-y)*i/steps))return false;return true;}
+ function pick(w,list){return list[Math.floor(random(w)*list.length)];}
+ function make(seed,book,minions){
+  const w={seed:seed>>>0,rng:(seed>>>0)||1,clock:0,wave:0,nextWave:10,next:1,dead:[0,0],cap:[24,24],troops:[],winner:null,reset:0};
+  const ids=Object.keys(book).map(Number).filter(i=>book[i].type==='monster'&&book[i].rank!=='0'&&i>0);
+  const lead=pick(w,ids),other=ids.filter(i=>i!==lead&&book[i].suit!==book[lead].suit);
+  const leaders=[lead,pick(w,other.length?other:ids.filter(i=>i!==lead))];
+  w.sides=leaders.map((id,side)=>{
+   let pool=minions(id).filter(i=>!leaders.includes(i)&&book[i]?.type==='monster');if(!pool.length)pool=[id];
+   const chosen=[];while(pool.length&&chosen.length<4){const index=Math.floor(random(w)*pool.length);chosen.push(pool.splice(index,1)[0]);}
+   return {id,name:book[id].name,roster:chosen,banner:book[id].name+(side?'’s East Guard':'’s West Guard')};
+  });
+  const [lore,leader,clue,taunt]=pick(w,tales);w.story={lore,leader,clue,taunt};
+  for(const s of [0,1]){
+   add(w,s,'leader',s?147.5:12.5,80.5);
+   for(let i=0;i<6;i++)add(w,s,'guard',s?132.5+i%2*3:27.5-i%2*3,75.5+i*1.8);
+   for(let i=0;i<17;i++){const lane=77.1+(i%5)*1.5;add(w,s,'line',s?81+i%4*2.4:79-i%4*2.4,lane);}
+  }
+  return w;
+ }
+ function add(w,s,role,x,y){
+  const id=w.next++,type=role==='leader'?w.sides[s].id:pick(w,w.sides[s].roster);
+  const max=role==='leader'?66:role==='guard'?25:8+Math.floor(random(w)*5);
+  const n={id,s,role,type,x,y,hx:x,hy:y,lane:Math.min(83,Math.max(77,y)),hp:max,max,cd:random(w)*1.3,face:s?-1:1,dy:0,fight:false};w.troops.push(n);return n;
+ }
+ function hit(w,n,amount){
+  if(w.winner!==null||!n||n.hp<=0||!Number.isFinite(amount)||amount<=0)return false;
+  n.hp=Math.max(0,n.hp-amount);if(n.hp===0){w.dead[n.s]++;if(n.role==='leader'){w.winner=1-n.s;w.reset=30;}}return true;
+ }
+ function effect(w,n,e){
+  if(!n||n.hp<=0||w.winner!==null)return false;
+  if(e.kind==='push'&&[e.x,e.y].every(Number.isFinite)&&Math.hypot(e.x-n.x,e.y-n.y)<=8&&clear(n.x,n.y,e.x,e.y)){n.x=e.x;n.y=e.y;return true;}
+  if(e.kind==='bind'&&Number.isFinite(e.seconds)){n.held=Math.max(n.held||0,w.clock+Math.min(8,Math.max(0,e.seconds)));return true;}
+  return false;
+ }
+ function order(w,cmd){if(w.winner!==null||!['help','enemy','both'].includes(cmd))return false;
+  for(const s of [0,1])if(cmd==='both'||cmd===(s?'enemy':'help'))w.cap[s]=Math.min(72,w.cap[s]+8);
+  w.nextWave=Math.min(w.nextWave,w.clock+1);return true;
+ }
+ function move(n,x,y,dt,speed){
+  const dx=x-n.x,dy=y-n.y,len=Math.hypot(dx,dy);if(len<.12)return;
+  const v=Math.min(len,speed*dt),nx=n.x+dx/len*v,ny=n.y+dy/len*v;
+  if(clear(n.x,n.y,nx,ny)){n.x=nx;n.y=ny;}else if(walk(nx,n.y)){n.x=nx;}else if(walk(n.x,ny))n.y=ny;
+  n.face=dx/len;n.dy=dy/len;
+ }
+ function tick(w,visitors=[],attack=()=>{}){
+  const dt=step;w.clock+=dt;if(w.winner!==null){w.reset-=dt;return;}
+  w.troops=w.troops.filter(n=>n.hp>0);
+  if(w.clock>=w.nextWave){
+   w.wave++;w.nextWave=w.clock+7;
+   for(const s of [0,1]){
+    const count=w.troops.filter(n=>n.s===s).length;
+    for(let i=0;i<Math.min(6+(w.cap[s]-24)/2,w.cap[s]-count);i++){
+     const missing=6-w.troops.filter(n=>n.s===s&&n.role==='guard').length;
+     if(missing>0)add(w,s,'guard',s?132.5:27.5,77+(missing%5)*1.3);
+     else add(w,s,'line',s?138.5+(i%2):21.5-(i%2),77.1+random(w)*5.8);
+    }
+   }
+  }
+  const bins=new Map(),key=(x,y)=>x+','+y;
+  for(const n of [...w.troops,...visitors]){const k=key(Math.floor(n.x/8),Math.floor(n.y/8));if(!bins.has(k))bins.set(k,[]);bins.get(k).push(n);}
+  for(const n of w.troops){
+   if(n.hp<=0||w.winner!==null)continue;n.cd-=dt;n.fight=false;
+   if(n.held>w.clock)continue;
+   let target=null,best=n.role==='guard'?7:6.3;const bx=Math.floor(n.x/8),by=Math.floor(n.y/8);
+   for(let x=bx-1;x<=bx+1;x++)for(let y=by-1;y<=by+1;y++)for(const t of bins.get(key(x,y))||[]){
+    if(n.s===t.s||t.hp<=0)continue;const d=Math.hypot(t.x-n.x,t.y-n.y);
+    if(d>=best||!clear(n.x,n.y,t.x,t.y))continue;
+    if(n.role!=='line'&&Math.hypot(t.x-n.hx,t.y-n.hy)>8)continue;
+    target=t;best=d;
+   }
+   if(target){
+    if(best>1.45){move(n,target.x,target.y,dt,n.role==='guard'?3.5:3);continue;}
+    n.fight=true;n.face=(target.x-n.x)/Math.max(.01,best);n.dy=(target.y-n.y)/Math.max(.01,best);
+    if(n.cd<=0){n.cd=.95+random(w)*.8;if(target.visitor)attack(target,n);else hit(w,target,(n.role==='line'?1.4:3.3)+random(w)*2);}
+   }else if(n.role==='line'){
+    const dir=n.s?-1:1,atKeep=dir*(n.x-(n.s?29:130))>=0;
+    move(n,atKeep?(n.s?12.5:147.5):n.x+dir*3,atKeep?80.5:n.lane,dt,2.85);
+   }else move(n,n.hx,n.hy,dt,2.5);
+  }
+ }
+ function summary(w){return [0,1].map(s=>{const a=w.troops.filter(n=>n.s===s&&n.hp>0);return {alive:a.length,fighting:a.filter(n=>n.fight).length,losses:w.dead[s],cap:w.cap[s]};});}
+ return {mapID,size,spawn,step,terrain,walk,clear,make,hit,effect,order,tick,summary};
+})();
+
+function installEternalBattle(io){
+ const R=BMEternalRules, members=new Map(),room='eternal-141';
+ let war=null,timer=null,idleSince=0,ticks=0;
+ function publish(){io.to(room).emit('eternal:open',war);}
+ function begin(player){
+  const seed=require('crypto').randomBytes(4).readUInt32LE();
+  const current=war=R.make(seed,CARD_MANIFEST_DB,getMinions);
+  if(process.env.GEMINI_API_KEY){
+   const [west,east]=current.sides;
+   const layout='The west and east keeps face each other across a main bridge. A north watchtower overlooks a second crossing. The southern waterworks has a dry postern into the east keep. Physical evidence at the watchtower: '+current.story.clue+' The imp commander musters reinforcements. Soldiers return in waves; killing a leader wins the war.';
+   generateScenarioScript('Eternal Battlefield','eternal',east.name,west.name,'',player,layout)
+    .then(script=>{if(war!==current)return;const line=x=>typeof x==='string'?x.trim().slice(0,700):'';
+     current.story.lore=line(script.mapLore)||current.story.lore;current.story.leader=line(script.friendlyLore?.[0])||current.story.leader;
+     current.story.taunt=line(script.bossTaunt)||current.story.taunt;io.to(room).emit('eternal:story',{seed:current.seed,story:current.story});
+    }).catch(()=>{}); // The physical clues and complete local script are already playable.
+  }
+ }
+ function leave(sock){members.delete(sock.id);sock.leave(room);if(!members.size){clearInterval(timer);timer=null;idleSince=Date.now();}}
+ function advance(){
+  if(!members.size||!war)return;
+  const visitors=[...members.values()].filter(p=>p.active&&Date.now()-p.seen<4500);
+  R.tick(war,visitors,(p,n)=>io.to(p.id).emit('eternal:contact',{seed:war.seed,id:n.id}));
+  if(war.winner!==null&&war.reset<=0){begin(players[members.keys().next().value]);publish();return;}
+  if(++ticks%2===0){
+   const rows=war.troops.filter(n=>n.hp>0).map(n=>[n.id,n.s,n.role,n.type,Math.round(n.x*40)/40,Math.round(n.y*40)/40,n.hp,n.max,n.face,n.dy,+n.fight]);
+   io.to(room).emit('eternal:frame',{seed:war.seed,clock:war.clock,wave:war.wave,winner:war.winner,reset:war.reset,dead:war.dead,cap:war.cap,rows});
+  }
+ }
+ io.on('connection',sock=>{
+  sock.on('eternal:join',(_data,ack)=>{
+   if(typeof ack!=='function'||!players[sock.id])return;
+   if(!war||(!members.size&&Date.now()-idleSince>600000))begin(players[sock.id]);
+   if(!members.has(sock.id))members.set(sock.id,{id:sock.id,s:0,visitor:true,hp:1,...R.spawn,active:false,seen:0,lastOrder:0,hits:new Map()});
+   sock.join(room);if(!timer){timer=setInterval(advance,R.step*1000);timer.unref?.();}ack({war});
+  });
+  sock.on('eternal:position',p=>{const m=members.get(sock.id);if(!m||p?.seed!==war.seed||![p.x,p.y].every(Number.isFinite)||p.x<1||p.y<1||p.x>=159||p.y>=159)return;
+   Object.assign(m,{x:p.x,y:p.y,active:p.active===true,seen:Date.now()});});
+  sock.on('eternal:hit',p=>{const m=members.get(sock.id);if(!m?.active||p?.seed!==war.seed||Date.now()-m.seen>4500)return;
+   const n=war.troops.find(n=>n.id===p.id&&n.s===1&&n.hp>0);
+   if(!n||Math.hypot(m.x-n.x,m.y-n.y)>(p.ranged?28:7)||!R.clear(m.x,m.y,n.x,n.y)||!Number.isFinite(p.loss))return;
+   const now=Date.now();if(now-(m.hits.get(n.id)||0)<85)return;
+   if(m.hits.size>512)m.hits.clear();m.hits.set(n.id,now);if(R.hit(war,n,Math.min(32,p.loss))&&n.hp===0)sock.emit('eternal:credit',{seed:war.seed,id:n.id});
+  });
+  sock.on('eternal:effect',p=>{const m=members.get(sock.id);if(!m?.active||p?.seed!==war.seed||Date.now()-m.seen>4500)return;
+   const n=war.troops.find(n=>n.id===p.id&&n.s===1);if(!n||Math.hypot(m.x-n.x,m.y-n.y)>28||!R.clear(m.x,m.y,n.x,n.y))return;
+   R.effect(war,n,p);
+  });
+  sock.on('eternal:order',p=>{const m=members.get(sock.id);if(!m||p?.seed!==war.seed||Math.hypot(m.x-14.5,m.y-80.5)>4||Date.now()-m.lastOrder<600)return;
+   if(R.order(war,p.order))m.lastOrder=Date.now();});
+  sock.on('eternal:leave',()=>leave(sock));sock.on('disconnect',()=>{if(members.has(sock.id))leave(sock);});
+ });
+}
+installEternalBattle(io);
 
 //INIT ON LOAD
     initConceptVectors();

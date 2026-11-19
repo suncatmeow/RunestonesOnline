@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 132,
-  "serverVersion": "1.10.71",
-  "date": "2026-11-15",
+  "version": 141,
+  "serverVersion": "1.10.74",
+  "date": "2026-11-18",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v131 / server package 1.10.71",
+  "supersedes": "BattleMage Runestones v140 / server 1.10.73",
   "deployed": false,
   "files": [
     "index.html",
@@ -23,12 +23,12 @@
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "v132 client / unchanged server package 1.10.71 / terrain 131 / motion 103. This pass requires only the client update if v131 is already installed. The bundled server, package metadata and dependencies are byte-identical to v131. Preserve saved memory files. No commit, push or deployment performed.",
+    "deployment": "Use matching v141 index.html and server 1.10.74 for the shared online war. The client also runs the battlefield offline.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "66036eee52046dafd9047b504922534ff53917d35464bbc8541b5bb029a9e16f",
-  "serverSha256": "90b7140c2cb96b9da9c407ffedb9afb8b953d66980c866c502914ed81ad57697",
+  "clientSha256": "05dd89046784ed51453294def38b34f49699ec9745641e513d2311eb0fdfc15b",
+  "serverSha256": "4a03113b2f7eaa620eb9e938bd5f6e0d7d0cbda6cfded4e7f530ef1ce3393445",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -309,8 +309,8 @@
     }
   },
   "devlog": {
-    "current": "v132",
-    "history": "Original guild novel and Mastermind fixes added; v131 now labeled previous pass."
+    "current": "v141",
+    "history": "Eternal Battlefield"
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -336,145 +336,77 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Guild history becomes an original 39-episode novel covering all 28 guild-board commission entries from F-rank through the finale. The 27 established chapter IDs remain; 12 new episodes make escorts, rescue, infestation, repeatable bounties, extraction and the splitting raid visible in the story. The prose expands from 5,235 to 14,636 words, plus 1,802 words of guide notes.",
-    "Each episode has an expandable Quest guide with objectives, progression gates and supported branches. Both ends retain Previous/Next navigation. The reader identifies this as one dramatized spoiler route; reading does not accept a quest, award an item or change player progression. No fixed 1,000-quest requirement is added.",
-    "The recruit has a practical original voice: useful loot, supply costs, awkward early victories and increasingly reliable field judgment. The 1,065-word Mastermind episode draws on the earlier jobs. No hack, fourth-wall exploit, borrowed novel passage, recreated outside scene or new identity reveal is introduced.",
-    "Mastermind combat uses fixed encounter-only STR 2d8+2, CON 3d8+2, INT 3d8+2 and AGI 2d10+2 in place of the weak generic avatar baseline. His existing two reserve calls, one Protect Orb and one Elixir remain finite. Fire and Defense remain repeatable. The ordinary avatar and other encounters retain their stats.",
-    "Protect Orb item wards are now recognized by tactical melee, projectiles, dash attacks and the ward display. Zero-charge wards no longer absorb extra hits while awaiting their owner’s next turn. Spell wards and item wards both stop exactly the remaining number of successful hits, for either side.",
-    "All 69 Fool/Dark Emperor entries, guild quest definitions, stronghold/finale progression and rewards, Solgata’s disappearance, the world terrain and the complete server are unchanged."
+    "Say “suncat battle” to summon the herald and enter a 160 × 160 battlefield. A second call opens the return passage.",
+    "Two distinct leaders and card-based factions fight across three crossings. The western commander offers field reports, troop orders and travel to the bridge.",
+    "The local war is saved on the character. Connected players share one server simulation, with the custom-map narrator when available. Either leader’s defeat is followed by a fresh muster."
   ],
   "previousRelease": {
-    "version": 131,
-    "serverVersion": "1.10.71",
-    "summary": "Eriu/Tory geography, atlas placement and rest/day-night skies retained."
+    "version": 140,
+    "serverVersion": "1.10.73",
+    "summary": "Forward-propelling charged thrust and spinning kick."
   },
   "validation": {
-    "automatedCheckGroups": 91,
-    "counts": {
-      "focusedGuildAndCombat": 14,
-      "savedConnectedRegression": 76,
-      "freshOffline": 1
-    },
-    "checks": [
-      "39 linked guild episodes retain every original chapter ID and cover all 28 actual guild board entries",
-      "Promotion thresholds, examination interruption and repeatable bounty notes agree with live quest blueprints",
-      "Every guild chapter navigates forward and backward at both ends without changing player progress",
-      "Every main chapter navigates forward and backward at both ends without changing player progress",
-      "Mastermind receives fixed encounter-only stats with isolated previews and unchanged ordinary avatar stats",
-      "Boss spends only two calls, one Elixir and one Protect Orb through the real AI action path",
-      "Spell ward absorbs exactly three successful melee hits, then permits defeat before the next owner turn",
-      "Protect Orb absorbs exactly three successful melee hits, then permits defeat before the next owner turn",
-      "Spell ward absorbs exactly three successful projectile hits, then permits defeat before the next owner turn",
-      "Protect Orb absorbs exactly three successful projectile hits, then permits defeat before the next owner turn",
-      "Spell ward absorbs exactly three successful dash hits, then permits defeat before the next owner turn",
-      "Protect Orb absorbs exactly three successful dash hits, then permits defeat before the next owner turn",
-      "A depleted spell ward cannot mask a live item ward and failed attacks do not spend its charges",
-      "The real board entry installs the Mastermind setup and preserves the Solgata-only opening",
-      "Connected presence timers wait while saved-world initialization is incomplete",
-      "Connected portrait-loading timers execute without unhandled errors",
-      "Connected presence uses the exported real clock with exact day/night and malformed-value rules",
-      "Presence pauses during map loading and resumes with the restored clock",
-      "Disconnect stops presence and reconnect resumes without duplicate timer installation",
-      "Active observer and menu withdrawal both emit valid clock-bearing snapshots",
-      "Every registered recurring callback executes after initialization without a reference error",
-      "Saved completed classes migrate once; incomplete errands retain their work",
-      "Fresh Player Classes tracks Warrior to Warrior on the guild ground floor",
-      "Unstarted class tracking follows mentors after their regional journeys",
-      "Warrior starts and finishes his own quest through JRPG dialogue and retains held progress",
-      "Six acquired class bonuses stack once and apply through actual stat spending",
-      "Acquired Mage allows mage techniques under another title; stat and class locks stay distinct",
-      "All original guild mentors offer their own class while Dancer opens the full directory",
-      "Knight class screen contains Knight only; no unrelated starter or prestige recommendations",
-      "Listen lists its class quest separately and unavailable/learned filters work",
-      "Cherry route keeps parcel and letter stages; her completed quest acquires Dancer without automatic skills",
-      "Core Mage/Priest/Knight are earned from their quest without the old branch restriction",
-      "Advanced titles retain campaign/tier requirements and accept acquired prerequisite titles",
-      "Moors masks are removed without changing dry ground, water, paths or map adjacency",
-      "Squire, Knight and Dragon Knight have distinct baked idle, walk and attack families",
-      "Sword blade extends away from the forearm throughout its local grip axis",
-      "Equipped player sword clears the forearm in all sampled idle, walk and attack poses",
-      "Dialogue choices sit above a larger fixed-font bottom text box on portrait, landscape and square screens",
-      "Landscape Jump grows and rises without changing the pad, Target or centered hotbar",
-      "Map 777 is a cottage meadow with a walkable path and no decorative NPC population",
-      "Meadow loads at its safe spawn and uses the real clock without changing saved time",
-      "Scenery budgets and camera culling work in four directions and all graphics settings",
-      "Flower rendering uses cached art, normal depth ordering and wall clipping without target rings",
-      "Meadow save retains map identity and deterministic scenery without serializing decorative actors",
-      "The trail marker opens normal dialogue and returns to Haven safely",
-      "Existing Moors and Tintagel terrain, wildlife definitions and world atlas remain unchanged",
-      "Both ends of every main Lore chapter navigate in order with correct disabled boundaries",
-      "Both ends of every guild Lore chapter navigate in order with correct disabled boundaries",
-      "Server-generated 160x160 blueprint loads with matching collision, safe spawn, exit and biome scenery",
-      "Biome plants remain off paths, pools, walls, services and actor positions",
-      "Flower budgets and spatial floor selection stay local in all graphics tiers",
-      "All biome flower variants draw from cached art with world occlusion; no new per-frame canvases",
-      "A hostile NPC crosses meadow ground and reaches its normal melee attack with foliage active",
-      "Saved shared realm keeps its biome recipe; same-instance updates preserve scenery identity",
-      "A new realm instance replaces terrain caches, and legacy custom maps retain their old behavior",
-      "Leaving the generated realm restores ordinary maps and the standalone map 777 test",
-      "777 keeps its bounded decorative meadow; cottage, garden and cave path are clear",
-      "Cave is a separate small dungeon with three real hostile actors and a safe entrance",
-      "Garden exposes nine stable harvestable plants, honors cooldowns and allows regrowth",
-      "Cottage furniture uses real readable, chest, bed and hearth interactions",
-      "Live object observation exposes actions; reading returns authored text at the object",
-      "Live read rejects a distant actor and does not invent an NPC reply",
-      "Live chest receipts are idempotent; a second operation finds an empty chest",
-      "Human cannot loot a chest already opened by Suncat",
-      "Outdoor vegetation covers appropriate atlas regions without changing terrain, actors, roads or world time",
-      "Tintagel has low coastal vegetation, Moors have heather, and Transylvania uses the original pale meadow flowers",
-      "World plants are locally culled and capped at every graphics level; save data and NPC counts stay unchanged",
-      "Decorative plants do not enable layered collision or change ordinary wall-breaking rules",
-      "Native wall occlusion uses projected wall tops and raised plant drawing uses world elevation",
-      "Legacy safe-room thresholds migrate to floor with an open, fixed door frame and leaf",
-      "Refuge still excludes hostile NPCs and retains its return portal while allies can cross the door",
-      "Generated-realm ordinary walls can break again, but refuge walls, borders and magic barriers stay protected",
-      "All circled gaps are filled, and the eastward atlas extension has unique, reachable chart entries",
-      "Every new map loads real actors with safe arrivals, working collision and biome scenery",
-      "Every added chart border matches its neighbour tile-for-tile and height-for-height",
-      "New regions have no invented dialogue menus or quest state; saved progress stays intact",
-      "Overhead plants use the exact cached biome art; current map and scenery caps are respected",
-      "Generated server realm vegetation is available in both overhead views",
-      "Top-down uses sprite draws with separate X/Y projection scales and respects unseen terrain",
-      "Isometric plants enter the shared depth queue at their ground height for all four rotations",
-      "View and rotation toolbar clears the stat bar in portrait, landscape and square layouts",
-      "Expanded minimap opens the complete browse-only atlas without revealing local exploration or allowing travel",
-      "A separate teleport-enabled atlas opening still permits an explicit destination transfer",
-      "NPC silence remains beside its own question and cannot overwrite a received answer",
-      "Ireland has a continuous mainland and a separate playable Tory island",
-      "New coasts load sparse wildlife, preserve aquatic habitat and grow biome plants",
-      "Existing tower and settled-shore maps use mainland anchors; atlas player dot appears on Tory",
-      "Tower travel keeps quest progress; distant interaction and early settled-shore entry are rejected",
-      "Rest advances noon to full night, night to daylight, and survives saving and reloading",
-      "Clear, rain and storm skies follow rest, while intentional cursed night remains explicit",
-      "Fresh v132 initializes with current devlog and preserves the cottage and world foliage"
+    "freshOfflineChecks": 66,
+    "simulatedConnectedSavedChecks": 74,
+    "battlefieldChecks": [
+      "World chat summons the imp offline and accepts a decline",
+      "Accepting the herald opens a 160 by 160 field and two distinct card armies",
+      "The commander wears the armor and shield and the survey can order both armies",
+      "The north road and southern postern are walkable around the front gate",
+      "NPCs trade real casualties and replacements march from the keeps without player hits",
+      "The commander deploys the player directly to the bridge and respawn returns to the allied keep",
+      "Native player hits reduce an enemy’s field wards and allied units are excluded from targeting",
+      "A v140 charged sword thrust hits multiple actual soldiers and travels past them",
+      "All three field views draw the native soldiers and equipped commander",
+      "A leader can fall, the war ends once, and fresh armies muster",
+      "An offline war survives a trip home and rejoins with the same seed and changed orders",
+      "The connected client joins an existing war, applies server frames and leaves the room"
     ],
-    "static": {
-      "darkEmperorByteIdentical": true,
-      "darkEmperorSha256": "46a15ab9d8298ac1b0c17e08194c1ffacf54a91103c604bdd833c20360cd617a",
-      "guildStoryByteIdentical": true,
-      "guildStorySha256": "f4b4d9019b0c47aa7d8e01be736f3001790f25b4b8e840fe57a46ecf47db1835",
-      "guildFinaleByteIdentical": true,
-      "guildFinaleSha256": "43a8ad99d22feacd344e3ff4b72437af41f7f91485b607d27ce5da5678798c6f",
-      "guildCommissionDefinitionsByteIdentical": true,
-      "server.jsByteIdentical": true,
-      "server.jsSha256": "90b7140c2cb96b9da9c407ffedb9afb8b953d66980c866c502914ed81ad57697",
-      "package.jsonByteIdentical": true,
-      "package.jsonSha256": "49a70963471b8ec0b25a27957c0c906f6ba34a3d061db863f0e5d9a14bb5613d",
-      "package-lock.jsonByteIdentical": true,
-      "package-lock.jsonSha256": "7a4a4a2b3eda2440c2e99c468a83d1b2e906435cae0fe568ae4f3a1fe13c6613"
-    },
-    "method": "Actual HTML startup in Node/jsdom with canvas/audio/socket stubs, native reader navigation across all 108 lore entries, actual tactical action and update paths, finite enemy inventory, encounter-only stat rolls, save preservation, and existing world/HUD regressions. No browser, phone rendering, live server or combat-balance playtest claim. Server code and packages are unchanged and syntax checked."
+    "sharedSimulation": {
+      "sharedWar": true,
+      "orders": true,
+      "sharedDamage": true,
+      "lateJoin": true,
+      "blockedDistantHit": true,
+      "sharedVictory": true,
+      "rejoined": true,
+      "peaks": [
+        {
+          "cap": 24,
+          "peak": 48,
+          "maxMelee": 28,
+          "losses": [
+            96,
+            103
+          ]
+        },
+        {
+          "cap": 48,
+          "peak": 96,
+          "maxMelee": 38,
+          "losses": [
+            248,
+            208
+          ]
+        },
+        {
+          "cap": 72,
+          "peak": 144,
+          "maxMelee": 73,
+          "losses": [
+            367,
+            339
+          ]
+        }
+      ],
+      "ticks": 2160
+    }
   },
   "limitations": [
-    "The revised boss’s balance, phone visuals, touch feel and performance require a real playthrough. Automated fixtures verify rules and state transitions, not subjective difficulty or literary satisfaction.",
-    "The novel dramatizes one route. Generated target locations and ordinary rewards vary; optional and random branches remain available. Dialogue and incidental action are prose rather than added cutscenes.",
-    "This release does not deploy the game or change the server, maps, class paths, Phoenix Empress storyline, attack animations or the Fool/Dark Emperor archive."
+    "In-process multiplayer, game runtime and canvas-path checks. Physical Android frame rate, real internet latency, live generated dialogue and ten-player balance have not been measured."
   ],
   "nextPass": [
-    "Read Guild history from its first episode; compare the separate quest guide to a fresh character’s commission board.",
-    "Replay the Mastermind with a representative A-rank build, checking item ward consumption, pressure from the initial defenders, and the limited reserve summons. Record if it feels too brief or too slow.",
-    "Confirm the S-rank reward arrives once and continue the existing gathering/rebuilding route.",
-    "Keep Phoenix Empress/China, attack animation and larger procedural continent work separate from this lore pass."
+    "China cultivator arc: after joining the sect, the player can learn a homing sword that fights as a summoned ally. This is planned content."
   ],
   "questInventory": {
     "open": "Player → Items → Quest Items",
