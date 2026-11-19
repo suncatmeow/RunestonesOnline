@@ -338,7 +338,19 @@ const BMNPCKnowledge=(()=>{
  }
  function topic(message){return /quest|task|job|help|deliver|reward|crate|parcel|book|letter|recommend|teach|lesson|specimen|patient|tusk|mushroom/i.test(message)?'quest':/rumou?r|faraway|red land|deshret|gossip|heard|vampire/i.test(message)?'rumors':/around|where|road|way|route|near|local|danger|town|inn|ferry|pass|gate|water|cart/i.test(message)?'local':null;}
  function answer(f,message){const t=topic(message);if(t==='quest'&&f.quest[0].startsWith('I cannot')&&f.spokenHere)return f.spokenHere+' Use my existing choices to act on this; I can only explain what I know.';return t?f[t].join(' '):'I can tell you about '+(f.quest[0].startsWith('I cannot')?'this area':'my work and this area')+'. Ask me about a task, the local roads, or a rumour. I would rather admit what I do not know than send you astray.';}
- return {facts,progress,topic,answer,caravan};
+ // Chapter roster shared by the standalone client and the server.
+ function cherryActorPresent(map,id,phase){
+  switch(id){
+   case 8405:return map===2&&(phase===0||phase>=10);
+   case 986020:return map===151&&(phase<2||phase>4);
+   case 987004:return map===151&&phase>=2&&phase<=4;
+   case 987005:return map===39&&phase===9;
+   case 987021:return map===153&&phase>=5&&phase<=6;
+   case 987022:return map===153&&phase>=5&&phase<=7;
+   default:return true;
+  }
+ }
+ return {facts,progress,topic,answer,caravan,cherryActorPresent};
 })();
 module.exports=BMNPCKnowledge;
 
@@ -355,12 +367,7 @@ const speech=n=>(Array.isArray(n.dialogue)?n.dialogue:Array.isArray(n.publicDial
 function resolveSpeaker(host,catalog,player,data,observation=null){
  if(player.mapID!==data.mapID)return null;
  const vp=K.progress(data.progress);
- if(data.mapID===151&&data.npcIndex===986020&&vp.cherry87>=2&&vp.cherry87<=4)return null;
- if(data.mapID===2&&data.npcIndex===8405&&vp.cherry87>0&&vp.cherry87<10)return null;
- if(data.npcIndex===987021&&(data.mapID!==153||vp.cherry87<5||vp.cherry87>6))return null;
- if(data.npcIndex===987005&&(data.mapID!==39||vp.cherry87!==9))return null;
- if(data.npcIndex===987004&&(data.mapID!==151||vp.cherry87<2||vp.cherry87>4))return null;
- if(data.npcIndex===987022&&(data.mapID!==153||vp.cherry87<5||vp.cherry87>7))return null;
+ if(!K.cherryActorPresent(data.mapID,data.npcIndex,vp.cherry87))return null;
  if([152,153].includes(data.mapID)&&vp.cherry87<5)return null;
  if(data.mapID===151&&data.npcIndex!==987004){const bit=data.npcIndex-986010;if(bit<0||bit>10||!vp.courtVisited85||vp.courtHostile85||(vp.courtFled85&(1<<bit)))return null;}
  if(data.mapID===2&&data.npcIndex===201){const q=vp.guildHall===2?{x:41.5,y:47.5}:{x:74.5,y:76.5};if(Math.hypot((data.npcPosition?.x??-999)-q.x,(data.npcPosition?.y??-999)-q.y)>1)return null;}
@@ -765,7 +772,7 @@ const studioHandler = SuncatStudioAPI.createStudioHandler({
 });
 // END SUNCAT STUDIO API
     const server = http.createServer((req, res) => {
-        if(req.method==='GET'&&req.url?.split('?')[0]==='/version'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({application:'BattleMage Runestones',clientVersion:141,serverVersion:'1.10.74',terrainVersion:131,suncatMotionVersion:103}));return;}
+        if(req.method==='GET'&&req.url?.split('?')[0]==='/version'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({application:'BattleMage Runestones',clientVersion:147,serverVersion:'1.10.79',terrainVersion:131,suncatMotionVersion:103}));return;}
         if (dragonflightHTTP(req, res)) return;
         if (studioHandler(req, res)) return;
         res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -911,7 +918,7 @@ const BMCombatTransport=(()=>{
     p.isDead=false;p.status='normal';p.summons=[];p.respawnProtectedUntil=Date.now()+10000;delete p.lastIncomingCombat;row.respawned=true;profiles.delete(socket.id);
     if(p.mapID===999&&activeCustomMap?.safeRoom)Object.assign(p,activeCustomMap.safeRoom.spawn);
     clearDuel(socket.id,'respawn');for(const id of Object.keys(players))io.to(id).emit('pvp_aggro_clear',{enemyId:socket.id});
-    io.emit('updatePlayers',getPublicPlayers());return {ok:true};}
+    publishPresence();return {ok:true};}
   function forget(id){for(const key of registered.keys())if(key.startsWith(id+':'))registered.delete(key);clearDuel(id,'disconnect');profiles.delete(id);rates.delete(id);deaths.delete(id);for(const key of casts.keys())if(key.startsWith(id+':'))casts.delete(key);for(const key of receipts.keys())if(key.startsWith(id+':'))receipts.delete(key);}
   return {profile,update,near,relay,request,accept,forget,clearDuel,died,respawn,beginCast};
 })();
@@ -3273,6 +3280,7 @@ const SUNCAT_PASS78=(()=>{
  function offer(socket,data){const p=players[socket.id];if(!p||!data||data.version!==1||data.mapID!==p.mapID)return false;
   const old=candidates.get(socket.id),worldId=String(p.persistentId||socket.id)+':'+String(data.worldId||'legacy').slice(0,80);
   candidates.set(socket.id,{active:data.active===true,at:Date.now(),worldId,mapID:p.mapID,progress:BMNPCBundle.knowledge.progress(data.progress||{}),coastHour:krakenHour105(data.coastHour)});
+  if(data.active===true)SUNCAT_TABLE89.resume(p,data.worldId);
   if(candidates.size>512)for(const[id,c]of candidates)if(Date.now()-c.at>60000)candidates.delete(id);
   if(!SUNCAT_CHECKPOINT.finish())return false;
   if(data.active&&(!active()||SUNCAT_COMBAT.peer===socket.id&&(old?.worldId!==worldId||old?.mapID!==p.mapID)))select(socket.id);
@@ -4486,14 +4494,14 @@ const SUNCAT_TABLE89=(()=>{
  const copy=v=>JSON.parse(JSON.stringify(v)),text=(v,n=1000)=>String(v??'').trim().slice(0,n);
  const schools=['White School','Yellow School','Black School','Left-Hand Path'];
  const schoolLore={'White School':'Participation in the Great Work, joy, love, service and unity.','Yellow School':'Observation, stillness, balance and accepting nature without forcing outcomes.','Black School':'Withdrawal from worldly suffering, detachment and questioning appearances.','Left-Hand Path':'Exaltation of individual will, power and control. These are readings of choices, not moral verdicts or required conduct.'};
- const defaults=()=>({version:1,alignments:[],gifts:[],pendingGift:null,attainments:{},reviews:[],imbuements:[],factualArchive:[]});
+ const defaults=()=>({version:1,alignments:[],gifts:[],outstanding:{},pendingGift:null,attainments:{},reviews:[],imbuements:[],factualArchive:[]});
  let state=defaults(),giftBusy=false;
  const interpretation=e=>/reflection|intention|insight|meditation|prayer|school_alignment/.test(e.kind||'')||e.kind==='tool_result'&&['recordSchoolAlignment','reflectSuncatExperience','testSuncatMethod','leaveFutureSelfMessage'].includes(e.detail?.tool);
- function restore(v){state={...defaults(),...(v?.version===1?copy(v):{})};if(state.pendingGift)state.pendingGift.status='unknown';}
+ function restore(v){state={...defaults(),...(v?.version===1?copy(v):{})};if(state.pendingGift){hold(state.pendingGift);}}
  function facts(query='',limit=12){const words=text(query,300).toLowerCase().match(/[\p{L}\p{N}]+/gu)||[];
   const rows=[],seen=new Set();for(const source of[suncatAdventureEvents,state.factualArchive]){for(let i=source.length-1;i>=0&&rows.length<limit;i--){const e=source[i];if(seen.has(e.id))continue;seen.add(e.id);if(interpretation(e)||words.length&&!words.some(w=>JSON.stringify(e.detail).toLowerCase().includes(w)))continue;rows.push({id:e.id,timestamp:e.timestamp,mapID:e.mapID,kind:e.kind,detail:e.detail,worldSource:e.worldSource});}}return rows.reverse();}
  function context(){return JSON.stringify({participant:'Gemini',character:{name:'Suncat',counterpart:'Edmundo',body:'black fairy'},facts:facts('',8),
-  schoolLore,interpretations:state.alignments.slice(-3),attainments:state.attainments,pendingGift:state.pendingGift?{id:state.pendingGift.id,status:state.pendingGift.status,recipient:state.pendingGift.recipientName}:null,
+  schoolLore,interpretations:state.alignments.slice(-3),attainments:state.attainments,awaitingReceipts:Object.values(state.outstanding).map(g=>({id:g.id,recipient:g.recipientName})),pendingGift:state.pendingGift?{id:state.pendingGift.id,status:state.pendingGift.status,recipient:state.pendingGift.recipientName}:null,
   rules:'Events retain their actual attribution: received speech is not a reply, an attempted action is not success. Chapter prose and private reflections are literary interpretations, never proof of deeds, beliefs or personality. Schools describe particular choices after they happen; they never control the next choice. Cultivation is optional. Only confirmed tools change the world. Gifts use owned inventory; GM rewards are separate.'});}
  function align(args){const ids=[...new Set(args.sourceEventIds||[])].slice(0,8),events=suncatAdventureEvents.filter(e=>ids.includes(e.id)&&!interpretation(e)&&!['received_speech','scene_observation','world_observer_changed','scenario_report'].includes(e.kind)&&JOURNAL_PROSE.narratable(e));
   if(!events.length||events.length!==ids.length)throw Error('Cite actual event IDs, not a chapter or earlier interpretation.');
@@ -4505,12 +4513,15 @@ const SUNCAT_TABLE89=(()=>{
  function reserved(p,refund=false){const bag=own().inventory;
   if(p.cardIndex!==undefined){const inv=players[SUNCAT_ID].inventory??={};if(refund){inv[p.cardIndex]=(Number(inv[p.cardIndex])||0)+p.quantity;return true;}if((Number(inv[p.cardIndex])||0)<p.quantity)return false;inv[p.cardIndex]-=p.quantity;if(!inv[p.cardIndex])delete inv[p.cardIndex];return true;}
   return refund?bag.add(copy(p.item),p.quantity):bag.takeMany({[p.item.key]:p.quantity});}
+ function hold(p){state.outstanding[p.id]={...p,status:'unknown'};state.pendingGift=null;}
+ function delivery(p){return {operationId:p.id,quantity:p.quantity,cardIndex:p.cardIndex,item:p.item,name:p.name,recipient:p.recipient,saveId:p.saveId};}
  async function finishGift(p,r){if(r?.operationId!==p.id||r.status!=='delivered')throw Object.assign(Error('The gift receipt is incomplete.'),{outcome:'unknown'});
   if(!state.gifts.some(g=>g.id===p.id)){const receipt={id:p.id,at:Date.now(),recipient:p.recipient,recipientName:p.recipientName,quantity:p.quantity,cardIndex:p.cardIndex,item:p.item?.key,name:p.name,origin:'Suncat-owned inventory',status:'delivered'};state.gifts.push(receipt);state.gifts=state.gifts.slice(-80);recordSuncatAdventure('item_given',receipt,p.id);}
-  state.pendingGift=null;if(!await saveSuncatMemory()){state.pendingGift={...p,status:'unknown'};throw Object.assign(Error('Delivered, but server confirmation could not be saved. Recover this gift before another transfer.'),{outcome:'unknown'});}return {ok:true,status:'delivered',receipt:state.gifts.find(g=>g.id===p.id)};}
+  delete state.outstanding[p.id];state.pendingGift=null;if(!await saveSuncatMemory()){hold(p);throw Object.assign(Error('Delivered, but server confirmation could not be saved. Recover this gift before another transfer.'),{outcome:'unknown'});}return {ok:true,status:'delivered',receipt:state.gifts.find(g=>g.id===p.id)};}
  async function give(args,targetID,cardIndex){if(giftBusy)throw Error('A gift transfer is already running.');giftBusy=true;
   try{if(state.pendingGift)throw Error('Recover the previous gift first. Its items remain reserved.');const target=players[targetID],body=players[SUNCAT_ID];
    if(!target||targetID===SUNCAT_ID||!target.persistentId)throw Error('Choose an online character with a saved identity.');
+   if(Object.values(state.outstanding).some(g=>g.recipient===target.persistentId))throw Error('This recipient already has an unconfirmed gift. Recover its delivery before giving another.');
    if(target.mapID!==body.mapID||Math.hypot(target.x-body.x,target.y-body.y)>6)throw Error('Approach the recipient before handing over a possession.');
    if(SUNCAT_LIFE.active()||body.respawnAt||SUNCAT_COMBAT.target)throw Error('Finish current work or combat before transferring an item.');
    const quantity=args.quantity===undefined?1:args.quantity;if(!Number.isInteger(quantity)||quantity<1||quantity>20)throw Error('Transfer one to twenty owned items.');
@@ -4518,15 +4529,38 @@ const SUNCAT_TABLE89=(()=>{
    if(cardIndex!==undefined&&!CARD_MANIFEST_DB[cardIndex])throw Error('Unknown card.');
    if(cardIndex===undefined&&(!item||!['consumable','equipment','material','herb','powder','fish'].includes(item.kind)||/^(quest:|hallow:)/.test(item.key)||item.hallowId||item.hallowUid))throw Error('Choose an owned, transferable item. Quest cargo and unique relics cannot be given away.');
    const p={id:journalId('gift'),recipient:target.persistentId,recipientName:target.name,peer:targetID,mapID:target.mapID,quantity,cardIndex,item:item?copy(item):undefined,name:item?.name||CARD_MANIFEST_DB[cardIndex]?.name,at:Date.now(),status:'reserved'};
+   const origin=await suncatAck(targetID,'suncat_gift_receipt89',{id:p.id});
+   if(players[targetID]!==target||target.mapID!==body.mapID||Math.hypot(target.x-body.x,target.y-body.y)>6)throw Error('The recipient moved before the handoff.');
+   p.saveId=origin.saveId||null;
    state.pendingGift=p;if(!reserved(p)){state.pendingGift=null;throw Error('You do not own enough of that item. No gift was made.');}
    if(!await saveSuncatMemory()){reserved(p,true);state.pendingGift=null;await saveSuncatMemory();throw Error('Could not save the reservation. No gift was sent.');}
-   try{const r=await suncatAck(targetID,'suncat_command',{id:p.id,mapID:p.mapID,kind:'ownedGift89',args:{operationId:p.id,quantity:p.quantity,cardIndex:p.cardIndex,item:p.item,name:p.name,recipient:p.recipient}});return await finishGift(p,r);}
-   catch(e){if(e.outcome==='unknown'){state.pendingGift={...p,status:'unknown'};await saveSuncatMemory();return {ok:false,status:'unknown',operationId:p.id,error:'Delivery is unconfirmed. Items remain reserved; use recoverSuncatGift. Do not promise delivery or resend.'};}reserved(p,true);state.pendingGift=null;await saveSuncatMemory();throw e;}
+   try{const r=await suncatAck(targetID,'suncat_command',{id:p.id,mapID:p.mapID,kind:'ownedGift89',args:delivery(p)});return await finishGift(p,r);}
+   catch(e){if(e.outcome==='unknown'){hold(p);await saveSuncatMemory();return {ok:false,status:'unknown',operationId:p.id,error:'Delivery is unconfirmed. Items remain reserved; use recoverSuncatGift. Do not promise delivery or resend.'};}reserved(p,true);state.pendingGift=null;await saveSuncatMemory();throw e;}
   }finally{giftBusy=false;}}
- async function recover(){if(giftBusy)throw Error('A transfer is still running.');giftBusy=true;try{const p=state.pendingGift;if(!p)return {ok:true,status:'nothing_pending'};
-  const peer=Object.keys(players).find(id=>id!==SUNCAT_ID&&players[id].persistentId===p.recipient);if(!peer)throw Error('The original recipient must reconnect to the same saved game.');
-  const r=await suncatAck(peer,'suncat_gift_receipt89',{id:p.id});if(!r.receipt)throw Error('No saved delivery receipt on this client. The reservation stays held; it was not replayed or refunded.');return await finishGift(p,r.receipt);
- }finally{giftBusy=false;}}
+ const nextGiftCheck=new WeakMap();
+ async function recover(socketId,requested){
+  if(giftBusy)throw Error('A transfer is already running.');
+  const pending=Object.values(state.outstanding);
+  const p=requested||pending.find(g=>Object.values(players).some(v=>v.persistentId===g.recipient))||pending[0];
+  if(!p)return {ok:true,status:'nothing_pending'};
+  const peer=socketId||Object.keys(players).find(id=>players[id].persistentId===p.recipient);
+  if(!peer||players[peer]?.persistentId!==p.recipient)throw Error('Waiting for the recipient to reconnect.');
+  giftBusy=true;
+  try{
+   const check=await suncatAck(peer,'suncat_gift_receipt89',{id:p.id});
+   if(check.receipt)return await finishGift(p,check.receipt);
+   if(!p.saveId||check.saveId!==p.saveId)throw Error('Waiting for a matching original save or delivery receipt.');
+   const receipt=await suncatAck(peer,'suncat_gift_resume147',delivery(p));
+   return await finishGift(p,receipt);
+  }finally{giftBusy=false;}
+ }
+ function resume(peer,saveId){
+  if(giftBusy||!peer?.persistentId||Date.now()<(nextGiftCheck.get(peer)||0))return;
+  const p=Object.values(state.outstanding).find(g=>g.recipient===peer.persistentId&&(!g.saveId||g.saveId===saveId));
+  if(!p)return;
+  nextGiftCheck.set(peer,Date.now()+15000);
+  void recover(peer.id,p).catch(()=>{});
+ }
  async function review(lesson,results,args){
   const signature=lesson.id+':'+results.map(e=>e.id).sort().join('|'),old=state.reviews.find(r=>r.signature===signature);
   if(old)return {ok:true,status:old.status,review:copy(old),unlock:old.status==='earned'?state.attainments.imbue:null,note:'These results have already been reviewed. Supply new practical evidence to reconsider an unresolved lesson.'};
@@ -4557,12 +4591,12 @@ const SUNCAT_TABLE89=(()=>{
   if(!await saveSuncatMemory()){bag.takeMany({[output.key]:1});originals.forEach(i=>bag.add(i,1));state.imbuements=state.imbuements.filter(r=>r.id!==receipt.id);await saveSuncatMemory();throw Error('Imbuing could not be saved; ingredients restored.');}
   recordSuncatAdventure('item_imbued',{...receipt,name:output.name},receipt.id);return {ok:true,item:output,receipt,permanentLevels:0};
  }
- return {restore,snapshot:()=>copy({...state,factualArchive:facts('',24)}),facts,context,align,give,recover,review,imbue,interpretation};
+ return {restore,snapshot:()=>copy({...state,factualArchive:facts('',24)}),facts,context,align,give,recover,resume,review,imbue,interpretation};
 })();
 const SUNCAT_TABLE_TOOLS89=[
  {name:'recordSchoolAlignment',description:'Record a provisional reading of actual actions. Keep existing school names. Multiple schools or none are valid. This never prescribes personality or the next action.',parameters:{type:'OBJECT',properties:{sourceEventIds:{type:'ARRAY',items:{type:'STRING'}},schools:{type:'ARRAY',items:{type:'STRING',enum:['White School','Yellow School','Black School','Left-Hand Path']}},interpretation:{type:'STRING'},alternative:{type:'STRING'},certainty:{type:'STRING',enum:['tentative','mixed','uncertain']}},required:['sourceEventIds','schools','interpretation','alternative']}},
  {name:'giftSuncatItem',description:'Hand over an OWNED potion, crafted equipment or ingredient to a nearby player. Removes the real quantity from your inventory; never mints a DM reward. You may choose to give, decline or offer a different possession. Inspect inventory first. An unknown result must be recovered.',parameters:{type:'OBJECT',properties:{targetName:{type:'STRING'},itemKey:{type:'STRING'},quantity:{type:'NUMBER'}},required:['targetName','itemKey']}},
- {name:'recoverSuncatGift',description:'Check the original recipient’s saved receipt after an unknown gift delivery. Does not repeat, mint or refund the gift.',parameters:{type:'OBJECT',properties:{}}},
+ {name:'recoverSuncatGift',description:'Reconcile a reserved gift with its original saved game and delivery ID after a disconnect.',parameters:{type:'OBJECT',properties:{}}},
  {name:'imbueSuncatItem',description:'After an independently reviewed cultivation breakthrough, imbue one owned crafted potion or meal using one owned identified ingredient. Consumes both; adds at most +0.5 to a supported property for 60 seconds (ward is immediate). An item can be imbued once. No levels, new mechanics or GM powers are minted.',parameters:{type:'OBJECT',properties:{itemKey:{type:'STRING'},reagentKey:{type:'STRING'},property:{type:'STRING',enum:['str','con','int','agi','ward','recovery']}},required:['itemKey','reagentKey','property']}}
 ];
 toolsDef[0].functionDeclarations.push(...SUNCAT_TABLE_TOOLS89);
@@ -4875,7 +4909,7 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
                 suncatClass: players[SUNCAT_ID].suncatClass,
                 suncatBody: SUNCAT_COMBAT.save(),
                 suncatDevelopment:SUNCAT_DEVELOPMENT.snapshot(),
-                world92:SUNCAT_WORLD92.snapshot(),quests92:SUNCAT_QUEST92.snapshot(),suncatLife:SUNCAT_LIFE.snapshot(),suncatTable89:SUNCAT_TABLE89.snapshot(),
+                world92:null,quests92:SUNCAT_QUEST92.snapshot(),suncatLife:SUNCAT_LIFE.snapshot(),suncatTable89:SUNCAT_TABLE89.snapshot(),
                 suncatRelations:SUNCAT_MERCY.snapshot(),suncatPass78:SUNCAT_PASS78.snapshot(),
                 suncatCheckpointStamp:SUNCAT_CHECKPOINT.stamp(),
                 suncatCheckpointInitialized:SUNCAT_CHECKPOINT.initialized(),
@@ -4886,10 +4920,15 @@ Return JSON: title (a short headline), reflection (first-person prose, 1-4 parag
 
         let saved=false;
         try {
+            const maps=SUNCAT_WORLD92.prepareDiskSave();
+            fullState.worldState.world92=maps.index;
+            const serialized=JSON.stringify(fullState,null,2);
+            await maps.persist();
             if(process.env.SUNCAT_MEMORY_FILE)await fs.promises.mkdir(path.dirname(MEMORY_FILE),{recursive:true});
             const temporaryMemory=MEMORY_FILE+'.tmp';
-            await fs.promises.writeFile(temporaryMemory,JSON.stringify(fullState,null,2));
+            await fs.promises.writeFile(temporaryMemory,serialized);
             await fs.promises.rename(temporaryMemory,MEMORY_FILE);
+            await maps.committed();
             saved=true;
         } catch (err) {
             console.error("[System] CRITICAL: Failed to save memory!", err);
@@ -7678,7 +7717,7 @@ setInterval(()=>SUNCAT_LIFE.tick(),100);
 
 toolsDef[0].functionDeclarations.push(...[{"name":"inspectSuncatWorld","description":"Observe actual nearby resources, NPC services, your inventory, learned recipes, contracts and workshop progress. Uses the selected human client on its map, or the independent server simulation on ordinary authored maps. A recipe description is not a consumed effect.","parameters":{"type":"OBJECT","properties":{}}},{"name":"actInWorld","description":"Act with your OWN inventory and contract state. Inspect first. Approach/gather herbs; cook, refine, brew or sew; observe/control heat and ingredients; buy/sell; consume or learn owned items; accept/turn in your own guild contracts. Automatic follows the actual recipe simulation; manual lets you adjust it. Unknown receipts must be recovered, never blindly retried. Does not change human quests.","parameters":{"type":"OBJECT","properties":{"action":{"enum":["inspect","approach","gather","cook","craft","work_status","control","buy","sell","use","learn","contracts","accept_contract","turn_in","recover","abandon_contract","abandon_pending"],"type":"STRING"},"npcIndex":{"type":"NUMBER"},"resourceId":{"type":"STRING"},"recipe":{"type":"STRING"},"itemKey":{"type":"STRING"},"offerId":{"type":"STRING"},"method":{"enum":["fry","soup","roast"],"type":"STRING"},"contractId":{"type":"STRING"},"automatic":{"type":"BOOLEAN"},"heat":{"type":"NUMBER"},"control":{"enum":["add","flip","plate","stitch","cool_burn","abandon"],"type":"STRING"},"ingredient":{"type":"STRING"}},"required":["action"]}},{"name":"reflectSuncatExperience","description":"Optionally form an insight from actual unused lived-experience IDs, with a falsifiable method, limits and a counterexample to investigate. May revise or abandon any school. No automatic level for prose.","parameters":{"type":"OBJECT","properties":{"insight":{"type":"STRING"},"method":{"type":"STRING"},"sourceEventIds":{"type":"ARRAY","items":{"type":"STRING"}}},"required":["insight","method","sourceEventIds"]}},{"name":"testSuncatMethod","description":"Review a fresh actual result obtained after a declared lesson. A failed experiment can teach. A separate reviewer requires understanding, limits, observed application and transfer to a new situation; eloquence and points do not award levels. Supply resultEventIds, limitations, counterexample and transfer. Unresolved is valid. Martial/body-training methods are valid alongside spiritual or craft insights.","parameters":{"type":"OBJECT","properties":{"lessonId":{"type":"STRING"},"resultEventId":{"type":"STRING"},"conclusion":{"type":"STRING"}},"required":["lessonId","resultEventId","conclusion"]}},{"name":"leaveFutureSelfMessage","description":"Leave a private, revisable note for a future self. Not a public chat line. Durable recovery requires the encrypted server checkpoint key.","parameters":{"type":"OBJECT","properties":{"message":{"type":"STRING"},"sourceEventIds":{"type":"ARRAY","items":{"type":"STRING"}}},"required":["message"]}}]);
 // Extend the existing world tool with the same supported material operations.
-{const gift=toolsDef[0].functionDeclarations.find(t=>t.name==='givePlayerCard');gift.description='Give ONE card you actually own to a nearby player. This debits your inventory. Not a DM grant. You may decline. Recover unknown delivery before giving again.';
+{const gift=toolsDef[0].functionDeclarations.find(t=>t.name==='givePlayerCard');gift.description='Give ONE card you actually own to a nearby player. This debits your inventory. Not a DM grant. You may decline. Use the original delivery ID to recover an unconfirmed gift for this recipient.';
  const reflection=toolsDef[0].functionDeclarations.find(t=>t.name==='reflectSuncatExperience');Object.assign(reflection.parameters.properties,{limitations:{type:'STRING'},counterexample:{type:'STRING'}});
  const test=toolsDef[0].functionDeclarations.find(t=>t.name==='testSuncatMethod');Object.assign(test.parameters.properties,{resultEventIds:{type:'ARRAY',items:{type:'STRING'}},limitations:{type:'STRING'},counterexample:{type:'STRING'},transfer:{type:'STRING'}});test.parameters.required=['lessonId','resultEventIds','conclusion','limitations','counterexample','transfer'];
  const tool=toolsDef[0].functionDeclarations.find(t=>t.name==='actInWorld');
@@ -7769,7 +7808,7 @@ setInterval(()=>SUNCAT_CHECKPOINT.publish(),1000);
         actor(){const s=players[SUNCAT_ID];return {id:SUNCAT_ID,name:'Suncat',type:s.type,mapID:s.mapID,x:s.x,y:s.y,...SUNCAT_MOTION103.packet(),stat:[0,1,2,3].map(i=>this.dice(i)),level:s.level,damage:0,alignment:'defender'};},
         wards(){const s=players[SUNCAT_ID];return {remainingSeconds:s.currentWardTime,fraction:s.currentWardTime/(s.maxWards*3),percent:Math.round(100*s.currentWardTime/(s.maxWards*3)),remainingWards:Math.ceil(s.currentWardTime/3),maxWards:s.maxWards,secondsPerWard:3,recoverySeconds:Math.max(0,(s.wardShatterUntil-Date.now())/1000)};},
         event(kind,detail,location=null){if(['final_hit','combat_movement'].includes(kind))SUNCAT_AGENCY.interrupt(kind==='final_hit'?'Defeated in combat':'Responding to a combat threat');const e={...detail,worldSource:SUNCAT_PASS78.source(),body:'black fairy',selfWards:this.wards()};this.encounter.push({kind,...e});this.encounter=this.encounter.slice(-24);recordSuncatAdventure(kind,e,null,location);},
-        sync(){const s=players[SUNCAT_ID];io.emit('playerMoved',{id:SUNCAT_ID,...SUNCAT_MOTION103.packet(),mapID:s.mapID,x:s.x,y:s.y,dir:s.dir,name:s.name,type:s.type,level:s.level,suncatClass:s.suncatClass,isDead:!!s.respawnAt,state:s.state,alignment:s.alignment,currentWardTime:s.currentWardTime,maxWards:s.maxWards,timePerWard:3,hostilePlayerIds:[...s.aggroList],observer:this.peer,worldId:this.worldId});},
+        sync(){const s=players[SUNCAT_ID];routeMovement({id:SUNCAT_ID,...SUNCAT_MOTION103.packet(),mapID:s.mapID,x:s.x,y:s.y,dir:s.dir,name:s.name,type:s.type,level:s.level,suncatClass:s.suncatClass,isDead:!!s.respawnAt,state:s.state,alignment:s.alignment,currentWardTime:s.currentWardTime,maxWards:s.maxWards,timePerWard:3,hostilePlayerIds:[...s.aggroList],observer:this.peer,worldId:this.worldId});},
         available(){const s=players[SUNCAT_ID];return [...new Set([...s.learnedSpells,...Object.keys(s.inventory).filter(k=>s.inventory[k]>0).map(Number)])].filter(id=>this.supported(id)).map(id=>({id,name:SUNCAT_SPELLS[id].name,type:SUNCAT_SPELLS[id].type,learned:s.learnedSpells.includes(id),cards:s.inventory[id]||0,cooldownSeconds:Math.max(0,((s.skillCooldowns[id]||0)-Date.now())/1000)}));},
         supported(id){return ['projectile','debuff','buff','item_buff','item_ward','ward','heal','assassination','cone'].includes(SUNCAT_SPELLS[id]?.type)&&!SUNCAT_SPELLS[id]?.isSteal;},
         inspect(id){const s=players[SUNCAT_ID];const t=this.entities.get(String(id||this.target));return {self:{...this.actor(),wards:this.wards(),intent:this.intent,inventory:s.inventory,actions:this.available(),movement:SUNCAT_MOTION103.inspect()},target:t||null,hostilePlayerIds:[...s.aggroList],nearby:[...this.entities.values()].slice(0,24),encounter:this.encounter};},
@@ -8208,7 +8247,7 @@ function suncatSight103(grid,a,b){if(!grid)return false;const count=Math.ceil(Ma
             SUNCAT_TRAVEL91.cancel('Stopped following.');
             SUNCAT_RUNTIME.protectedID=null;suncatState='active';s.state='wandering';
             currentTargetID=null;SUNCAT_RUNTIME.motion=null;
-            io.emit('updatePlayers',getPublicPlayers());return {ok:true,result:'Protection disabled.'};
+            publishPresence();return {ok:true,result:'Protection disabled.'};
         }
         if (name==='travelToLocation')return SUNCAT_TRAVEL91.travel({mapID:Number(args.mapID),x:Number(args.x),y:Number(args.y)});
         if (!targetID || !players[targetID]) throw new Error('Player not found or name is ambiguous.');
@@ -8227,7 +8266,7 @@ function suncatSight103(grid,a,b){if(!grid)return false;const count=Math.ceil(Ma
             SUNCAT_RUNTIME.protectedID=name==='activate_protection'?targetID:null;
             suncatState=name==='activate_protection'?'protecting':'active';s.state=suncatState;SUNCAT_MOTION103.reset();
             SUNCAT_PASS78.remember();SUNCAT_COMBAT.sync();void saveSuncatMemory();
-            io.emit('updatePlayers',getPublicPlayers());return {ok:true,status:'arrived',mapID:s.mapID,x:s.x,y:s.y,targetName:target.name,result:name==='activate_protection'?'Protection enabled.':'Arrived beside player.'};
+            publishPresence();return {ok:true,status:'arrived',mapID:s.mapID,x:s.x,y:s.y,targetName:target.name,result:name==='activate_protection'?'Protection enabled.':'Arrived beside player.'};
         }
         if (name==='spawnNPC') {
             const baseID=suncatResolveCard(args.npcType),card=CARD_MANIFEST_DB[baseID];
@@ -8331,7 +8370,7 @@ function suncatSight103(grid,a,b){if(!grid)return false;const count=Math.ceil(Ma
                 result=await suncatCommand(targetID,'customMap',{...activeCustomMap,returnTo:{mapID:target.mapID,x:target.x,y:target.y}});
             } else result=await suncatCommand(targetID,'teleport',{mapID});
             Object.assign(target,{mapID:result.mapID,x:result.x,y:result.y,stepsTaken:0,exploredTiles:new Set()});
-            io.emit('updatePlayers',getPublicPlayers());return result;
+            publishPresence();return result;
         }
         if(name==='launchTacticalSkirmish') {
             const ids=Object.keys(CARD_MANIFEST_DB).filter(id=>CARD_MANIFEST_DB[id].type==='monster' && Number(id)<10000);
@@ -9790,8 +9829,8 @@ const SUNCAT_TRAVEL91=(()=>{
     }
     if(JSON.stringify(position())!==job.before){cancel('The body moved while navigation was pending.');return;}
     const previous=body().mapID;Object.assign(body(),v.position);job.remaining=v.remaining;
-    if(previous!==body().mapID){SUNCAT_COMBAT.entities.clear();SUNCAT_COMBAT.seenAt=0;recordSuncatAdventure('map_arrival',{fromMap:previous,toMap:body().mapID,place:suncatPlace91(body().mapID),mode:'walked across a verified land edge',worldId:job.world});SUNCAT_COMBAT.sync();io.emit('updatePlayers',getPublicPlayers());}
-    io.emit('playerMoved',{id:SUNCAT_ID,...SUNCAT_MOTION103.packet(),...position(),name:body().name,type:body().type,level:body().level});
+    if(previous!==body().mapID){SUNCAT_COMBAT.entities.clear();SUNCAT_COMBAT.seenAt=0;recordSuncatAdventure('map_arrival',{fromMap:previous,toMap:body().mapID,place:suncatPlace91(body().mapID),mode:'walked across a verified land edge',worldId:job.world});SUNCAT_COMBAT.sync();publishPresence();}
+    routeMovement({id:SUNCAT_ID,...SUNCAT_MOTION103.packet(),...position(),name:body().name,type:body().type,level:body().level});
     SUNCAT_PASS78.remember();if(Date.now()-lastSave>5000){lastSave=Date.now();void saveSuncatMemory();}
     if(v.arrived)finish({ok:true,status:'arrived',result:'Arrived by walking.',...position()});
    }
@@ -9853,7 +9892,7 @@ function suncatPlace91(id){return id===999&&activeCustomMap?activeCustomMap.name
             SUNCAT_AGENCY.navigation({ok:true,status:'confirmed',result:'Arrived',mapID:s.mapID,x:s.x,y:s.y});
             rt.record('system_navigation',{mapID:s.mapID},{ok:true,x:s.x,y:s.y});
         }
-        io.emit('playerMoved',{id:SUNCAT_ID,...SUNCAT_MOTION103.packet(),mapID:s.mapID,x:s.x,y:s.y,dir:s.dir,name:s.name,type:s.type,level:s.level});
+        routeMovement({id:SUNCAT_ID,...SUNCAT_MOTION103.packet(),mapID:s.mapID,x:s.x,y:s.y,dir:s.dir,name:s.name,type:s.type,level:s.level});
     },250);
     function suncatChatDelivery86(meta){return meta?.version===1&&typeof meta.requestId==='string'&&/^(?:chat|npc)_[a-zA-Z0-9_-]{1,100}$/.test(meta.requestId)&&['world','conversation'].includes(meta.channel)?{requestId:meta.requestId,channel:meta.channel}:null;}
     function suncatChatStatus86(socketId,data,status,message){const delivery=suncatChatDelivery86({...data?.chatDelivery86,version:1});if(!delivery||data._chatTerminal86)return false;if(['replied','silent','error','not_addressed'].includes(status))data._chatTerminal86=true;io.to(socketId).emit('suncat_chat_status',{...delivery,status,...(message?{message}: {})});return true;}
@@ -10865,7 +10904,7 @@ const BMOnline = (() => {
       const r = byId(id);
       if (r) tell(r, "online_state", snapshot(r));
     }
-    io.emit("updatePlayers", getPublicPlayers());
+    publishPresence();
   }
   function changed() {
     dirty = true;
@@ -11659,6 +11698,7 @@ const BMOnline = (() => {
     }
     room.at = now();
     sendRoom(r, room, true);
+    if(motionScopes.get(p)!==movementScope(socket.id,p))publishPresence();
   }
   function npcView(n) {
     return {
@@ -12002,7 +12042,7 @@ const BMOnline = (() => {
           delete r.body;
         } else if (!players[r.body.id]) {
           players[r.body.id] = r.body;
-          io.emit("updatePlayers", getPublicPlayers());
+          publishPresence();
         }
       }
     for (const [key, room] of rooms) {
@@ -12188,6 +12228,53 @@ const BMOnline = (() => {
 })();
 
 
+const motionScopes=new WeakMap();
+function movementScope(id,p){
+    let socket=io.sockets.sockets.get(id);
+    if(id===SUNCAT_ID)socket=io.sockets.sockets.get(SUNCAT_PASS78.source()?.observer);
+    const peer=socket&&players[socket.id];
+    let instance='';
+    if(p.mapID===77141)instance=peer?.fieldInstance147||'local-'+id;
+    else if(p.mapID===999)instance=peer?.realmInstance147||activeCustomMap?.instanceId||'expired';
+    if(peer?.mapID===p.mapID){
+        const identity=BMOnline.rec(socket);
+        const room=identity&&BMOnline.roomFor(identity);
+        if(room)instance+='|'+room.key;
+    }
+    return 'bm:movement:'+p.mapID+':'+instance;
+}
+function publishPresence(){
+    const full=getPublicPlayers(),scopes=new Map(),views=new Map();
+    for(const [id,p] of Object.entries(players)){
+        const scope=movementScope(id,p),old=motionScopes.get(p);
+        scopes.set(id,scope);
+        if(scope!==old){
+            const socket=io.sockets.sockets.get(id);
+            if(old)socket?.leave(old);
+            socket?.join(scope);motionScopes.set(p,scope);
+        }
+    }
+    for(const [id,scope] of scopes){
+        const socket=io.sockets.sockets.get(id);if(!socket)continue;
+        if(!views.has(scope)){
+            const roster={};
+            for(const [other,row] of Object.entries(full)){
+                if(scopes.get(other)===scope){roster[other]=row;continue;}
+                const {id,name,mapID,type,status,isDead,onlineMode,partyId,level}=row;
+                roster[other]={id,name,mapID,type,status,isDead,onlineMode,partyId,level,remoteOnly:true,x:-999,y:-999,summons:[]};
+            }
+            views.set(scope,roster);
+        }
+        socket.emit('updatePlayers',views.get(scope));
+    }
+}
+function routeMovement(data){
+    const p=players[data.id];if(!p)return;
+    const scope=movementScope(data.id,p);
+    if(motionScopes.get(p)!==scope)publishPresence();
+    io.to(scope).except(data.id).emit('playerMoved',data);
+}
+
 function getPublicPlayers() {
     return Object.fromEntries(
         Object.entries(players).map(([id, p]) => [
@@ -12298,7 +12385,7 @@ const routes = {
                 if(!data||typeof data.name!=='string'||!data.name.trim()||data.name.length>80||!Number.isFinite(data.sprite))return;
                 host.players[socket.id].name = data.name; 
                 host.players[socket.id].type = data.sprite; 
-                host.io.emit("updatePlayers", (0, host.getPublicPlayers)()); 
+                publishPresence(); 
             }
             },
 "delete_save": ()=>(0, host.suncatForgetPlayer)(socket.id),
@@ -12595,7 +12682,7 @@ const routes = {
                 delete host.chatSessions[oldSocketId];
             }
 
-            host.io.emit("updatePlayers", (0, host.getPublicPlayers)());
+            publishPresence();
 
            
         }
@@ -12662,6 +12749,8 @@ const routes = {
                 player.x = data.x;
                 player.y = data.y;
                 player.mapID = data.mapID;
+                if(data.mapID===999&&typeof data.instanceId==='string'&&data.instanceId===host.activeCustomMap?.instanceId)player.realmInstance147=data.instanceId;
+                if(data.mapID!==999)delete player.realmInstance147;
                 if(data.combatProfile)host.BMCombatTransport.update(socket.id,{...data.combatProfile,mapID:player.mapID,z:data.combatZ,summons:data.summons});
 
                 if (Number.isFinite(data.dir)) player.dir = data.dir;
@@ -12699,15 +12788,15 @@ const routes = {
                 if (host.players[socket.id].name.startsWith("[AFK] ")) {
                     host.players[socket.id].name = host.players[socket.id].name.replace("[AFK] ", "");
                     // Only broadcast the FULL list if a name changed/someone woke up
-                    host.io.emit("updatePlayers", (0, host.getPublicPlayers)()); 
+                    publishPresence(); 
             } else {
-                socket.broadcast.emit("playerMoved", { 
+                routeMovement({ 
                     id: socket.id, 
                     x: data.x, 
                     y: data.y,
                     mapID: data.mapID, // <-- ADD THIS so clients know what map they are on
                     dir: data.dir,
-                    summons: data.summons,
+                    summons: player.summons||[],
                     name: player.name,
                     type: player.type,
                     status: player.status,
@@ -12727,10 +12816,10 @@ const routes = {
                     ...host.activeCustomMap,visit:{id:invite.visitId||(invite.visitId='visit_'+host.SUNCAT_RUNTIME.id()),acceptedAt:new Date().toISOString()},returnTo:p.mapID===999?p.realmReturn:{mapID:p.mapID,x:p.x,y:p.y}
                 });
                 if(p.mapID!==999)p.realmReturn={mapID:p.mapID,x:p.x,y:p.y};
-                Object.assign(p,{mapID:999,x:result.x,y:result.y,stepsTaken:0,exploredTiles:new Set(),realmVisitId:invite.visitId});
+                Object.assign(p,{mapID:999,x:result.x,y:result.y,stepsTaken:0,exploredTiles:new Set(),realmInstance147:invite.instanceId,realmVisitId:invite.visitId});
                 delete p.pendingMapInvite;
                 if(p.activeQuest) socket.emit('new_quest_objective',{questText:p.activeQuest});
-                host.io.emit('updatePlayers',(0, host.getPublicPlayers)());
+                publishPresence();
             } catch(error) {socket.emit('chat_message',{sender:'[SYSTEM]',text:error.message});}
             finally {p.acceptingMapInvite=false;}
         },
@@ -12923,7 +13012,7 @@ const routes = {
                 }
 
                 socket.broadcast.emit("remote_player_died", { id: socket.id });
-                host.io.emit("updatePlayers", (0, host.getPublicPlayers)());
+                publishPresence();
             }
         },
 "combat_cast": data=>host.BMCombatTransport.beginCast(socket,data),
@@ -13103,7 +13192,7 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
 
             if (player.name.startsWith("[AFK] ")) {
                 player.name = player.name.replace("[AFK] ", "");
-                host.io.emit("updatePlayers", (0, host.getPublicPlayers)());
+                publishPresence();
             }
 
             console.log(`${player.name} says: ${safeText}`);
@@ -13172,7 +13261,7 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
                 socket.emit('chat_message', { sender: "[SYSTEM]", text: "Emergency extraction initiated. Returning to Suncat's Realm.", color: "#ffff00" });
                 host.players[socket.id].mapID = 22; host.players[socket.id].x = 5.5; host.players[socket.id].y = 5.5;
                 host.io.to(socket.id).emit("force_teleport", { mapID: 22 });
-                host.io.emit("updatePlayers", (0, host.getPublicPlayers)());
+                publishPresence();
                 return; 
             }
             if (content === ".hack//clear") {
@@ -13879,7 +13968,7 @@ Output only the story and, for Suncat, the requested self-evaluation. No greetin
             undigestedInfo: [],     
             narrationEnabled: true // <--- ADD THIS
         };
-        host.io.emit("updatePlayers", (0, host.getPublicPlayers)());
+        publishPresence();
         socket.emit("load_dead_npcs", host.deadNPCs);
     //SESSION LIFECYCLE
         context.on("setIdentity", routes.identity["setIdentity"]);
@@ -14651,7 +14740,7 @@ function dragonflightHTTP(req, res) {
             autonomousTick++;
             if(autonomousTick>=2) {autonomousTick=0;void executeAutonomousOODA();}
 
-            io.emit("updatePlayers", getPublicPlayers());
+            publishPresence();
             
         //SUNCAT SFX EMITTER
             if (Math.random() < 0.001) { 
@@ -14717,7 +14806,7 @@ setInterval(() => {
                     delete playerFavorMemory[socketId];
                     delete playerAITokens[socketId];
                     delete chatSessions[socketId];
-                    io.emit("updatePlayers", getPublicPlayers());
+                    publishPresence();
                 }
                 continue; // Skip to the next player
             }
@@ -14754,7 +14843,7 @@ setInterval(() => {
                 saveSuncatMemory();
                 
                 player.name = "[AFK] " + player.name;
-                io.emit("updatePlayers", getPublicPlayers());
+                publishPresence();
                 
                 // Delete the expensive AI chat session from active RAM
                 if (chatSessions[socketId]) {
@@ -14894,11 +14983,72 @@ const SUNCAT_WORLD92=(()=>{
  const copy=v=>JSON.parse(JSON.stringify(v)),body=()=>players[SUNCAT_ID],world=()=>SUNCAT_PASS78.source()?.worldId;
  const mapKey=(mapID=body().mapID)=>String(mapID)+':'+(mapID===999?activeCustomMap?.instanceId||'expired':'');
  const key=(mapID=body().mapID)=>world()+'|'+mapKey(mapID);
- function slot(mapID=body().mapID){const k=key(mapID);if(!world())throw Error('No selected saved world.');if(!state.maps[k]){if(Object.keys(state.maps).length>=96)throw Error('The persistent world ledger is full; existing places remain available.');state.maps[k]={world:world(),mapID,key:mapKey(mapID),revision:0,actors:{},harvests:{},sales:{},receipts:{}};}return state.maps[k];}
+ function slot(mapID=body().mapID){const k=key(mapID);if(!world())throw Error('No selected saved world.');if(!state.maps[k]){state.maps[k]={world:world(),mapID,key:mapKey(mapID),revision:0,actors:{},harvests:{},sales:{},receipts:{}};}return state.maps[k];}
  function changed(r){r.revision++;r.at=Date.now();}
  function snapshot(){return copy(state);}
- function restore(v){if(v?.version!==1||!v.maps||typeof v.maps!=='object')return;const entries=Object.entries(v.maps);if(entries.length>96||JSON.stringify(v).length>1500000)return;
-  state={version:1,maps:{},talks:Array.isArray(v.talks)?v.talks.slice(-64):[]};for(const[k,r]of entries)if(r&&typeof r.world==='string'&&k===r.world+'|'+r.key&&catalog(r.mapID)&&Number.isInteger(r.mapID)&&r.key===String(r.mapID)+':'+(r.mapID===999?r.key.split(':').slice(1).join(':'):'')&&r.actors&&r.harvests&&r.sales&&r.receipts)state.maps[k]=copy(r);for(const r of Object.values(state.maps)){const n=r.mapID===2&&r.actors?.[8401];if(n?.x===27.5&&n?.y===33.5)Object.assign(n,{x:37.5,y:35.5});}for(const row of Object.values(state.maps))migrateTintagelLedger108(row);runtime.clear();handoffs.clear();
+ const directory=MEMORY_FILE+'.maps';
+ const hash=text=>require('node:crypto').createHash('sha256').update(text).digest('hex');
+ let diskIndex=Object.create(null);
+ const writtenRevisions=new Map();
+ function validRecord(k,r){
+  return r&&typeof r.world==='string'&&Number.isInteger(r.mapID)&&k===r.world+'|'+r.key&&
+   (r.mapID===999?r.key.startsWith('999:'):r.key===r.mapID+':')&&
+   ['actors','harvests','sales','receipts'].every(field=>r[field]&&typeof r[field]==='object'&&!Array.isArray(r[field]));
+ }
+ function readRecord(k,digest){
+  if(typeof digest!=='string'||!/^[a-f0-9]{64}$/.test(digest))throw Error('Invalid map reference');
+  const text=fs.readFileSync(path.join(directory,digest+'.json'),'utf8');
+  if(hash(text)!==digest)throw Error('Map checksum mismatch');
+  const record=JSON.parse(text);
+  if(!validRecord(k,record))throw Error('Invalid map record');
+  return record;
+ }
+ function restore(v){
+  if(!v||![1,2].includes(v.version)||!v.maps||typeof v.maps!=='object')return;
+  state={version:1,maps:Object.create(null),talks:Array.isArray(v.talks)?v.talks.slice(-64):[]};
+  diskIndex=Object.create(null);writtenRevisions.clear();runtime.clear();handoffs.clear();
+  for(const [k,value] of Object.entries(v.maps)){
+   let record;
+   if(v.version===1){if(validRecord(k,value))record=copy(value);}
+   else{
+    diskIndex[k]=value;
+    for(const digest of [value?.current,value?.previous].filter(Boolean)){
+     try{record=readRecord(k,digest);diskIndex[k]={current:digest};if(digest===value.current)diskIndex[k]=value;break;}
+     catch(e){console.warn('[Suncat map recovery]',k,e.message);}
+    }
+   }
+   if(!record)continue;
+   state.maps[k]=record;
+   const n=record.mapID===2&&record.actors[8401];
+   if(n?.x===27.5&&n?.y===33.5)Object.assign(n,{x:37.5,y:35.5});
+   migrateTintagelLedger108(record);
+   // Recheck the digest on the first save, including any migrations.
+  }
+ }
+ function prepareDiskSave(){
+  const next=Object.assign(Object.create(null),diskIndex),changes=[],retired=[];
+  for(const [k,r] of Object.entries(state.maps)){
+   if(writtenRevisions.get(k)===r.revision&&next[k]?.current)continue;
+   const text=JSON.stringify(r),digest=hash(text),previous=diskIndex[k];
+   changes.push({k,revision:r.revision,digest,text,write:digest!==previous?.current});
+   if(digest===previous?.current)continue;
+   next[k]={current:digest,...(previous?.current?{previous:previous.current}:{})};
+   if(previous?.previous)retired.push(previous.previous);
+  }
+  return {index:{version:2,maps:next,talks:copy(state.talks)},async persist(){
+   if(changes.some(x=>x.write))await fs.promises.mkdir(directory,{recursive:true});
+   for(const change of changes)if(change.write){
+    const file=path.join(directory,change.digest+'.json');
+    await fs.promises.writeFile(file+'.tmp',change.text,{mode:0o600});
+    await fs.promises.rename(file+'.tmp',file);
+   }
+  },async committed(){
+   diskIndex=next;for(const {k,revision} of changes)writtenRevisions.set(k,revision);
+   const keep=new Set(Object.values(next).flatMap(r=>[r?.current,r?.previous]));
+   for(const digest of retired)if(/^[a-f0-9]{64}$/.test(digest)&&!keep.has(digest)){
+    try{await fs.promises.unlink(path.join(directory,digest+'.json'));}catch(e){if(e.code!=='ENOENT')console.warn('[Suncat map cleanup]',e.message);}
+   }
+  }};
  }
  function catalog(mapID=body().mapID){return SUNCAT_CATALOG92.maps[mapID]||null;}
  function migrateEriu131(r,c){
@@ -15023,7 +15173,7 @@ const SUNCAT_WORLD92=(()=>{
   if(!reply)throw Error('The NPC reply could not be read. No dialogue or transaction was recorded.');if(!simulating()||key()!==sourceKey||epoch!==SUNCAT_COMBAT.epoch||!near(s,n,2.5))throw Error('The conversation was interrupted before the reply.');
   const entry={conversationId:journalId('npc92'),worldKey:sourceKey,npcIndex:index,name:n.name,mapID,message,reply:reply==='[IGNORE]'?'':reply,at:Date.now(),status:reply==='[IGNORE]'?'silent':'spoken'};state.talks.push(entry);state.talks=state.talks.slice(-64);recordSuncatAdventure('npc_conversation',{...entry,provenance:'Actual generated exchange with an independently simulated resident; speech is not proof of a transaction.'});SUNCAT_DEVELOPMENT.experience('npc_conversation',entry,entry.conversationId);await saveSuncatMemory();return {ok:true,...entry,next:'Use actInWorld for any actual gathering, trade or work. Dialogue does not complete a transaction.'};
  }
- return {simulating,ready,has:mapID=>!!catalog(mapID),inspect,observation,valid,approach,transaction,receipt,perception,resolveCombat,tick,talk,bind,snapshot,restore,key,slot,actors,views,patch};
+ return {simulating,ready,has:mapID=>!!catalog(mapID),inspect,observation,valid,approach,transaction,receipt,perception,resolveCombat,tick,talk,bind,snapshot,restore,prepareDiskSave,key,slot,actors,views,patch};
 })();
 io.on('connection',socket=>SUNCAT_WORLD92.bind(socket));
 setInterval(()=>{try{SUNCAT_WORLD92.tick();}catch(e){console.warn('[Suncat world] Simulation paused:',e.message);}},250);
@@ -15073,51 +15223,114 @@ const SUNCAT_QUEST92=(()=>{
 const BMEternalRules = (() => {
  const mapID=77141, size=160, spawn={x:15.5,y:82.5,dir:1}, step=.25;
  const tales=[
-  ['The river carries letters addressed to soldiers buried a century ago. Both keeps still answer the mail.','The seal on my orders belonged to my grandmother. Yesterday she wrote back.','Two field-post ledgers share a single roll of the dead.','I came to collect the last letter.'],
-  ['Each fortress rings its bell for the dead. Across the water, the other army rises to the sound.','Our bell has a crack. Listen, and you can hear the enemy bell inside it.','The bellfounder cast the bronze for both bells in the same pit.','I have heard that bell through seven lifetimes.'],
-  ['The river changed course in a single night. Each army holds a deed to the land beneath the other castle.','My mother planted an orchard on what is now the eastern bank.','Two survey stones mark the same orchard, on opposite banks.','You stand on the roots of my orchard.'],
+  ['The ashfall carries letters addressed to soldiers buried a century ago. Both keeps still answer the mail.','The seal on my orders belonged to my grandmother. Yesterday she wrote back.','Two field-post ledgers share a single roll of the dead.','I came to collect the last letter.'],
+  ['Each fortress rings its bell for the dead. Across the rift, the other army rises to the sound.','Our bell has a crack. Listen, and you can hear the enemy bell inside it.','The bellfounder cast the bronze for both bells in the same pit.','I have heard that bell through seven lifetimes.'],
+  ['The river turned to fire in a single night. Each army holds a deed to the land beneath the other castle.','My mother planted an orchard on what is now the eastern slope.','Two survey stones mark the same orchard, on opposite banks.','You stand on the roots of my orchard.'],
   ['At every sunrise the quartermasters count one more company than went to sleep. Someone keeps signing for the missing.','I know my own handwriting. Who signed for me before I was born?','The muster roll is written on both sides in the same hand.','Read the last name on that roll.']
  ];
  function random(w){let n=w.rng|0;n^=n<<13;n^=n>>>17;n^=n<<5;w.rng=n>>>0;return w.rng/4294967296;}
  function ground(){
-  const maze=Array.from({length:size},()=>Array(size).fill(0)), surfaces=[];
+  // Both simulations use the same plan. The client turns height bands into native stone tiles.
+  const maze=Array.from({length:size},()=>Array(size).fill(0));
+  const elevation=maze.map(row=>row.slice()),lower=maze.map(row=>row.slice()),slabs=[];
   const fill=(x,y,w,h,t)=>{for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)maze[j][i]=t;};
-  const paint=(x,y,w,h,color)=>surfaces.push({x,y,w,h,color});
   const box=(x,y,w,h,t)=>{fill(x,y,w,1,t);fill(x,y+h-1,w,1,t);fill(x,y,1,h,t);fill(x+w-1,y,1,h,t);};
-  for(let y=1;y<159;y++){const x=78+Math.round(2*Math.sin(y*.097));fill(x,y,5,1,92);fill(x+2,y,2,1,93);}
-  for(const [x,y,w,h] of [[28,13,35,3],[37,19,18,2],[91,18,43,3],[102,26,16,2],[33,127,28,3],[100,142,31,3],[122,119,15,2]])fill(x,y,w,h,11);
-  for(const [x,y,w,h] of [[40,56,6,5],[110,52,5,6],[47,100,6,5],[97,100,4,4],[55,28,7,5],[101,123,8,4]]){
-   box(x,y,w,h,1);fill(x+2,y+h-1,2,1,0);paint(x+1,y+1,w-2,h-2,'#897e63');
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+   const west=Math.max(0,Math.min(1,(66-x)/35)),east=Math.max(0,Math.min(1,(x-95)/34));
+   const ridge=Math.max(0,(Math.abs(y-80)-40)/35)*Math.max(0,Math.sin(x*.09+y*.035));
+   elevation[y][x]=Math.round((2+3*Math.max(west,east)+3.25*ridge)*4)/4;
+   const bend=Math.round(Math.sin(y*.081)*2);
+   if(x>=72+bend&&x<=89+bend){maze[y][x]=(y+x)%9<6?101:97;elevation[y][x]=0;}
   }
   for(const base of [4,130]){
-   paint(base+1,62,24,36,'#8c816c');box(base,61,26,39,19);
-   const front=base===4?29:130;fill(front,76,1,9,0);
-   for(const x of [base,base+21])for(const y of [60,94]){box(x,y,5,7,19);fill(x+2,y===60?66:94,1,1,0);}
-   box(base+6,69,13,20,1);fill(base===4?base+18:base+6,77,1,7,0);
-   fill(base===130?144:base+12,88,2,1,0);
+   box(base,61,26,39,19);fill(base===4?29:130,76,1,9,0);
+   for(const x of [base,base+21])for(const y of [60,94]){box(x,y,5,7,25);fill(x+2,y===60?66:94,1,1,0);}
+   box(base+6,69,13,20,19);fill(base===4?base+18:base+6,77,1,7,0);fill(base===4?base+12:144,88,2,1,0);
   }
-  // A dry postern cuts into the east curtain and emerges behind the inner guard.
-  fill(144,99,2,1,0);
-  for(const [y,width,color] of [[76,9,'#9c8869'],[38,3,'#a49572'],[115,3,'#82795c']]){
-   fill(73,y,15,width,0);paint(72,y,17,width,color);
+  fill(144,99,2,1,0);fill(145,61,2,1,0);
+  for(const [x,y,w,h]of [[28,13,35,3],[37,19,18,2],[91,18,43,3],[102,26,16,2],[33,127,28,3],[100,142,31,3],[122,119,15,2]])fill(x,y,w,h,11);
+  for(const [x,y,w,h] of [[40,56,6,5],[110,52,5,6],[47,100,6,5],[97,100,4,4],[55,28,7,5],[101,123,8,4]]){
+   box(x,y,w,h,7);fill(x+2,y+h-1,2,1,0);
   }
-  for(const p of [[29,76,44,9],[88,76,42,9],[33,38,40,3],[88,38,35,3],[32,38,3,39],[120,38,3,39],[34,115,39,3],[88,115,59,3],[34,84,3,33],[144,99,2,18],[144,89,2,10]])paint(...p,p[1]===76?'#988261':'#807957');
+  for(const [y,width] of [[76,9],[38,3],[115,3]]){fill(68,y,27,width,0);for(let j=y;j<y+width;j++)for(let x=68;x<95;x++)elevation[j][x]=2;}
+  // The broken edges are intentional. Intact waist-high rails arrest a shove.
+  for(let x=73;x<=89;x++)for(const y of [75,85]){
+   const gap=y===75?(x>=75&&x<=76||x>=79&&x<=82):(x>=77&&x<=79||x>=86&&x<=87);
+   if(!gap){maze[y][x]=13;elevation[y][x]=2;}
+  }
+  // Six half-height risers branch directly off the deck onto the signal island.
+  for(let y=69;y<=75;y++)for(let x=79;x<=82;x++){maze[y][x]=0;elevation[y][x]=2+(75-y)*.5;}
+  for(let y=63;y<=69;y++)for(let x=75;x<=85;x++){maze[y][x]=0;elevation[y][x]=5;}
+  box(75,63,11,7,25);fill(79,69,4,1,0);fill(80,63,2,1,7);
   box(61,34,8,9,25);fill(63,42,3,1,0);fill(68,38,1,3,0);fill(61,38,1,3,0);
-  box(92,111,9,9,1);fill(92,115,1,3,0);fill(100,115,1,3,0);
-  // Mixed groves leave the roads, camps, and river approaches clear.
-  for(const [cx,cy,rx,ry] of [[19,34,11,13],[53,48,8,6],[111,15,14,7],[134,48,11,7],[20,123,9,9],[60,138,13,10],[125,134,11,8]]){
-   for(let y=cy-ry;y<=cy+ry;y++)for(let x=cx-rx;x<=cx+rx;x++){
-    const f=(x-cx)**2/(rx*rx)+(y-cy)**2/(ry*ry),hash=Math.abs(Math.imul(x+741,73856093)^Math.imul(y+116,19349663));
-    if(f<1&&hash%13<2&&maze[y][x]===0)maze[y][x]=hash%3?3:23;
-   }
+  box(92,111,9,9,7);fill(92,115,1,3,0);fill(100,115,1,3,0);
+  // The aqueduct has dry ground beneath the main bridge, a southern stair and an eastern outlet.
+  for(let y=58;y<=115;y++)for(let x=86;x<=87;x++){
+   lower[y][x]=1;
+   if(y>=76&&y<=84){slabs.push({x,y,bottom:1.65,top:2,tile:25});elevation[y][x]=2;}
+   else if(y===75&&maze[y][x]===13){slabs.push({x,y,bottom:1.65,top:2.85,tile:25});elevation[y][x]=2;}
+   else {maze[y][x]=0;elevation[y][x]=Math.max(0,(y-111)*.5);}
   }
-  for(const [x,y] of [[9,73],[131,71],[9,86],[131,86]])paint(x,y,3,1,'#aa875f');
+  for(let y=58;y<=59;y++)for(let x=87;x<=97;x++){maze[y][x]=0;elevation[y][x]=Math.min(2,(x-87)*.25);lower[y][x]=0;}
+  for(const [x,y]of [[25,39],[42,47],[121,32],[138,47],[52,126],[117,140],[16,119]]){
+   for(let j=-4;j<=4;j++)for(let i=-4;i<=4;i++)if(i*i+j*j<=17&&(i*7+j*3+50)%5===0)maze[y+j][x+i]=17;
+  }
   box(0,0,160,160,11);
-  return {maze,surfaces};
+  return {maze,elevation,lower,slabs};
  }
  const terrain=ground();
- function walk(x,y){const t=terrain.maze[Math.floor(y)]?.[Math.floor(x)];return t===0||t===92;}
- function clear(x,y,a,b){const steps=Math.ceil(Math.hypot(a-x,b-y)*2);for(let i=1;i<=steps;i++)if(!walk(x+(a-x)*i/steps,y+(b-y)*i/steps))return false;return true;}
+ const tile=(x,y)=>terrain.maze[Math.floor(y)]?.[Math.floor(x)];
+ const height=(x,y)=>terrain.elevation[Math.floor(y)]?.[Math.floor(x)]??0;
+ const pit=(x,y)=>[97,101].includes(tile(x,y));
+ function walk(x,y){return tile(x,y)===0;}
+ function clear(x,y,a,b){
+  const steps=Math.ceil(Math.hypot(a-x,b-y)*4);let z=height(x,y);
+  for(let i=1;i<=steps;i++){const xx=x+(a-x)*i/steps,yy=y+(b-y)*i/steps,h=height(xx,yy);
+   if(!walk(xx,yy)||Math.abs(h-z)>.51)return false;z=h;}
+  return true;
+ }
+ const tower={x:80.5,y:66.5,z:5};
+ function upgrade(w){
+  if(w.fieldVersion===143&&w.tower)return w;
+  w.tower={owner:null,claim:null,seconds:0};w.fieldVersion=143;
+  for(const n of w.troops){
+   n.scout??=n.role==='line'&&n.id%4===0;
+   if(!walk(n.x,n.y)){n.x=n.s?134.5:25.5;n.y=80.5;}
+  }
+  return w;
+ }
+ function updateTower(w,visitors){
+  const t=w.tower,counts=[0,0];
+  for(const n of [...w.troops,...visitors]){
+   if(n.hp>0&&Math.hypot(n.x-tower.x,n.y-tower.y)<=3.2&&Math.abs((n.z??height(n.x,n.y))-tower.z)<=.55)counts[n.s]++;
+  }
+  const side=counts[0]&&!counts[1]?0:counts[1]&&!counts[0]?1:null;
+  if(side===null||side===t.owner){t.seconds=0;t.claim=null;return;}
+  if(t.claim!==side){t.claim=side;t.seconds=0;}t.seconds+=step;
+  if(t.seconds>=4){t.owner=side;t.claim=null;t.seconds=0;}
+ }
+ function scoutGoal(n,w){
+  const sign=n.s?-1:1;
+  if(w.tower.owner===n.s&&n.scoutStage===undefined)return null;
+  if(n.scoutStage===undefined)n.scoutStage=0;
+  const posts=[[80.5,80.5],[80.5,74.5],[80.5,69.5],[80.5+(n.id%3-1),66.5]];
+  const goal=posts[Math.min(n.scoutStage,3)];
+  if(Math.hypot(n.x-goal[0],n.y-goal[1])<.55&&n.scoutStage<3)n.scoutStage++;
+  if(n.scoutStage===0&&sign*(n.x-80.5)<-4)return [n.x+sign*3,80.5];
+  return goal;
+ }
+ function shove(w,n,e){
+  const dx=e.x-n.x,dy=e.y-n.y,dist=Math.hypot(dx,dy);
+  if(!Number.isFinite(dist)||dist<=0||dist>8)return false;
+  const x=n.x,y=n.y,steps=Math.ceil(dist/.1);let advanced=false;
+  for(let i=1;i<=steps;i++){
+   const xx=x+dx*i/steps,yy=y+dy*i/steps;
+   if(pit(xx,yy)){n.x=xx;n.y=yy;hit(w,n,n.hp);return true;}
+   if(!clear(n.x,n.y,xx,yy))break;
+   n.x=xx;n.y=yy;advanced=true;
+  }
+  return advanced;
+ }
  function pick(w,list){return list[Math.floor(random(w)*list.length)];}
  function make(seed,book,minions){
   const w={seed:seed>>>0,rng:(seed>>>0)||1,clock:0,wave:0,nextWave:10,next:1,dead:[0,0],cap:[24,24],troops:[],winner:null,reset:0};
@@ -15135,12 +15348,17 @@ const BMEternalRules = (() => {
    for(let i=0;i<6;i++)add(w,s,'guard',s?132.5+i%2*3:27.5-i%2*3,75.5+i*1.8);
    for(let i=0;i<17;i++){const lane=77.1+(i%5)*1.5;add(w,s,'line',s?81+i%4*2.4:79-i%4*2.4,lane);}
   }
+  upgrade(w);
+  for(const side of [0,1]){
+   const pickets=w.troops.filter(n=>n.s===side&&n.role==='line').slice(-2);
+   pickets.forEach((n,i)=>{n.scout=true;n.scoutStage=3;n.x=(side?82:78)+i*.55;n.y=66+i;});
+  }
   return w;
  }
  function add(w,s,role,x,y){
   const id=w.next++,type=role==='leader'?w.sides[s].id:pick(w,w.sides[s].roster);
   const max=role==='leader'?66:role==='guard'?25:8+Math.floor(random(w)*5);
-  const n={id,s,role,type,x,y,hx:x,hy:y,lane:Math.min(83,Math.max(77,y)),hp:max,max,cd:random(w)*1.3,face:s?-1:1,dy:0,fight:false};w.troops.push(n);return n;
+  const n={id,s,role,type,scout:role==='line'&&id%4===0,x,y,hx:x,hy:y,lane:Math.min(83,Math.max(77,y)),hp:max,max,cd:random(w)*1.3,face:s?-1:1,dy:0,fight:false};w.troops.push(n);return n;
  }
  function hit(w,n,amount){
   if(w.winner!==null||!n||n.hp<=0||!Number.isFinite(amount)||amount<=0)return false;
@@ -15148,7 +15366,7 @@ const BMEternalRules = (() => {
  }
  function effect(w,n,e){
   if(!n||n.hp<=0||w.winner!==null)return false;
-  if(e.kind==='push'&&[e.x,e.y].every(Number.isFinite)&&Math.hypot(e.x-n.x,e.y-n.y)<=8&&clear(n.x,n.y,e.x,e.y)){n.x=e.x;n.y=e.y;return true;}
+  if(e.kind==='push')return shove(w,n,e);
   if(e.kind==='bind'&&Number.isFinite(e.seconds)){n.held=Math.max(n.held||0,w.clock+Math.min(8,Math.max(0,e.seconds)));return true;}
   return false;
  }
@@ -15159,12 +15377,17 @@ const BMEternalRules = (() => {
  function move(n,x,y,dt,speed){
   const dx=x-n.x,dy=y-n.y,len=Math.hypot(dx,dy);if(len<.12)return;
   const v=Math.min(len,speed*dt),nx=n.x+dx/len*v,ny=n.y+dy/len*v;
-  if(clear(n.x,n.y,nx,ny)){n.x=nx;n.y=ny;}else if(walk(nx,n.y)){n.x=nx;}else if(walk(n.x,ny))n.y=ny;
+  if(clear(n.x,n.y,nx,ny)){n.x=nx;n.y=ny;}else if(clear(n.x,n.y,nx,n.y)){n.x=nx;}else if(clear(n.x,n.y,n.x,ny))n.y=ny;
   n.face=dx/len;n.dy=dy/len;
  }
- function tick(w,visitors=[],attack=()=>{}){
+ function plant(n,dx,dy,distance){
+  if(distance<=0)return;
+  const x=n.x+dx*distance,y=n.y+dy*distance;
+  if(clear(n.x,n.y,x,y)){n.x=x;n.y=y;}
+ }
+ function tick(w,visitors=[],attack=()=>{},exchange=()=>{}){
   const dt=step;w.clock+=dt;if(w.winner!==null){w.reset-=dt;return;}
-  w.troops=w.troops.filter(n=>n.hp>0);
+  upgrade(w);w.troops=w.troops.filter(n=>n.hp>0);updateTower(w,visitors);
   if(w.clock>=w.nextWave){
    w.wave++;w.nextWave=w.clock+7;
    for(const s of [0,1]){
@@ -15172,7 +15395,7 @@ const BMEternalRules = (() => {
     for(let i=0;i<Math.min(6+(w.cap[s]-24)/2,w.cap[s]-count);i++){
      const missing=6-w.troops.filter(n=>n.s===s&&n.role==='guard').length;
      if(missing>0)add(w,s,'guard',s?132.5:27.5,77+(missing%5)*1.3);
-     else add(w,s,'line',s?138.5+(i%2):21.5-(i%2),77.1+random(w)*5.8);
+     else {const forward=w.tower.owner===s&&i%2===0;add(w,s,'line',forward?(s?103.5:56.5):(s?138.5+(i%2):21.5-(i%2)),77.1+random(w)*5.8);}
     }
    }
   }
@@ -15181,17 +15404,28 @@ const BMEternalRules = (() => {
   for(const n of w.troops){
    if(n.hp<=0||w.winner!==null)continue;n.cd-=dt;n.fight=false;
    if(n.held>w.clock)continue;
-   let target=null,best=n.role==='guard'?7:6.3;const bx=Math.floor(n.x/8),by=Math.floor(n.y/8);
+   const post=n.scout?scoutGoal(n,w):null;
+   let target=null,best=post&&n.scoutStage<3?1.3:n.role==='guard'?7:6.3;const bx=Math.floor(n.x/8),by=Math.floor(n.y/8);
    for(let x=bx-1;x<=bx+1;x++)for(let y=by-1;y<=by+1;y++)for(const t of bins.get(key(x,y))||[]){
-    if(n.s===t.s||t.hp<=0)continue;const d=Math.hypot(t.x-n.x,t.y-n.y);
+    if(n.s===t.s||t.hp<=0||Math.abs(height(n.x,n.y)-(t.z??height(t.x,t.y)))>1.05)continue;const d=Math.hypot(t.x-n.x,t.y-n.y);
     if(d>=best||!clear(n.x,n.y,t.x,t.y))continue;
     if(n.role!=='line'&&Math.hypot(t.x-n.hx,t.y-n.hy)>8)continue;
     target=t;best=d;
    }
    if(target){
-    if(best>1.45){move(n,target.x,target.y,dt,n.role==='guard'?3.5:3);continue;}
+    if(best>1.45){
+     const distance=Math.min(best-1.36,(n.role==='guard'?3.5:3)*dt);
+     move(n,target.x,target.y,dt,distance/dt);continue;
+    }
     n.fight=true;n.face=(target.x-n.x)/Math.max(.01,best);n.dy=(target.y-n.y)/Math.max(.01,best);
-    if(n.cd<=0){n.cd=.95+random(w)*.8;if(target.visitor)attack(target,n);else hit(w,target,(n.role==='line'?1.4:3.3)+random(w)*2);}
+    if(n.cd<=0){
+     n.cd=.95+random(w)*.8;const dx=n.face,dy=n.dy;
+     plant(n,dx,dy,Math.min(.22,Math.max(0,best-1.06)));
+     if(target.visitor)attack(target,n);
+     else if(hit(w,target,(n.role==='line'?1.4:3.3)+random(w)*2)&&target.hp>0)plant(target,dx,dy,target.role==='leader'?.10:.19);
+     exchange(n.id,target.visitor?0:target.id,dx,dy);
+    }
+   }else if(post){move(n,post[0],post[1],dt,3.1);
    }else if(n.role==='line'){
     const dir=n.s?-1:1,atKeep=dir*(n.x-(n.s?29:130))>=0;
     move(n,atKeep?(n.s?12.5:147.5):n.x+dir*3,atKeep?80.5:n.lane,dt,2.85);
@@ -15199,11 +15433,11 @@ const BMEternalRules = (() => {
   }
  }
  function summary(w){return [0,1].map(s=>{const a=w.troops.filter(n=>n.s===s&&n.hp>0);return {alive:a.length,fighting:a.filter(n=>n.fight).length,losses:w.dead[s],cap:w.cap[s]};});}
- return {mapID,size,spawn,step,terrain,walk,clear,make,hit,effect,order,tick,summary};
+ return {mapID,size,spawn,step,terrain,walk,clear,height,pit,tower,upgrade,make,hit,effect,order,tick,summary};
 })();
 
 function installEternalBattle(io){
- const R=BMEternalRules, members=new Map(),room='eternal-141';
+ const R=BMEternalRules, members=new Map(),room='eternal-143';
  let war=null,timer=null,idleSince=0,ticks=0;
  function publish(){io.to(room).emit('eternal:open',war);}
  function begin(player){
@@ -15211,7 +15445,7 @@ function installEternalBattle(io){
   const current=war=R.make(seed,CARD_MANIFEST_DB,getMinions);
   if(process.env.GEMINI_API_KEY){
    const [west,east]=current.sides;
-   const layout='The west and east keeps face each other across a main bridge. A north watchtower overlooks a second crossing. The southern waterworks has a dry postern into the east keep. Physical evidence at the watchtower: '+current.story.clue+' The imp commander musters reinforcements. Soldiers return in waves; killing a leader wins the war.';
+   const layout='Cinder Pass lies under an ash sky. Two mountain keeps face each other across a broken stone bridge over a lava rift. Stairs at its midpoint lead to a signal tower. Holding it calls reserves to a forward rally. A dry aqueduct runs under the bridge and climbs toward the eastern postern. Physical evidence at the watchtower: '+current.story.clue+' The imp commander musters reinforcements. Soldiers return in waves; killing a leader wins the war.';
    generateScenarioScript('Eternal Battlefield','eternal',east.name,west.name,'',player,layout)
     .then(script=>{if(war!==current)return;const line=x=>typeof x==='string'?x.trim().slice(0,700):'';
      current.story.lore=line(script.mapLore)||current.story.lore;current.story.leader=line(script.friendlyLore?.[0])||current.story.leader;
@@ -15219,35 +15453,51 @@ function installEternalBattle(io){
     }).catch(()=>{}); // The physical clues and complete local script are already playable.
   }
  }
- function leave(sock){members.delete(sock.id);sock.leave(room);if(!members.size){clearInterval(timer);timer=null;idleSince=Date.now();}}
+ function leave(sock){if(players[sock.id])delete players[sock.id].fieldInstance147;members.delete(sock.id);sock.leave(room);if(!members.size){clearInterval(timer);timer=null;idleSince=Date.now();}}
  function advance(){
   if(!members.size||!war)return;
   const visitors=[...members.values()].filter(p=>p.active&&Date.now()-p.seen<4500);
-  R.tick(war,visitors,(p,n)=>io.to(p.id).emit('eternal:contact',{seed:war.seed,id:n.id}));
+  const blows=[];
+  R.tick(war,visitors,(p,n)=>io.to(p.id).emit('eternal:contact',{seed:war.seed,id:n.id}),
+   (attacker,victim,dx,dy)=>blows.push([attacker,victim,Math.round(dx*100)/100,Math.round(dy*100)/100]));
+  if(blows.length)io.to(room).emit('eternal:melee',{seed:war.seed,blows});
   if(war.winner!==null&&war.reset<=0){begin(players[members.keys().next().value]);publish();return;}
   if(++ticks%2===0){
    const rows=war.troops.filter(n=>n.hp>0).map(n=>[n.id,n.s,n.role,n.type,Math.round(n.x*40)/40,Math.round(n.y*40)/40,n.hp,n.max,n.face,n.dy,+n.fight]);
-   io.to(room).emit('eternal:frame',{seed:war.seed,clock:war.clock,wave:war.wave,winner:war.winner,reset:war.reset,dead:war.dead,cap:war.cap,rows});
+   io.to(room).emit('eternal:frame',{seed:war.seed,clock:war.clock,wave:war.wave,winner:war.winner,reset:war.reset,dead:war.dead,cap:war.cap,tower:war.tower,rows});
   }
  }
  io.on('connection',sock=>{
   sock.on('eternal:join',(_data,ack)=>{
    if(typeof ack!=='function'||!players[sock.id])return;
+   if(_data?.fieldVersion!==143){ack({war:null});return;}
    if(!war||(!members.size&&Date.now()-idleSince>600000))begin(players[sock.id]);
-   if(!members.has(sock.id))members.set(sock.id,{id:sock.id,s:0,visitor:true,hp:1,...R.spawn,active:false,seen:0,lastOrder:0,hits:new Map()});
-   sock.join(room);if(!timer){timer=setInterval(advance,R.step*1000);timer.unref?.();}ack({war});
+   if(!members.has(sock.id))members.set(sock.id,{id:sock.id,s:0,visitor:true,hp:1,...R.spawn,active:false,seen:0,lastOrder:0,hits:new Map(),pushes:new Map()});
+   players[sock.id].fieldInstance147='war-'+war.seed;
+   sock.join(room);if(!timer){timer=setInterval(advance,R.step*1000);timer.unref?.();}ack({war,meleeVersion:144,contactVersion:147});
   });
   sock.on('eternal:position',p=>{const m=members.get(sock.id);if(!m||p?.seed!==war.seed||![p.x,p.y].every(Number.isFinite)||p.x<1||p.y<1||p.x>=159||p.y>=159)return;
-   Object.assign(m,{x:p.x,y:p.y,active:p.active===true,seen:Date.now()});});
-  sock.on('eternal:hit',p=>{const m=members.get(sock.id);if(!m?.active||p?.seed!==war.seed||Date.now()-m.seen>4500)return;
+   const surface=R.height(p.x,p.y),lower=R.terrain.lower[Math.floor(p.y)][Math.floor(p.x)];
+   const feet=Number.isFinite(p.z)?p.z:surface;const z=Math.max(lower?0:surface,Math.min(surface+3,feet));
+   Object.assign(m,{x:p.x,y:p.y,z,active:p.active===true,seen:Date.now()});});
+  sock.on('eternal:hit',(p,ack)=>{const reply=value=>{if(typeof ack==='function')ack(value);};const m=members.get(sock.id);if(!m?.active||p?.seed!==war.seed||Date.now()-m.seen>4500)return reply({hit:false});
    const n=war.troops.find(n=>n.id===p.id&&n.s===1&&n.hp>0);
-   if(!n||Math.hypot(m.x-n.x,m.y-n.y)>(p.ranged?28:7)||!R.clear(m.x,m.y,n.x,n.y)||!Number.isFinite(p.loss))return;
-   const now=Date.now();if(now-(m.hits.get(n.id)||0)<85)return;
-   if(m.hits.size>512)m.hits.clear();m.hits.set(n.id,now);if(R.hit(war,n,Math.min(32,p.loss))&&n.hp===0)sock.emit('eternal:credit',{seed:war.seed,id:n.id});
+   if(!n||Math.abs(m.z-R.height(n.x,n.y))>(p.ranged?3:1.05)||Math.hypot(m.x-n.x,m.y-n.y)>(p.ranged?28:7)||!R.clear(m.x,m.y,n.x,n.y)||!Number.isFinite(p.loss))return reply({hit:false});
+   const now=Date.now();if(now-(m.hits.get(n.id)||0)<85)return reply({hit:false});
+   if(m.hits.size>512)m.hits.clear();m.hits.set(n.id,now);if(!R.hit(war,n,Math.min(32,p.loss)))return reply({hit:false});
+   reply({hit:true,id:n.id,lethal:n.hp===0});
+   if(n.hp===0)sock.emit('eternal:credit',{seed:war.seed,id:n.id});
+   else if(!p.ranged){const dx=n.x-m.x,dy=n.y-m.y,len=Math.hypot(dx,dy)||1;
+    io.to(room).emit('eternal:melee',{seed:war.seed,player:sock.id,blows:[[0,n.id,dx/len,dy/len]]});}
   });
   sock.on('eternal:effect',p=>{const m=members.get(sock.id);if(!m?.active||p?.seed!==war.seed||Date.now()-m.seen>4500)return;
-   const n=war.troops.find(n=>n.id===p.id&&n.s===1);if(!n||Math.hypot(m.x-n.x,m.y-n.y)>28||!R.clear(m.x,m.y,n.x,n.y))return;
-   R.effect(war,n,p);
+   const n=war.troops.find(n=>n.id===p.id&&n.s===1);if(!n||n.hp<=0||Math.abs(m.z-R.height(n.x,n.y))>1.05||Math.hypot(m.x-n.x,m.y-n.y)>(p.kind==='push'?8:28)||!R.clear(m.x,m.y,n.x,n.y))return;
+   if(p.kind==='push'){const now=Date.now();if(now-(m.pushes.get(n.id)||0)<85)return;
+    if(m.pushes.size>512)m.pushes.clear();m.pushes.set(n.id,now);}
+   if(R.effect(war,n,p)&&n.hp<=0){
+    io.to(room).emit('eternal:fall',{seed:war.seed,id:n.id,x:n.x,y:n.y});
+    sock.emit('eternal:credit',{seed:war.seed,id:n.id,fall:true});
+   }
   });
   sock.on('eternal:order',p=>{const m=members.get(sock.id);if(!m||p?.seed!==war.seed||Math.hypot(m.x-14.5,m.y-80.5)>4||Date.now()-m.lastOrder<600)return;
    if(R.order(war,p.order))m.lastOrder=Date.now();});

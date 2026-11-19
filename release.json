@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 141,
-  "serverVersion": "1.10.74",
+  "version": 147,
+  "serverVersion": "1.10.79",
   "date": "2026-11-18",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v140 / server 1.10.73",
+  "supersedes": "BattleMage Runestones v146 / server 1.10.78",
   "deployed": false,
   "files": [
     "index.html",
@@ -19,16 +19,16 @@
     "install": "npm ci --omit=dev",
     "startup": "npm start",
     "secrets": "Use hosting environment variables only; no credential values are included.",
-    "persistence": "Preserve existing memory, account and world state files.",
+    "persistence": "Keep the existing memory, account and online state files. Keep the new .maps directory beside the configured SUNCAT_MEMORY_FILE. Back up the directory and memory file together.",
     "model": "SUNCAT_MODEL changes the default brain model. SUNCAT_CHARACTER_MODEL, SUNCAT_GM_MODEL, SUNCAT_UTILITY_MODEL and SUNCAT_MODERATION_MODEL override their conversation roles.",
     "modelExample": "gemini-3.1-flash-lite",
     "accounting": "SUNCAT_AI_INPUT_PER_MILLION and SUNCAT_AI_OUTPUT_PER_MILLION set cost estimates; this is not a provider billing cap.",
-    "deployment": "Use matching v141 index.html and server 1.10.74 for the shared online war. The client also runs the battlefield offline.",
+    "deployment": "Open index.html for standalone play. Use the paired server for persistent world records, gift recovery, local movement and shared battlefield hit confirmations.",
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "05dd89046784ed51453294def38b34f49699ec9745641e513d2311eb0fdfc15b",
-  "serverSha256": "4a03113b2f7eaa620eb9e938bd5f6e0d7d0cbda6cfded4e7f530ef1ce3393445",
+  "clientSha256": "67af40713434224e9a6bb43e68ba7823deb8102b6f473b6d52fef16a95ae11b0",
+  "serverSha256": "06eb7e464e458be640ea9b5a92417b0a9930958bbbe25b08ebe69850bce3fa49",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -309,8 +309,8 @@
     }
   },
   "devlog": {
-    "current": "v141",
-    "history": "Eternal Battlefield"
+    "current": "v147",
+    "history": "Reading the hit"
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -336,33 +336,39 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Say “suncat battle” to summon the herald and enter a 160 × 160 battlefield. A second call opens the return passage.",
-    "Two distinct leaders and card-based factions fight across three crossings. The western commander offers field reports, troop orders and travel to the bridge.",
-    "The local war is saved on the character. Connected players share one server simulation, with the custom-map narrator when available. Either leader’s defeat is followed by a fresh muster."
+    "A soft body flash replaces the gold impact asterisk. Nearby enemies overlapping the target extend the flash from 100 ms to 250 ms. A faint rim stays attached to a struck fighter during overlap.",
+    "All four camera views consume the landed melee result. The paired battlefield server confirms personal hits and lethal blows.",
+    "The client and server use the same Cherry quest-stage roster for her appearances and conversation eligibility.",
+    "Suncat’s map records migrate on save to individually checksummed files with an atomic index and a previous generation for changed records.",
+    "Reserved gifts reconcile when the original character save reconnects. An outstanding gift holds only that recipient’s next transfer. A legacy gift without a save identifier can still settle from an existing delivery receipt.",
+    "Movement and summons reach the matching map or encounter. Remote players remain in the global roster."
   ],
   "previousRelease": {
-    "version": 140,
-    "serverVersion": "1.10.73",
-    "summary": "Forward-propelling charged thrust and spinning kick."
+    "version": 146,
+    "serverVersion": "1.10.78",
+    "summary": "Melee facing, pass-through allies, recoil and attack trails."
   },
   "validation": {
-    "freshOfflineChecks": 66,
-    "simulatedConnectedSavedChecks": 74,
-    "battlefieldChecks": [
-      "World chat summons the imp offline and accepts a decline",
-      "Accepting the herald opens a 160 by 160 field and two distinct card armies",
-      "The commander wears the armor and shield and the survey can order both armies",
-      "The north road and southern postern are walkable around the front gate",
-      "NPCs trade real casualties and replacements march from the keeps without player hits",
-      "The commander deploys the player directly to the bridge and respawn returns to the allied keep",
-      "Native player hits reduce an enemy’s field wards and allied units are excluded from targeting",
-      "A v140 charged sword thrust hits multiple actual soldiers and travels past them",
-      "All three field views draw the native soldiers and equipped commander",
-      "A leader can fall, the war ends once, and fresh armies muster",
-      "An offline war survives a trip home and rejoins with the same seed and changed orders",
-      "The connected client joins an existing war, applies server frames and leaves the room"
+    "freshOfflineChecks": 99,
+    "savedSimulatedConnectedChecks": 109,
+    "architecture": [
+      "Herb harvest survived 106 map records and a restart. Damage to one shard left the other records readable.",
+      "Oversized v146 migration survived a full save and restart.",
+      "Movement plus summons only reached the matching map and instance. Crossing maps removed the old body and populated the new one.",
+      "Cherry’s shared roster matched all eleven quest phases.",
+      "An interrupted gift retried with the same ID and original save, spent one card, and allowed the following gift."
     ],
-    "sharedSimulation": {
+    "rasterAndClientGift": {
+      "plain": 116,
+      "lit": 179,
+      "rimPixels": 548,
+      "interiorAlpha": 0,
+      "giftDelta": 1
+    },
+    "room": {
+      "sharedMeleeCues": true,
+      "sharedRingOut": true,
+      "legacyRoomSeparated": true,
       "sharedWar": true,
       "orders": true,
       "sharedDamage": true,
@@ -374,36 +380,174 @@
         {
           "cap": 24,
           "peak": 48,
-          "maxMelee": 28,
+          "maxMelee": 30,
           "losses": [
-            96,
-            103
+            108,
+            102
           ]
         },
         {
           "cap": 48,
           "peak": 96,
-          "maxMelee": 38,
+          "maxMelee": 37,
           "losses": [
-            248,
-            208
+            251,
+            216
           ]
         },
         {
           "cap": 72,
           "peak": 144,
-          "maxMelee": 73,
+          "maxMelee": 64,
           "losses": [
-            367,
-            339
+            393,
+            353
           ]
         }
       ],
       "ticks": 2160
+    },
+    "trailRaster": {
+      "slash": [
+        1065,
+        1340,
+        1380,
+        0,
+        1242,
+        1449,
+        1383,
+        0,
+        1029,
+        1901,
+        1511,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "slashSprite": [
+        511,
+        757,
+        357,
+        153
+      ],
+      "punch": [
+        0,
+        306,
+        120,
+        111,
+        88,
+        274,
+        111,
+        88,
+        324,
+        247,
+        122,
+        129,
+        327,
+        240,
+        123,
+        117
+      ],
+      "punchSprite": [
+        18,
+        17,
+        11,
+        20
+      ],
+      "fence": [
+        14,
+        321,
+        153,
+        373,
+        127,
+        487,
+        144,
+        482,
+        146,
+        404,
+        136,
+        416,
+        120,
+        272,
+        130,
+        480
+      ],
+      "fenceSprite": [
+        94,
+        83,
+        0,
+        202
+      ],
+      "thrust": [
+        107,
+        286,
+        0,
+        0,
+        90,
+        541,
+        0,
+        0,
+        496,
+        337,
+        0,
+        0,
+        95,
+        24,
+        0,
+        0
+      ],
+      "thrustSprite": [
+        152,
+        96,
+        28,
+        30
+      ],
+      "spinKick": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "spinKickSprite": [
+        13,
+        103,
+        5,
+        40
+      ]
     }
   },
   "limitations": [
-    "In-process multiplayer, game runtime and canvas-path checks. Physical Android frame rate, real internet latency, live generated dialogue and ten-player balance have not been measured."
+    "Verified with fresh and saved client integration runs, native canvas raster checks, simulated room clients and server restarts using temporary files. Physical Android play feel and a live multiplayer session remain unmeasured."
   ],
   "nextPass": [
     "China cultivator arc: after joining the sect, the player can learn a homing sword that fights as a summoned ally. This is planned content."

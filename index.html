@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-18-bm-v141-eternal-battlefield"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">      <title>Battle-Mage · v141</title>
+      <meta name="suncat-build" content="2026-11-18-bm-v147-readable-hits"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">      <title>Battle-Mage · v147</title>
       <style>
         html,body {
           width:100%;
@@ -43063,6 +43063,7 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                 const invDet = 1.0 / (planeX * dirY - dirX * planeY);
                 const wallScale = Math.min(viewW,viewH) * scene.zScale;
                 const frameNow = Date.now();
+                const priorityRims=[];
                 const frameAngle = typeof host.window.cacheAngle !== 'undefined' ? host.window.cacheAngle : frameNow / 400;
                 const fogStart = dynamicMaxVis * 0.4;
                 const viewBottom = viewY + viewH;
@@ -43317,6 +43318,28 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                         let lensFade=1;
                         if(!sprite.isPlayer&&transformY<fadeDistance)lensFade=Math.max(0,(transformY-.05)/(fadeDistance-.05));
 
+                        const fighter=sprite instanceof host.NPC&&!sprite.nonBlocking&&!sprite.isCinematic&&sprite.type>=0&&sprite.type!==99&&(sprite._eternalUnit||sprite.role==='battle'||sprite.role==='summoned_minion');
+                        const personalView=scene.cameraMode==='first_person'&&scene.currentCamDist<.2;
+                        if(fighter&&personalView)lensFade=host.window.BMContactPose.opacity(transformY,bodyConfig.bodyHeight||host.BMBodySizes.actor(scene,sprite).height);
+                        if(personalView&&host.BMPlayerMotion.battleAlly(sprite)){
+                            const clear=Math.max(0,Math.min(1,(transformY-.2)/1.35));
+                            lensFade*=clear*clear*(3-2*clear);
+                        }
+                        if(sprite.isDead&&personalView){
+                            const finisher=host.window.BMContactPose.fadingBody(scene,frameNow,sprite);
+                            if(finisher?.actor===sprite)lensFade*=Math.min(1,Math.max(0,(180-(frameNow-finisher.at))/105));
+                        }
+                        const feedback=host.window.BMContactPose;
+                        const placement={x:drawStartX,y:drawStartY,w:spriteSize,h:spriteSize,crop:imageMeta};
+                        if(fighter&&lensFade>.06){
+                            const box=host.spriteTargetBox(imageIndex,poseDirection,poseFrame,placement);
+                            const left=Math.max(box.x,viewX),top=Math.max(box.y,viewY);
+                            const w=Math.min(box.x+box.w,viewX+viewW)-left,h=Math.min(box.y+box.h,viewY+viewH)-top;
+                            if(w>0&&h>0)feedback.rememberBounds(sprite,{x:left,y:top,w,h},scene.cameraMode,frameNow);
+                        }
+                        const bodyPose=feedback.sample(sprite,frameNow),strength=feedback.flash(bodyPose,frameNow);
+                        const poseSide=bodyPose?(-dirY*bodyPose.dx+dirX*bodyPose.dy):0;
+                        const plantedX=spriteScreenX+viewX,plantedY=floorY+viewY;
                         const spriteAlpha=(sprite.isPlayer?(sprite.chaseOpacity??.7)*(1-spriteFogFactor):1-spriteFogFactor)*lensFade*(host.BMOnline.ghost(sprite)?.45:1);
                         if(auraClip) {
                             ctx.save();ctx.globalAlpha=spriteAlpha;ctx.filter='none';ctx.clip(auraClip);
@@ -43324,9 +43347,10 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                         }
                         const drawImg=(0, host.tintedAuraFrame)(srcImg,auraState,frameNow);
                         ctx.globalAlpha=spriteAlpha;
-                        ctx.filter = (sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : sprite.notoriety>0 ? 'sepia('+Math.min(1,.25+sprite.notoriety*.12)+') saturate(3) hue-rotate(310deg)' : 'none';
+                        ctx.filter = (sprite.damageFlashTimer>0&&bodyPose)?'brightness(1.22) saturate(1.28)':(sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : sprite.notoriety>0 ? 'sepia('+Math.min(1,.25+sprite.notoriety*.12)+') saturate(3) hue-rotate(310deg)' : 'none';
 
                         if(sprite.damageFlashTimer<=0&&!sprite.notoriety&&host.BMCherryPerformance?.inside(scene,sprite.x,sprite.y)){const warm=host.BMCherryPerformance.light(scene,sprite.x,sprite.y);ctx.filter='brightness('+(host.BMCherryPerformance.ambience(scene,sprite.x,sprite.y)+warm*.30)+') sepia('+(warm*.28)+')';}
+                        feedback.wash(ctx,strength);
                         let previousBlend = ctx.globalCompositeOperation;
                         if (imageIndex === 99) ctx.globalCompositeOperation = 'lighter';
                         ctx.imageSmoothingEnabled = true;
@@ -43356,7 +43380,11 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                             const srcH = drawH * cacheH / spriteSize;
 
                             ctx.imageSmoothingEnabled = true; // Smooth sprite appearance retro chunky->blurry smooth
-                            ctx.drawImage(
+                            if(bodyPose){
+                                ctx.save();ctx.beginPath();ctx.rect(viewX+s_destX,drawY1,s_width,drawH);ctx.clip();
+                                host.window.BMContactPose.apply(ctx,bodyPose,plantedX,plantedY,poseSide);
+                                ctx.drawImage(drawImg,drawStartX,drawStartY,spriteSize,spriteSize);ctx.restore();
+                            }else ctx.drawImage(
                                 drawImg,
                                 srcX, srcY, srcW, srcH,
                                 viewX + s_destX, drawY1, s_width, drawH
@@ -43368,7 +43396,9 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                         const spriteLeft=drawStartX-viewX,spriteRight=spriteLeft+spriteSize;
                         const firstCol=Math.max(0,Math.floor(spriteLeft));
                         const lastCol=Math.min(Math.ceil(viewW),Math.ceil(spriteRight));
-                        if(layerClip){ctx.save();ctx.clip(layerClip);ctx.drawImage(drawImg,drawStartX,drawStartY,spriteSize,spriteSize);ctx.restore();}
+                        if(layerClip){ctx.save();ctx.clip(layerClip);
+                            if(bodyPose)host.window.BMContactPose.apply(ctx,bodyPose,plantedX,plantedY,poseSide);
+                            ctx.drawImage(drawImg,drawStartX,drawStartY,spriteSize,spriteSize);ctx.restore();}
                         else for(let localCol=firstCol;localCol<lastCol;localCol++) {
                             const from=Math.max(localCol,spriteLeft);
                             const to=Math.min(localCol+1,spriteRight,viewW),width=to-from;
@@ -43384,6 +43414,17 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                         }
 
                         if (streakActive) flushStreak();
+                        let drawHitRim=null;
+                        if(strength&&bodyPose.duration>100&&spriteAlpha>.02){
+                            const clip=layerClip||host.auraVisibilityClip(placement,viewX,viewY,viewW,viewH,transformY,sprite,totalFootZ,checkOcclusion);
+                            drawHitRim=()=>{
+                                ctx.save();ctx.clip(clip);
+                                if(Number.isFinite(swimClip)){ctx.beginPath();ctx.rect(viewX,viewY,viewW,Math.max(0,swimClip-viewY));ctx.clip();}
+                                ctx.globalAlpha=spriteAlpha;feedback.apply(ctx,bodyPose,plantedX,plantedY,poseSide);
+                                feedback.rim(ctx,srcImg,placement,strength);ctx.restore();
+                            };
+                        }
+                        if(fighter&&(drawHitRim||priorityRims.length))feedback.layerRims(ctx,priorityRims,host.spriteTargetBox(imageIndex,poseDirection,poseFrame,placement),drawHitRim);
                         if(host.BMLock?.matches(sprite)){
                             const body=(0,host.spriteTargetBox)(imageIndex,poseDirection,poseFrame,{x:drawStartX,y:drawStartY,w:spriteSize,h:spriteSize,crop:imageMeta});
                             const marker=host.BMLock.marker(body),r=marker.r*1.5;
@@ -43413,11 +43454,16 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                         const rx=drawStartX+spriteSize*fx,ry=drawStartY+spriteSize*fy;
                         const radius=Math.max(4,spriteSize*(config.ringRadius===undefined?foot.radius:config.ringRadius/(imageMeta?.side??1)));
                         const firstPerson=scene.cameraMode==='first_person',squash=config.ringSquash??.35;
+
                         const padding=firstPerson?Math.max(3,Math.max(1,2.5/transformY)*.9+1):3;
                         const box=firstPerson?{x:rx-radius-padding,y:ry-radius*squash-padding,w:radius*2+padding*2,h:radius*squash*2+padding*2}:{x:rx-radius-3,y:ry-radius*.45-3,w:radius*2+6,h:radius*.9+6};
                         const clip=host.BMLayers.active(scene)?host.BMLayers.clip(scene,box.x,box.y,box.x+box.w,box.y+box.h,transformY,viewX,viewY,viewW,viewH):(0,host.auraVisibilityClip)(box,viewX,viewY,viewW,viewH,transformY,sprite,totalFootZ,checkOcclusion);
                         ctx.save();ctx.clip(clip);
-                        if(firstPerson)host.window.BMFoeRings.drawFirstPerson(scene,sprite,ctx,rx,ry,radius,squash,transformY,frameNow);
+                        if(firstPerson){
+                            const tracked=host.BMPlayerMotion.strikeTarget;
+                            const emphasis=tracked&&tracked!==sprite&&!host.BMLock.matches(sprite) ? .38 : 1;
+                            host.window.BMFoeRings.drawFirstPerson(scene,sprite,ctx,rx,ry,radius,squash,transformY,frameNow,lensFade*emphasis);
+                        }
                         else host.window.BMFoeRings.draw(scene,sprite,ctx,rx,ry,radius,squash,Math.max(1.3,2.5/transformY));
                         ctx.restore();
                     }
@@ -44155,7 +44201,7 @@ render(scene, dt) {
                     }
                     if(host.BMView.suppressed(scene))scene.focusTarget=null;
                     if(host.startGame==='explore'&&host.BMLock.active)scene.focusTarget=host.BMLock.target();
-                    if (scene.focusTarget&&(targetPOVDist<=.01||scene.focusTarget._groundLoot)&&!host.BMLock.active) {
+                    if (scene.focusTarget&&(targetPOVDist<=.01||scene.focusTarget._groundLoot)&&!host.BMLock.active&&!host.BMPlayerMotion.framingStrike) {
                         // --- THE ANTI-NODDING SHADOW VARIABLES ---
                         if (scene._cinePan === undefined) scene._cinePan = scene.lookPan || 0;
                         if (scene._cinePitch === undefined) scene._cinePitch = scene.lookPitch || 0;
@@ -44237,8 +44283,9 @@ render(scene, dt) {
                                 scene.lookPan -= angleShift;
                                 scene.currentAngle += angleShift; 
                             }
-                            scene.lookPan *= 0.85;   
-                            scene.lookPitch *= 0.85; 
+                            const decay=Math.exp(-9.75*dt*host.BMLock.releaseWeight(scene));
+                            scene.lookPan *= decay;
+                            scene.lookPitch *= decay; 
                             if (Math.abs(scene.lookPan) < 0.001) scene.lookPan = 0;
                             if (Math.abs(scene.lookPitch) < 0.001) scene.lookPitch = 0;
                         }
@@ -44304,7 +44351,7 @@ render(scene, dt) {
                         let angleDiff = targetAngle - scene.currentAngle;
                         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
                         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                        if(!host.BMLock.active&&!host.BMPlayerMotion.framingStrike&&!host.BMTouch.freeCamera())scene.currentAngle += angleDiff * lerpFactor;
+                        if(!host.BMLock.active&&!host.BMPlayerMotion.framingStrike&&!host.BMTouch.freeCamera())scene.currentAngle += angleDiff * (1-Math.exp(-20*dt*host.BMLock.releaseWeight(scene)));
 
                         const finalAngle = scene.currentAngle + scene.lookPan;
                         const dirX = Math.sin(finalAngle);
@@ -44333,14 +44380,23 @@ render(scene, dt) {
                         const opacityGoal=covers?.23:.7;
                         scene._chaseOpacity=(scene._chaseOpacity??.7)+(opacityGoal-(scene._chaseOpacity??.7))*(1-Math.exp(-11*dt));
                         scene.playerRenderObj.chaseOpacity=scene._chaseOpacity*Math.min(1,Math.max(0,(actualCamDist-.3)/.55));
-                        scene.pitch+=host.BMGaze.update(scene,dt,Math.min(viewW,viewH),finalAngle,scene.pitch,
-                            !scene.focusTarget&&!worldLook,gazeNow,biter,targetPOVDist>.01?actualCamDist:0);
+                        const gazePitch=host.BMGaze.update(scene,dt,Math.min(viewW,viewH),finalAngle,scene.pitch,
+                            !scene.focusTarget&&!worldLook&&!host.BMPlayerMotion.framingStrike,gazeNow,biter,targetPOVDist>.01?actualCamDist:0);
 
                 // ==========================================
                 // 2. TRUE HORIZON (Calculated AFTER Camera updates!)
                 // ==========================================
                     if (scene.cameraMode==='first_person' && host.startGame==='explore' && actualCamDist<.02 && !scene.focusTarget && !host.BMLock.active)
-                        scene.pitch=globalThis.BMBodyView.horizon(scene.pitch,Math.min(viewW,viewH));
+                        {
+                        // Downward manual look extends to the player's feet. Target framing is already in screen space.
+                        const manualWeight=host.BMPlayerMotion.framingStrike?0:host.BMLock.releaseWeight(scene);
+                        scene.pitch+=(globalThis.BMBodyView.horizon(scene.pitch,Math.min(viewW,viewH))-scene.pitch)*manualWeight;
+                    }
+                    scene.pitch+=gazePitch;
+                    const strike=scene._fieldStrike;
+                    const forwardSwing=scene.cameraMode==='first_person'&&host.startGame==='explore'&&strike&&
+                        strike.kind!=='fence'&&strike.kind!=='spinKick'&&
+                        (host.BMPlayerMotion.winding(strike)||performance.now()-strike.at<strike.duration);
                     const bodyFacing=scene.currentAngle;
                     const firstPersonBody=scene.cameraMode==='first_person' && actualCamDist<.02 && host.startGame==='explore'
                         ? globalThis.BMBodyView.camera(scene,host.playerSprite,isPlayerMoving,scene.pitch,Math.min(viewW,viewH),bodyFacing,myFloorZ,scene.camZ) : null;
@@ -44749,7 +44805,7 @@ render(scene, dt) {
 
                         if (typeof host.socket !== 'undefined') {
                             host.socket.emit("move", {
-                                x: scene.x, y: scene.y, dir: scene.dir, mapID: scene.mapID, 
+                                x: scene.x, y: scene.y, dir: scene.dir, mapID: scene.mapID, instanceId:scene.mapID===999?scene.customMapInstance:undefined, 
                                 status: scene.status, type: host.playerSprite, name: host.playerName,
                                 summons: mySummons
                             });
@@ -44761,6 +44817,7 @@ render(scene, dt) {
                 // ==========================================
                     
                             scene.renderList.length = 0;
+                            if(scene.cameraMode==='first_person')host.window.BMContactPose.appendFinishers(scene,scene.renderList);
                             for(const herb of host.BMHerbs.world())if((herb.x-camX)**2+(herb.y-camY)**2<=cullDistSq)scene.renderList.push(herb);
                              if(scene.mapID===777)host.window.BMMeadow125?.append(scene,scene.renderList,camX,camY,dirX,dirY,planeX,planeY);
                              else if(scene.mapID===999)host.window.BMRealmFlora126?.append(scene,scene.renderList,camX,camY,dirX,dirY,planeX,planeY);
@@ -44852,7 +44909,7 @@ render(scene, dt) {
 
                         scene.drawCombinedSprites(host.ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, planeY, scene.renderList, camX, camY);
                     globalThis.BMGothic67?.fog(scene,host.ctx,{viewX,viewY,viewW,viewH,horizon});
-                    if (firstPersonBody) globalThis.BMBodyView.draw(host.ctx,firstPersonBody,viewX,viewY,viewW,viewH,finalAngle-bodyFacing);
+                    if (firstPersonBody) globalThis.BMBodyView.draw(host.ctx,firstPersonBody,viewX,viewY,viewW,viewH,forwardSwing?0:finalAngle-bodyFacing);
                     // --- STATUS EFFECT OVERLAYS ---
                         let activeEffects = { burn: false, poison: false, curse: false, web: false, drunk: false };
 
@@ -45209,6 +45266,7 @@ renderTopDown(scene, dt, simulationDone = false) {
                 // --- 4. DRAW NPCs & 3D MODELS ---
                 // ==========================================
                 host.BMHerbs.draw2D(centerScreenX,centerScreenY,cellSize,range);
+                const overheadRims=[];
                 scene.npcs.forEach(npc => {
                     if (!npc.visible || npc.isDead || host.BMLayers.active(scene)&&Math.abs(host.BMLayers.actorZ(scene,npc)-(scene.groundZ||0))>.8) return;
 
@@ -45265,7 +45323,7 @@ renderTopDown(scene, dt, simulationDone = false) {
                                         
 
                                         host.ctx.imageSmoothingEnabled = true; 
-                                        void 0, (0, host.BMBodySizes.worldPortrait)(npc,imageToDraw,drawX,drawY,drawScale);
+                                        void 0, (0, host.BMBodySizes.worldPortrait)(npc,imageToDraw,drawX,drawY,drawScale,0,0,-1,overheadRims);
                                         host.ctx.imageSmoothingEnabled = false; 
 
                                         
@@ -45502,7 +45560,7 @@ renderTopDown(scene, dt, simulationDone = false) {
 
                     if (typeof host.socket !== 'undefined') {
                         host.socket.emit("move", {
-                            x: scene.x, y: scene.y, dir: scene.dir, mapID: scene.mapID, 
+                            x: scene.x, y: scene.y, dir: scene.dir, mapID: scene.mapID, instanceId:scene.mapID===999?scene.customMapInstance:undefined, 
                             status: scene.status, type: host.playerSprite, name: host.playerName,
                             summons: mySummons
                         });
@@ -45991,6 +46049,7 @@ const BMOverhead=(()=>{
   for(const p of d.projectiles)if(p.active)add(p,false,true);
   for(const [id,p]of Object.entries(window.remotePlayers||{})){if(id===socket?.id||p.mapID!==d.mapID)continue;add(p);for(const s of p.summons||[])add(s);}
   objects.sort((a,b)=>a.depth-b.depth);
+  const struckRims=[];
   for(const o of objects){g.globalAlpha=o.alpha;
    if(o.plant){BMFloraViews130.draw(g,o.plant,o.p.x,o.p.y,cell,Math.cos(pitch),now);continue;}
    if(o.wall){const {x,y,z,top,id}=o,base=[project(x,y,z),project(x+1,y,z),project(x+1,y+1,z),project(x,y+1,z)],roof=[project(x,y,top),project(x+1,y,top),project(x+1,y+1,top),project(x,y+1,top)],mid=project(x+.5,y+.5,z);
@@ -46010,7 +46069,16 @@ const BMOverhead=(()=>{
    const direction=facing(a),height=cell*(projectile?.45:Math.max(.4,Math.min(1.7,BMBodySizes.actor(d,a).height*.85)));
    let placement=player?BMEquipment.playerPlacement(id,0,0,height/tL,direction,-1):portraitPlacement(id,0,0,height/tL,direction);if(placement){placement=BMEquipment.portrait(a,placement);let body=spriteAuraBox(placement.index,placement.direction,placement.frame,placement);const k=height/Math.max(1,body.h);
     placement={...placement,x:p.x+(placement.x-body.x-body.w/2)*k,y:p.y+(placement.y-body.y-body.h)*k,w:placement.w*k,h:placement.h*k};body=spriteAuraBox(placement.index,placement.direction,placement.frame,placement);
-    const state=getActorAura(a,Date.now());drawActorAuraLayer(g,body,state,Date.now(),false);stampPortrait(placement,tintedAuraFrame(placement.image,state,Date.now()));drawActorAuraLayer(g,body,state,Date.now(),true);BMLock.markBody(a,g,spriteTargetBox(placement.index,placement.direction,placement.frame,placement));
+    const state=getActorAura(a,Date.now());drawActorAuraLayer(g,body,state,Date.now(),false);const at=Date.now();BMContactPose.rememberBounds(a,body,"iso",at);const impact=BMContactPose.sample(a,at),strength=BMContactPose.flash(impact,at);
+    if(impact){g.save();BMContactPose.wash(g,strength);BMContactPose.apply(g,impact,p.x,p.y,Math.max(-1,Math.min(1,axes(impact.dx,impact.dy).x)));}
+    stampPortrait(placement,tintedAuraFrame(placement.image,state,Date.now()));if(impact)g.restore();
+    if(!projectile&&!player){
+     const rim=impact?.duration>100&&strength>0?()=>{
+      g.save();BMContactPose.apply(g,impact,p.x,p.y,Math.max(-1,Math.min(1,axes(impact.dx,impact.dy).x)));
+      BMContactPose.rim(g,placement.image,placement,strength);g.restore();
+     }:null;
+     if(BMLock.hostile(a)||BMPlayerMotion.battleAlly(a))BMContactPose.layerRims(g,struckRims,body,rim);
+    }drawActorAuraLayer(g,body,state,Date.now(),true);BMLock.markBody(a,g,spriteTargetBox(placement.index,placement.direction,placement.frame,placement));
    }else {const old=[tX,tY,tL,tH];tX=p.x-height/2;tY=p.y-height;tL=tH=height;try{drawPortrait(id,0,0,1,a.deck?.[0]??a.cardId??0,direction);}finally{[tX,tY,tL,tH]=old;}}
    if(BMLock.matches(a)){g.font='12px system-ui';g.textAlign='center';g.fillStyle='#f4df94';g.fillText(a.name||'Target',p.x,p.y+15);}
   }
@@ -46023,7 +46091,7 @@ const BMOverhead=(()=>{
   if(control&&!control.matches('#bm-overhead-view button,#bm-player-hud [data-control="view"]'))return;
   const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){keys.add(k);e.preventDefault();e.stopImmediatePropagation();}else if(['[',']','0'].includes(k)){if(k==='0'){rotation=0;pitch=Math.asin(.6);}else rotate(k==='['?-Math.PI/4:Math.PI/4);e.preventDefault();e.stopImmediatePropagation();}},true);
  window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()),true);window.addEventListener('blur',()=>keys.clear());
- return {active,setMode,rotate,tilt,axes,inverse,vector,facing,advance,draw,tick,toolbarRect,get rotation(){return rotation;},get tiltAngle(){return pitch;},get mode(){return mode;},get frames(){return drawSerial;}};
+ return {active,setMode,rotate,tilt,axes,inverse,vector,input,facing,advance,draw,tick,toolbarRect,get rotation(){return rotation;},get tiltAngle(){return pitch;},get mode(){return mode;},get frames(){return drawSerial;}};
 })();
 
 
@@ -46613,10 +46681,186 @@ const BMRecovery=(()=>{
  return {hazard,bad,safe,nearest,arrive,allows,progress,geometry};
 })();
 
+// A short pose at the actor's feet. It never changes aim, combat timers or the camera.
+const BMContactPose=(()=>{
+ const poses=new WeakMap();
+ const finishers=new Map();
+ function rememberFinisher(d,n,now=Date.now()){
+  if(finishers.size>=16)finishers.delete(finishers.keys().next().value);
+  finishers.set(n,{actor:n,maze:d.maze,visit:d.musicVisitSerial,at:now});
+ }
+ function fadingBody(d,now=Date.now(),actor=null){
+  let latest=null;
+  for(const [n,c] of finishers){
+   if(c.maze!==d.maze||c.visit!==d.musicVisitSerial||now-c.at>=180){finishers.delete(n);continue;}
+   if(n.isDead&&(!actor||actor===n))latest=c;
+  }
+  return latest;
+ }
+ function appendFinishers(d,list){
+  fadingBody(d);
+  for(const n of finishers.keys())if(n.isDead)list.push(n);
+ }
+ function mark(actor,dx,dy,hit,now=Date.now(),personal=false){
+  if(!actor||!Number.isFinite(dx)||!Number.isFinite(dy))return;
+  const len=Math.hypot(dx,dy);if(len<.0001)return;
+  const last=poses.get(actor);
+  if(!personal&&last?.hit&&(!hit||last.personal)&&now-last.at<Math.max(140,last.duration||0))return;
+  poses.set(actor,{dx:dx/len,dy:dy/len,hit,personal,at:now});
+ }
+ const projected=new WeakMap(),rims=new WeakMap();
+ function rememberBounds(actor,box,view,now=Date.now()){
+  projected.set(actor,{box,view,at:now});
+ }
+ function durationFor(n,d,now){
+  const base=projected.get(n);
+  if(!base||now-base.at>150)return 100;
+  const b=base.box;let count=0;
+  for(const other of d.npcs){
+   if(other===n||other.isDead||other.visible===false||!BMLock.hostile(other)||Math.hypot(other.x-n.x,other.y-n.y)>3)continue;
+   const peer=projected.get(other);
+   if(!peer||peer.view!==base.view||Math.abs(peer.at-base.at)>48)continue;
+   const o=peer.box,w=Math.min(b.x+b.w,o.x+o.w)-Math.max(b.x,o.x),h=Math.min(b.y+b.h,o.y+o.h)-Math.max(b.y,o.y);
+   if(w<=0||h<=0||w*h<=.045*Math.min(b.w*b.h,o.w*o.h))continue;
+   if(BMTerrainPhysics.sight(d,d,other.x,other.y,other)&&++count===4)break;
+  }
+  return 100+count*37.5;
+ }
+ function playerHit(n,d,shot,lethal=false){
+  const now=Date.now(),pose=shot.meleePose,len=Math.hypot(shot.vx,shot.vy)||1;
+  let dx=shot.vx/len,dy=shot.vy/len;
+  if(pose.kind==='slash'){
+   const side=pose.combo===1?1:-1;
+   [dx,dy]=[-dy*side+dx*.2,dx*side+dy*.2];
+  }
+  mark(n,dx,dy,true,now,true);
+  const result=poses.get(n);
+  if(!result?.personal)return;
+  result.duration=durationFor(n,d,now);result.lethal=lethal;
+  if(lethal)rememberFinisher(d,n,now);
+ }
+ function flash(p,now=Date.now()){
+  if(!p?.personal||!p.duration)return 0;
+  const t=(now-p.at)/p.duration;
+  if(t<0||t>=1)return 0;
+  return (1-t*t)*(p.lethal?Math.max(0,1-(now-p.at)/180):1);
+ }
+ function wash(g,strength){
+  if(strength>0)g.filter='contrast('+(1-.25*strength)+') brightness('+(1+.52*strength)+')';
+ }
+ function rimImage(src){
+  let rim=rims.get(src);if(rim)return rim;
+  const scale=Math.min(1,144/Math.max(src.width,src.height));
+  const w=Math.max(1,Math.round(src.width*scale)),h=Math.max(1,Math.round(src.height*scale));
+  rim=document.createElement('canvas');rim.width=w+2;rim.height=h+2;
+  const g=rim.getContext('2d');
+  for(const [x,y] of [[0,1],[2,1],[1,0],[1,2]])g.drawImage(src,x,y,w,h);
+  g.globalCompositeOperation='source-in';g.fillStyle='#edeff1';g.fillRect(0,0,w+2,h+2);
+  g.globalCompositeOperation='destination-out';g.drawImage(src,1,1,w,h);
+  rims.set(src,rim);return rim;
+ }
+ function layerRims(g,queue,box,draw){
+  for(const old of queue){
+   const x=Math.max(old.box.x,box.x),y=Math.max(old.box.y,box.y);
+   const w=Math.min(old.box.x+old.box.w,box.x+box.w)-x,h=Math.min(old.box.y+old.box.h,box.y+box.h)-y;
+   if(w<=0||h<=0)continue;
+   g.save();g.beginPath();g.rect(x,y,w,h);g.clip();old.draw();g.restore();
+  }
+  if(draw){draw();queue.push({box,draw});}
+ }
+ function rim(g,src,rect,strength){
+  if(!(strength>0)||!src.width||!src.height)return;
+  const image=rimImage(src),px=rect.w/(image.width-2),py=rect.h/(image.height-2);
+  g.save();g.filter='none';g.globalAlpha*=.30*strength;
+  g.drawImage(image,rect.x-px,rect.y-py,rect.w+2*px,rect.h+2*py);g.restore();
+ }
+ function sample(actor,now=Date.now()){
+  const p=poses.get(actor);if(!p)return null;
+  const t=(now-p.at)/(p.hit?270:200);
+  if(t>=1||t<0){poses.delete(actor);return null;}
+  const lift=t<.22?1-(1-t/.22)**2:(1-(t-.22)/.78)**2;
+  return {...p,lift};
+ }
+ function apply(ctx,p,x,y,side){
+  const lean=-side*p.lift*(p.hit?.19:.12),height=1-p.lift*(p.hit?.11:.035);
+  ctx.translate(x,y);ctx.transform(1,0,lean,height,0,0);ctx.translate(-x,-y);
+ }
+ function opacity(depth,height){
+  const near=Math.max(.18,Math.min(.85,height*.48)),far=near+Math.max(.18,Math.min(.38,height*.26));
+  const t=Math.max(0,Math.min(1,(depth-near*.46)/(far-near*.46)));
+  return t*t*(3-2*t);
+ }
+ function from(actor,source,hit){
+  if(!source||!actor)return;
+  const sign=hit?1:-1;mark(actor,(actor.x-source.x)*sign,(actor.y-source.y)*sign,hit);
+ }
+ function worldGap(d,n){
+  if(n.role!=='battle'||n.isRanged||n.isCinematic||n.customDialogue?.length||n.alignment==='foe_coward'||!String(n.alignment).startsWith('foe'))return 0;
+  return Math.min(1.20,.66+BMBodySizes.actor(d,n).height*.27);
+ }
+ function stepAtContact(d,n,gap){
+  const dx=d.x-n.x,dy=d.y-n.y,len=Math.hypot(dx,dy);if(!gap||len<.01)return;
+  const step=Math.min(.18,Math.max(-.18,len-gap)),x=n.x+step*dx/len,y=n.y+step*dy/len;
+  const z=BMTerrainPhysics.feet(d,n);
+  if(BMRecovery.safe(d,x,y,z)&&!BMTavernPeace.inside(d,x,y)&&!BMRefuge.inside(d,x,y))BMTerrainPhysics.move(d,n,x,y);
+ }
+ return {mark,sample,apply,opacity,from,worldGap,stepAtContact,rememberFinisher,fadingBody,appendFinishers,playerHit,flash,wash,rim,layerRims,rememberBounds};
+})();
+globalThis.BMContactPose=BMContactPose;
+
 const BMPlayerMotion=(()=>{
- const gravity=8,stepHeight=.51;let approach=null,framing=null;let climb=null,checkedX=null,checkedY=null;let owner=null,maze=null,visit=null,z=0,velocity=0,air=false,fallFrom=0,lastJump=-Infinity,jumps=0,dashTime=0,dashSteps=0,dashX=0,dashY=0,lastDash=-Infinity;
+// First-person contact distances use the same creature heights as the renderer.
+function eyeLevelCombat(){
+ return window.gameViewMode==='3d'&&Dungeon.cameraMode==='first_person';
+}
+// Horizontal camera space, using the same projection as the first-person renderer.
+function swingView(){
+ const {w,h}=worldViewport(),yaw=BMTouch.cameraAngle();
+ return {x:Dungeon.x,y:Dungeon.y,dx:Math.sin(yaw),dy:-Math.cos(yaw),
+  width:Math.min(.70,.66*w/Math.min(w,h))};
+}
+function insideSwing(view,n,portion=1){
+ const x=n.x-view.x,y=n.y-view.y,depth=x*view.dx+y*view.dy;
+ return depth>.035&&Math.abs(x*view.dy-y*view.dx)<=depth*view.width*portion;
+}
+function selectedMelee(){
+ const lock=BMLock.target();
+ return (lock&&eligibleEnemy(lock)?lock:null)||(eyeLevelCombat()?BMOnline.chargeAim():null);
+}
+function validMelee(n){
+ return Dungeon.npcs.includes(n)?eligibleEnemy(n):n===BMOnline.chargeAim();
+}
+function strikeGap(n,reach){
+ if(!eyeLevelCombat())return Math.min(.90,reach*.78);
+ const height=BMBodySizes.actor(Dungeon,n).height;
+ return Math.min(reach-.045,Math.max(.77,.82+height*.38));
+}
+function guardShoulder(x,y,n,gap){
+ const ox=Dungeon.x-n.x,oy=Dungeon.y-n.y,old=Math.hypot(ox,oy);
+ if(old<.001)return {x,y};
+ const min=Math.min(gap,old),dx=x-n.x,dy=y-n.y,len=Math.hypot(dx,dy);
+ if(len>=min)return {x,y};
+ // Strip only the part of the step that would take the eye into this body.
+ // The sideways part remains available even when the swing begins point-blank.
+ if(len<.00001)return {x:Dungeon.x,y:Dungeon.y};
+ return {x:n.x+dx*min/len,y:n.y+dy*min/len};
+}
+function battleAlly(n){return !!(n._eternalUnit&&n._row?.s===0||n._eternalCommander);}
+function crowdStep(x,y,opponent){
+ if(!eyeLevelCombat())return {x,y};
+ for(const n of Dungeon.npcs){
+  if(n===opponent||battleAlly(n)||n.isDead||n.isDying||!n.visible||n.nonBlocking||n.type<0||n.isCinematic||
+     Math.abs(n.x-x)>1.2||Math.abs(n.y-y)>1.2)continue;
+  if(Math.abs(BMTerrainPhysics.feet(Dungeon,n)-z)>.8)continue;
+  const radius=Math.min(.95,.30+BMBodySizes.actor(Dungeon,n).height*.37);
+  ({x,y}=guardShoulder(x,y,n,radius));
+ }
+ return {x,y};
+}
+
+ const gravity=8,stepHeight=.51;let approach=null,framing=null,stride=null;let climb=null,checkedX=null,checkedY=null;let owner=null,maze=null,visit=null,z=0,velocity=0,air=false,fallFrom=0,lastJump=-Infinity,jumps=0,dashTime=0,dashSteps=0,dashX=0,dashY=0,lastDash=-Infinity;
  function floor(x=Dungeon.x,y=Dungeon.y,reference=z,step=0){return BMLayers.active(Dungeon)?BMLayers.support(Dungeon,x,y,reference,step):Dungeon.getFloorElevation(x,y);}
- function sync(){if(owner!==Dungeon||maze!==Dungeon.maze||visit!==Dungeon.musicVisitSerial||Dungeon._arrivalPending){Dungeon._arrivalPending=false;approach=framing=null;climb=null;BMRecovery.arrive(Dungeon);checkedX=Dungeon.x;checkedY=Dungeon.y;owner=Dungeon;maze=Dungeon.maze;visit=Dungeon.musicVisitSerial;z=floor(Dungeon.x,Dungeon.y,Number(Dungeon.groundZ)||0);velocity=0;air=false;jumps=0;dashTime=0;dashSteps=0;lastJump=lastDash=-Infinity;Dungeon.groundZ=z;Dungeon.pendingJumpTrigger=null;}}
+ function sync(){if(owner!==Dungeon||maze!==Dungeon.maze||visit!==Dungeon.musicVisitSerial||Dungeon._arrivalPending){Dungeon._arrivalPending=false;stride=approach=framing=null;climb=null;BMRecovery.arrive(Dungeon);checkedX=Dungeon.x;checkedY=Dungeon.y;owner=Dungeon;maze=Dungeon.maze;visit=Dungeon.musicVisitSerial;z=floor(Dungeon.x,Dungeon.y,Number(Dungeon.groundZ)||0);velocity=0;air=false;jumps=0;dashTime=0;dashSteps=0;lastJump=lastDash=-Infinity;Dungeon.groundZ=z;Dungeon.pendingJumpTrigger=null;}}
  function agility(){const d=Dungeon.getEffectiveDice(3);return Math.max(1,(Number(d.numDice)||0)*(Number(d.diceSides)||0)+(Number(d.flatMod)||0));}
  function unlock(sides){const d=Dungeon.getEffectiveDice(3);return d.numDice>1||d.numDice>=1&&d.diceSides>=sides;}
  // Lock the current movement direction for a short dodge; keep tile interactions.
@@ -46636,7 +46880,7 @@ const BMPlayerMotion=(()=>{
   if(exhausted||reserve<cost)return false;
   const v=direction||BMTouch.dashDirection(),n=Math.hypot(v.x,v.y);
   if(!n)return false;
-  approach=framing=null;dashX=v.x/n;dashY=v.y/n;reserve-=cost;
+  stride=approach=framing=null;dashX=v.x/n;dashY=v.y/n;reserve-=cost;
   if(reserve<.001){exhausted=true;recoverDelay=Math.max(2,9-(average(1)-4)*.2);}
   dashTime=.28;lastDash=now;
   Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;
@@ -46666,32 +46910,121 @@ const BMPlayerMotion=(()=>{
   }
   return true;
  }
- function approachTarget(reach=BMStrike.reach(Dungeon)){
+ function approachTarget(reach=BMStrike.reach(Dungeon),turnIfEmpty=true){
   sync();
   if(!BMTouch.live()||Dungeon.isDead||climb||dashTime>0||Dungeon.activeBuffs?.some(b=>b.bind||b.freeze||b.stun))return null;
-  const selected=BMLock.target();
-  let nearest=null,range=3;
+  const selected=selectedMelee(),view=eyeLevelCombat()?swingView():null;
+  let nearest=null,range=3,flank=null,flankRange=3;
   for(const n of selected?[selected]:Dungeon.npcs){
    const distance=Math.hypot(n.x-Dungeon.x,n.y-Dungeon.y);
-   if(distance>range||!eligibleEnemy(n)||!BMTerrainPhysics.melee(Dungeon,Dungeon,n)||
-      !clearApproachPath(n,distance,Math.min(.90,reach*.78)))continue;
-   range=distance;nearest=n;
+   const outside=view&&!selected&&!insideSwing(view,n,.90);
+   if(distance<.035||distance>(outside?flankRange:range)||outside&&(!turnIfEmpty||nearest)||
+      !(selected?validMelee(n):eligibleEnemy(n))||!BMTerrainPhysics.melee(Dungeon,Dungeon,n)||
+      !clearApproachPath(n,distance,strikeGap(n,reach)))continue;
+   if(outside){flank=n;flankRange=distance;}else{range=distance;nearest=n;}
   }
-  return nearest;
+  return nearest||flank;
+ }
+ function strideHeading(target=null){
+  const input=BMTouch.dashDirection(false);
+  if(input)return Math.atan2(input.x,-input.y);
+  if(target)return Math.atan2(target.x-Dungeon.x,Dungeon.y-target.y);
+  return BMTouch.cameraAngle();
+ }
+ function beginStride(target=null,heading=strideHeading(target),stopAt=null){
+  if(!BMTouch.live()||!chargeCanMove()||air||Dungeon.isDead||BMTavernPeace.protectedActor(Dungeon)||BMRefuge.inside(Dungeon))return;
+  if(target&&framing&&eyeLevelCombat())framing.contactBearing=Math.atan2(target.x-Dungeon.x,Dungeon.y-target.y);
+  stride={target,heading,time:0,gap:stopAt===null?.42:Math.max(.42,stopAt-.065)};
+  Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;
+ }
+ function advanceStride(dt){
+  const s=stride,d=Dungeon,v=BMTouch.dashDirection(false);
+  if(v){
+   const delta=Math.atan2(v.x,-v.y)-s.heading,turn=Math.atan2(Math.sin(delta),Math.cos(delta));
+   s.heading+=Math.max(-22*dt,Math.min(22*dt,turn));
+  }
+  const duration=.18,t0=s.time/duration;
+  s.time=Math.min(duration,s.time+dt);
+  const t1=s.time/duration,dist=.55*((1-t0)**2-(1-t1)**2);
+  let x=d.x+Math.sin(s.heading)*dist,y=d.y-Math.cos(s.heading)*dist;const n=s.target;
+  if(eyeLevelCombat()&&n&&!n.isDead){
+   ({x,y}=guardShoulder(x,y,n,s.gap));
+  }else if(n&&!n.isDead&&Math.hypot(n.x-x,n.y-y)<.42&&Math.hypot(n.x-x,n.y-y)<Math.hypot(n.x-d.x,n.y-d.y)){stride=null;return;}
+  if(!moveStrikeStep(x,y,n,false)||s.time>=duration)stride=null;
+ }
+ function beginVisibleSwing(target,reach,strike,pose){
+  sync();
+  const selected=!!target&&target===selectedMelee(),stopAt=target?strikeGap(target,reach):0;
+  const windup=pose?Math.min(100,pose.contact||pose.duration*.40):0;
+  if(pose)pose.contact=windup;
+  stride=null;
+  framing=target?{target,remaining:.16,selected}:null;
+  if(target)BMGaze.handoff(Dungeon);
+  // Give an offscreen foe one initial turn. Once acquired, it can still evade the swing.
+  const turning=!!target&&!selected&&!insideSwing(swingView(),target,.90);
+  const a={visible:true,target,selected,turning,reach,stopAt,strike,pose,windup,time:0,remaining:2.85,planted:false};
+  approach=a;
+  if(!target||insideSwing(swingView(),target,.55)&&Math.hypot(target.x-Dungeon.x,target.y-Dungeon.y)<=stopAt){
+   beginStride(target,strideHeading(target),target?stopAt:null);a.planted=true;
+  }else{Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;BMFishing.cancel();}
+ }
+ function advanceVisibleSwing(a,dt){
+  const d=Dungeon,n=a.target;
+  a.time+=dt;
+  if(!eyeLevelCombat()||BMTavernPeace.protectedActor(d)||BMRefuge.inside(d)||
+    n&&(!validMelee(n)||(a.selected&&selectedMelee()!==n)||!BMTerrainPhysics.melee(d,d,n))){
+   stride=approach=framing=null;return;
+  }
+  if(n){
+   const view=swingView();
+   if(!insideSwing(view,n,.55)){
+    // An unlocked enemy can sidestep the blade. An explicit lock gets time to turn.
+    if(!framing||!a.selected&&!a.turning&&!insideSwing(view,n,.98)||a.time>.6){stride=approach=framing=null;}
+    return;
+   }
+   a.turning=false;
+   const dx=n.x-d.x,dy=n.y-d.y,dist=Math.hypot(dx,dy);
+   if(!a.planted){
+    if(dist>3.08){stride=approach=framing=null;return;}
+    const step=Math.min(Math.max(0,dist-a.stopAt),a.remaining,17*dt);
+    if(step>0){
+     if(!moveStrikeStep(d.x+dx/dist*step,d.y+dy/dist*step,n,false)){stride=approach=framing=null;return;}
+     if(approach!==a||maze!==d.maze||visit!==d.musicVisitSerial||!BMTouch.live())return;
+     a.remaining-=step;
+    }
+    if(Math.hypot(n.x-d.x,n.y-d.y)>a.stopAt+.001&&a.remaining>.001)return;
+    a.planted=true;beginStride(n,strideHeading(n),a.stopAt);
+   }
+  }
+  if(stride)advanceStride(dt);else if(dashTime>0)burst(dt);
+  if(approach!==a||maze!==d.maze||visit!==d.musicVisitSerial||!BMTouch.live())return;
+  if(a.time*1000<a.windup)return;
+  approach=null;
+  if(a.pose)a.pose.at=performance.now()-a.windup;
+  // Recheck after the steered step. An opponent leaving the arc turns this into a free swing.
+  const contact=n&&insideSwing(swingView(),n,.55)&&Math.hypot(n.x-d.x,n.y-d.y)<=a.reach?n:null;
+  a.strike(contact);
  }
  function beginApproach(target,reach,strike){
+  stride=null;
   const distance=Math.hypot(target.x-Dungeon.x,target.y-Dungeon.y);
-  const stopAt=Math.min(.90,reach*.78);
-  framing={target,remaining:.14};
-  if(distance<=stopAt){BMLock.faceStrike(target,1/60);strike();return;}
+  const stopAt=strikeGap(target,reach);
+  BMGaze.handoff(Dungeon);
+  framing={target,remaining:.16};
+  if(distance<=stopAt){BMLock.faceStrike(target,0);beginStride(target, strideHeading(target),stopAt);strike();return;}
   Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;
-  BMFishing.cancel();BMGaze.handoff(Dungeon);
+  BMFishing.cancel();
   approach={target,stopAt,reach,strike,remaining:2.85};
  }
  function moveStrikeStep(nx,ny,target,through){
-  if(!clearApproachStep(nx,ny,z))return false;
+  if(!through&&eyeLevelCombat()){
+   const p=crowdStep(nx,ny,target);
+   if((p.x!==nx||p.y!==ny)&&Math.hypot(p.x-Dungeon.x,p.y-Dungeon.y)<.0001)return false;
+   nx=p.x;ny=p.y;
+  }
+  if(BMRecovery.hazard(Dungeon,nx,ny)||!clearApproachStep(nx,ny,z))return false;
   const cx=Math.floor(nx)-Math.floor(Dungeon.x),cy=Math.floor(ny)-Math.floor(Dungeon.y);
-  if(cx||cy)return !!executeDungeonMove(cx,cy,true,{x:nx,y:ny,meleeTarget:target,throughStrike:through});
+  if(cx||cy)return !!executeDungeonMove(cx,cy,true,{x:nx,y:ny,meleeTarget:target,throughStrike:through,attackStep:true});
   Dungeon.x=Dungeon.targetMapX=nx;Dungeon.y=Dungeon.targetMapY=ny;return true;
  }
  function chargeCanMove(){
@@ -46726,8 +47059,14 @@ const BMPlayerMotion=(()=>{
    }
   });
  }
+ function turnForCharge(target,pose){
+  sync();stride=null;BMGaze.handoff(Dungeon);
+  framing={target,remaining:.15,selected:true};
+  approach={aimCharge:true,selected:true,target,pose,time:0,context:BMCombatNet.currentCast()};
+  return true;
+ }
  function beginCharge(target,attack){
-  sync();
+  sync();stride=null;
   if(!BMTouch.live()||Dungeon.isDead||BMTavernPeace.protectedActor(Dungeon)||BMRefuge.inside(Dungeon))return false;
   const d=Dungeon,range=target?Math.hypot(target.x-d.x,target.y-d.y):0;
   const forward=window.gameViewMode==='2d'?(BMOverhead.active()?d._travelAngle??d.dir*Math.PI/2:d.dir*Math.PI/2):(d.currentAngle??d.dir*Math.PI/2)+(d.lookPan||0);
@@ -46735,6 +47074,7 @@ const BMPlayerMotion=(()=>{
   const dx=Math.sin(heading),dy=-Math.cos(heading);
   const shortest=Math.max(1.25,range+.70),travel=shortest+(4.5-shortest)*attack.power;
   const impact=d.makeFieldProjectile(9999,d.x,d.y,dx,dy);
+  impact._chargePower=attack.power;impact.meleePose=attack;
   const c={charged:true,kick:attack.kind==='spinKick',dx,dy,impact,hit:new Set(),remaining:travel,speed:travel/(.16+.10*attack.power)};
   const mobile=chargeCanMove();
   if(mobile){
@@ -46742,26 +47082,35 @@ const BMPlayerMotion=(()=>{
    if(target)BMGaze.handoff(d);
   }
   d._travelAngle=heading;d.dir=((Math.round(heading/(Math.PI/2))%4)+4)%4;
-  framing={heading,target,remaining:0};approach=c;
+  framing=target?{heading,target,remaining:.15}:null;approach=c;
   d.playerAttackTimer=Math.min(15,d.basicAttackInterval()*.03);
   MusicEngine.play3DSFX('attack');
   sweepCharge(c,d.x,d.y);
-  if(!mobile&&approach===c)approach=framing=null;
+  if(!mobile&&approach===c)stride=approach=framing=null;
   return true;
  }
  function advanceCharge(c,dt){
   const d=Dungeon,ox=d.x,oy=d.y,step=Math.min(c.remaining,c.speed*dt);
-  if(!moveStrikeStep(ox+c.dx*step,oy+c.dy*step,null,true)){approach=framing=null;return;}
-  if(approach!==c||!BMTouch.live()||maze!==d.maze||visit!==d.musicVisitSerial){approach=framing=null;return;}
+  if(!moveStrikeStep(ox+c.dx*step,oy+c.dy*step,null,true)){stride=approach=framing=null;return;}
+  if(approach!==c||!BMTouch.live()||maze!==d.maze||visit!==d.musicVisitSerial){stride=approach=framing=null;return;}
   c.remaining-=step;sweepCharge(c,ox,oy);
-  if(approach===c&&c.remaining<.00001)approach=framing=null;
+  if(approach===c&&c.remaining<.00001)approach=null;
  }
  function advanceApproach(dt){
   const a=approach;
+  if(a.aimCharge){
+   a.time+=dt;
+   const target=eyeLevelCombat()&&validMelee(a.target)&&selectedMelee()===a.target&&BMTerrainPhysics.melee(Dungeon,Dungeon,a.target)?a.target:null;
+   if(target&&framing&&!insideSwing(swingView(),target,.55)&&a.time<.6)return;
+   approach=framing=null;a.pose.at=performance.now();
+   BMCombatNet.withCast(a.context,()=>beginCharge(target&&insideSwing(swingView(),target,.55)?target:null,a.pose));
+   return;
+  }
   if(a.charged){advanceCharge(a,dt);return;}
+  if(a.visible){advanceVisibleSwing(a,dt);return;}
   const n=a.target;
   if(!Dungeon.npcs.includes(n)||!eligibleEnemy(n)||!BMTerrainPhysics.melee(Dungeon,Dungeon,n)||
-     BMTavernPeace.protectedActor(Dungeon)||BMRefuge.inside(Dungeon)){approach=framing=null;return;}
+     BMTavernPeace.protectedActor(Dungeon)||BMRefuge.inside(Dungeon)){stride=approach=framing=null;return;}
   const ox=Dungeon.x,oy=Dungeon.y,dx=n.x-ox,dy=n.y-oy,distance=Math.hypot(dx,dy);
   const travel=Math.min(Math.max(0,distance-a.stopAt),a.remaining,17*dt);
   let stopped=false;
@@ -46774,19 +47123,31 @@ const BMPlayerMotion=(()=>{
   const gap=Math.hypot(n.x-Dungeon.x,n.y-Dungeon.y);
   if(stopped||gap<=a.stopAt+.001||a.remaining<.001){
    approach=null;
-   if(gap<=a.reach&&Dungeon.npcs.includes(n)&&eligibleEnemy(n))a.strike();
+   if(gap<=a.reach&&Dungeon.npcs.includes(n)&&eligibleEnemy(n)){beginStride(n,strideHeading(n),a.stopAt);a.strike();}
   }
  }
  function frameStrike(dt){
   if(!framing)return;
   const n=framing.target;
   if(framing.heading!==undefined){
-   if(n)BMLock.faceStrike(n,dt,framing.heading);
+   BMLock.faceStrike(n,dt,framing.heading);
+   if(!approach){framing.remaining-=dt;if(framing.remaining<=0)framing=null;}
    return;
   }
-  const locked=BMLock.target();
-  if(!Dungeon.npcs.includes(n)||!eligibleEnemy(n)||locked&&locked!==n){framing=null;return;}
-  BMLock.faceStrike(n,dt);
+  const locked=selectedMelee();
+  if(!validMelee(n)||locked&&locked!==n){framing=null;return;}
+  if(approach?.visible||approach?.aimCharge){
+   const view=swingView();
+   if(!approach.selected&&!approach.turning&&!insideSwing(view,n,.98)){framing=null;return;}
+   if((approach.selected||approach.turning)&&!insideSwing(view,n,.55)){
+    BMLock.faceStrike(n,dt,Math.atan2(n.x-Dungeon.x,Dungeon.y-n.y));return;
+   }
+  }
+  if(!locked&&framing.contactBearing!==undefined){
+   const bearing=Math.atan2(n.x-Dungeon.x,Dungeon.y-n.y);
+   if(Math.cos(bearing-framing.contactBearing)<0)framing.heading=framing.contactBearing;
+  }
+  BMLock.faceStrike(n,dt,framing.heading);
   if(!approach){framing.remaining-=dt;if(framing.remaining<=0)framing=null;}
  }
  function burst(dt){
@@ -46808,7 +47169,7 @@ const BMPlayerMotion=(()=>{
   const sx=Dungeon.x,sy=Dungeon.y,dx=tx+.5-sx,dy=ty+.5-sy,top=Dungeon.getSurfaceHeight(tx,ty);
   const edge=(start,delta,tile)=>Math.floor(start)===tile?1:((delta>0?tile:tile+1)-start)/delta;
   const lip=Math.max(0,Math.min(1,edge(sx,dx,tx),edge(sy,dy,ty))-.06);
-  climb={sx,sy,dx,dy,tx,ty,lip,base:z,top,tile:Dungeon.maze[ty][tx],elapsed:0,duration:Math.min(.90,.40+.15*Math.max(0,top-z))};
+  stride=null;climb={sx,sy,dx,dy,tx,ty,lip,base:z,top,tile:Dungeon.maze[ty][tx],elapsed:0,duration:Math.min(.90,.40+.15*Math.max(0,top-z))};
   Dungeon.targetMapX=tx+.5;Dungeon.targetMapY=ty+.5;Dungeon.isSlidingToTile=true;
   Dungeon.pendingJumpTrigger=null;dashTime=dashSteps=0;return true;
  }
@@ -46834,7 +47195,7 @@ const BMPlayerMotion=(()=>{
   sync();if(climb||!BMTouch.live()||Dungeon.activeBuffs?.some(b=>b.bind)||jumps>=2||now-lastJump<150||(air&&!unlock(20)))return false;
   if(!air){z=floor();fallFrom=z;jumps=0;}else if(jumps===0)jumps=1;
   if(BMLayers.ceiling(Dungeon,Dungeon.x,Dungeon.y,z)-z<BMLayers.body(Dungeon)+.08)return false;
-  velocity=Math.sqrt(2*gravity*jumpPeak()*(jumps?.8:1));air=true;jumps++;lastJump=now;
+  stride=null;velocity=Math.sqrt(2*gravity*jumpPeak()*(jumps?.8:1));air=true;jumps++;lastJump=now;
   return true;
  }
  function blocked(x,y,feet=z,jumping=air){
@@ -46848,11 +47209,11 @@ const BMPlayerMotion=(()=>{
   return jumping?Dungeon.getSurfaceHeight(x,y)>feet+.001:Dungeon.isWall(x,y,feet);
  }
  function advance(dt){
-  sync();if(!BMTouch.live()||Dungeon.isDead){approach=framing=null;dashTime=dashSteps=0;return;}if(climb){advanceClimb(dt);return;}
+  sync();if(!BMTouch.live()||Dungeon.isDead){stride=approach=framing=null;dashTime=dashSteps=0;return;}if(climb){advanceClimb(dt);return;}
   if(!Dungeon.isSlidingToTile&&checkedX!==null&&Math.hypot(Dungeon.x-checkedX,Dungeon.y-checkedY)>.6){BMRecovery.arrive(Dungeon);z=floor();}
   checkedX=Dungeon.x;checkedY=Dungeon.y;const elapsed=Math.max(0,Math.min(.1,Number(dt)||0)),steps=Math.max(1,Math.ceil(elapsed*120)),h=elapsed/steps;
   if(Dungeon.activeBuffs?.some(b=>b.bind||b.freeze))dashTime=dashSteps=0;
-  if(approach&&Dungeon.activeBuffs?.some(b=>b.bind||b.freeze||b.stun))approach=framing=null;
+  if((approach||stride)&&Dungeon.activeBuffs?.some(b=>b.bind||b.freeze||b.stun))stride=approach=framing=null;
   recover(elapsed);
   for(let i=0;i<steps;i++){
 
@@ -46862,6 +47223,7 @@ const BMPlayerMotion=(()=>{
    }
    frameStrike(h);
    if(approach){advanceApproach(h);if(maze!==Dungeon.maze||visit!==Dungeon.musicVisitSerial){sync();return;}}
+   else if(stride)advanceStride(h);
    else if(dashTime>0){const previous=Dungeon.maze,visit=Dungeon.musicVisitSerial;burst(h);if(previous!==Dungeon.maze||visit!==Dungeon.musicVisitSerial){sync();return;}}
    else if(BMOverhead.active()&&!Dungeon.isSlidingToTile){const beforeMaze=Dungeon.maze,beforeVisit=Dungeon.musicVisitSerial;BMOverhead.advance(h);if(climb)break;if(Dungeon.maze!==beforeMaze||Dungeon.musicVisitSerial!==beforeVisit){sync();return;}}
    if(!BMTouch.live())break;
@@ -46885,7 +47247,7 @@ const BMPlayerMotion=(()=>{
   const trigger=Dungeon.pendingJumpTrigger;if(trigger&&!Dungeon.isSlidingToTile&&!air){Dungeon.pendingJumpTrigger=null;if(trigger.map===Dungeon.mapID&&trigger.maze===Dungeon.maze&&trigger.x===Math.floor(Dungeon.x)&&trigger.y===Math.floor(Dungeon.y))Dungeon.checkFloorTriggers();}
  }
  function reset(){owner=null;sync();}
- return {agility,jumpPeak,jump,dash,advance,reset,beginClimb,eligibleEnemy,approachTarget,beginApproach,beginCharge,get approaching(){return !!approach;},cancelApproach(){approach=framing=null;},releaseFraming(){framing=null;},get framingStrike(){return !!framing;},get climbing(){sync();return !!climb;},get canDoubleJump(){return unlock(20);},get canDash(){return !exhausted&&reserve>=.6*Math.max(.62,1-Math.max(0,average(3)-2.5)*.032);},dodge:dash,dodgeCooldown,cancelDodge(){dashTime=dashSteps=0;approach=framing=null;},get evading(){sync();return BMTouch.live()&&dashTime>.04;},get dashing(){return dashTime>0||!!approach;},blocked(x,y){sync();return blocked(x,y,air?z:floor(),air);},get airborne(){sync();return air;},get swimming(){sync();return !air&&BMSwimming.at(Dungeon,Dungeon.x,Dungeon.y,z);},get feetZ(){sync();if(climb)return z;return BMSwimming.feet(Dungeon,Dungeon.x,Dungeon.y,air?z:floor(),air);},get height(){return Math.max(0,this.feetZ-floor());},get jumpsUsed(){return jumps;}};
+ return {battleAlly,eyeLevelCombat,swingView,insideSwing,beginVisibleSwing,turnForCharge,winding(pose){return !!approach&&approach.pose===pose;},agility,jumpPeak,jump,dash,advance,reset,beginClimb,eligibleEnemy,approachTarget,beginApproach,beginCharge,beginStride,strideHeading,get striding(){return !!stride;},get approaching(){return !!approach;},cancelApproach(){stride=approach=framing=null;},releaseFraming(){framing=null;},get framingStrike(){return !!framing;},get strikeTarget(){return framing?.target||stride?.target||null;},get climbing(){sync();return !!climb;},get canDoubleJump(){return unlock(20);},get canDash(){return !exhausted&&reserve>=.6*Math.max(.62,1-Math.max(0,average(3)-2.5)*.032);},dodge:dash,dodgeCooldown,cancelDodge(){dashTime=dashSteps=0;stride=approach=framing=null;},get evading(){sync();return BMTouch.live()&&dashTime>.04;},get dashing(){return dashTime>0||!!approach||!!stride;},blocked(x,y){sync();return blocked(x,y,air?z:floor(),air);},get airborne(){sync();return air;},get swimming(){sync();return !air&&BMSwimming.at(Dungeon,Dungeon.x,Dungeon.y,z);},get feetZ(){sync();if(climb)return z;return BMSwimming.feet(Dungeon,Dungeon.x,Dungeon.y,air?z:floor(),air);},get height(){return Math.max(0,this.feetZ-floor());},get jumpsUsed(){return jumps;}};
 })();
 
 // Thumb ownership is separate from the older menu/pinch pointer registry.
@@ -46999,7 +47361,7 @@ const BMTouch = (() => {
         const ready=Dungeon._nextBasicAttackAt||0;
         if(now<ready||BMPlayerMotion.approaching){
             // Keep one slightly early tap through the current approach and recovery.
-            if(ready-now<=140)queuedAttack={map:Dungeon.mapID,visit:Dungeon.musicVisitSerial,input,expires:Math.max(now,ready)+160};
+            if(ready-now<=140||BMPlayerMotion.striding)queuedAttack={map:Dungeon.mapID,visit:Dungeon.musicVisitSerial,input,expires:Math.max(now,ready)+160};
             return false;
         }
         queuedAttack=null;BMFishing.cancel();
@@ -47117,17 +47479,17 @@ const BMTouch = (() => {
         const strength=Math.min(1,(len-dead)/(radius-dead));
         return {x:Math.round(Math.sin(f.octant*Math.PI/4)),y:-Math.round(Math.cos(f.octant*Math.PI/4)),speed:.60+.40*strength};
     }
-    function dashDirection(){
+    function dashDirection(fallback=true){
         const thumb=vector();if(thumb)return thumb;
-        const kx=Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft')),ky=Number(keys.has('s')||keys.has('arrowdown'))-Number(keys.has('w')||keys.has('arrowup'));
-        if(BMOverhead.active()&&(kx||ky))return BMOverhead.vector(kx,ky);
-        let local=kx||ky?[kx,ky]:null;
+        if(BMOverhead.active()){const input=BMOverhead.input();if(input)return input;}
+        let local=null;
         for(const f of fingers.values())if(f.button?.currentDir){
             local={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0],s_left:[-1,0],s_right:[1,0]}[f.button.currentDir];if(local)break;
         }
         const key=(window.activeMoveKey||'').toLowerCase();
         local??={w:[0,-1],arrowup:[0,-1],s:[0,1],arrowdown:[0,1],a:[-1,0],q:[-1,0],arrowleft:[-1,0],d:[1,0],e:[1,0],arrowright:[1,0]}[key];
         const angle=BMLock.angle()??(window.gameViewMode==='2d'?0:cameraAngle());
+        if(!local&&!fallback)return null;
         if(!local&&Dungeon.isSlidingToTile){const x=Dungeon.targetMapX-Dungeon.x,y=Dungeon.targetMapY-Dungeon.y;const a=Math.round(Math.atan2(x,-y)/(Math.PI/4))*Math.PI/4;return {x:Math.round(Math.sin(a)),y:-Math.round(Math.cos(a))};}
         local??=window.gameViewMode==='2d'?[[0,-1],[1,0],[0,1],[-1,0]][Dungeon.dir%4]:[0,-1];
         const a=angle+Math.atan2(local[0],-local[1]),sector=Math.round(a/(Math.PI/4))*Math.PI/4;
@@ -47227,23 +47589,62 @@ const BMLock=(()=>{
   if(!['explore'].includes(startGame)||Dungeon.isDead||Dungeon.isDying||Dungeon.isLoading){clear();return;}
   const n=target();if(!n)return;
   hiddenFor=sight(n)?0:hiddenFor+dt;if(hiddenFor>2){clear();return;}
-  if(!BMPlayerMotion.framingStrike)face(n,dt,7,4,now>=lookUntil);
+  if(!BMPlayerMotion.framingStrike)face(n,dt,false,now>=lookUntil);
+ }
+ // The actor aims immediately. The view carries its own turn velocity between combat frames.
+ let follow=null;
+ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+ function cameraState(){
+  const d=Dungeon,key=window.gameViewMode==='2d'?BMOverhead.mode:d.cameraMode;
+  if(!follow||follow.maze!==d.maze||follow.visit!==d.musicVisitSerial||follow.view!==key){
+   follow={maze:d.maze,visit:d.musicVisitSerial,view:key,velocity:0,subject:null,near:false,bearing:0,last:-Infinity};
+  }
+  return follow;
+ }
+ function releaseWeight(d,now=performance.now()){
+  const s=follow;
+  if(!s||startGame!=='explore'||s.maze!==d.maze||s.visit!==d.musicVisitSerial||s.view!==d.cameraMode||s.dir!==d.dir)return 1;
+  const t=clamp((now-s.last-180)/400,0,1);
+  return t*t*(3-2*t);
+ }
+ function turnView(s,current,goal,dt,fast){
+  // Exact critically damped response for a fixed goal, measured in seconds and radians.
+  let error=wrap(goal-current);
+  if(Math.abs(error)>Math.PI-.035&&Math.abs(s.velocity)>.5)error=Math.sign(s.velocity)*Math.abs(error);
+  const omega=fast?28:12,limit=fast?14:6,h=clamp(dt,0,.1);
+  const k=Math.exp(-omega*h),term=(s.velocity-omega*error)*h;
+  const change=clamp(error+(term-error)*k,-limit*h,limit*h);
+  s.velocity=clamp((s.velocity-omega*term)*k,-limit,limit);
+  return change;
  }
  function faceStrike(n,dt,heading){
   const a=heading??Math.atan2(n.x-Dungeon.x,Dungeon.y-n.y);
   Dungeon._travelAngle=a;
-  if(BMOverhead.active())BMOverhead.rotate(wrap(-Math.PI/4-a-BMOverhead.rotation)*(1-Math.exp(-24*dt)));
-  face(n,dt,28,18,true,a);
+  const looking=BMTouch.looking||typeof btnLook!=='undefined'&&btnLook?.isPressed||typeof isFreeLooking!=='undefined'&&isFreeLooking;
+  face(n,dt,true,!looking,a,heading!==undefined);
  }
- function face(n,dt,yawSpeed,pitchSpeed,trackCamera,a=Math.atan2(n.x-Dungeon.x,Dungeon.y-n.y)){
-  const heading=Math.round(a/(Math.PI/2));Dungeon.dir=(heading%4+4)%4;
-  if(window.gameViewMode!=='3d'||!trackCamera)return;
-  const current=(Dungeon.currentAngle??a)+(Dungeon.lookPan||0),next=current+wrap(a-current)*(1-Math.exp(-yawSpeed*dt));
-  Dungeon.currentAngle=next;Dungeon.lookPan=0;Dungeon._cinePan=Dungeon._cinePitch=undefined;
-  if((n.x-Dungeon.x)*Math.sin(a)-(n.y-Dungeon.y)*Math.cos(a)<.1)return;
-  const z=BMGaze.faceZ(Dungeon,n),dist=Math.max(.18,Math.hypot(n.x-Dungeon.x,n.y-Dungeon.y)+(Dungeon.currentCamDist||0));
-  const pitch=Math.max(-tH*(BMGaze.small(Dungeon,n)?2.35:.6),Math.min(tH*.35,(z-(Dungeon.camZ||.6))/dist*tH*(Dungeon.zScale||1)-tH*.05));
-  Dungeon.lookPitch=(Dungeon.lookPitch||0)+(pitch-(Dungeon.lookPitch||0))*(1-Math.exp(-pitchSpeed*dt));
+ function face(n,dt,fast,trackCamera,a=Math.atan2(n.x-Dungeon.x,Dungeon.y-n.y),fixed=false){
+  const d=Dungeon,heading=Math.round(a/(Math.PI/2));d.dir=(heading%4+4)%4;
+  const iso=BMOverhead.active();
+  if(!trackCamera||(!iso&&window.gameViewMode!=='3d')||(iso&&!fast))return;
+  const s=cameraState(),now=performance.now(),dist=Math.hypot(n.x-d.x,n.y-d.y);
+  const current=iso?-Math.PI/4-BMOverhead.rotation:(d.currentAngle??a)+(d.lookPan||0);
+  if(s.subject!==n||now-s.last>450){s.subject=n;s.bearing=current;s.near=false;if(now-s.last>450)s.velocity=0;}
+  s.last=now;s.dir=d.dir;
+  // At contact the angle of a tiny position correction can reverse by half a turn.
+  // Hold the last useful bearing until there is space to establish a new one.
+  s.near=!fixed&&dist<(s.near?.78:.50);
+  if(fixed)s.bearing=a;
+  else if(!s.near&&Math.abs(wrap(a-s.bearing))>.028)s.bearing=a;
+  const change=turnView(s,current,s.bearing,dt,fast);
+  if(iso){BMOverhead.rotate(-change);return;}
+  d.currentAngle=current+change;d.lookPan=0;d._cinePan=d._cinePitch=undefined;
+  if(fixed||s.near||(n.x-d.x)*Math.sin(a)-(n.y-d.y)*Math.cos(a)<.1)return;
+  const viewport=worldViewport(),short=Math.min(viewport.w,viewport.h);
+  const depth=Math.max(.95,dist+(d.currentCamDist||0));
+  const pitch=short*clamp((BMGaze.faceZ(d,n)-(d.camZ??.6))/depth*(d.zScale||1)-.05,BMGaze.small(d,n)?-2.35:-.6,.35);
+  const currentPitch=d.lookPitch||0;
+  if(Math.abs(pitch-currentPitch)>short*.008)d.lookPitch=currentPitch+clamp((pitch-currentPitch)*(1-Math.exp(-6*dt)),-short*1.1*dt,short*1.1*dt);
  }
  function marker(body,pixelScale=1){const r=Math.max(5.5,Math.min(18,Math.sqrt(Math.max(0,body.w*body.h))*pixelScale*.075))/pixelScale;return {x:body.x+body.w/2,y:body.y-Math.max(3/pixelScale,r*.5)-r*.8,r};}
  function mark(n,g,x,y,size=12){if(n!==selected||!valid()||!sight(n))return;const p=Math.max(0,1-(performance.now()-pulse)/550),r=size*(1+p*.22),m=g.getTransform(),scale=Math.hypot(m.a,m.b)||1;g.save();g.filter='none';g.globalAlpha=1;g.fillStyle='#f9d461';g.strokeStyle='#241a08';g.lineWidth=1.5/scale;g.beginPath();g.moveTo(x-r,y-r*.5);g.lineTo(x+r,y-r*.5);g.lineTo(x,y+r*.8);g.closePath();g.fill();g.stroke();g.restore();}
@@ -47272,7 +47673,7 @@ const BMLock=(()=>{
   const value=[{id:'target',label:selected?'Next':'Target',x:best.x,y:best.y,r},{id:'clearTarget',label:'×',x:best.x,y:best.y-54,r:18}];layoutCache={key,value};return value;
  }
  window.addEventListener('keydown',e=>{if(!BMTouch.live()||e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target?.closest?.('input,textarea,select,button,[contenteditable=true]'))return;if(e.key.toLowerCase()==='t'){e.preventDefault();e.stopImmediatePropagation();cycle();}else if(e.key==='Escape'&&target()){e.preventDefault();e.stopImmediatePropagation();clear();}},true);
- return {target,combatTarget,cycle,clear,angle,vector,update,faceStrike,mark,marker,markBody,layout,hostile,sight,matches,manual(){lookUntil=performance.now()+1800;},get active(){return !!target();}};
+ return {target,combatTarget,cycle,clear,angle,vector,update,faceStrike,releaseWeight,resetView(){follow=null;},mark,marker,markBody,layout,hostile,sight,matches,manual(){lookUntil=performance.now()+1800;},get active(){return !!target();}};
 })();
 globalThis.BMLock=BMLock;
 
@@ -47468,7 +47869,7 @@ const BMInteract=(()=>{
    if(Math.abs(rx)>1.2||Math.abs(ry)>1.2)continue;
    const forward=rx*vx+ry*vy,side=Math.abs(rx*vy-ry*vx);
    if(forward<=0||side>.40||side>forward||rx*rx+ry*ry>1.20**2||forward>1.05+length||forward>=best)continue;
-   if(introduction(n)&&reachable(n)){speaker=n;best=forward;}
+   if(!BMPlayerMotion.battleAlly(n)&&introduction(n)&&reachable(n)){speaker=n;best=forward;}
   }
   return !!speaker&&open(speaker);
  }
@@ -51481,7 +51882,7 @@ const BMObstacles=(()=>{
                         // Check if the remote player is on OUR current map
                         let localMap = (typeof Dungeon !== 'undefined') ? Dungeon.mapID : 0;
                         
-                        if (data.mapID === localMap && !window.remotePlayers[id].isDead) {
+                        if (!data.remoteOnly && data.mapID === localMap && !window.remotePlayers[id].isDead) {
                             window.remotePlayers[id].x = data.x;
                             window.remotePlayers[id].y = data.y;
                             window.remotePlayers[id].visible = true;
@@ -51499,7 +51900,7 @@ const BMObstacles=(()=>{
                         if (data.mapID !== undefined) window.remotePlayers[id].mapID = data.mapID;
                         if (data.name) window.remotePlayers[id].name = data.name;
                         if (data.summons) window.remotePlayers[id].summons = data.summons;
-                        globalThis.BMSuncatMotion103?.receive({...data,id}); 
+                        if(!data.remoteOnly)globalThis.BMSuncatMotion103?.receive({...data,id}); 
                     }
                 }
 
@@ -54029,6 +54430,7 @@ const BMCombatAttribution={
                 if(BMTavernPeace.protectedActor(s)||BMTavernPeace.protectedActor(owner||world))return false;
                 if(!s||s.isDead||s.mapID!==world.mapID||owner==='network'||owner?.id==='NPC_SUNCAT'||projectile._fairyHit)return false;
                 if(owner&&owner!==world&&(!String(owner.alignment||'').startsWith('foe')&&!owner.cachedPrey?.isSuncat))return false;
+                if(projectile.swingView&&!BMPlayerMotion.insideSwing(projectile.swingView,s,.68))return false;
                 const vx=projectile.x-fromX,vy=projectile.y-fromY,l=vx*vx+vy*vy;
                 const t=l?Math.max(0,Math.min(1,((s.x-fromX)*vx+(s.y-fromY)*vy)/l)):0;
                 if(Math.hypot(s.x-fromX-vx*t,s.y-fromY-vy*t)>(projectile.radius||.15)+.3||!this.sight(world,{x:fromX,y:fromY},s))return false;
@@ -54147,7 +54549,11 @@ const BMSuncatGift89=(()=>{
  const copy=v=>JSON.parse(JSON.stringify(v)),inflight=new Map();
  async function receive(a,d){const id=String(a.operationId||'');if(inflight.has(id))return inflight.get(id);const job=deliver(a,d);inflight.set(id,job);try{return await job;}finally{inflight.delete(id);}}
  async function deliver(a,d){const id=String(a.operationId||'');if(!id||id.length>200)throw Error('Invalid gift identity.');
-  d.memory??={};const receipts=d.memory.suncatGiftReceipts89??={};if(Object.hasOwn(receipts,id))return receipts[id];
+  if(a.saveId&&d.memory?.suncatWorld78!==a.saveId)throw Error('This gift belongs to a different save.');
+  d.memory??={};const receipts=d.memory.suncatGiftReceipts89??={};if(Object.hasOwn(receipts,id)){
+   try{await BMStorage.flush();}catch{throw Object.assign(Error('Waiting for durable gift storage.'),{outcome:'unknown'});}
+   return receipts[id];
+  }
   if(d!==Dungeon||d.isLoading||d._gameInitialized===false||d.isTestingMap||startGame!=='explore'||d.isDead||d.isDying)throw Error('Return to the active saved game before receiving a gift.');
   if(Object.keys(receipts).length>=2000)throw Error('The saved gift ledger is full. No item was accepted.');
   const n=a.quantity;if(!Number.isInteger(n)||n<1||n>20)throw Error('Invalid gift quantity.');
@@ -54395,7 +54801,12 @@ const SUNCAT_LIFE_CLIENT = (() => {
             install(sock) {
                 SUNCAT_FIELD.install(sock);
                 SUNCAT_LIFE_CLIENT.install(sock);
-                sock.on('suncat_gift_receipt89',async(q,ack)=>{if(typeof ack!=='function')return;try{await BMStorage.flush();ack({ok:true,receipt:BMSuncatGift89.receipt(q?.id)});}catch(e){ack({ok:false,outcome:'unknown',error:'The delivery receipt is not durably saved yet.'});}});
+                sock.on('suncat_gift_receipt89',async(q,ack)=>{if(typeof ack!=='function')return;try{if(Dungeon.isLoading||!Dungeon._gameInitialized)throw Error('Loading');const saveId=BMSuncat78.worldId(Dungeon);Dungeon.saveGame();await BMStorage.flush();if(BMStorage.getJSON('battlemage_save',null)?.memory?.suncatWorld78!==saveId)throw Error('Waiting for the original save');ack({ok:true,saveId,receipt:BMSuncatGift89.receipt(q?.id)});}catch(e){ack({ok:false,outcome:'unknown',error:'The delivery receipt is not durably saved yet.'});}});
+                sock.on('suncat_gift_resume147',async(gift,ack)=>{
+                    if(typeof ack!=='function')return;
+                    try{if(!gift?.saveId||gift.saveId!==Dungeon.memory?.suncatWorld78)throw Error('Original save required');ack(await BMSuncatGift89.receive(gift,Dungeon));}
+                    catch(error){ack({ok:false,outcome:'unknown',error:error.message});}
+                });
                 sock.on('suncat_life_receipt',(q,ack)=>{if(typeof ack==='function')ack({receipt:Dungeon.memory.suncatWorldReceipts?.[q?.id]?.mapID===q?.mapID?Dungeon.memory.suncatWorldReceipts[q.id]:null});});
                 BMOnline.install(sock);
                 sock.on('suncat_command',async(packet,ack)=>{
@@ -55491,7 +55902,8 @@ super(BMActorRules, 'npc');
                 let currentPrey = this.cachedPrey;
                 if(sanctuary||safe(currentPrey)||globalThis.BMTown80?.avoids(this,currentPrey)||BMAggro94.avoidsTarget(dungeon,this,currentPrey))currentPrey=this.cachedPrey=null;
                 if(currentPrey && (currentPrey.isDead || currentPrey.isDying || currentPrey.visible===false || (currentPrey!==dungeon&&!currentPrey.isRemotePlayer&&!currentPrey.isRemoteSummon&&!currentPrey.isSuncat&&!dungeon.npcs.includes(currentPrey)))) currentPrey=this.cachedPrey=null; 
-                let distToActualPlayer = Math.sqrt(Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2));        
+                let distToActualPlayer = Math.sqrt(Math.pow(playerX - this.x, 2) + Math.pow(playerY - this.y, 2));
+                const swingGap=distToActualPlayer<1.7?BMContactPose.worldGap(dungeon,this):0;        
 
                 if(safePlayer&&String(this.alignment).startsWith('foe'))distToActualPlayer=Infinity;
                 if (!sanctuary&&(!dungeon.frame || dungeon.frame % 15 === (this.index % 15))) {
@@ -55945,7 +56357,8 @@ super(BMActorRules, 'npc');
                         if (isChasingNPC && currentPrey) {
                             if (distToTarget < 1.3 && BMTerrainPhysics.melee(dungeon,this,currentPrey)) {
                                 
-                                // 1. Clash Logic (Network Players / Suncat / Other NPCs)
+                                BMContactPose.from(this,currentPrey,false);
+                                    // 1. Clash Logic (Network Players / Suncat / Other NPCs)
                                     if (currentPrey.isSuncat || currentPrey.isRemotePlayer || currentPrey.isRemoteSummon) {
                                         this.dirX = -toTargetX; 
                                         this.dirY = -toTargetY;
@@ -56115,7 +56528,7 @@ super(BMActorRules, 'npc');
                     
                     // SCENARIO B: NO NPCs TO FIGHT (Check for Player)
                         else if (!isChasingNPC) {
-                            if (distToActualPlayer <= .8 && BMTerrainPhysics.melee(dungeon,this,dungeon)) {
+                            if (distToActualPlayer <= (swingGap?swingGap+.18:.8) && BMTerrainPhysics.melee(dungeon,this,dungeon)) {
                                 if (this.alignment === 'foe_coward' || this.alignment === 'friendly_shy') {
                                     // Do nothing!
                                 }
@@ -56130,7 +56543,8 @@ super(BMActorRules, 'npc');
                                 else if (typeof this.alignment === 'string' && this.alignment.startsWith('foe')) {
                                     if (startGame === 'explore' && !this.isDead) {
                                         
-                                        // 1. DIALOGUE INTERCEPTOR: Do they have something to say before striking?
+                                        if(!this.customDialogue?.length){BMContactPose.stepAtContact(dungeon,this,swingGap);BMContactPose.from(this,dungeon,false);}
+                                       // 1. DIALOGUE INTERCEPTOR: Do they have something to say before striking?
                                         if (this.customDialogue && this.customDialogue.length > 0) {
                                             if (!this.endActions) this.endActions = [];
                                             this.endActions.push(['clear_dialogue', this.index]);
@@ -56150,7 +56564,7 @@ super(BMActorRules, 'npc');
                                             let dy = this.y - playerY;
                                             let dist = Math.sqrt(dx*dx + dy*dy) || 1;
                                             
-                                            if (dist < 0.8) {
+                                            if (!swingGap && dist < 0.8) {
                                                 this.x = playerX + (dx/dist) * 0.81;
                                                 this.y = playerY + (dy/dist) * 0.81;
                                             }
@@ -56420,7 +56834,7 @@ super(BMActorRules, 'npc');
                     let hasteBuff = this.activeBuffs.find(b => b.name === 'Haste');
                     if (hasteBuff && hasteBuff.speedBoost) currentSpeed += hasteBuff.speedBoost; 
 
-                    if (!formationGoal && distToActualPlayer < 0.6 && !isChasingNPC) {
+                    if (!formationGoal && !isChasingNPC && (distToActualPlayer < .6 || swingGap && this.state==='chasing' && this.combatCooldown>0 && distToActualPlayer<=swingGap+.18)) {
                         currentSpeed = 0; 
                     }
 
@@ -57502,6 +57916,10 @@ super(BMActorRules, 'npc');
                 if (typeof MusicEngine !== 'undefined' && typeof Dungeon !== 'undefined') MusicEngine.play3DSFX('block', this.x, this.y, Dungeon.x, Dungeon.y, Dungeon.dir);
             }
 
+            if(!blocked&&timeLost>0&&(timedWardBeforeHit>0||legacyWard)&&attacker&&
+               (spellId==null||[9999,9998,51].includes(spellId)||spellId===BMDancer.THRUST)){
+                BMContactPose.from(this,attacker,true);
+            }
             globalThis.BMHallows83?.burn(this,attacker,spellId,Math.max(0,timedWardBeforeHit-this.currentWardTime));
             return true; 
         }
@@ -59580,7 +59998,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
 
                 return new Projectile(x,y,dirX,dirY,6,finalDamage,null,SPELL_REGISTRY[finalSpellId].isHoming,finalSpellId);
             }
-            fireFieldProjectile(spellId,spellData,target=null) {
+            fireFieldProjectile(spellId,spellData,target=null,heading=null) {
                 let baseDirX = 0; let baseDirY = 0;
                 if (this.dir === 0) baseDirY = -1;
                 else if (this.dir === 1) baseDirX = 1;
@@ -59590,7 +60008,16 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                 if (BMTouch.enabled()) { const a=BMTouch.cameraAngle();baseDirX=Math.sin(a);baseDirY=-Math.cos(a); }
                 let finalDirX = baseDirX; let finalDirY = baseDirY;
 
-                if(target){
+                const viewStrike=this===Dungeon&&BMPlayerMotion.eyeLevelCombat()&&(spellId===9999||spellId===BMDancer.THRUST);
+                const swingView=viewStrike?BMPlayerMotion.swingView():null;
+                if(viewStrike){
+                    finalDirX=swingView.dx;finalDirY=swingView.dy;
+                    if(target&&BMPlayerMotion.insideSwing(swingView,target,.55)){
+                        const dx=target.x-this.x,dy=target.y-this.y,len=Math.hypot(dx,dy);
+                        finalDirX=dx/len;finalDirY=dy/len;
+                    }
+                }else if(heading!==null){finalDirX=Math.sin(heading);finalDirY=-Math.cos(heading);}
+                else if(target){
                     const dx=target.x-this.x,dy=target.y-this.y,length=Math.hypot(dx,dy);
                     if(length>.0001){finalDirX=dx/length;finalDirY=dy/length;}
                 }else if (this.cameraMode !== undefined && (spellId === 9999 || !spellData.isHoming)) { 
@@ -59637,8 +60064,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                         if (!BMTouch.enabled() && !BMView.suppressed(this) && (this.manualTurnTimer || 0) <= 0) {
                             if (Math.abs(finalDirX) > Math.abs(finalDirY)) this.dir = finalDirX > 0 ? 1 : 3;
                             else this.dir = finalDirY > 0 ? 2 : 0;
-                            this.currentAngle = this.dir * (Math.PI / 2);
-                            this._cinePan = 0; this.lookPan = 0;
+                            // The renderer eases toward the new facing.
                         }
                     }
                 }
@@ -59647,8 +60073,11 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                 const startY = this.y + (finalDirY * 0.5);
                 const strike=spellId===9999;
                 const p=this.makeFieldProjectile(spellId,strike?this.x:startX,strike?this.y:startY,finalDirX,finalDirY);
+                if(this===Dungeon&&(strike||spellId===BMDancer.THRUST)){
+                    p.meleePose=strike?this._fieldStrike:{kind:'thrust',combo:0};
+                }
                 if(strike){
-                    p.isHoming=false;p.maxRange=BMStrike.reach(this);
+                    p.swingView=swingView;p.isHoming=false;p.maxRange=BMStrike.reach(this);
                     for(let n=0;n<42&&p.active&&!p.exploding;n++)p.update(this,1/90);
                 }else this.projectiles.push(p);        
 
@@ -59672,9 +60101,14 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                 let meleeTarget=null;
                 if(Number(spellId)===9999){
                     if(!this.beginBasicAttack())return false;
-                    if(this===Dungeon)meleeTarget=BMPlayerMotion.approachTarget();
+                    if(this===Dungeon)meleeTarget=BMPlayerMotion.approachTarget(undefined,!['fence','spinKick'].includes(this._fieldStrike?.kind));
                     if(this===Dungeon&&BMTouch.live()&&['fence','spinKick'].includes(this._fieldStrike?.kind)){
-                        const opponent=BMOnline.chargeAim()||meleeTarget;
+                        let opponent=BMOnline.chargeAim()||meleeTarget;
+                        if(opponent&&BMPlayerMotion.eyeLevelCombat()&&!BMPlayerMotion.insideSwing(BMPlayerMotion.swingView(),opponent,.90)){
+                            if(this._fieldStrike.kind==='fence'&&(BMLock.target()===opponent||BMOnline.chargeAim()===opponent))
+                                return BMPlayerMotion.turnForCharge(opponent,this._fieldStrike);
+                            opponent=null;
+                        }
                         return BMPlayerMotion.beginCharge(opponent,this._fieldStrike);
                     }
                     if(!meleeTarget&&BMHousehold.strikeAhead(this))return true;
@@ -59864,9 +60298,15 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                     else if (spellData.type === 'projectile' || spellData.type === 'debuff') {
                         const thrust=spellId===BMDancer.THRUST;
                         const target=thrust&&this===Dungeon?BMPlayerMotion.approachTarget(spellData.range):meleeTarget;
-                        if(target){
+                        if(this===Dungeon&&(spellId===9999||thrust)&&BMPlayerMotion.eyeLevelCombat()&&BMTouch.live()){
+                            const context=BMCombatNet.currentCast(),reach=thrust?spellData.range:BMStrike.reach(this);
+                            BMPlayerMotion.beginVisibleSwing(target,reach,contact=>BMCombatNet.withCast(context,()=>this.fireFieldProjectile(spellId,spellData,contact)),spellId===9999?this._fieldStrike:null);
+                        }else if(target){
                             const context=BMCombatNet.currentCast(),reach=thrust?spellData.range:BMStrike.reach(this);
                             BMPlayerMotion.beginApproach(target,reach,()=>BMCombatNet.withCast(context,()=>this.fireFieldProjectile(spellId,spellData,target)));
+                        }else if(this===Dungeon&&(spellId===9999||thrust)&&BMTouch.live()){
+                            const heading=BMPlayerMotion.strideHeading();
+                            BMPlayerMotion.beginStride(null,heading);this.fireFieldProjectile(spellId,spellData,null,BMTouch.dashDirection(false)?heading:null);
                         }else this.fireFieldProjectile(spellId,spellData);
                     }
 
@@ -60070,8 +60510,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                             let dx = bestSnap.x - this.x; let dy = bestSnap.y - this.y;
                             if (Math.abs(dx) > Math.abs(dy)) this.dir = dx > 0 ? 1 : 3;
                             else this.dir = dy > 0 ? 2 : 0;
-                            this.currentAngle = this.dir * (Math.PI / 2);
-                            this._cinePan = 0; this.lookPan = 0;
+                            // The renderer eases toward the new facing.
                         }
                     }
 
@@ -65032,12 +65471,21 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                 npc.applySpell(this.spellId, 1, caster);
                 if (typeof MusicEngine !== 'undefined') MusicEngine.play3DSFX('debuff', this.x, this.y, exploreRef.x, exploreRef.y, exploreRef.dir);
             } else {
-                if (globalThis.BMHallows83?BMHallows83.strike(this,npc,caster):npc.absorbHit(caster,this.spellId)) {
+                const wardBefore=npc.currentWardTime,flashBefore=npc.damageFlashTimer||0;
+                const legacy=this.meleePose&&npc.activeBuffs?.find(b=>b.type==='ward'||b.type==='item_ward'),layers=legacy?.hits;
+                const survived=globalThis.BMHallows83?BMHallows83.strike(this,npc,caster):npc.absorbHit(caster,this.spellId);
+                const personal=caster===exploreRef&&!!this.meleePose;
+                const landed=!npc._suncatDodged&&(!survived||npc.currentWardTime<wardBefore||legacy&&legacy.hits<layers);
+                if(personal&&(!landed||this.roomTarget147===npc))npc.damageFlashTimer=flashBefore;
+                if(personal&&landed&&this.roomTarget147!==npc){
+                    BMContactPose.playerHit(npc,caster,this,!survived||!!npc._eternalUnit&&npc.currentWardTime<=0);
+                }
+                if (survived) {
 
                     // PROCS!
                     if (exploreRef.triggerWeaponProcs) exploreRef.triggerWeaponProcs(caster, npc, this.spellId); 
 
-                    npc.damageFlashTimer = 3;
+                    if(!personal||landed&&this.roomTarget147!==npc)npc.damageFlashTimer = 3;
 
                     // ==========================================
                     // --- CUSTOM FLURRY KNOCKBACK MATH ---
@@ -65067,6 +65515,9 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                                 let pushX = this.vx / this.baseSpeed;
                                 let pushY = this.vy / this.baseSpeed;
 
+                                if(npc._eternalUnit&&caster===exploreRef){
+                                    if(!npc._suncatDodged&&npc._eternalContact)BMEternal141.push(npc,pushX*Math.min(7,finalPush),pushY*Math.min(7,finalPush));return;
+                                }
                                 let maxPushSteps = Math.floor(finalPush * 4); 
                                 let pushed = 0, testX = npc.x, testY = npc.y;
                                 while (pushed < maxPushSteps) {
@@ -65098,7 +65549,14 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                             let nStrScore = (nStrDice.numDice * nStrDice.diceSides) + nStrDice.flatMod;
                             kbResist = Math.max(0.2, 1.0 - ((nStrScore - 4) * 0.05));
                         }
-                        let knockPower = baseKb * kbResist;
+                        const charged=Number.isFinite(this._chargePower);
+                        const impulse=charged?1.25+2*this._chargePower:baseKb;
+                        let knockPower=impulse*kbResist;
+                        if(caster===exploreRef&&this.spellId===9999&&!charged)knockPower=Math.max(.25,knockPower);
+                        if(npc._eternalUnit&&caster===exploreRef){
+                            if(!npc._suncatDodged&&npc._eternalContact)BMEternal141.push(npc,this.vx/this.baseSpeed*knockPower,this.vy/this.baseSpeed*knockPower);
+                            return;
+                        }
                         let pushX = this.vx / this.baseSpeed;
                         let pushY = this.vy / this.baseSpeed;
                         let maxPushSteps = Math.floor(knockPower * 4); 
@@ -65321,7 +65779,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                 else if (this.owner.alignment === 'ally' || this.owner.alignment === 'defender' || this.owner.alignment==='escort_combat') isEnemy = (typeof npc.alignment === 'string' && npc.alignment.startsWith('foe'));
                 else if (typeof this.owner.alignment === 'string' && this.owner.alignment.startsWith('foe')) isEnemy = (npc.alignment === 'ally' || npc.alignment === 'defender' || npc.alignment==='escort_combat');
 
-                if (isEnemy) {
+                if (isEnemy && (!this.swingView || BMPlayerMotion.insideSwing(this.swingView,npc,.68))) {
                     let dx = this.x - npc.x;
                     let dy = this.y - npc.y;
             
@@ -88976,8 +89434,8 @@ function render3dMesh(mesh, x, y, scaleZ, rx, ry, rz) {
     ctx.save();
     for (const {i} of order) {
         const face=mesh.faces[i], n=rotateSpritePoint(face.normal,q);
-        if (mesh.cullBackfaces && n[2]<-.1) continue;
-        const shade=Math.floor(30+Math.max(0,-n[0]-n[2])*225);
+        if (mesh.cullBackfaces && !face.strikeTrail && n[2]<-.1) continue;
+        const shade=face.strikeTrail?215:Math.floor(30+Math.max(0,-n[0]-n[2])*225);
         const color=face.color, alpha=color.a===undefined?1:color.a;
         const first=projected[face.indices[0]];
         ctx.beginPath(); ctx.moveTo(first[0],first[1]);
@@ -89343,11 +89801,20 @@ const BMEquipment=(()=>{
         const basis=new Float32Array([q[0],q[1],q[2],c*q[3]+s*q[6],c*q[4]+s*q[7],c*q[5]+s*q[8],-s*q[3]+c*q[6],-s*q[4]+c*q[7],-s*q[5]+c*q[8]]);
         return {basis,position:new Float32Array([0,1,2].map(i=>p[i]+unit*(q[i]*.075+q[i+3]*.045-q[i+6]*.14)))};
     }
+    function weaponEdge(mesh,at,start,unit){
+        let far=0,tip=null;
+        for(let i=start;i<mesh.vertices.length;i++){
+            const v=mesh.vertices[i],d=(v[0]-at.position[0])**2+(v[1]-at.position[1])**2+(v[2]-at.position[2])**2;
+            if(d>far){far=d;tip=v;}
+        }
+        if(tip)mesh.weaponEdge={tip,grip:at.position,unit};
+    }
     function append(mesh,ids){
         ids=ids.map(id=>id===1100||id===1107?50:id===1101?27:id===1104?21:[1102,1106].includes(id)?66:id===1103?64:id===1105?1008:[1108,1109,1333,1334].includes(id)?72:id===1120?22:id===1122?92:id===1104?66:BMArtisanData.gear[id]?.weaponType==='staff'?22:BMArtisanData.gear[id]?.weaponType?50:id);
         const verts=mesh.vertices,b={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]};
         for(const v of verts)for(let k=0;k<3;k++){b.min[k]=Math.min(b.min[k],v[k]);b.max[k]=Math.max(b.max[k],v[k]);}
         const h=b.max[1]-b.min[1],unit=Math.max(.13,h/3.8),A=mesh.attachments||{},mid=b.min.map((v,k)=>(v+b.max[k])/2);
+        mesh.trailUnit=unit;
         const anchor=(key,fallback)=>A[key]||{position:new Float32Array(fallback),basis:new Float32Array([1,0,0,0,1,0,0,0,1])};
         const right=anchor('handR',[b.max[0]+unit*.24,mid[1],mid[2]]),left=anchor('forearmL',[b.min[0]-unit*.24,mid[1],mid[2]]);
         const neck=anchor('neck',[mid[0],b.min[1]+h*.3,mid[2]]),belt=anchor('pelvis',[mid[0],mid[1]+h*.12,mid[2]]);
@@ -89358,9 +89825,11 @@ const BMEquipment=(()=>{
             for(const f of temp.faces)mesh.faces.push({indices:f.indices.map(i=>i+offset),color:f.color});
         };
         const gold={r:.93,g:.72,b:.28},steel={r:.83,g:.91,b:.96},dark={r:.13,g:.16,b:.21},blue={r:.16,g:.35,b:.60},pink={r:.94,g:.38,b:.59};
+        const weaponStart=mesh.vertices.length;
         const weapons=ids.filter(i=>[50,84,92,1005,1006,1007,1221,1335].includes(i)).sort((a,b)=>(b===84?1:0)-(a===84?1:0));
         weapons.forEach((id,i)=>{
             const at=i===0?weaponGrip(right,unit):belt,x=i===0?0:.56+(i-1)*.13,z=i===0?0:.30;
+            if(i===1&&window.bmStrikePose)weaponEdge(mesh,right,weaponStart,unit);
             const blade=id===84?{r:.97,g:.92,b:.63}:id===1005?{r:.35,g:.85,b:.43}:id===1006?{r:.55,g:.33,b:.78}:id===92?{r:1,g:.40,b:.12}:steel;
             const len=id===1006?.55:1.05;
             if(id===1335){part(at,'arc',0,-.30,0,.045,1.05,.045,{r:.45,g:.26,b:.11});part(at,'tri',0,-1.47,0,.11,.16,.045,gold);return;}
@@ -89370,10 +89839,11 @@ const BMEquipment=(()=>{
             else {part(at,'rec',x,-.12-len/2,z,.075,len/2,.035,blade);part(at,'tri',x,-.12-len,z,.075,.035,.17,blade,Math.PI/2);}
             if(id===84)part(at,'arc',x,-.08,z-.085,.07,.07,.035,{r:.18,g:.63,b:.92});
         });
+        if(weapons.length===1&&window.bmStrikePose)weaponEdge(mesh,right,weaponStart,unit);
         for(const id of ids){
             if(id===1008){for(const side of [-1,1]){const at=anchor(side<0?'footL':'footR',[mid[0]+side*h*.12,b.max[1]-.12*unit,mid[2]]);part(at,'rec',0,-.05,-.12,.22,.23,.33,{r:.29,g:.20,b:.14});part(at,'arc',0,-.29,-.02,.26,.09,.26,{r:.57,g:.47,b:.33});}}
             if(id===64){part(left,'arc',-.10,.15,-.16,.39,.51,.075,gold);part(left,'arc',-.10,.15,-.245,.33,.44,.03,blue);part(left,'rec',-.10,.15,-.29,.045,.37,.012,steel);part(left,'rec',-.10,.08,-.29,.24,.04,.012,steel);}
-            if(id===22){const at=weapons.length?(ids.includes(64)?belt:anchor('handL',left.position)):right;const x=at===belt?-.54:0;part(at,'arc',x,-.38,.12,.055,.55,.055,{r:.4,g:.21,b:.1});part(at,'arc',x,-.97,.12,.10,.05,.10,gold);part(at,'tri',x,-1.12,.12,.15,.15,.23,{r:.63,g:.39,b:.93},Math.PI/2);}
+            if(id===22){const start=mesh.vertices.length,at=weapons.length?(ids.includes(64)?belt:anchor('handL',left.position)):right;const x=at===belt?-.54:0;part(at,'arc',x,-.38,.12,.055,.55,.055,{r:.4,g:.21,b:.1});part(at,'arc',x,-.97,.12,.10,.05,.10,gold);part(at,'tri',x,-1.12,.12,.15,.15,.23,{r:.63,g:.39,b:.93},Math.PI/2);if(!weapons.length&&window.bmStrikePose)weaponEdge(mesh,at,start,unit);}
             if(id===66){const at=A.handL&&A.handR?neck:{position:new Float32Array([mid[0],mid[1]-.25*unit,b.min[2]+.32*unit]),basis:new Float32Array([1,0,0,0,1,0,0,0,1])};part(at,'rec',0,.43,-.32,.50,.38,.085,steel);part(at,'rec',0,.43,-.42,.035,.31,.015,gold);if(A.handL&&A.handR)for(const s of [-1,1])part(at,'arc',s*.58,.16,0,.24,.16,.29,steel);}
             if(id===6||id===27){const x=id===6?-.10:.13;part(neck,'arc',x,.33,-.42,.022,.24,.018,gold);if(id===6){for(const s of [-1,1])part(neck,'arc',x+s*.05,.51,-.46,.078,.08,.028,pink);part(neck,'tri',x,.60,-.46,.11,.026,.12,pink,-Math.PI/2);}else part(neck,'arc',x,.57,-.46,.11,.14,.035,{r:.22,g:.86,b:.73});}
             if(id===31){part(belt,'rec',-.55,.24,-.11,.15,.21,.065,{r:.50,g:.17,b:.28});part(belt,'rec',-.55,.24,-.18,.025,.15,.012,gold);}
@@ -89400,7 +89870,47 @@ const BMEquipment=(()=>{
         }else if(actor===Dungeon&&globalThis.BMHallows83?.weapon())ids.push(BMHallows83.weapon()==='spear'?1335:84);
         return ids;
     }
-    function posedMesh(def,pose,attack,ids,inside=false){
+    const trailEdges=new Map();
+    function traceEdges(mesh,attack){
+        const edges=[],blade=mesh.weaponEdge,kind=attack.kind;
+        if(blade&&kind!=='punch'&&kind!=='spinKick'){
+            const {tip,grip,unit}=blade;
+            if(kind==='slash'||kind==='chop')return [[tip,tip.map((v,i)=>v*.67+grip[i]*.33)]];
+            edges.push([tip,tip.map((v,i)=>v+(i===0?unit*.10:i===1?unit*.05:0))]);
+        }
+        const foot=kind==='spinKick',left=kind==='punch'&&!attack.combo;
+        const key=foot?'footR':left?'handL':'handR',part=mesh.attachments?.[key];
+        if(!part)return edges;
+        const unit=mesh.trailUnit||1;
+        // Sample the outer edges of the glove or boot. A trace down the centre
+        // of a straight punch disappears behind the advancing fist.
+        function rims(anchor,radius,forward){
+            if(!anchor)return;
+            for(const sign of [-1,1]){
+                const point=w=>Array.from(anchor.position,(v,i)=>v+unit*(sign*w*anchor.basis[i]-forward*anchor.basis[i+6]));
+                edges.push([point(radius),point(radius*.73)]);
+            }
+        }
+        rims(part,foot?.22:.19,foot?.25:.08);
+        if(!foot)rims(mesh.attachments[left?'forearmL':'forearmR'],.17,0);
+        return edges;
+    }
+    function addTrail(mesh,from,to,swift){
+        if(!from||!to||Math.hypot(...to[0].map((v,i)=>v-from[0][i]))<.012)return;
+        const start=mesh.vertices.length;
+        for(const t of [.22,.60,1])for(let edge=0;edge<2;edge++){
+            mesh.vertices.push(to[edge].map((v,i)=>{
+                const outer=from[0][i]+(to[0][i]-from[0][i])*t;
+                return outer+(from[edge][i]+(v-from[edge][i])*t-outer)*t;
+            }));
+        }
+        for(let k=0;k<2;k++){
+            const j=start+k*2;
+            mesh.faces.push({indices:[j,j+2,j+3,j+1],color:{r:.84,g:.91,b:1,a:(swift?.75:1)*(k?.17:.075)},strikeTrail:true});
+        }
+        mesh.normalsReady=false;
+    }
+    function posedMesh(def,pose,attack,ids,inside=false,edgeOnly=false){
         const oldAngle=window.cacheAngle,oldStrike=window.bmStrikePose;
         try {
             window.cacheAngle=attack?attack.step/5*Math.PI-Math.PI/2:pose/4*Math.PI*2-Math.PI;
@@ -89413,7 +89923,22 @@ const BMEquipment=(()=>{
                 for(const [x,y,z] of mesh.vertices){top=Math.min(top,y);bottom=Math.max(bottom,y);front=Math.min(front,z);left=Math.min(left,x);right=Math.max(right,x);}
                 mesh.bodyExtent={top,height:Math.max(.01,bottom-top),front,centerX:(left+right)/2};
             }
-            return ids.length?append(mesh,ids):mesh;
+            if(ids.length)append(mesh,ids);
+            if(attack&&['slash','chop','thrust','fence','punch','spinKick'].includes(attack.kind)){
+                const spin=attack.kind==='spinKick',i=spin?attack.spinFrame:attack.step;
+                const key=[def.base,def.variant,ids.join(','),attack.kind,attack.combo,inside].join('/');
+                const end=traceEdges(mesh,attack);
+                if(trailEdges.size>160)trailEdges.clear();
+                trailEdges.set(key+'/'+i,end);
+                if(!edgeOnly&&i>0&&i<=(spin?8:4)){
+                    const prev=spin?{...attack,step:Math.floor((i-1)/2),spinFrame:i-1}:{...attack,step:i-1};
+                    const prevKey=key+'/'+(i-1);
+                    if(!trailEdges.has(prevKey))posedMesh(def,prev.step,prev,ids,inside,true);
+                    const from=trailEdges.get(prevKey)||[];
+                    end.forEach((edge,j)=>addTrail(mesh,from[j],edge,attack.kind==='punch'));
+                }
+            }
+            return mesh;
         }finally{window.cacheAngle=oldAngle;window.bmStrikePose=oldStrike;}
     }
     function frame(actor,id,dir,pose,image,meta,pixels=192,force=false){
@@ -89556,11 +90081,11 @@ function spriteFitSquare(b, protectedImp=false) {
 function spriteFootForView(mesh,direction,crop){
     const points=mesh.vertices.map(v=>spriteOriginalUV(v,direction));
     let bottom=-Infinity;
-    for(const face of mesh.faces)if((face.color?.a??1)>0)for(const index of face.indices)bottom=Math.max(bottom,points[index][1]);
+    for(const face of mesh.faces)if(!face.strikeTrail&&(face.color?.a??1)>0)for(const index of face.indices)bottom=Math.max(bottom,points[index][1]);
     const cut=bottom-crop.side*12/96;
     let left=Infinity,right=-Infinity;
     for(const face of mesh.faces){
-        if((face.color?.a??1)<=0)continue;
+        if(face.strikeTrail||(face.color?.a??1)<=0)continue;
         for(let i=0;i<face.indices.length;i++){
             const a=points[face.indices[i]],b=points[face.indices[(i+1)%face.indices.length]];
             if(a[1]>=cut){left=Math.min(left,a[0]);right=Math.max(right,a[0]);}
@@ -92069,7 +92594,7 @@ function tintedAuraFrame(image,state,now) {
     } finally {g.restore();}
     return auraTintCanvas;
 }
-function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1) {
+function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1,rimQueue=null) {
     if(actor?._groundLoot&&actor.cachedBillboard){ctx.drawImage(actor.cachedBillboard,tX+x*tL/10,tY+y*tH/10-((actor._lootLift||0)+(actor._floatingLootCard?.18:0))*z*tH,z*tL,z*tH);return null;}
     if(Number(index)===-27||actor?.role==='dropped_card')return drawPortrait(index,x,y,z,card,direction,frameOverride);
     const now=Date.now(),state=getActorAura(actor,now);
@@ -92080,7 +92605,20 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
     const box=state?spriteAuraBox(p.index,p.direction,p.frame,p):null;
     if(state)state.anchorModel=SPRITE_META[p.index]?.poses?.[p.frame]?.auraAnchor??null;
     drawActorAuraLayer(ctx,box,state,now,false);
+    const hitBox=spriteTargetBox(p.index,p.direction,p.frame,p),transform=ctx.getTransform();
+    const screenBox={x:hitBox.x*transform.a+transform.e,y:hitBox.y*transform.d+transform.f,w:hitBox.w*transform.a,h:hitBox.h*transform.d};
+    BMContactPose.rememberBounds(actor,screenBox,'top',now);
+    const contactPose=BMContactPose.sample(actor,now),strength=BMContactPose.flash(contactPose,now);
+    if(contactPose){ctx.save();BMContactPose.wash(ctx,strength);BMContactPose.apply(ctx,contactPose,p.x+p.w*.5,p.y+p.h*.92,contactPose.dx);}
     stampPortrait(p,tintedAuraFrame(p.image,state,now));
+    if(contactPose)ctx.restore();
+    if(rimQueue&&(rimQueue.length||contactPose?.duration>100)&&(BMLock.hostile(actor)||BMPlayerMotion.battleAlly(actor))){
+        const draw=contactPose?.duration>100&&strength>0?()=>{
+            ctx.save();ctx.setTransform(transform);BMContactPose.apply(ctx,contactPose,p.x+p.w*.5,p.y+p.h*.92,contactPose.dx);
+            BMContactPose.rim(ctx,p.image,p,strength);ctx.restore();
+        }:null;
+        ctx.save();ctx.resetTransform();BMContactPose.layerRims(ctx,rimQueue,screenBox,draw);ctx.restore();
+    }
     drawActorAuraLayer(ctx,box,state,now,true);return p;
 }
 
@@ -92156,7 +92694,7 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
                         let npcsOnTile = [];
                         for (let npc of Dungeon.npcs) {
                             if(Math.floor(npc.x)!==targetX||Math.floor(npc.y)!==targetY)continue;
-                            if(continuous?.meleeTarget===npc||continuous?.throughStrike&&BMPlayerMotion.eligibleEnemy(npc))continue;
+                            if(BMPlayerMotion.battleAlly(npc)||continuous?.meleeTarget===npc||continuous?.throughStrike&&BMPlayerMotion.eligibleEnemy(npc))continue;
                             if (BMInteract.met(npc) || npc.nonBlocking&&!BMInteract.introduction(npc) || !npc.visible || npc.isDead || npc._visitDialogueDone || npc._contactDialogueDone || npc.alignment === 'ally'|| npc.alignment === 'escort'||(npc.alignment === 'defender'&&npc.customDialogue===null)) continue;
                             if(npc._container&&Math.abs(BMTerrainPhysics.feet(Dungeon,npc)-BMPlayerMotion.feetZ)<.75)return;
                             if (Math.abs(BMTerrainPhysics.feet(Dungeon,npc)-(BMPlayerMotion.airborne?BMPlayerMotion.feetZ:Dungeon.getFloorElevation(targetX,targetY)))<.75) {
@@ -92179,7 +92717,7 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
                             return 0; 
                         });
                         hitNPC = npcsOnTile[0];
-                        if(continuous?.meleeTarget||continuous?.throughStrike)return;
+                        if(continuous?.attackStep||continuous?.meleeTarget||continuous?.throughStrike)return;
                         if(BMInteract.introduction(hitNPC)&&BMInteract.open(hitNPC))return; 
                     }
 
@@ -92267,8 +92805,8 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
                             if (p.mapID !== Dungeon.mapID) continue;
                             
                             if (Math.floor(p.x) === targetX && Math.floor(p.y) === targetY) {
-                                if(continuous?.throughStrike&&BMOnline.chargeEnemy(id,p))continue;
-                                if(continuous?.meleeTarget||continuous?.throughStrike)return;
+                                if(continuous?.meleeTarget===p||continuous?.throughStrike&&BMOnline.chargeEnemy(id,p))continue;
+                                if(continuous?.attackStep||continuous?.meleeTarget||continuous?.throughStrike)return;
                                 if(id==='NPC_SUNCAT'&&globalThis.BMSuncat78?.peacefulBump(p)){if(startGame!=='explore')return;continue;}
                                 if(id!=='NPC_SUNCAT'&&!BMOnline.canAttack(p)){BMOnline.target(id);continue;}
                        
@@ -96620,7 +97158,7 @@ const BMMinimalTiles=(()=>{
 const BMView=(()=>{
  const states=new WeakMap(),conversations=new WeakMap(),wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
  function manual(d=Dungeon,turn=false,now=performance.now(),horizontal=turn){
-  BMPlayerMotion.releaseFraming();BMGaze.handoff(d);d._gazeTurnReady=horizontal?now+400:Infinity;
+  BMPlayerMotion.releaseFraming();BMLock.resetView();BMGaze.handoff(d);d._gazeTurnReady=horizontal?now+400:Infinity;
   d._padLookSnap=null;d._manualLookUntil=now+3000;d.manualTurnTimer=3;d.focusTarget=null;
   d._dialogueRestFocus=null;d._cinePan=d._cinePitch=undefined;d.idleTimer=0;
   if(turn){d.currentAngle=(d.currentAngle??d.dir*Math.PI/2)+(d.lookPan||0);d.lookPan=0;}
@@ -99536,7 +100074,31 @@ const BM_RELEASE=(()=>{
  return Object.freeze({version:match?Number(match[2]):null,date:match?match[1]:'',label:match?'v'+match[2]:'Unversioned build'});
 })();globalThis.BM_RELEASE=BM_RELEASE;
 const BM_DEVLOG = [
- [BM_RELEASE.label+' · Eternal Battlefield','Current version · '+BM_RELEASE.date,[
+ [BM_RELEASE.label+' · Reading the hit','Current version · '+BM_RELEASE.date,[
+  'A landed melee strike lights the fighter who took it. The flash lasts a little longer when nearby enemies overlap.',
+  'Suncat remembers explored maps individually and can finish an interrupted gift when its original save reconnects.'
+ ]],
+ ['v146 · Fighting through the line','Previous pass',[
+  'When a gap opens, a tap can turn you toward another enemy within three tiles. Friendly troops give you room to pass.',
+  'Follow the edge of your weapon or the path of your fist through a faint trail. A landed blow sparks on the fighter who took it.'
+ ]],
+ ['v145 · First-person sword contact','Previous pass',[
+  'Tap to step into an enemy in sight. A selected enemy outside your view draws a smooth turn before the approach. The blade connects as it crosses the target.',
+  'Strafing steers your feet while a free swing follows your view. A charged kick still catches enemies all around you.'
+ ]],
+ ['v144 · First-person melee','Previous pass',[
+  'Ordinary swings stop at weapon distance and allow a shoulder cut. Bodies soften as they pass very close to the first-person camera.',
+  'Soldiers plant their feet when striking and recoil in the direction of a landed hit. Both Eternal Battlefield armies use short melee steps.'
+ ]],
+ ['v143 · Cinder Pass','Previous pass',[
+  'Steer through a short step with each ordinary swing. A charged kick scatters adjacent enemies. Aim a thrust along the broken bridge to push soldiers into the rift.',
+  'Two armies descend from mountain keeps. Capture the signal tower to advance your reinforcements, or slip under the bridge through the dry aqueduct.'
+ ]],
+ ['v142 · Steadier combat camera','Previous pass',[
+  'Melee tracking eases into turns and holds its bearing at contact. Charged attacks carry the view forward through the target.',
+  'First-person attacks animate around a steady eye position. Spell aiming and attack timing remain immediate.'
+ ]],
+ ['v141 · Eternal Battlefield','Previous pass',[
   'Say “suncat battle” in world chat to meet the herald. Two armies fight between fortified keeps. Speak to the armored imp beside the western marshal to check the muster, order reinforcements, reach the bridge, or return home.',
   'Explore the north watchtower and southern waterworks. Defeat a marshal to win the field. A new war follows after the bells.'
  ]],
@@ -104697,6 +105259,7 @@ const BMStrike=(()=>{
     const elapsed=now-a.at;
     let t=elapsed/a.duration;
     if(a.contact>0)t=elapsed<a.contact ? .5*elapsed/a.contact : .5+.5*(elapsed-a.contact)/(a.duration-a.contact);
+    if(BMPlayerMotion.winding(a))t=Math.min(t,.48);
     if(t<0||t>=1)return null;
     return {...a,t,step:Math.min(5,Math.floor(6*t)),spinFrame:a.kind==='spinKick'?Math.min(11,Math.floor(12*t)):0};
   }
@@ -104736,7 +105299,7 @@ const BMStrike=(()=>{
 // Render the player's posed mesh from its face. Local coordinates use +Y down and -Z forward.
 const BMBodyView = (() => {
     const poses = new Map();
-    let canvas, lastImage;
+    let canvas, lastImage, restingEye;
     function load(id, frame, attack, ids) {
         const key = [id,frame,attack?.kind,attack?.step,attack?.combo||0,attack?.spinFrame||0,ids.join(',')].join('/');
         if (poses.has(key)) return poses.get(key);
@@ -104822,7 +105385,13 @@ const BMBodyView = (() => {
         const scale=size.height/pose.height;
         const tilt=Math.round(Math.atan2(-pitch,short*(actor.zScale||1))*150)/150;
         const lean=Math.max(0,Math.sin(tilt))*.18*pose.height;
-        const right=pose.origin[0]*scale,forward=(lean-pose.origin[2])*scale;
+        // The body and weapon keep their authored poses. The world camera uses the resting eye.
+        const restID=BMEquipment.state(sprite,false,false);
+        if(restingEye?.id!==restID){
+            const rest=load(restID,0,null,[])||pose;
+            restingEye={id:restID,right:rest.origin[0]/rest.height,forward:-rest.origin[2]/rest.height};
+        }
+        const right=restingEye.right*size.height,forward=restingEye.forward*size.height+lean*scale;
         const dx=Math.cos(facing)*right+Math.sin(facing)*forward;
         const dy=Math.sin(facing)*right-Math.cos(facing)*forward;
         // Back the lens off solid geometry, including half-height walls and layered floors.
@@ -105521,6 +106090,7 @@ const BMOnline = (() => {
       len = dx * dx + dy * dy;
     for (const [id, t] of Object.entries(window.remotePlayers || {})) {
       if (id === "NPC_SUNCAT" || t.mapID !== d.mapID || !canAttack(t)) continue;
+      if(p.swingView&&(!BMPlayerMotion.insideSwing(p.swingView,t,.68)||!BMTerrainPhysics.melee(d,d,t)))continue;
       if (
         self()?.mode === "PvP" &&
         !Dungeon.hostilePlayers?.has(id) &&
@@ -105971,7 +106541,7 @@ const BMOnline = (() => {
   };
   const cast = Explore.prototype.castSpell;
   Explore.prototype.castSpell = function (id, ...args) {
-    if (ready && id === 9999 && !BMStrike.chargedInput && selected && window.remotePlayers?.[selected]) {
+    if (ready && id === 9999 && !BMPlayerMotion.eyeLevelCombat() && !BMStrike.chargedInput && selected && window.remotePlayers?.[selected]) {
       const p = window.remotePlayers[selected];
       if (
         p.mapID === this.mapID &&
@@ -107571,7 +108141,7 @@ const BMRefuge=(()=>{
 const BMDeathRecovery=(()=>{
  const key='runestones.pendingDeath';
  function destination(d){
-  if(d.mapID===77141)return {mapID:77141,x:15.5,y:82.5,dir:1,groundZ:0};
+  if(d.mapID===77141)return {mapID:77141,x:15.5,y:82.5,dir:1,groundZ:5};
   const m=window.latestCustomMapData;
   if(d.mapID===999&&m?.instanceId===d.customMapInstance){BMRefuge.prepare(m);if(m.safeRoom)return {mapID:999,...m.safeRoom.spawn,dir:0,groundZ:0};}
   const s=d.memory?.globalSpawn;
@@ -109465,19 +110035,19 @@ const BMFoeRings=(()=>{
  }
  function draw(d,n,c,x,y,r,squash=.35,width=1.6){if(!eligible(n)||![x,y,r].every(Number.isFinite))return;const v=state(d,n);c.save();c.filter='none';c.globalCompositeOperation='source-over';c.lineWidth=width+2;c.globalAlpha=.65;c.strokeStyle='#080c12';c.beginPath();c.ellipse(x,y,r,r*squash,0,0,Math.PI*2);c.stroke();c.lineWidth=width;c.strokeStyle=v.color;c.globalAlpha=.3;c.stroke();if(v.percent>0){c.globalAlpha=.95;c.beginPath();c.ellipse(x,y,r,r*squash,0,-Math.PI/2,-Math.PI/2+Math.PI*2*v.percent);c.stroke();}c.restore();}
  // Preserve the original first-person ward shimmer; other views use the readable outlined ring.
- function drawFirstPerson(d,n,c,x,y,r,squash,depth,now){
-  if(!eligible(n)||![x,y,r,depth].every(Number.isFinite)||depth<=0)return;
+ function drawFirstPerson(d,n,c,x,y,r,squash,depth,now,visibility=1){
+  if(visibility<=.02||!eligible(n)||![x,y,r,depth].every(Number.isFinite)||depth<=0)return;
   const v=state(d,n),start=-Math.PI/2,end=start+Math.PI*2*v.percent,width=Math.max(1,2.5/depth),time=now/1000;
-  c.save();c.strokeStyle=v.color;c.lineWidth=width;c.globalAlpha=.25;
+  c.save();c.strokeStyle=v.color;c.lineWidth=width;c.globalAlpha=.25*visibility;
   c.beginPath();c.ellipse(x,y,r,r*squash,0,0,Math.PI*2);c.stroke();
   if(v.percent>0){
-   c.globalAlpha=.7;c.beginPath();c.ellipse(x,y,r,r*squash,0,start,end);c.stroke();
+   c.globalAlpha=.7*visibility;c.beginPath();c.ellipse(x,y,r,r*squash,0,start,end);c.stroke();
    const segments=Math.max(12,Math.min(40,Math.ceil(r*.8)));c.lineWidth=width*1.8;
    for(let i=0;i<segments;i++){
     const a0=start+Math.PI*2*i/segments;if(a0>=end)break;
     const a1=Math.min(end,start+Math.PI*2*(i+1)/segments);
     const wave=Math.sin(a0*7-time*2.5)*.5+Math.cos(a0*11+time*1.7)*.5;
-    c.globalAlpha=.2+(wave+1)*.3;c.beginPath();c.ellipse(x,y,r,r*squash,0,a0,a1);c.stroke();
+    c.globalAlpha=(.2+(wave+1)*.3)*visibility;c.beginPath();c.ellipse(x,y,r,r*squash,0,a0,a1);c.stroke();
    }
   }
   c.restore();
@@ -111010,6 +111580,7 @@ const BMHousehold=(()=>{
   const angle=BMTouch.enabled()||window.gameViewMode==='2d'?BMTouch.cameraAngle():d.dir*Math.PI/2,fx=Math.sin(angle),fy=-Math.cos(angle);
   let best=null,dist=Infinity;
   for(const n of d.npcs){if(!n._container||n._container.kind==='chest')continue;
+   if(BMPlayerMotion.eyeLevelCombat()&&!BMPlayerMotion.insideSwing(BMPlayerMotion.swingView(),n,.68))continue;
    const x=n.x-d.x,y=n.y-d.y,r=Math.hypot(x,y);if(r>=dist||r>1.35||x*fx+y*fy<r*.62||!withinReach(d,n))continue;
    best=n;dist=r;
   }
@@ -112062,7 +112633,19 @@ const BMNPCKnowledge=(()=>{
  }
  function topic(message){return /quest|task|job|help|deliver|reward|crate|parcel|book|letter|recommend|teach|lesson|specimen|patient|tusk|mushroom/i.test(message)?'quest':/rumou?r|faraway|red land|deshret|gossip|heard|vampire/i.test(message)?'rumors':/around|where|road|way|route|near|local|danger|town|inn|ferry|pass|gate|water|cart/i.test(message)?'local':null;}
  function answer(f,message){const t=topic(message);if(t==='quest'&&f.quest[0].startsWith('I cannot')&&f.spokenHere)return f.spokenHere+' Use my existing choices to act on this; I can only explain what I know.';return t?f[t].join(' '):'I can tell you about '+(f.quest[0].startsWith('I cannot')?'this area':'my work and this area')+'. Ask me about a task, the local roads, or a rumour. I would rather admit what I do not know than send you astray.';}
- return {facts,progress,topic,answer,caravan};
+ // Chapter roster shared by the standalone client and the server.
+ function cherryActorPresent(map,id,phase){
+  switch(id){
+   case 8405:return map===2&&(phase===0||phase>=10);
+   case 986020:return map===151&&(phase<2||phase>4);
+   case 987004:return map===151&&phase>=2&&phase<=4;
+   case 987005:return map===39&&phase===9;
+   case 987021:return map===153&&phase>=5&&phase<=6;
+   case 987022:return map===153&&phase>=5&&phase<=7;
+   default:return true;
+  }
+ }
+ return {facts,progress,topic,answer,caravan,cherryActorPresent};
 })();
 
 
@@ -114633,7 +115216,7 @@ const BMHallows83=(()=>{
  function burn(n,attacker,spell,damage){if(attacker!==Dungeon||attacker._hallowHit83!=='spear'||![9999,9998].includes(spell)||damage<=0||n.isDead||n.currentWardTime<=0||Math.random()>=.25)return;const sourceActor={kind:'player',id:'player:'+socket.id},buff={name:'Hallow Burn',type:'debuff',votType:'dot',votAmount:.3,duration:90,tickRate:30,tickTimer:0,sourceActor,hallowBurn83:true};n.activeBuffs??=[];const i=n.activeBuffs.findIndex(b=>b.hallowBurn83);if(i>=0)n.activeBuffs[i]=buff;else n.activeBuffs.push(buff);}
  const meshes={};function mesh(id){if(meshes[id])return meshes[id];if(id==='stone')return BMCraftScenes.mesh('boulder');const m={vertices:[],faces:[],outwardRects:true},part=(shape,x,y,sx,sy,sz,c)=>add3dShapeRigged(m,shape,{x,y,z:0,rx:0,ry:0,rz:0},sx,sy,sz,c),wood={r:.5,g:.28,b:.1},gold={r:.95,g:.7,b:.2},steel={r:.8,g:.9,b:.95};if(id==='spear'){part('rec',0,.25,.035,.83,.035,wood);part('tri',0,-.68,.18,.32,.045,steel);part('tri',-.13,-.64,.09,.25,.02,{r:1,g:.3,b:.03});part('tri',.13,-.58,.07,.2,.02,gold);}else{part('rec',0,-.25,.09,.61,.025,steel);part('tri',0,-.86,.09,.15,.025,steel);part('rec',0,.37,.32,.045,.045,gold);part('rec',0,.62,.045,.2,.04,wood);part('arc',0,.85,.09,.09,.04,gold);}prepareSpriteNormals(m);return meshes[id]=m;}
  const art=BMItemArt.resolve;BMItemArt.resolve=i=>identify(i)?{kind:'mesh',mesh:mesh(identify(i)),itemSprite:true}:art(i);
- function strike(p,n,attacker){const old=attacker?._hallowHit83;if(attacker===Dungeon)attacker._hallowHit83=!p.isFlurry?p.hallowWeapon83:'';try{return n.absorbHit(attacker,p.spellId);}finally{if(attacker===Dungeon)attacker._hallowHit83=old;}}
+ function strike(p,n,attacker){const old=attacker?._hallowHit83;if(attacker===Dungeon)attacker._hallowHit83=!p.isFlurry?p.hallowWeapon83:'';try{return n.absorbHit(attacker,p.spellId,undefined,p);}finally{if(attacker===Dungeon)attacker._hallowHit83=old;}}
  return {defs,names,record,held,identify,item,sync,award,custody,summary,weapon,equip,range,hitFloor,burn,mesh,strike};
 })();globalThis.BMHallows83=BMHallows83;
 
@@ -114922,7 +115505,8 @@ const BMCherryRescue87=(()=>{
  const fresh=()=>({phase:0,elapsed:0,work:0,defeated:[],power:8,early:false,carried:0,recovery:0,lesson:false});
  const view=(d=Dungeon)=>d.memory?.cherryRescue87||fresh();
  function state(d=Dungeon){d.memory??={};const q=d.memory.cherryRescue87??=fresh();q.defeated??=[];return q;}
- const away=d=>view(d).phase>0&&view(d).phase<10,castle=d=>[HALL,SPIRE].includes(d.mapID),show=(n,text,options=[],chat=true)=>BMClassicDialogue.show({speaker:n,text,options,chat}),opt=(label,action)=>({label,action});
+ const present=(map,id,d)=>BMNPCKnowledge.cherryActorPresent(map,id,view(d).phase);
+ const away=d=>!present(2,8405,d),castle=d=>[HALL,SPIRE].includes(d.mapID),show=(n,text,options=[],chat=true)=>BMClassicDialogue.show({speaker:n,text,options,chat}),opt=(label,action)=>({label,action});
  const near=(n,d,id,map=d.mapID)=>V.near(n,d,id,map);
  const live=(d,id)=>d.npcs.find(n=>n.index===id&&!n.isDead&&n.visible!==false);
  function record(d,text){BMActivity.record('quest_progress',text,{chapter:'The missing performer',phase:view(d).phase,work:view(d).work,mapID:d.mapID});d.requestSave();BMShell.invalidate();}
@@ -114937,8 +115521,8 @@ const BMCherryRescue87=(()=>{
  prop(45,ids.trail,71.5,53.5,1164,'Caught red ribbon',d=>view(d).phase>=2&&view(d).phase<7);
  const originalCherry=MAP_DB[2].npcs.find(n=>n.index===8405),cherrySprite=originalCherry?.sprite??249;
  function performer(n){Object.assign(n,{_cherry87:true,_cherryDance:true,_danceClock:0,maxWards:3,currentWardTime:3*n.timePerWard,stat:[[1,4,0],[1,6,0],[1,10,0],[1,6,0]],isCinematic:false,alignment:'friendly',isTarget:true,role:'dialogue',nonBlocking:true,_talkThrough:true,isRanged:false,innateSpells:[],companionEligible:false});}
- actor(151,ids.stage,50.5,30.5,cherrySprite,'Cherry',d=>view(d).phase>=2&&view(d).phase<=4,{onSpawn:performer});
- actor(FAMILY,ids.resting,86.5,76.5,cherrySprite,'Cherry',d=>view(d).phase===9,{onSpawn(n){performer(n);n._cherryDance=false;}});
+ actor(151,ids.stage,50.5,30.5,cherrySprite,'Cherry',d=>present(151,ids.stage,d),{onSpawn:performer});
+ actor(FAMILY,ids.resting,86.5,76.5,cherrySprite,'Cherry',d=>present(FAMILY,ids.resting,d),{onSpawn(n){performer(n);n._cherryDance=false;}});
  function room(id,name,w,h,spawn){if(MAP_DB[id])throw Error('Cherry map occupied '+id);const m=MAP_DB[id]={name,atlasMapID:45,mapKind:'dungeon',outdoors:false,vampireCourt85:true,eternalNight:true,noWildHerbs:true,biome:'Castle',weather:'clear',musicProfile:'dungeon',floorColor:'#453b4f',skyColor:'#10101e',spawn,slabs:[],npcs:[],maze:Array.from({length:h},(_,y)=>Array.from({length:w},(_,x)=>x===0||y===0||x===w-1||y===h-1?1:0))};Dungeon.defaultSpawns[id]={...spawn};return m;}
  const hall=room(HALL,'Night Court · The sealed galleries',36,42,{x:18.5,y:38.5,dir:0}),spire=room(SPIRE,'Night Court · The high chamber',30,32,{x:15.5,y:27.5,dir:0});
  // Broad branching galleries; two actual warded doors seal the northern stair.
@@ -114950,8 +115534,8 @@ const BMCherryRescue87=(()=>{
  for(const[x,y]of[[4,5],[25,5],[4,23],[25,23]])spire.maze[y][x]=1;
  for(const[map,id,x,y,sprite,name]of[[HALL,ids.exit,18.5,39.5,1167,'Return to the Night Court'],[HALL,ids.west,6.5,11.5,1164,'Western ward seal'],[HALL,ids.east,29.5,11.5,1164,'Eastern ward seal'],[HALL,ids.stairs,18.5,4.5,1167,'Stair to the high chamber'],[HALL,ids.records,7.5,25.5,1165,"Patron's commission"],[SPIRE,ids.down,15.5,29.5,1167,'Return to the galleries']])prop(map,id,x,y,sprite,name,d=>view(d).phase>=5);
  for(const[map,x,y]of[[HALL,3.5,35.5],[HALL,31.5,35.5],[HALL,3.5,3.5],[HALL,31.5,3.5],[SPIRE,6.5,6.5],[SPIRE,23.5,6.5]])R.prop(map,987500+map*10+Math.floor(x),x,y,1166,'Castle lamp');
- actor(SPIRE,ids.captive,15.5,9.5,cherrySprite,'Cherry',d=>view(d).phase>=5&&view(d).phase<=7,{onSpawn:performer});
- actor(SPIRE,ids.patron,15.5,15.5,197,'Vampire patron',d=>view(d).phase>=5&&view(d).phase<=6,{onSpawn(n,d){const sides=Math.max(8,Math.min(20,view(d).power));Object.assign(n,{_cherryFoe87:true,_patron87:true,_sectHover:.75,_sectScale:1.2,maxWards:6,currentWardTime:6*n.timePerWard,stat:[[1,sides,0],[1,Math.max(6,sides-2),0],[1,sides,2],[1,6,0]],isBoss:true,isTarget:true,isCinematic:false,alignment:view(d).phase===6?'foe':'friendly',role:view(d).phase===6?'battle':'dialogue',nonBlocking:false,_talkThrough:false,isRanged:false,innateSpells:[],companionEligible:false,respawnTime:Infinity,respawnDelay:Infinity});}});
+ actor(SPIRE,ids.captive,15.5,9.5,cherrySprite,'Cherry',d=>present(SPIRE,ids.captive,d),{onSpawn:performer});
+ actor(SPIRE,ids.patron,15.5,15.5,197,'Vampire patron',d=>present(SPIRE,ids.patron,d),{onSpawn(n,d){const sides=Math.max(8,Math.min(20,view(d).power));Object.assign(n,{_cherryFoe87:true,_patron87:true,_sectHover:.75,_sectScale:1.2,maxWards:6,currentWardTime:6*n.timePerWard,stat:[[1,sides,0],[1,Math.max(6,sides-2),0],[1,sides,2],[1,6,0]],isBoss:true,isTarget:true,isCinematic:false,alignment:view(d).phase===6?'foe':'friendly',role:view(d).phase===6?'battle':'dialogue',nonBlocking:false,_talkThrough:false,isRanged:false,innateSpells:[],companionEligible:false,respawnTime:Infinity,respawnDelay:Infinity});}});
  const foes=[
   {id:987101,x:7.5,y:29.5,sprite:197,name:'Gallery guard',side:1}, {id:987102,x:7.5,y:16.5,sprite:267,name:'Ward bat',side:1},
   {id:987103,x:28.5,y:29.5,sprite:197,name:'Gallery guard',side:2}, {id:987104,x:28.5,y:16.5,sprite:267,name:'Ward bat',side:2}
@@ -114960,7 +115544,7 @@ const BMCherryRescue87=(()=>{
  function geometry(d){const open=(view(d).work&3)===3;for(const x of[17,18,19])hall.maze[8][x]=open?0:1;if(hall._gate87!==open){hall._gate87=open;BMLayers.invalidate(hall);}}
  const targets=d=>{const q=view(d);return q.phase===1?[ids.family,ids.letter]:q.phase===2?[ids.family]:q.phase===3?[ids.trail]:q.phase===4?[ids.stage,986015,986005]:q.phase===5?[986006,ids.west,ids.east,ids.stairs,ids.patron]:q.phase===6?[ids.patron]:q.phase===7?[ids.captive]:[8,9].includes(q.phase)?[ids.family]:q.phase===10&&!q.lesson?[8405]:[];};
  function sync(d=Dungeon){if(d!==Dungeon)return;geometry(d);const q=view(d);
-  d.npcs=d.npcs.filter(n=>!(d.mapID===2&&n.index===8405&&away(d))&&!(d.mapID===151&&n.index===986020&&q.phase>=2&&q.phase<=4)&&!definitions.some(a=>a.map===d.mapID&&a.def.index===n.index&&!a.def.spawnCondition(d)));
+  d.npcs=d.npcs.filter(n=>present(d.mapID,n.index,d)&&!definitions.some(a=>a.map===d.mapID&&a.def.index===n.index&&!a.def.spawnCondition(d)));
   for(const a of definitions)if(a.map===d.mapID&&a.def.spawnCondition(d)&&!d.npcs.some(n=>n.index===a.def.index))d.npcs.push(d.buildNPC(a.def,d.mapID));
   if(d.mapID===2&&!away(d)&&!d.npcs.some(n=>n.index===8405)&&originalCherry)d.npcs.push(d.buildNPC(originalCherry,2));
   const wanted=targets(d);for(const n of d.npcs){if(n._cherryActor87)n.isTarget=wanted.includes(n.index)||!!n._cherryFoe87;if([986006,986015,986005].includes(n.index)&&d.mapID===151)n.isTarget=wanted.includes(n.index);if(n._cherry87){n.isTarget=wanted.includes(n.index);n._cherryDance=(n.index===ids.stage||q.phase===6)&&!n._incap87;}}
@@ -116899,51 +117483,114 @@ const BMRefugeDoor128=(()=>{
 const BMEternalRules = (() => {
  const mapID=77141, size=160, spawn={x:15.5,y:82.5,dir:1}, step=.25;
  const tales=[
-  ['The river carries letters addressed to soldiers buried a century ago. Both keeps still answer the mail.','The seal on my orders belonged to my grandmother. Yesterday she wrote back.','Two field-post ledgers share a single roll of the dead.','I came to collect the last letter.'],
-  ['Each fortress rings its bell for the dead. Across the water, the other army rises to the sound.','Our bell has a crack. Listen, and you can hear the enemy bell inside it.','The bellfounder cast the bronze for both bells in the same pit.','I have heard that bell through seven lifetimes.'],
-  ['The river changed course in a single night. Each army holds a deed to the land beneath the other castle.','My mother planted an orchard on what is now the eastern bank.','Two survey stones mark the same orchard, on opposite banks.','You stand on the roots of my orchard.'],
+  ['The ashfall carries letters addressed to soldiers buried a century ago. Both keeps still answer the mail.','The seal on my orders belonged to my grandmother. Yesterday she wrote back.','Two field-post ledgers share a single roll of the dead.','I came to collect the last letter.'],
+  ['Each fortress rings its bell for the dead. Across the rift, the other army rises to the sound.','Our bell has a crack. Listen, and you can hear the enemy bell inside it.','The bellfounder cast the bronze for both bells in the same pit.','I have heard that bell through seven lifetimes.'],
+  ['The river turned to fire in a single night. Each army holds a deed to the land beneath the other castle.','My mother planted an orchard on what is now the eastern slope.','Two survey stones mark the same orchard, on opposite banks.','You stand on the roots of my orchard.'],
   ['At every sunrise the quartermasters count one more company than went to sleep. Someone keeps signing for the missing.','I know my own handwriting. Who signed for me before I was born?','The muster roll is written on both sides in the same hand.','Read the last name on that roll.']
  ];
  function random(w){let n=w.rng|0;n^=n<<13;n^=n>>>17;n^=n<<5;w.rng=n>>>0;return w.rng/4294967296;}
  function ground(){
-  const maze=Array.from({length:size},()=>Array(size).fill(0)), surfaces=[];
+  // Both simulations use the same plan. The client turns height bands into native stone tiles.
+  const maze=Array.from({length:size},()=>Array(size).fill(0));
+  const elevation=maze.map(row=>row.slice()),lower=maze.map(row=>row.slice()),slabs=[];
   const fill=(x,y,w,h,t)=>{for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)maze[j][i]=t;};
-  const paint=(x,y,w,h,color)=>surfaces.push({x,y,w,h,color});
   const box=(x,y,w,h,t)=>{fill(x,y,w,1,t);fill(x,y+h-1,w,1,t);fill(x,y,1,h,t);fill(x+w-1,y,1,h,t);};
-  for(let y=1;y<159;y++){const x=78+Math.round(2*Math.sin(y*.097));fill(x,y,5,1,92);fill(x+2,y,2,1,93);}
-  for(const [x,y,w,h] of [[28,13,35,3],[37,19,18,2],[91,18,43,3],[102,26,16,2],[33,127,28,3],[100,142,31,3],[122,119,15,2]])fill(x,y,w,h,11);
-  for(const [x,y,w,h] of [[40,56,6,5],[110,52,5,6],[47,100,6,5],[97,100,4,4],[55,28,7,5],[101,123,8,4]]){
-   box(x,y,w,h,1);fill(x+2,y+h-1,2,1,0);paint(x+1,y+1,w-2,h-2,'#897e63');
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+   const west=Math.max(0,Math.min(1,(66-x)/35)),east=Math.max(0,Math.min(1,(x-95)/34));
+   const ridge=Math.max(0,(Math.abs(y-80)-40)/35)*Math.max(0,Math.sin(x*.09+y*.035));
+   elevation[y][x]=Math.round((2+3*Math.max(west,east)+3.25*ridge)*4)/4;
+   const bend=Math.round(Math.sin(y*.081)*2);
+   if(x>=72+bend&&x<=89+bend){maze[y][x]=(y+x)%9<6?101:97;elevation[y][x]=0;}
   }
   for(const base of [4,130]){
-   paint(base+1,62,24,36,'#8c816c');box(base,61,26,39,19);
-   const front=base===4?29:130;fill(front,76,1,9,0);
-   for(const x of [base,base+21])for(const y of [60,94]){box(x,y,5,7,19);fill(x+2,y===60?66:94,1,1,0);}
-   box(base+6,69,13,20,1);fill(base===4?base+18:base+6,77,1,7,0);
-   fill(base===130?144:base+12,88,2,1,0);
+   box(base,61,26,39,19);fill(base===4?29:130,76,1,9,0);
+   for(const x of [base,base+21])for(const y of [60,94]){box(x,y,5,7,25);fill(x+2,y===60?66:94,1,1,0);}
+   box(base+6,69,13,20,19);fill(base===4?base+18:base+6,77,1,7,0);fill(base===4?base+12:144,88,2,1,0);
   }
-  // A dry postern cuts into the east curtain and emerges behind the inner guard.
-  fill(144,99,2,1,0);
-  for(const [y,width,color] of [[76,9,'#9c8869'],[38,3,'#a49572'],[115,3,'#82795c']]){
-   fill(73,y,15,width,0);paint(72,y,17,width,color);
+  fill(144,99,2,1,0);fill(145,61,2,1,0);
+  for(const [x,y,w,h]of [[28,13,35,3],[37,19,18,2],[91,18,43,3],[102,26,16,2],[33,127,28,3],[100,142,31,3],[122,119,15,2]])fill(x,y,w,h,11);
+  for(const [x,y,w,h] of [[40,56,6,5],[110,52,5,6],[47,100,6,5],[97,100,4,4],[55,28,7,5],[101,123,8,4]]){
+   box(x,y,w,h,7);fill(x+2,y+h-1,2,1,0);
   }
-  for(const p of [[29,76,44,9],[88,76,42,9],[33,38,40,3],[88,38,35,3],[32,38,3,39],[120,38,3,39],[34,115,39,3],[88,115,59,3],[34,84,3,33],[144,99,2,18],[144,89,2,10]])paint(...p,p[1]===76?'#988261':'#807957');
+  for(const [y,width] of [[76,9],[38,3],[115,3]]){fill(68,y,27,width,0);for(let j=y;j<y+width;j++)for(let x=68;x<95;x++)elevation[j][x]=2;}
+  // The broken edges are intentional. Intact waist-high rails arrest a shove.
+  for(let x=73;x<=89;x++)for(const y of [75,85]){
+   const gap=y===75?(x>=75&&x<=76||x>=79&&x<=82):(x>=77&&x<=79||x>=86&&x<=87);
+   if(!gap){maze[y][x]=13;elevation[y][x]=2;}
+  }
+  // Six half-height risers branch directly off the deck onto the signal island.
+  for(let y=69;y<=75;y++)for(let x=79;x<=82;x++){maze[y][x]=0;elevation[y][x]=2+(75-y)*.5;}
+  for(let y=63;y<=69;y++)for(let x=75;x<=85;x++){maze[y][x]=0;elevation[y][x]=5;}
+  box(75,63,11,7,25);fill(79,69,4,1,0);fill(80,63,2,1,7);
   box(61,34,8,9,25);fill(63,42,3,1,0);fill(68,38,1,3,0);fill(61,38,1,3,0);
-  box(92,111,9,9,1);fill(92,115,1,3,0);fill(100,115,1,3,0);
-  // Mixed groves leave the roads, camps, and river approaches clear.
-  for(const [cx,cy,rx,ry] of [[19,34,11,13],[53,48,8,6],[111,15,14,7],[134,48,11,7],[20,123,9,9],[60,138,13,10],[125,134,11,8]]){
-   for(let y=cy-ry;y<=cy+ry;y++)for(let x=cx-rx;x<=cx+rx;x++){
-    const f=(x-cx)**2/(rx*rx)+(y-cy)**2/(ry*ry),hash=Math.abs(Math.imul(x+741,73856093)^Math.imul(y+116,19349663));
-    if(f<1&&hash%13<2&&maze[y][x]===0)maze[y][x]=hash%3?3:23;
-   }
+  box(92,111,9,9,7);fill(92,115,1,3,0);fill(100,115,1,3,0);
+  // The aqueduct has dry ground beneath the main bridge, a southern stair and an eastern outlet.
+  for(let y=58;y<=115;y++)for(let x=86;x<=87;x++){
+   lower[y][x]=1;
+   if(y>=76&&y<=84){slabs.push({x,y,bottom:1.65,top:2,tile:25});elevation[y][x]=2;}
+   else if(y===75&&maze[y][x]===13){slabs.push({x,y,bottom:1.65,top:2.85,tile:25});elevation[y][x]=2;}
+   else {maze[y][x]=0;elevation[y][x]=Math.max(0,(y-111)*.5);}
   }
-  for(const [x,y] of [[9,73],[131,71],[9,86],[131,86]])paint(x,y,3,1,'#aa875f');
+  for(let y=58;y<=59;y++)for(let x=87;x<=97;x++){maze[y][x]=0;elevation[y][x]=Math.min(2,(x-87)*.25);lower[y][x]=0;}
+  for(const [x,y]of [[25,39],[42,47],[121,32],[138,47],[52,126],[117,140],[16,119]]){
+   for(let j=-4;j<=4;j++)for(let i=-4;i<=4;i++)if(i*i+j*j<=17&&(i*7+j*3+50)%5===0)maze[y+j][x+i]=17;
+  }
   box(0,0,160,160,11);
-  return {maze,surfaces};
+  return {maze,elevation,lower,slabs};
  }
  const terrain=ground();
- function walk(x,y){const t=terrain.maze[Math.floor(y)]?.[Math.floor(x)];return t===0||t===92;}
- function clear(x,y,a,b){const steps=Math.ceil(Math.hypot(a-x,b-y)*2);for(let i=1;i<=steps;i++)if(!walk(x+(a-x)*i/steps,y+(b-y)*i/steps))return false;return true;}
+ const tile=(x,y)=>terrain.maze[Math.floor(y)]?.[Math.floor(x)];
+ const height=(x,y)=>terrain.elevation[Math.floor(y)]?.[Math.floor(x)]??0;
+ const pit=(x,y)=>[97,101].includes(tile(x,y));
+ function walk(x,y){return tile(x,y)===0;}
+ function clear(x,y,a,b){
+  const steps=Math.ceil(Math.hypot(a-x,b-y)*4);let z=height(x,y);
+  for(let i=1;i<=steps;i++){const xx=x+(a-x)*i/steps,yy=y+(b-y)*i/steps,h=height(xx,yy);
+   if(!walk(xx,yy)||Math.abs(h-z)>.51)return false;z=h;}
+  return true;
+ }
+ const tower={x:80.5,y:66.5,z:5};
+ function upgrade(w){
+  if(w.fieldVersion===143&&w.tower)return w;
+  w.tower={owner:null,claim:null,seconds:0};w.fieldVersion=143;
+  for(const n of w.troops){
+   n.scout??=n.role==='line'&&n.id%4===0;
+   if(!walk(n.x,n.y)){n.x=n.s?134.5:25.5;n.y=80.5;}
+  }
+  return w;
+ }
+ function updateTower(w,visitors){
+  const t=w.tower,counts=[0,0];
+  for(const n of [...w.troops,...visitors]){
+   if(n.hp>0&&Math.hypot(n.x-tower.x,n.y-tower.y)<=3.2&&Math.abs((n.z??height(n.x,n.y))-tower.z)<=.55)counts[n.s]++;
+  }
+  const side=counts[0]&&!counts[1]?0:counts[1]&&!counts[0]?1:null;
+  if(side===null||side===t.owner){t.seconds=0;t.claim=null;return;}
+  if(t.claim!==side){t.claim=side;t.seconds=0;}t.seconds+=step;
+  if(t.seconds>=4){t.owner=side;t.claim=null;t.seconds=0;}
+ }
+ function scoutGoal(n,w){
+  const sign=n.s?-1:1;
+  if(w.tower.owner===n.s&&n.scoutStage===undefined)return null;
+  if(n.scoutStage===undefined)n.scoutStage=0;
+  const posts=[[80.5,80.5],[80.5,74.5],[80.5,69.5],[80.5+(n.id%3-1),66.5]];
+  const goal=posts[Math.min(n.scoutStage,3)];
+  if(Math.hypot(n.x-goal[0],n.y-goal[1])<.55&&n.scoutStage<3)n.scoutStage++;
+  if(n.scoutStage===0&&sign*(n.x-80.5)<-4)return [n.x+sign*3,80.5];
+  return goal;
+ }
+ function shove(w,n,e){
+  const dx=e.x-n.x,dy=e.y-n.y,dist=Math.hypot(dx,dy);
+  if(!Number.isFinite(dist)||dist<=0||dist>8)return false;
+  const x=n.x,y=n.y,steps=Math.ceil(dist/.1);let advanced=false;
+  for(let i=1;i<=steps;i++){
+   const xx=x+dx*i/steps,yy=y+dy*i/steps;
+   if(pit(xx,yy)){n.x=xx;n.y=yy;hit(w,n,n.hp);return true;}
+   if(!clear(n.x,n.y,xx,yy))break;
+   n.x=xx;n.y=yy;advanced=true;
+  }
+  return advanced;
+ }
  function pick(w,list){return list[Math.floor(random(w)*list.length)];}
  function make(seed,book,minions){
   const w={seed:seed>>>0,rng:(seed>>>0)||1,clock:0,wave:0,nextWave:10,next:1,dead:[0,0],cap:[24,24],troops:[],winner:null,reset:0};
@@ -116961,12 +117608,17 @@ const BMEternalRules = (() => {
    for(let i=0;i<6;i++)add(w,s,'guard',s?132.5+i%2*3:27.5-i%2*3,75.5+i*1.8);
    for(let i=0;i<17;i++){const lane=77.1+(i%5)*1.5;add(w,s,'line',s?81+i%4*2.4:79-i%4*2.4,lane);}
   }
+  upgrade(w);
+  for(const side of [0,1]){
+   const pickets=w.troops.filter(n=>n.s===side&&n.role==='line').slice(-2);
+   pickets.forEach((n,i)=>{n.scout=true;n.scoutStage=3;n.x=(side?82:78)+i*.55;n.y=66+i;});
+  }
   return w;
  }
  function add(w,s,role,x,y){
   const id=w.next++,type=role==='leader'?w.sides[s].id:pick(w,w.sides[s].roster);
   const max=role==='leader'?66:role==='guard'?25:8+Math.floor(random(w)*5);
-  const n={id,s,role,type,x,y,hx:x,hy:y,lane:Math.min(83,Math.max(77,y)),hp:max,max,cd:random(w)*1.3,face:s?-1:1,dy:0,fight:false};w.troops.push(n);return n;
+  const n={id,s,role,type,scout:role==='line'&&id%4===0,x,y,hx:x,hy:y,lane:Math.min(83,Math.max(77,y)),hp:max,max,cd:random(w)*1.3,face:s?-1:1,dy:0,fight:false};w.troops.push(n);return n;
  }
  function hit(w,n,amount){
   if(w.winner!==null||!n||n.hp<=0||!Number.isFinite(amount)||amount<=0)return false;
@@ -116974,7 +117626,7 @@ const BMEternalRules = (() => {
  }
  function effect(w,n,e){
   if(!n||n.hp<=0||w.winner!==null)return false;
-  if(e.kind==='push'&&[e.x,e.y].every(Number.isFinite)&&Math.hypot(e.x-n.x,e.y-n.y)<=8&&clear(n.x,n.y,e.x,e.y)){n.x=e.x;n.y=e.y;return true;}
+  if(e.kind==='push')return shove(w,n,e);
   if(e.kind==='bind'&&Number.isFinite(e.seconds)){n.held=Math.max(n.held||0,w.clock+Math.min(8,Math.max(0,e.seconds)));return true;}
   return false;
  }
@@ -116985,12 +117637,17 @@ const BMEternalRules = (() => {
  function move(n,x,y,dt,speed){
   const dx=x-n.x,dy=y-n.y,len=Math.hypot(dx,dy);if(len<.12)return;
   const v=Math.min(len,speed*dt),nx=n.x+dx/len*v,ny=n.y+dy/len*v;
-  if(clear(n.x,n.y,nx,ny)){n.x=nx;n.y=ny;}else if(walk(nx,n.y)){n.x=nx;}else if(walk(n.x,ny))n.y=ny;
+  if(clear(n.x,n.y,nx,ny)){n.x=nx;n.y=ny;}else if(clear(n.x,n.y,nx,n.y)){n.x=nx;}else if(clear(n.x,n.y,n.x,ny))n.y=ny;
   n.face=dx/len;n.dy=dy/len;
  }
- function tick(w,visitors=[],attack=()=>{}){
+ function plant(n,dx,dy,distance){
+  if(distance<=0)return;
+  const x=n.x+dx*distance,y=n.y+dy*distance;
+  if(clear(n.x,n.y,x,y)){n.x=x;n.y=y;}
+ }
+ function tick(w,visitors=[],attack=()=>{},exchange=()=>{}){
   const dt=step;w.clock+=dt;if(w.winner!==null){w.reset-=dt;return;}
-  w.troops=w.troops.filter(n=>n.hp>0);
+  upgrade(w);w.troops=w.troops.filter(n=>n.hp>0);updateTower(w,visitors);
   if(w.clock>=w.nextWave){
    w.wave++;w.nextWave=w.clock+7;
    for(const s of [0,1]){
@@ -116998,7 +117655,7 @@ const BMEternalRules = (() => {
     for(let i=0;i<Math.min(6+(w.cap[s]-24)/2,w.cap[s]-count);i++){
      const missing=6-w.troops.filter(n=>n.s===s&&n.role==='guard').length;
      if(missing>0)add(w,s,'guard',s?132.5:27.5,77+(missing%5)*1.3);
-     else add(w,s,'line',s?138.5+(i%2):21.5-(i%2),77.1+random(w)*5.8);
+     else {const forward=w.tower.owner===s&&i%2===0;add(w,s,'line',forward?(s?103.5:56.5):(s?138.5+(i%2):21.5-(i%2)),77.1+random(w)*5.8);}
     }
    }
   }
@@ -117007,17 +117664,28 @@ const BMEternalRules = (() => {
   for(const n of w.troops){
    if(n.hp<=0||w.winner!==null)continue;n.cd-=dt;n.fight=false;
    if(n.held>w.clock)continue;
-   let target=null,best=n.role==='guard'?7:6.3;const bx=Math.floor(n.x/8),by=Math.floor(n.y/8);
+   const post=n.scout?scoutGoal(n,w):null;
+   let target=null,best=post&&n.scoutStage<3?1.3:n.role==='guard'?7:6.3;const bx=Math.floor(n.x/8),by=Math.floor(n.y/8);
    for(let x=bx-1;x<=bx+1;x++)for(let y=by-1;y<=by+1;y++)for(const t of bins.get(key(x,y))||[]){
-    if(n.s===t.s||t.hp<=0)continue;const d=Math.hypot(t.x-n.x,t.y-n.y);
+    if(n.s===t.s||t.hp<=0||Math.abs(height(n.x,n.y)-(t.z??height(t.x,t.y)))>1.05)continue;const d=Math.hypot(t.x-n.x,t.y-n.y);
     if(d>=best||!clear(n.x,n.y,t.x,t.y))continue;
     if(n.role!=='line'&&Math.hypot(t.x-n.hx,t.y-n.hy)>8)continue;
     target=t;best=d;
    }
    if(target){
-    if(best>1.45){move(n,target.x,target.y,dt,n.role==='guard'?3.5:3);continue;}
+    if(best>1.45){
+     const distance=Math.min(best-1.36,(n.role==='guard'?3.5:3)*dt);
+     move(n,target.x,target.y,dt,distance/dt);continue;
+    }
     n.fight=true;n.face=(target.x-n.x)/Math.max(.01,best);n.dy=(target.y-n.y)/Math.max(.01,best);
-    if(n.cd<=0){n.cd=.95+random(w)*.8;if(target.visitor)attack(target,n);else hit(w,target,(n.role==='line'?1.4:3.3)+random(w)*2);}
+    if(n.cd<=0){
+     n.cd=.95+random(w)*.8;const dx=n.face,dy=n.dy;
+     plant(n,dx,dy,Math.min(.22,Math.max(0,best-1.06)));
+     if(target.visitor)attack(target,n);
+     else if(hit(w,target,(n.role==='line'?1.4:3.3)+random(w)*2)&&target.hp>0)plant(target,dx,dy,target.role==='leader'?.10:.19);
+     exchange(n.id,target.visitor?0:target.id,dx,dy);
+    }
+   }else if(post){move(n,post[0],post[1],dt,3.1);
    }else if(n.role==='line'){
     const dir=n.s?-1:1,atKeep=dir*(n.x-(n.s?29:130))>=0;
     move(n,atKeep?(n.s?12.5:147.5):n.x+dir*3,atKeep?80.5:n.lane,dt,2.85);
@@ -117025,7 +117693,7 @@ const BMEternalRules = (() => {
   }
  }
  function summary(w){return [0,1].map(s=>{const a=w.troops.filter(n=>n.s===s&&n.hp>0);return {alive:a.length,fighting:a.filter(n=>n.fight).length,losses:w.dead[s],cap:w.cap[s]};});}
- return {mapID,size,spawn,step,terrain,walk,clear,make,hit,effect,order,tick,summary};
+ return {mapID,size,spawn,step,terrain,walk,clear,height,pit,tower,upgrade,make,hit,effect,order,tick,summary};
 })();
 
 const BMEternal141=(()=>{
@@ -117033,25 +117701,48 @@ const BMEternal141=(()=>{
  const book={"0":{"name":"Fool","type":"monster","suit":"Major Arcana","tribe":"human","rank":"0"},"1":{"name":"Magician","type":"monster","suit":"Major Arcana","tribe":"human","rank":"I"},"2":{"name":"High Priestess","type":"monster","suit":"Major Arcana","tribe":"human","rank":"II"},"3":{"name":"Empress","type":"monster","suit":"Major Arcana","tribe":"human","rank":"III"},"4":{"name":"Emperor","type":"monster","suit":"Major Arcana","tribe":"human","rank":"IV"},"5":{"name":"Heirophant","type":"monster","suit":"Major Arcana","tribe":"human","rank":"V"},"9":{"name":"Hermit","type":"monster","suit":"Major Arcana","tribe":"human","rank":"IX"},"23":{"name":"Wisp","type":"monster","suit":"Wands","tribe":"undead","rank":"2"},"32":{"name":"Apprentice","type":"monster","suit":"Wands","tribe":"human","rank":"Page"},"33":{"name":"Salamander","type":"monster","suit":"Wands","tribe":"beast","rank":"Knight"},"34":{"name":"Witch Queen","type":"monster","suit":"Wands","tribe":"human","rank":"Queen"},"35":{"name":"Djinn","type":"monster","suit":"Wands","tribe":"myth","rank":"cryptid"},"37":{"name":"Siren","type":"monster","suit":"Cups","tribe":"cryptid","rank":"2"},"42":{"name":"Shade","type":"monster","suit":"Cups","tribe":"undead","rank":"7"},"46":{"name":"Sea Serpent","type":"monster","suit":"Cups","tribe":"beast","rank":"Page"},"47":{"name":"Undine","type":"monster","suit":"Cups","tribe":"undead","rank":"Knight"},"48":{"name":"Ice Queen","type":"monster","suit":"Cups","tribe":"human","rank":"Queen"},"49":{"name":"Kraken","type":"monster","suit":"Cups","tribe":"beast","rank":"King"},"54":{"name":"Goblin","type":"monster","suit":"Swords","tribe":"cryptid","rank":"5"},"56":{"name":"Imp","type":"monster","suit":"Swords","tribe":"cryptid","rank":"7"},"57":{"name":"Spider","type":"monster","suit":"Swords","tribe":"beast","rank":"8"},"60":{"name":"Pixie","type":"monster","suit":"Swords","tribe":"cryptid","rank":"Page"},"61":{"name":"Sylph","type":"monster","suit":"Swords","tribe":"cryptid","rank":"Knight"},"62":{"name":"Fairy Queen","type":"monster","suit":"Swords","tribe":"human","rank":"Queen"},"63":{"name":"Dragon","type":"monster","suit":"Swords","tribe":"beast","rank":"King"},"74":{"name":"Gargoyle","type":"monster","suit":"Pentacles","tribe":"cryptid","rank":"Page"},"75":{"name":"Gnome","type":"monster","suit":"Pentacles","tribe":"human","rank":"Knight"},"76":{"name":"Elf Queen","type":"monster","suit":"Pentacles","tribe":"human","rank":"Queen"},"77":{"name":"Giant","type":"monster","suit":"Pentacles","tribe":"human","rank":"King"},"78":{"name":"Neophyte","type":"monster","suit":"wands","tribe":"human","rank":"Page"},"79":{"name":"Fire Imp","type":"monster","suit":"swords","tribe":"cryptid","rank":"7"},"81":{"name":"Ice Golem","type":"monster","suit":"Cups","tribe":"cryptid","rank":"Knight"},"82":{"name":"Skeleton","type":"monster","suit":"Cups","rank":"6"},"83":{"name":"Tentacle","type":"monster","suit":"Cups","rank":"4"},"85":{"name":"Arthur","type":"monster","suit":"Major Arcana","tribe":"human","rank":"IV"},"86":{"name":"Corrupt Sylph","type":"monster","suit":"Swords","tribe":"human","rank":"Knight"},"87":{"name":"Suncat","type":"monster","suit":"Major Arcana","tribe":"human","rank":"0"},"88":{"name":"Mirage","type":"monster","suit":"Wands","tribe":"undead","rank":"2"},"89":{"name":"Treasure Snake","type":"monster","suit":"Major","tribe":"beast","rank":"X"},"90":{"name":"Giant's Daughter","type":"monster","suit":"Pentacles","tribe":"human","rank":"Queen"},"94":{"name":"Lich","type":"monster","suit":"Major Arcana","tribe":"undead","rank":"IX"},"170":{"name":"Merchant","type":"monster","suit":"Pentacles","tribe":"human","rank":"Page"},"188":{"name":"Bear","type":"monster","suit":"Swords","tribe":"beast","rank":"8"},"191":{"name":"Wolf","type":"monster","suit":"Swords","tribe":"beast","rank":"18"},"194":{"name":"Boar","type":"monster","suit":"Pentacles","tribe":"beast","rank":"7"},"197":{"name":"Vampire","type":"monster","suit":"Cups","tribe":"undead","rank":"XV"},"200":{"name":"Spriggan","type":"monster","suit":"Wands","tribe":"cryptid","rank":"7"},"203":{"name":"Dullahan","type":"monster","suit":"Swords","tribe":"undead","rank":"Knight"},"206":{"name":"Wyvern","type":"monster","suit":"Swords","tribe":"beast","rank":"9"},"210":{"name":"Scorpion","type":"monster","suit":"Pentacles","tribe":"beast","rank":"5"},"213":{"name":"Wasp","type":"monster","suit":"Swords","tribe":"beast","rank":"5"},"216":{"name":"Ant","type":"monster","suit":"Pentacles","tribe":"beast","rank":"3"},"219":{"name":"Rat","type":"monster","suit":"Cups","tribe":"beast","rank":"5"},"222":{"name":"Slime","type":"monster","suit":"Cups","tribe":"cryptid","rank":"4"},"225":{"name":"Rabbit","type":"monster","suit":"Pentacles","tribe":"beast","rank":"8"},"228":{"name":"Bird","type":"monster","suit":"Wands","tribe":"beast","rank":"9"},"231":{"name":"Hart","type":"monster","suit":"Wands","tribe":"beast","rank":"King"},"234":{"name":"Squirrel","type":"monster","suit":"Pentacles","tribe":"beast","rank":"4"},"237":{"name":"Suncat","type":"monster","suit":"Major Arcana","tribe":"human","rank":"0"},"240":{"name":"Fox","type":"monster","suit":"Wands","tribe":"beast","rank":"7"},"246":{"name":"Auroch","type":"monster","suit":"Pentacles","tribe":"beast","rank":"7"},"249":{"name":"Dancer","type":"monster","suit":"Cups","tribe":"human","rank":"Knight"},"252":{"name":"Warrior","type":"monster","suit":"Swords","tribe":"human","rank":"Page"},"255":{"name":"Priest","type":"monster","suit":"Cups","tribe":"human","rank":"Knight"},"258":{"name":"Rogue","type":"monster","suit":"Swords","tribe":"human","rank":"Page"},"261":{"name":"Mage","type":"monster","suit":"Wands","tribe":"human","rank":"Page"},"264":{"name":"Hunter","type":"monster","suit":"Wands","tribe":"human","rank":"Knight"},"267":{"name":"Giant Bat","type":"monster","suit":"Cups","tribe":"beast","rank":"5"},"270":{"name":"Questing Beast","type":"monster","suit":"Major Arcana","tribe":"myth","rank":"0"},"273":{"name":"Magma Warrior","type":"monster","suit":"Wands","tribe":"cryptid","rank":"King"},"276":{"name":"Skeleton Warrior","type":"monster","suit":"Swords","tribe":"undead","rank":"7"},"279":{"name":"Giant Frog","type":"monster","suit":"Cups","tribe":"beast","rank":"4"},"282":{"name":"Beast-Man","type":"monster","suit":"Swords","tribe":"human","rank":"8"},"294":{"name":"Cyclops","type":"monster","suit":"Pentacles","tribe":"myth","rank":"King"},"297":{"name":"Drunken Man","type":"monster","suit":"Cups","tribe":"human","rank":"Page"},"300":{"name":"Buck","type":"monster","suit":"Pentacles","tribe":"beast","rank":"Knight"},"306":{"name":"Mounted Knight","type":"monster","suit":"Swords","tribe":"human","rank":"King"},"309":{"name":"King","type":"monster","suit":"Major Arcana","tribe":"human","rank":"IV"},"315":{"name":"Flying Sword","type":"monster","suit":"Swords","tribe":"cryptid","rank":"Ace"},"318":{"name":"Ghoul","type":"monster","suit":"Cups","tribe":"undead","rank":"6"},"999":{"name":"Suncat","type":"monster","suit":"Major Arcana","tribe":"human","rank":"I"}};
  const kin=id=>Object.keys(book).map(Number).filter(i=>i!==id&&(book[i].suit===book[id].suit||book[i].tribe&&book[i].tribe===book[id].tribe));
  const roll=()=>R.make((Math.random()*4294967295)>>>0,book,kin);
+ let roomConfirms=false;
  const mem=()=>Dungeon.memory.eternal141??={};
  const terrain=R.terrain,actors=new Map(),bound=new WeakSet();
- MAP_DB[MAP]={name:'Eternal Battlefield',legendIndex:0,outdoors:true,biome:'Grassland',weather:'clear',floorColor:'#697653',skyColor:'#939eaa',spawn:R.spawn,maze:terrain.maze,npcs:[]};
- BMGuildDecor.addSurface(MAP,terrain.surfaces);
- let war=null,remote=false,joining=false,invitation=null,acc=0,lastPosition=-1,announced=null,spoken=false,visit=0;
+ function fieldMap(){
+  const defs={},ids=new Map(),spawn={...R.spawn,z:R.height(R.spawn.x,R.spawn.y)};
+  const maze=terrain.maze.map((row,y)=>row.map((tile,x)=>{
+   if(R.pit(x,y))return tile;
+   if(terrain.lower[y][x]&&y>=75&&y<=84)return 0;
+   const elevation=R.height(x,y);
+   if(!tile&&!elevation)return 0;
+   const bridge=x>=72&&x<=91&&y>=75&&y<=85;
+   const tower=x>=75&&x<=85&&y>=63&&y<=75;
+   const road=y>=77&&y<=83||y>=115&&y<=117||y>=38&&y<=40;
+   const keep=x<30||x>=130;
+   const colors=tile===13?['#ad8174','#916856']:tile===19||tile===25?['#66545a','#604b50']:tile?['#513e44','#574149']:
+    tower?['#a07869','#946f61']:bridge?['#957265','#89665d']:road?['#885d49','#805843']:keep?['#64535a','#66545b']:['#5d4448','#65484a'];
+   const color=colors[(x*7+y*11+Math.floor(x/3))%2];
+   const top=elevation+(tile===0?0:tile===13?.85:tile===11?2.5:1.75);
+   const key=[tile,top,color].join('/');let id=ids.get(key);
+   if(id===undefined){id=20001+ids.size*2;ids.set(key,id);defs[id]={source:tile===0||tile===13?25:tile,height:top,color};}
+   return id;
+  }));
+  return {name:'Eternal Battlefield · Cinder Pass',legendIndex:0,outdoors:true,biome:'Volcanic',weather:'inferno',
+   floorColor:'#423035',skyColor:'#81453d',spawn,maze,npcs:[],
+   creator:{pack:'eternal',map:'cinder-pass',sourceMaze:terrain.maze,elevation:terrain.elevation,spawn,terrain:defs,slabs:terrain.slabs}};
+ }
+ MAP_DB[MAP]=fieldMap();
+ let sharedPoses=false,restoreVisitor=false,war=null,remote=false,joining=false,invitation=null,acc=0,lastPosition=-1,announced=null,towerOwner=null,spoken=false,visit=0;
  const net=()=>typeof socket!=='undefined'&&socket?.connected?socket:null;
  const opt=(label,action)=>({label,action});
  const report=t=>BMInteract.report(t);
  function chronicle(t,kind='world_activity'){report(t);BMActivity.record(kind,t,{mapID:MAP,chapter:'Eternal Battlefield',seed:war?.seed});}
  function talk(n,text,options=[],onClose){return BMClassicDialogue.show({speaker:n,text,options,chat:false},onClose);}
  function snap(pos){
-  const d=Dungeon;Object.assign(d,pos,{groundZ:0,targetMapX:pos.x,targetMapY:pos.y,currentSpeaker:null,currentEnemy:null,focusTarget:null,isSlidingToTile:false,isAggroDashing:false});
+  const d=Dungeon;Object.assign(d,pos,{groundZ:d.mapID===MAP?R.height(pos.x,pos.y):(pos.groundZ??d.getSurfaceHeight(pos.x,pos.y)),targetMapX:pos.x,targetMapY:pos.y,currentSpeaker:null,currentEnemy:null,focusTarget:null,isSlidingToTile:false,isAggroDashing:false});
   d.projectiles=[];window.activeMoveKey=null;window.activeCtrlKey=false;BMTouch.cancel();BMLock.clear();BMPlayerMotion.reset();startGame=preGame='explore';d.requestSave();
  }
  function forgetImp(){if(invitation){Dungeon.npcs=Dungeon.npcs.filter(n=>n!==invitation);invitation=null;}}
  function figure(id,x,y,type,name,fn){
   const n=new NPC(-7714100-id,x,y,type,'stationary','#efc477',[],'dialogue',false,'friendly',1);
   Object.assign(n,{name,visible:true,nonBlocking:true,_talkThrough:true,companionEligible:false,storyIdentity:'eternal:figure:'+id,interactionVerb:'Talk',update(){},triggerInteraction(){return fn(n);},startDialogue(){return fn(n);}});
-  Dungeon.npcs.push(n);return n;
+  if(Dungeon.mapID===MAP)n.groundZ=R.height(x,y);Dungeon.npcs.push(n);return n;
  }
  function invitationAt(){
   const d=Dungeon;if(invitation&&d.npcs.includes(invitation))return invitation;
@@ -117073,7 +117764,7 @@ const BMEternal141=(()=>{
  function accept(w,isRemote){
   const d=Dungeon,inside=d.mapID===MAP;
   if(!inside){mem().home={mapID:d.mapID,x:d.x,y:d.y,dir:d.dir,groundZ:d.groundZ||0};forgetImp();}
-  remote=isRemote;war=w;if(!remote)mem().local=w;
+  remote=isRemote;war=R.upgrade(w);towerOwner=w.tower.owner;if(!remote)mem().local=w;
   announced=null;spoken=false;
   if(!inside){d.loadMap(MAP);snap(R.spawn);}
   else {clearActors();sync();if(isRemote)position();}
@@ -117084,8 +117775,8 @@ const BMEternal141=(()=>{
   const fallback=()=>{if(token!==visit||Dungeon.mapID!==map)return;joining=false;accept(mem().local?.sides?mem().local:roll(),false);};
   if(!sock){fallback();return;}
   install(sock);joining=true;const timeout=setTimeout(()=>{if(joining&&visit===token){sock.emit('eternal:leave');fallback();report('The shared war is unavailable on this server. You are playing the offline battlefield.');}},1500);
-  sock.emit('eternal:join',{},reply=>{if(!joining||visit!==token||map!==Dungeon.mapID)return;clearTimeout(timeout);if(!reply?.war?.sides){fallback();return;}
-   joining=false;accept(reply.war,true);position();});
+  sock.emit('eternal:join',{fieldVersion:143},reply=>{if(!joining||visit!==token||map!==Dungeon.mapID)return;clearTimeout(timeout);if(reply?.war?.fieldVersion!==143){sock.emit('eternal:leave');fallback();report('The shared server has an older battlefield. Cinder Pass is open offline.');return;}
+   joining=false;roomConfirms=reply.contactVersion===147;sharedPoses=reply.meleeVersion>=144;accept(reply.war,true);position();});
  }
  function leave(){
   const d=Dungeon,p=mem().home||{mapID:0,x:53.5,y:35.5,dir:0};
@@ -117096,13 +117787,15 @@ const BMEternal141=(()=>{
   if(remote){position();net()?.emit('eternal:order',{seed:war.seed,order:cmd});report('Your order goes to the muster.');}
   else {R.order(war,cmd);report('The commander sends a runner. Reinforcements will march from the keep.');}
  }
+ function towerReport(){const t=war.tower;return (t.owner==null?'The signal tower is unclaimed.':war.sides[t.owner].banner+' holds the signal tower and can muster infantry closer to the bridge.')+(t.claim==null?'':' '+war.sides[t.claim].banner+' is raising its colors.');}
+ function signal(){if(towerOwner!==war.tower.owner){towerOwner=war.tower.owner;chronicle(towerReport(),'quest_progress');}}
  function survey(n){
   const [a,b]=R.summary(war);
   const counts='Your victories this war: '+(mem().scoreSeed===war.seed?mem().score:0)+'. West: '+a.alive+' alive, '+a.fighting+' in melee; east: '+b.alive+' alive, '+b.fighting+' in melee. Losses: '+a.losses+' west and '+b.losses+' east. Muster limits: '+a.cap+' / '+b.cap+'.';
-  return talk(n,counts,[opt('We’re overrun',()=>sendOrder('help')),opt('They barely put up a fight',()=>sendOrder('enemy')),opt('I want a proper war',()=>sendOrder('both'))]);
+  return talk(n,counts+' '+towerReport(),[opt('We’re overrun',()=>sendOrder('help')),opt('They barely put up a fight',()=>sendOrder('enemy')),opt('I want a proper war',()=>sendOrder('both'))]);
  }
  function commander(n){
-  return talk(n,'The bridge is where the companies meet. I can send you straight to our end of it. The north watch road and the low waterworks are quieter.',[
+  return talk(n,'Both keeps look down on Cinder Pass. Take the north stairs halfway across the main bridge and hold the signal tower for four seconds to bring our reserves forward. The old aqueduct runs beneath the fighting.',[
    opt('Send me to the front',()=>{snap({x:72.5,y:80.5,dir:1});position();}),
    opt('How many are fighting?',()=>survey(n)),opt('Return home',leave)]);
  }
@@ -117112,52 +117805,82 @@ const BMEternal141=(()=>{
   return talk(n,line);
  }
  function installFigures(){
-  const c=figure(2,14.5,80.5,79,'Imp Commander',commander);
+  figure(7,R.tower.x,R.tower.y,23,'Signal flame',n=>talk(n,towerReport()+' Hold this platform for four seconds with no opposing soldiers on it.'));
+  const c=figure(2,14.5,80.5,79,'Imp Commander',commander);c._eternalCommander=true;
   c.applySpell(66,1,c);c.applySpell(64,1,c);
   for(const b of c.activeBuffs){b.duration=1e8;b.equipmentExpiresAt=Date.now()+86400000;}
   for(const [id,x,y,name,read] of [
-   [3,64.5,40.5,'Watchtower ledger',()=>war.story.clue+' A charcoal sketch shows a drain gate in the south wall of the eastern keep.'],
-   [4,96.5,114.5,'Sluice keeper’s marks',()=>'Follow the bank east. At the twin white stones turn north. The dry postern comes up behind the guard.'],
-   [5,32.5,74.5,'Western road marker',()=>'East to the bridge. North to the watchtower. South to the old waterworks.'],
-   [6,145.5,101.5,'Twin white stones',()=>'Wheel ruts vanish through a narrow breach in the north bank. The initials of both armies mark the lintel.']
+   [3,64.5,40.5,'Watchtower ledger',()=>war.story.clue+' A charcoal sketch shows the gate in the eastern keep’s north wall.'],
+   [4,96.5,114.5,'Sluice keeper’s marks',()=>'Take the steps west of here down into the dry channel. Follow it north beneath the main bridge, then climb east and follow the ridge to the northern postern.'],
+   [5,32.5,74.5,'Western road marker',()=>'East to the broken bridge. From its midpoint climb north to the signal tower. South to the aqueduct steps.'],
+   [6,145.5,101.5,'Twin white stones',()=>'Wheel ruts lead north through a breach in the southern wall. The initials of both armies mark the lintel.']
   ]){
    const n=figure(id,x,y,1163,name,n=>discovery(n,read()));BMClassArt.resource(n,1163);n.interactionVerb='Read';
   }
  }
  function clearActors(){for(const n of actors.values())n.visible=false;Dungeon.npcs=Dungeon.npcs.filter(n=>!n._eternalUnit);actors.clear();}
- function contact(id){const n=actors.get(id),d=Dungeon;if(!n||d.isDead||d.isDying||BMDeathRecovery.protected(d)||Math.hypot(n.x-d.x,n.y-d.y)>3)return;
+ function contact(id){const n=actors.get(id),d=Dungeon;if(!n||d.isDead||d.isDying||BMDeathRecovery.protected(d)||Math.abs(n.groundZ-BMPlayerMotion.feetZ)>1.05||Math.hypot(n.x-d.x,n.y-d.y)>3)return;
   d.absorbHit(n);n.damageFlashTimer=Math.max(n.damageFlashTimer||0,1);}
- function position(){if(!remote||!war||Dungeon.mapID!==MAP)return;net()?.emit('eternal:position',{seed:war.seed,x:Dungeon.x,y:Dungeon.y,active:!Dungeon.isDead&&!Dungeon.isDying&&!BMDeathRecovery.protected(Dungeon)});}
- function credit(id){
+ function position(){if(!remote||!war||Dungeon.mapID!==MAP)return;net()?.emit('eternal:position',{seed:war.seed,x:Dungeon.x,y:Dungeon.y,z:BMPlayerMotion.feetZ,active:!Dungeon.isDead&&!Dungeon.isDying&&!BMDeathRecovery.protected(Dungeon)});}
+ function falling(id,x,y){
+  const n=actors.get(id);if(!n||Math.hypot(n.x-Dungeon.x,n.y-Dungeon.y)>28)return;
+  if(Dungeon.npcs.some(o=>o._fallingSoldier===id))return;
+  const startX=n.x,startY=n.y,z=n.groundZ,dx=x-startX,dy=y-startY,len=Math.hypot(dx,dy)||1;
+  const driftX=dx+.24*dx/len,driftY=dy+.24*dy/len;
+  // A cosmetic copy keeps rendering after the simulation has counted the casualty.
+  const sprite=Object.create(n);
+  Object.assign(sprite,{index:-88000000-id,_eternalUnit:false,_fallingSoldier:id,_row:null,visible:true,isDead:false,isDying:false,
+   nonBlocking:true,isCinematic:true,_talkThrough:true,alignment:'neutral',role:'decoration',activeBuffs:[],triggerInteraction(){return false;},
+   age:0,update(_m,_x,_y,d,dt){
+    this.age+=dt;const t=Math.min(1,this.age/.36);
+    this.x=startX+driftX*t;this.y=startY+driftY*t;this.groundZ=z-3.7*t*t;
+    if(t===1){this.visible=false;d.npcs=d.npcs.filter(actor=>actor!==this);}
+   }});
+  Dungeon.npcs.push(sprite);
+ }
+ function credit(id,fall=false){
+  if(fall)chronicle((actors.get(id)?.name||'An enemy soldier')+' falls into the rift.','combat');
   const m=mem();if(m.scoreSeed!==war.seed){m.scoreSeed=war.seed;m.score=0;}m.score++;
   const n=actors.get(id);if(n&&Math.hypot(n.x-Dungeon.x,n.y-Dungeon.y)<18){
    for(let i=0;i<4;i++)spawnParticle(n.x,n.y,'#c7ae78','sparkle');
    MusicEngine.play3DSFX('death',n.x,n.y,Dungeon.x,Dungeon.y,Dungeon.dir);
   }
  }
- function loss(n,row,attacker,spell,forced){
-  if(!war||row.s===0||war.winner!==null||row.hp<=0)return true;
+ function loss(n,row,attacker,spell,forced,shot){
+  const confirm=remote&&roomConfirms&&attacker===Dungeon&&!!shot?.meleePose;if(confirm)shot.roomTarget147=n;
+  n._eternalContact=false;if(!war||row.s===0||war.winner!==null||row.hp<=0)return true;
   const before=row.hp;n.currentWardTime=before;
   NPC.prototype.absorbHit.call(n,attacker,spell,forced);
-  const amount=Math.max(0,before-Math.max(0,n.currentWardTime));if(!amount)return true;
-  if(remote){position();net()?.emit('eternal:hit',{id:row.id,loss:amount,seed:war.seed,ranged:spell!=null&&spell!==9999});}
+  const amount=Math.max(0,before-Math.max(0,n.currentWardTime));if(!amount)return true;n._eternalContact=true;
+  if(remote){
+   position();const packet={id:row.id,loss:amount,seed:war.seed,ranged:spell!=null&&spell!==9999&&spell!==9998&&spell!==BMDancer.THRUST};
+   if(confirm){
+    const contact={vx:shot.vx,vy:shot.vy,meleePose:{...shot.meleePose}},visit=Dungeon.musicVisitSerial;
+    net()?.timeout(1200).emit('eternal:hit',packet,(error,reply)=>{
+     if(!error&&reply?.hit&&reply.id===row.id&&war?.seed===packet.seed&&Dungeon.mapID===MAP&&visit===Dungeon.musicVisitSerial)
+      BMContactPose.playerHit(n,Dungeon,contact,reply.lethal);
+    });
+   }else net()?.emit('eternal:hit',packet);
+  }
   else {R.hit(war,row,amount);if(!row.hp){n.isDead=true;n.visible=false;if(attacker===Dungeon)credit(row.id);}outcome();}
   return true;
  }
  function applyEffect(n,e){
   if(remote){if(n._row.s===1){position();net()?.emit('eternal:effect',{...e,id:n._row.id,seed:war.seed});}}
-  else R.effect(war,n._row,e);
+  else if(R.effect(war,n._row,e)&&n._row.hp<=0){falling(n._row.id,n._row.x,n._row.y);credit(n._row.id,true);n.isDead=true;n.visible=false;outcome();}
  }
+ function push(n,dx,dy){if(!n._row||n.isDead||n._row.hp<=0)return;
+  applyEffect(n,{kind:'push',x:n._row.x+dx,y:n._row.y+dy});}
  function unit(row){
   const ally=row.s===0,lead=row.role==='leader',role=ally&&lead?'dialogue':'battle';
   const n=new NPC(77141000+row.id,row.x,row.y,row.type,'stationary',ally?'#56c991':'#e06559',[row.type],role,lead,ally?'defender':'foe',lead?8:2);
-  n._eternalUnit=true;n._row=row;n.visible=true;n.storyIdentity='eternal:'+war.seed+':'+row.id;n.companionEligible=false;n.maxWards=row.max/3;n.currentWardTime=row.hp;
+  n.groundZ=R.height(row.x,row.y);n._eternalUnit=true;n._row=row;n.visible=true;n.storyIdentity='eternal:'+war.seed+':'+row.id;n.companionEligible=false;n.maxWards=row.max/3;n.currentWardTime=row.hp;
   n.name=(lead?'Marshal ':row.role==='guard'?'Keep guard · ':'')+(book[row.type]?.name||n.name);
   if(ally&&lead){n.triggerInteraction=n.startDialogue=()=>talk(n,war.story.leader+' '+war.story.lore);n._talkThrough=true;}
   else n.triggerInteraction=()=>false;
   n.update=function(_maze,_x,_y,_d,dt){
    const r=this._row;if(this.isDead||r.hp<=0)return;
-   if(this.isSliding){applyEffect(this,{kind:'push',x:this.slideTargetX,y:this.slideTargetY});this.isSliding=false;}
+   if(this.isSliding){if(!this._suncatDodged||R.clear(r.x,r.y,this.slideTargetX,this.slideTargetY))applyEffect(this,{kind:'push',x:this.slideTargetX,y:this.slideTargetY});this.isSliding=false;}
    if(this.activeBuffs.length){
     const before=this.currentWardTime,con=this.getEffectiveDice(1);
     this.tickNPCAuras(_d,_x,_y,dt,Math.max(.2,1+(con.numDice*con.diceSides+con.flatMod-4)*.05));
@@ -117165,17 +117888,22 @@ const BMEternal141=(()=>{
     if(lost>0){if(remote){position();net()?.emit('eternal:hit',{id:r.id,loss:lost,seed:war.seed,ranged:true});}else R.hit(war,r,lost);}
    }
    const t=Math.min(1,dt*(remote?8:15));
-   this.x+=(r.x-this.x)*t;this.y+=(r.y-this.y)*t;this.dirX=r.face;this.dirY=r.dy;this.isSliding=false;
+   this.x+=(r.x-this.x)*t;this.y+=(r.y-this.y)*t;this.groundZ=R.height(this.x,this.y);this.dirX=r.face;this.dirY=r.dy;this.isSliding=false;
    this.damageFlashTimer=Math.max(0,(this.damageFlashTimer||0)-30*dt);this.combatCooldown=Math.max(0,(this.combatCooldown||0)-30*dt);
-   this.attackAnimTimer=r.fight?Math.max(0,8-(war.clock*13+row.id)%9):0;this.state=r.fight?'attacking':r.role==='line'?'wandering':'stationary';
+   this.attackAnimTimer=remote&&!sharedPoses&&r.fight?Math.max(0,8-(war.clock*13+row.id)%9):Math.max(0,(this.attackAnimTimer||0)-30*dt);this.state=r.fight?'attacking':r.role==='line'?'wandering':'stationary';
   };
   n.applySpell=function(id,amount=1,caster=null){
    const result=NPC.prototype.applySpell.call(this,id,amount,caster);
    const b=this.activeBuffs.find(b=>b.equipmentId===id&&b.bind);if(b)applyEffect(this,{kind:'bind',seconds:b.duration/30});
    return result;
   };
-  n.absorbHit=function(a,spell=null,forced=null){return loss(this,this._row,a,spell,forced);};
+  n.absorbHit=function(a,spell=null,forced=null,shot=null){return loss(this,this._row,a,spell,forced,shot);};
   Dungeon.npcs.push(n);actors.set(row.id,n);return n;
+ }
+ function exchange(attacker,victim,dx,dy){
+  const a=actors.get(attacker),v=actors.get(victim);
+  if(a){BMContactPose.mark(a,dx,dy,false);a.attackAnimTimer=Math.max(a.attackAnimTimer||0,6);}
+  if(v)BMContactPose.mark(v,dx,dy,true);
  }
  function sync(){
   if(!war||Dungeon.mapID!==MAP)return;const live=new Set();
@@ -117191,12 +117919,18 @@ const BMEternal141=(()=>{
   chronicle(war.sides[war.winner].banner+' has taken the field. The opposing marshal has fallen. The bells will muster a new war in thirty seconds.','quest_progress');}
  function tick(dt){
   if(!war||Dungeon.mapID!==MAP)return;
+  if(restoreVisitor&&!Dungeon.isLoading){
+   restoreVisitor=false;const d=Dungeon,x=Math.floor(d.x),y=Math.floor(d.y);
+   const beneath=terrain.lower[y]?.[x]&&d.groundZ<1;
+   if(!R.walk(d.x,d.y)&&!beneath)snap(R.spawn);
+   else if(!beneath&&Math.abs(d.groundZ-R.height(d.x,d.y))>.51){d.groundZ=R.height(d.x,d.y);BMPlayerMotion.reset();}
+  }
   if(!Number.isFinite(dt)||dt<=0)return;acc+=Math.min(dt,.5);
   while(acc>=R.step){acc-=R.step;
    if(remote){if(war.clock!==lastPosition){position();lastPosition=war.clock;}}
    else{
-    const d=Dungeon,visitor={s:0,visitor:true,hp:1,x:d.x,y:d.y};
-    R.tick(war,d.isDead||d.isDying||BMDeathRecovery.protected(d)?[]:[visitor],(_,n)=>contact(n.id));outcome();
+    const d=Dungeon,visitor={s:0,visitor:true,hp:1,x:d.x,y:d.y,z:BMPlayerMotion.feetZ};
+    R.tick(war,d.isDead||d.isDying||BMDeathRecovery.protected(d)?[]:[visitor],(_,n)=>contact(n.id),exchange);signal();outcome();
     if(war.winner!==null&&war.reset<=0){accept(roll(),false);snap(R.spawn);}
     sync();
    }
@@ -117206,12 +117940,17 @@ const BMEternal141=(()=>{
  function install(sock){if(!sock||bound.has(sock))return;bound.add(sock);
   sock.on('eternal:open',w=>{if(!remote||Dungeon.mapID!==MAP||!w?.sides)return;accept(w,true);snap(R.spawn);position();});
   sock.on('eternal:frame',f=>{if(!remote||Dungeon.mapID!==MAP||war?.seed!==f.seed||f.clock<war.clock)return;
-   Object.assign(war,{clock:f.clock,wave:f.wave,winner:f.winner,dead:f.dead,reset:f.reset,cap:f.cap});
+   Object.assign(war,{clock:f.clock,wave:f.wave,winner:f.winner,dead:f.dead,reset:f.reset,cap:f.cap,tower:f.tower||war.tower});signal();
    war.troops=f.rows.map(([id,s,role,type,x,y,hp,max,face,dy,fight])=>({id,s,role,type,x,y,hp,max,face,dy,fight}));
    sync();outcome();
   });
   sock.on('eternal:story',p=>{if(remote&&war?.seed===p.seed){war.story=p.story;chronicle(p.story.lore);}});
-  sock.on('eternal:credit',p=>{if(remote&&war?.seed===p.seed)credit(p.id);});
+  sock.on('eternal:melee',p=>{
+   if(!remote||Dungeon.mapID!==MAP||war?.seed!==p.seed||p.player&&p.player===sock.id)return;
+   for(const [a,v,dx,dy] of p.blows||[])exchange(a,v,dx,dy);
+  });
+  sock.on('eternal:fall',p=>{if(remote&&war?.seed===p.seed)falling(p.id,p.x,p.y);});
+  sock.on('eternal:credit',p=>{if(remote&&war?.seed===p.seed)credit(p.id,p.fall);});
   sock.on('eternal:contact',p=>{if(remote&&war?.seed===p.seed)contact(p.id);});
   sock.on('disconnect',()=>{if(!remote||Dungeon.mapID!==MAP)return;remote=false;accept(mem().local?.sides?mem().local:roll(),false);snap(R.spawn);report('Connection lost. Your offline battlefield is open.');});
   sock.on('connect',()=>{if(Dungeon.mapID===MAP&&!remote&&!joining)join();});
@@ -117222,11 +117961,11 @@ const BMEternal141=(()=>{
   const result=load.call(this,id,...args);if(result===false)return result;
   if(before!==this.mapID){visit++;joining=false;invitation=null;}
   if(before===MAP&&this.mapID!==MAP){if(remote)net()?.emit('eternal:leave');remote=false;actors.clear();war=null;acc=0;}
-  if(this.mapID===MAP){actors.clear();war??=mem().local?.sides?mem().local:roll();if(!remote)mem().local=war;installFigures();sync();if(resuming&&net()&&!joining)queueMicrotask(()=>{if(this.mapID===MAP&&!remote&&!joining)join();});}
+  if(this.mapID===MAP){restoreVisitor=resuming;actors.clear();war??=mem().local?.sides?mem().local:roll();R.upgrade(war);towerOwner=war.tower.owner;if(!remote)mem().local=war;installFigures();sync();if(resuming&&net()&&!joining)queueMicrotask(()=>{if(this.mapID===MAP&&!remote&&!joining)join();});}
   return result;
  };
  const world=Explore.prototype.updateNPCWorld;Explore.prototype.updateNPCWorld=function(dt){if(this.mapID===MAP)tick(dt);return world.call(this,dt);};
- return {command,install,rules:R,get state(){return war;},get shared(){return remote;}};
+ return {command,install,push,rules:R,get state(){return war;},get shared(){return remote;}};
 })();globalThis.BMEternal141=BMEternal141;
 
 globalThis.BMResponsive113={upper:upperHUDLayout,controls:controlHUDLayout};
