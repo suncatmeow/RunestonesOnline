@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 154,
-  "serverVersion": "1.10.86",
-  "date": "2026-11-19",
+  "version": 155,
+  "serverVersion": "1.10.87",
+  "date": "2026-11-20",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v153 / server 1.10.85",
+  "supersedes": "BattleMage Runestones v154 / server 1.10.86",
   "deployed": false,
   "files": [
     "index.html",
@@ -27,8 +27,8 @@
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "f992caf9b1412d18cfcef684ca41c1d794ac53694d1fc5bd1cd4678ee7be5bf9",
-  "serverSha256": "14746959e160971d52d26d74f6c38dfa8f8afd705407dea83422109a36cf937d",
+  "clientSha256": "2bdd15e020cc667271fc4c00cef4b1f816c72607e4bc2c870706bd6df98d1b22",
+  "serverSha256": "0aa5fa29c7ccbe1ccc7e47bf6aa04fe00decfba1ef6ad52cdef5d4e103beca83",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -310,8 +310,8 @@
     }
   },
   "devlog": {
-    "current": "v154",
-    "history": "The Second Fish"
+    "current": "v155",
+    "history": "Minigame Manual"
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -337,14 +337,14 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Replaced Priest’s chapter with The Second Fish, a Logres sequel told first through the wandering lich, then through Priest’s years as the local healer.",
-    "Expanded Warrior’s serpent and ox journey and Rogue’s encounter with the assassin in Tintagel.",
-    "Extended Solgata’s early commissions with Dancer and Hunter and connected her first meeting with Priest to the existing quarry rescue."
+    "The Lore shelf contains a ten-chapter Minigame Manual. Suncat can look up the same rules and see the controls available to her for each activity.",
+    "Herb gathering uses a fresh world observation. Suncat can select an exact visible plant or a species, follow a known garden landmark, approach a plant and retry after arrival. Confirmed results distinguish a harvest, a failed attempt and a plant awaiting regrowth.",
+    "Workshop controls accept a stir command for soup and alchemy stirring stages. An unknown control returns a failure before changing the heat."
   ],
   "previousRelease": {
-    "version": 153,
-    "serverVersion": "1.10.85",
-    "summary": "Expanded Knight and Solgata and added Drunk’s own chapter to Before the Oak."
+    "version": 154,
+    "serverVersion": "1.10.86",
+    "summary": "The Second Fish expanded the Priest, Warrior, Rogue and Solgata origin stories."
   },
   "validation": {
     "offlineFreshJournal": [
@@ -355,7 +355,9 @@
       "The revised Knight, founding and tavern chapters render through their final lines",
       "The Lore shelf reaches the same book and retains both campaign histories",
       "An ordinary volume still has its normal page controls",
-      "Four revised chapters follow the approved chronology; Priest’s childhood, adult practice and first meeting with Solgata agree"
+      "Four revised chapters follow the approved chronology; Priest’s childhood, adult practice and first meeting with Solgata agree",
+      "Lore manual opens offline, displays all ten entries, and closes without quest or inventory changes",
+      "Client-owned garden exposes a real plant, harvests it once and replays its receipt"
     ],
     "connectedSavedJournal": [
       "One named volume opens from Your journal",
@@ -365,7 +367,9 @@
       "The revised Knight, founding and tavern chapters render through their final lines",
       "The Lore shelf reaches the same book and retains both campaign histories",
       "An ordinary volume still has its normal page controls",
-      "Four revised chapters follow the approved chronology; Priest’s childhood, adult practice and first meeting with Solgata agree"
+      "Four revised chapters follow the approved chronology; Priest’s childhood, adult practice and first meeting with Solgata agree",
+      "Lore manual opens offline, displays all ten entries, and closes without quest or inventory changes",
+      "Client-owned garden exposes a real plant, harvests it once and replays its receipt"
     ],
     "simulatedConnection": [
       "Connected presence timers wait while saved-world initialization is incomplete",
@@ -375,6 +379,15 @@
       "Disconnect stops presence and reconnect resumes without duplicate timer installation",
       "Active observer and menu withdrawal both emit valid clock-bearing snapshots",
       "Every registered recurring callback executes after initialization without a reference error"
+    ],
+    "autonomousServerActions": [
+      "Character manual lookup works for directory, how-to, explicit and guide-only topics; ordinary map and card queries still work",
+      "Cottage interior and garden have different observations; the notebook provides a landmark, not a harvest",
+      "Walk from notebook to garden and harvest through text actions without crediting movement or restarting the same route",
+      "A fresh observation supplies an executable plant ID; wrong targets do not pick another plant",
+      "Named moonleaf resolves to a real plant; success adds one herb and a repeat of the same ID reports regrowth",
+      "An unsuccessful herbalism roll records a failed harvest without granting an herb",
+      "Manual soup accepts stir and rejects an unknown control before changing the heat"
     ],
     "chapterWordCounts": [
       959,
@@ -389,7 +402,8 @@
     ]
   },
   "limitations": [
-    "The journal was checked with simulated offline and connected clients. No physical phone or live deployment was tested."
+    "Functional checks used simulated connected and offline clients and an isolated server without a live model or a physical device.",
+    "Suncat harvests a plant with a herbalism check. Pocket digging is played by the human. Fishing, mining, smithing and the three tavern games provide instructions only for Suncat."
   ],
   "nextPass": [
     "China cultivator arc: after joining the sect, the player can learn a homing sword that fights as a summoned ally. This is planned content."
@@ -3852,5 +3866,12 @@
     },
     "wardFix": "Both ward and item_ward with positive hits protect against tactical melee/projectile/dash; zero-hit wards do not intercept. Display includes item wards.",
     "originality": "Written from this game’s established characters, commissions and mechanics. Broad genre pleasures inform pacing; no outside novel text or recreated scene was used."
+  },
+  "loreRevision": {
+    "title": "The Lower Stairs",
+    "changes": [
+      "Reconciled the prison escape and the Magician’s trail across the journal, quest guide, and narrator.",
+      "Used atlas names in the guild origins book, regional lore, and related quest text."
+    ]
   }
 }
