@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 147,
-  "serverVersion": "1.10.79",
-  "date": "2026-11-18",
+  "version": 154,
+  "serverVersion": "1.10.86",
+  "date": "2026-11-19",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v146 / server 1.10.78",
+  "supersedes": "BattleMage Runestones v153 / server 1.10.85",
   "deployed": false,
   "files": [
     "index.html",
@@ -27,8 +27,8 @@
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "67af40713434224e9a6bb43e68ba7823deb8102b6f473b6d52fef16a95ae11b0",
-  "serverSha256": "06eb7e464e458be640ea9b5a92417b0a9930958bbbe25b08ebe69850bce3fa49",
+  "clientSha256": "f992caf9b1412d18cfcef684ca41c1d794ac53694d1fc5bd1cd4678ee7be5bf9",
+  "serverSha256": "14746959e160971d52d26d74f6c38dfa8f8afd705407dea83422109a36cf937d",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -282,7 +282,8 @@
     ],
     "tracking": "One outlined focus; yellow stars remain for active authored objectives",
     "recommendationCompletion": "Training/letter complete; promotion requirements retained separately",
-    "knownMainChapters": "Encountered chapters persist in the log; unseen quests are not pre-completed or auto-accepted"
+    "knownMainChapters": "Encountered chapters persist in the log; unseen quests are not pre-completed or auto-accepted",
+    "classRumors": "Personal favors and rumors use memory.classRumors150. Tracking an earned rumor shows the teacher until discovery. The apprenticeship has its own entry and acceptance."
   },
   "performance": {
     "nativeCherryPoseCache": "At most two sets, 8 directions × 4 frames × 160 × 160 RGBA: about 6.6 MB; reused across performances",
@@ -309,8 +310,8 @@
     }
   },
   "devlog": {
-    "current": "v147",
-    "history": "Reading the hit"
+    "current": "v154",
+    "history": "The Second Fish"
   },
   "historicalLiveInspection": {
     "checkedDateUtc": "2026-11-14",
@@ -336,218 +337,59 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "A soft body flash replaces the gold impact asterisk. Nearby enemies overlapping the target extend the flash from 100 ms to 250 ms. A faint rim stays attached to a struck fighter during overlap.",
-    "All four camera views consume the landed melee result. The paired battlefield server confirms personal hits and lethal blows.",
-    "The client and server use the same Cherry quest-stage roster for her appearances and conversation eligibility.",
-    "Suncat’s map records migrate on save to individually checksummed files with an atomic index and a previous generation for changed records.",
-    "Reserved gifts reconcile when the original character save reconnects. An outstanding gift holds only that recipient’s next transfer. A legacy gift without a save identifier can still settle from an existing delivery receipt.",
-    "Movement and summons reach the matching map or encounter. Remote players remain in the global roster."
+    "Replaced Priest’s chapter with The Second Fish, a Logres sequel told first through the wandering lich, then through Priest’s years as the local healer.",
+    "Expanded Warrior’s serpent and ox journey and Rogue’s encounter with the assassin in Tintagel.",
+    "Extended Solgata’s early commissions with Dancer and Hunter and connected her first meeting with Priest to the existing quarry rescue."
   ],
   "previousRelease": {
-    "version": 146,
-    "serverVersion": "1.10.78",
-    "summary": "Melee facing, pass-through allies, recoil and attack trails."
+    "version": 153,
+    "serverVersion": "1.10.85",
+    "summary": "Expanded Knight and Solgata and added Drunk’s own chapter to Before the Oak."
   },
   "validation": {
-    "freshOfflineChecks": 99,
-    "savedSimulatedConnectedChecks": 109,
-    "architecture": [
-      "Herb harvest survived 106 map records and a restart. Damage to one shard left the other records readable.",
-      "Oversized v146 migration survived a full save and restart.",
-      "Movement plus summons only reached the matching map and instance. Crossing maps removed the old body and populated the new one.",
-      "Cherry’s shared roster matched all eleven quest phases.",
-      "An interrupted gift retried with the same ID and original save, spent one card, and allowed the following gift."
+    "offlineFreshJournal": [
+      "One named volume opens from Your journal",
+      "All nine distinct full chapters render under the same title, in order",
+      "Chapter picker and both edge stops work",
+      "Closing returns to the journal without recording fictional events, acquiring classes or advancing quests",
+      "The revised Knight, founding and tavern chapters render through their final lines",
+      "The Lore shelf reaches the same book and retains both campaign histories",
+      "An ordinary volume still has its normal page controls",
+      "Four revised chapters follow the approved chronology; Priest’s childhood, adult practice and first meeting with Solgata agree"
     ],
-    "rasterAndClientGift": {
-      "plain": 116,
-      "lit": 179,
-      "rimPixels": 548,
-      "interiorAlpha": 0,
-      "giftDelta": 1
-    },
-    "room": {
-      "sharedMeleeCues": true,
-      "sharedRingOut": true,
-      "legacyRoomSeparated": true,
-      "sharedWar": true,
-      "orders": true,
-      "sharedDamage": true,
-      "lateJoin": true,
-      "blockedDistantHit": true,
-      "sharedVictory": true,
-      "rejoined": true,
-      "peaks": [
-        {
-          "cap": 24,
-          "peak": 48,
-          "maxMelee": 30,
-          "losses": [
-            108,
-            102
-          ]
-        },
-        {
-          "cap": 48,
-          "peak": 96,
-          "maxMelee": 37,
-          "losses": [
-            251,
-            216
-          ]
-        },
-        {
-          "cap": 72,
-          "peak": 144,
-          "maxMelee": 64,
-          "losses": [
-            393,
-            353
-          ]
-        }
-      ],
-      "ticks": 2160
-    },
-    "trailRaster": {
-      "slash": [
-        1065,
-        1340,
-        1380,
-        0,
-        1242,
-        1449,
-        1383,
-        0,
-        1029,
-        1901,
-        1511,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "slashSprite": [
-        511,
-        757,
-        357,
-        153
-      ],
-      "punch": [
-        0,
-        306,
-        120,
-        111,
-        88,
-        274,
-        111,
-        88,
-        324,
-        247,
-        122,
-        129,
-        327,
-        240,
-        123,
-        117
-      ],
-      "punchSprite": [
-        18,
-        17,
-        11,
-        20
-      ],
-      "fence": [
-        14,
-        321,
-        153,
-        373,
-        127,
-        487,
-        144,
-        482,
-        146,
-        404,
-        136,
-        416,
-        120,
-        272,
-        130,
-        480
-      ],
-      "fenceSprite": [
-        94,
-        83,
-        0,
-        202
-      ],
-      "thrust": [
-        107,
-        286,
-        0,
-        0,
-        90,
-        541,
-        0,
-        0,
-        496,
-        337,
-        0,
-        0,
-        95,
-        24,
-        0,
-        0
-      ],
-      "thrustSprite": [
-        152,
-        96,
-        28,
-        30
-      ],
-      "spinKick": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "spinKickSprite": [
-        13,
-        103,
-        5,
-        40
-      ]
-    }
+    "connectedSavedJournal": [
+      "One named volume opens from Your journal",
+      "All nine distinct full chapters render under the same title, in order",
+      "Chapter picker and both edge stops work",
+      "Closing returns to the journal without recording fictional events, acquiring classes or advancing quests",
+      "The revised Knight, founding and tavern chapters render through their final lines",
+      "The Lore shelf reaches the same book and retains both campaign histories",
+      "An ordinary volume still has its normal page controls",
+      "Four revised chapters follow the approved chronology; Priest’s childhood, adult practice and first meeting with Solgata agree"
+    ],
+    "simulatedConnection": [
+      "Connected presence timers wait while saved-world initialization is incomplete",
+      "Connected portrait-loading timers execute without unhandled errors",
+      "Connected presence uses the exported real clock with exact day/night and malformed-value rules",
+      "Presence pauses during map loading and resumes with the restored clock",
+      "Disconnect stops presence and reconnect resumes without duplicate timer installation",
+      "Active observer and menu withdrawal both emit valid clock-bearing snapshots",
+      "Every registered recurring callback executes after initialization without a reference error"
+    ],
+    "chapterWordCounts": [
+      959,
+      2023,
+      328,
+      1404,
+      934,
+      378,
+      415,
+      1999,
+      563
+    ]
   },
   "limitations": [
-    "Verified with fresh and saved client integration runs, native canvas raster checks, simulated room clients and server restarts using temporary files. Physical Android play feel and a live multiplayer session remain unmeasured."
+    "The journal was checked with simulated offline and connected clients. No physical phone or live deployment was tested."
   ],
   "nextPass": [
     "China cultivator arc: after joining the sect, the player can learn a homing sword that fights as a summoned ally. This is planned content."
@@ -664,7 +506,21 @@
     "guideWords": 1802,
     "previousEntries": 27,
     "previousWords": 5235,
-    "questEntriesCovered": 28
+    "questEntriesCovered": 28,
+    "originsBook": {
+      "title": "Before the Oak",
+      "chapters": [
+        "I · Warrior · The Ox with One Broken Horn",
+        "II · Knight · The Spare Reins",
+        "III · Mage · Company for a Stone",
+        "IV · Priest · The Second Fish",
+        "V · Rogue · The Price of a Handkerchief",
+        "VI · Dancer and Cherry · Two Shares at the Village Inn",
+        "VII · Hunter · The Brother at Supper",
+        "VIII · Solgata · The First Name in the Book",
+        "IX · Drunk · The Third Verse"
+      ]
+    }
   },
   "testRealm777": {
     "name": "Moonlit Meadow · The unclaimed cottage",

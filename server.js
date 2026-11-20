@@ -772,7 +772,7 @@ const studioHandler = SuncatStudioAPI.createStudioHandler({
 });
 // END SUNCAT STUDIO API
     const server = http.createServer((req, res) => {
-        if(req.method==='GET'&&req.url?.split('?')[0]==='/version'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({application:'BattleMage Runestones',clientVersion:147,serverVersion:'1.10.79',terrainVersion:131,suncatMotionVersion:103}));return;}
+        if(req.method==='GET'&&req.url?.split('?')[0]==='/version'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({application:'BattleMage Runestones',clientVersion:154,serverVersion:'1.10.86',terrainVersion:131,suncatMotionVersion:103}));return;}
         if (dragonflightHTTP(req, res)) return;
         if (studioHandler(req, res)) return;
         res.writeHead(200, { 'Content-Type': 'text/plain' });
