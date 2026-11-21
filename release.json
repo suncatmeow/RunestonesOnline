@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 166,
-  "serverVersion": "1.10.98",
+  "version": 170,
+  "serverVersion": "1.10.102",
   "date": "2026-11-21",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v165 / server 1.10.97",
+  "supersedes": "BattleMage Runestones v169 / server 1.10.101",
   "deployed": false,
   "files": [
     "index.html",
@@ -27,8 +27,8 @@
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "60837888a8494ed10c72b9b21c168fa23e6ef4c154d1b3fa17c171878d35abc6",
-  "serverSha256": "4d4d97120d74b14465d92f7e17fe94d3a3b6e44deff023a1b9a4ffbfacc315d2",
+  "clientSha256": "5f387f8212c98d6b6f9f5ca3872945b675c32f25b6aa53c34355203d77c6ee41",
+  "serverSha256": "8d4e6557ccdbade20f6b069946ed4c2bf8e3426fe4b434b3ba00f5c0858f23e0",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -264,7 +264,20 @@
       "Youxiong",
       "Huaxu"
     ],
-    "notes": "Historical, archaeological and mythical labels are game adaptations, not a claim that all cultures coexisted or used these names in 4500–2500 BCE."
+    "notes": "Historical, archaeological and mythical labels are game adaptations, not a claim that all cultures coexisted or used these names in 4500–2500 BCE.",
+    "mononofu169": {
+      "card": "Mononofu",
+      "searchAlso": [
+        "Mononopu",
+        "Samurai"
+      ],
+      "note": "Mononofu is an old Japanese word for a warrior. The earlier form mononopu appears in the Man’yōshū, where it also refers to people serving the court.",
+      "sources": [
+        "https://oncoj.ninjal.ac.jp/texts_Japanese.html",
+        "https://jmapps.ne.jp/kokugakuin/det.html?data_id=32360",
+        "https://japanesehistory.yale.edu/sites/default/files/samurai_great_peace_exhibition_catalog_-_watermarked.pdf"
+      ]
+    }
   },
   "questTracking": {
     "storage": "character memory.questLog97",
@@ -311,7 +324,7 @@
     }
   },
   "devlog": {
-    "current": "v166",
+    "current": "v170",
     "history": "Minigame Manual"
   },
   "historicalLiveInspection": {
@@ -338,13 +351,14 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Ten original sprite strips, with distinct northern elf palettes for three families",
-    "Thirteen animated, collectible monster cards and regional encounters in the extended deck"
+    "Original paintings for Curse, Wisp, Pixie, Defense and the Stone Battle Axe. Physical equipment and the Healing Potion display their field models.",
+    "Walking Elder · Moonlit Grove is collectible at the Haven Card Dealer. Both prints use the original creature model and the same combat and mastery rules.",
+    "The Witch Hunter, Island Warrior and Zombie each have regional encounters, a painted card and an articulated field model."
   ],
   "previousRelease": {
-    "version": 165,
-    "serverVersion": "1.10.97",
-    "summary": "On the moor and in the forest"
+    "version": 169,
+    "serverVersion": "1.10.101",
+    "summary": "The painted cards"
   },
   "validation": {
     "offlineFreshJournal": [
@@ -462,6 +476,80 @@
       "encounters": "Fifteen habitat entries across twelve maps were checked against the in-game actors.",
       "art": "A phone-sized Chromium viewport loaded the standalone file offline, decoded all sheets, and opened Elf Knight from Extra Cards.",
       "server": "Server actor and card dice, habitat links, spell IDs and /version were checked locally."
+    },
+    "v167": {
+      "models": "All thirteen figures rendered distinct front, side, rear, walking, and attacking views on mobile-sized Chromium.",
+      "world": "The Hellas centaur rendered from three headings in first person and two isometric rotations.",
+      "cards": "The gallery switched between the paper Centaur card and the rotating 3D model. All thirteen cards survived saving and reloading. The Bandit was collected and summoned.",
+      "server": "Local server /version returned client 167 and server 1.10.99."
+    },
+    "v168": {
+      "art": "Decoded all eight original strips and verified 36 card frames have transparent backgrounds and visible art.",
+      "models": "The native sprite baker and software renderer exercised all 768 idle, travel and attack frames across eight facings. Verified distinct attack frames and all eight headings per creature. Rechecked an earlier regional family through the shared rig.",
+      "maps": "The wildlife placement routine found valid floor positions across fifteen seeds for all eight species using the map mazes.",
+      "scope": "Isolated engine tests. No full browser, physical handset, or live multiplayer playthrough."
+    },
+    "v169": {
+      "cards": "Ten face-up card render paths, normal and cloned cards, painting dimensions and source alpha checked. Existing card definitions retained.",
+      "items": "Native item meshes, field/card modifiers and potion art resolution checked. Dagger freeze exercised on damaging hits, saves, blocks and spells.",
+      "encounters": [
+        {
+          "name": "Lycan Ace",
+          "habitat": "Dacia",
+          "angles": 8,
+          "attackPoses": 4,
+          "spawnSeeds": 20
+        },
+        {
+          "name": "Mononofu",
+          "habitat": "Southern Japan",
+          "angles": 8,
+          "attackPoses": 3,
+          "spawnSeeds": 20
+        },
+        {
+          "name": "Dorn",
+          "habitat": "Orcynia",
+          "angles": 8,
+          "attackPoses": 4,
+          "spawnSeeds": 20
+        }
+      ],
+      "clientServer": "Matching encounter and gear identities, server and client syntax, release hashes and archive contents checked.",
+      "scope": "Isolated engine testing. Phone playthrough and live multiplayer not tested."
+    },
+    "v170": {
+      "cards": "Nine paintings decoded, source dimensions, transparency and composited visual similarity verified. Card.place and the card subject renderer exercised. All v169 paintings preserved.",
+      "fieldGear": "Stone Battle Axe equipment stats and mounted model checked. Physical healing potion resolves to the 3D bottle.",
+      "elder": "Both print IDs tested in combat card creation, duplicate feeding, field summoning, save restoration and shared mastery.",
+      "combat": "Witch Hunter tested against newly released, older, physical and other-owner projectiles.",
+      "encounters": [
+        {
+          "name": "Witch Hunter",
+          "map": "Armorica",
+          "facings": 8,
+          "attackPoses": 4,
+          "seeds": 35,
+          "spawns": 1
+        },
+        {
+          "name": "Island Warrior",
+          "map": "Solomon Isles",
+          "facings": 8,
+          "attackPoses": 4,
+          "seeds": 35,
+          "spawns": 1
+        },
+        {
+          "name": "Zombie",
+          "map": "Armorica · The ruined keep",
+          "facings": 8,
+          "attackPoses": 3,
+          "seeds": 35,
+          "spawns": 2
+        }
+      ],
+      "scope": "Isolated engine checks. Live multiplayer and a physical phone playthrough are unverified."
     }
   },
   "limitations": [
@@ -4357,6 +4445,80 @@
       "y": 63.5,
       "person": false,
       "line": "A pale binding covers an older repair. The marks near the grip face the rower."
+    }
+  ],
+  "bestiary168": [
+    {
+      "name": "Troll",
+      "id": 4649,
+      "frames": 4,
+      "angles": 8,
+      "attackPoses": 4,
+      "habitat": "Northern Lochlann",
+      "feasibleSeeds": 15
+    },
+    {
+      "name": "Crag Wyvern",
+      "id": 4652,
+      "frames": 4,
+      "angles": 8,
+      "attackPoses": 4,
+      "habitat": "Cairngorm",
+      "feasibleSeeds": 15
+    },
+    {
+      "name": "Shield Warrior",
+      "id": 4655,
+      "frames": 3,
+      "angles": 8,
+      "attackPoses": 4,
+      "habitat": "The Wilderness",
+      "feasibleSeeds": 15
+    },
+    {
+      "name": "Sorceress",
+      "id": 4658,
+      "frames": 7,
+      "angles": 8,
+      "attackPoses": 4,
+      "habitat": "Orcynia",
+      "feasibleSeeds": 15
+    },
+    {
+      "name": "Sorcerer",
+      "id": 4661,
+      "frames": 6,
+      "angles": 8,
+      "attackPoses": 4,
+      "habitat": "Armorica · The ruined keep",
+      "feasibleSeeds": 15
+    },
+    {
+      "name": "Walking Elder",
+      "id": 4664,
+      "frames": 4,
+      "angles": 8,
+      "attackPoses": 3,
+      "habitat": "Savage Forest",
+      "feasibleSeeds": 15
+    },
+    {
+      "name": "Burrowing Worm",
+      "id": 4667,
+      "frames": 4,
+      "angles": 8,
+      "attackPoses": 4,
+      "habitat": "Goblin Caverns",
+      "feasibleSeeds": 15
+    },
+    {
+      "name": "Witch",
+      "id": 4670,
+      "frames": 4,
+      "angles": 8,
+      "attackPoses": 4,
+      "habitat": "Moors",
+      "feasibleSeeds": 15
     }
   ]
 }

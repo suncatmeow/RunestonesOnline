@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.98",
+  "version": "1.10.102",
   "private": true,
-  "description": "BattleMage v166 · The courts and the northern woods",
+  "description": "BattleMage v170 \u00b7 Moonlit Grove",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"
