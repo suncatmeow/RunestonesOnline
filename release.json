@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 155,
-  "serverVersion": "1.10.87",
-  "date": "2026-11-20",
+  "version": 163,
+  "serverVersion": "1.10.95",
+  "date": "2026-11-21",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v154 / server 1.10.86",
+  "supersedes": "BattleMage Runestones v162 / server 1.10.94",
   "deployed": false,
   "files": [
     "index.html",
@@ -27,8 +27,8 @@
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "2bdd15e020cc667271fc4c00cef4b1f816c72607e4bc2c870706bd6df98d1b22",
-  "serverSha256": "0aa5fa29c7ccbe1ccc7e47bf6aa04fe00decfba1ef6ad52cdef5d4e103beca83",
+  "clientSha256": "e2ab7cb6421a9b7d6f5e7b58aa11fbb0cc47eb58f2bb8667a9fc0fd21e2572fc",
+  "serverSha256": "94430fcebd6fff4026bd0522fb78bb041dec5ba64cc58e0a9763e245d8b81530",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -283,7 +283,8 @@
     "tracking": "One outlined focus; yellow stars remain for active authored objectives",
     "recommendationCompletion": "Training/letter complete; promotion requirements retained separately",
     "knownMainChapters": "Encountered chapters persist in the log; unseen quests are not pre-completed or auto-accepted",
-    "classRumors": "Personal favors and rumors use memory.classRumors150. Tracking an earned rumor shows the teacher until discovery. The apprenticeship has its own entry and acceptance."
+    "classRumors": "Personal favors and rumors use memory.classRumors150. Tracking an earned rumor shows the teacher until discovery. The apprenticeship has its own entry and acceptance.",
+    "minimap": "Local quest pins and boss stars. Cross-map route stars are omitted from the minimap."
   },
   "performance": {
     "nativeCherryPoseCache": "At most two sets, 8 directions × 4 frames × 160 × 160 RGBA: about 6.6 MB; reused across performances",
@@ -310,7 +311,7 @@
     }
   },
   "devlog": {
-    "current": "v155",
+    "current": "v163",
     "history": "Minigame Manual"
   },
   "historicalLiveInspection": {
@@ -337,14 +338,13 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "The Lore shelf contains a ten-chapter Minigame Manual. Suncat can look up the same rules and see the controls available to her for each activity.",
-    "Herb gathering uses a fresh world observation. Suncat can select an exact visible plant or a species, follow a known garden landmark, approach a plant and retry after arrival. Confirmed results distinguish a harvest, a failed attempt and a plant awaiting regrowth.",
-    "Workshop controls accept a stir command for soup and alchemy stirring stages. An unknown control returns a failure before changing the heat."
+    "Retired extra classes, their quests, field encounters and promotion interfaces. Retained the seven original class apprenticeships and the High Priestess initiation.",
+    "Class awards require the designated teacher and a completed apprenticeship."
   ],
   "previousRelease": {
-    "version": 154,
-    "serverVersion": "1.10.86",
-    "summary": "The Second Fish expanded the Priest, Warrior, Rogue and Solgata origin stories."
+    "version": 162,
+    "serverVersion": "1.10.94",
+    "summary": "Haven landing and Fisher referral."
   },
   "validation": {
     "offlineFreshJournal": [
@@ -399,6 +399,48 @@
       415,
       1999,
       563
+    ],
+    "tintagelWard157": [
+      "Checked both directions along the stairs and passage against the client collision code and compiled server ground.",
+      "Checked the gaol entrance, return floor, castle causeway, Iron Gate stair, southern stair and ground-level space beside the Haven building.",
+      "Exercised the Dancer greeting, both guild menus, the delivery pickup, the turn-in and repeat visits.",
+      "Checked coordinate migration for existing saves and parsed the bundled scripts."
+    ],
+    "questMarkers158": [
+      "Exercised the welcome artwork, Studio artwork and Play adventure action in the initialized client.",
+      "Checked quest availability, active objective, collection and return markers, including the cross-map route between the Moors and Tintagel.",
+      "Checked isometric rendering at the Haven steps and inside the covered passage and exercised drag-from-center input in both touch and D-pad settings.",
+      "Rechecked the v157 ward routes, save migration, and Dancer dialogue. Parsed the inline scripts and the server."
+    ],
+    "forestAndGuild159": [
+      "Started standalone client with new and saved characters and an in-process network transport.",
+      "Exercised the dance from the guild desk through an incorrect move, cancel, retry and completion; entered Cherry’s guest quest directly.",
+      "Completed the Orcynia battle, escort and report; tested the carter’s vigil and the captain’s watch.",
+      "Exercised spend, undo, retroactive bonuses, stacking multiple sources, reset, and reinvestment.",
+      "Sampled 80 forest populations, checked spacing and rare spawns, night-watch guarantees and seven regional wildlife tables.",
+      "Started the packaged server locally and verified the version endpoint."
+    ],
+    "isometricScale160": [
+      "Rendered all eight real carriage and bed silhouettes to measure their size against the player.",
+      "Checked native ISO sprite draw sizes for rats, rabbits, a prison cot, the Haven carriage, a material drop and a floating card.",
+      "Exercised the Loot button on the Haven stairs at (34,43) on both neighboring treads, existing pile repair, blocked pickup, stack and tile collection, and silver-only pickup.",
+      "Verified local boss and quest pins, exclusion of off-map minimap pins, and absence of the red overhead boss star."
+    ],
+    "havenCrew161": [
+      "Talk opens the normal Moors guild menu, the settlement inn menu and the rebuilt hall menu.",
+      "Both optional conversation choices give the Cherry lead. Existing leads, skill lessons and leaving mid-scene were exercised.",
+      "The two native character rigs were rendered front, quarter, side and back beside the guild Rogue. All eight directional sets and animated idle and movement frames were checked.",
+      "The landing watch quest, the western ferry and the v160 isometric, loot and map-marker regressions were checked."
+    ],
+    "havenLanding162": [
+      "Tested the Fisher favor through the guild, by direct discovery, on repeat visits, and with in-progress and completed leads. The objective advances to the old shore priest.",
+      "Checked water across both hull footprints, dry boarding, a locked passage, and round trips to Tingis with both the story and guild-rank unlocks.",
+      "Verified the captain’s watch and the separate western ferry round trip, eight mooring sprite directions, and the updated server actor catalog and saved Haven records."
+    ],
+    "originalClasses163": [
+      "Exercised the seven teacher menus, field-actor stages and teacher turn-ins on fresh and saved clients. The full Warrior battle/escort/report and Haven referral regressions passed.",
+      "Verified retired quests, awards, pins, trials and promotion options are unavailable, and a suspended retired trial returns to its entrance.",
+      "Verified the High Priestess initiation, hidden class listing and switching back to the earned Battle-Mage title."
     ]
   },
   "limitations": [
@@ -3873,5 +3915,427 @@
       "Reconciled the prison escape and the Magician’s trail across the journal, quest guide, and narrator.",
       "Used atlas names in the guild origins book, regional lore, and related quest text."
     ]
-  }
+  },
+  "regionalCast156": [
+    {
+      "map": 85,
+      "index": 762100,
+      "sprite": 16200,
+      "name": "Honeywife",
+      "x": 28.5,
+      "y": 57.5,
+      "person": true,
+      "line": "There was a little pin in the rushes. No bigger than a bee. I’ve kept it in my apron in case his mother comes."
+    },
+    {
+      "map": 85,
+      "index": 762101,
+      "sprite": 16201,
+      "name": "Kennel Girl",
+      "x": 25.5,
+      "y": 59.5,
+      "person": true,
+      "line": "She eats enough for two dogs now. Watch where she goes when she carries her supper away."
+    },
+    {
+      "map": 85,
+      "index": 762102,
+      "sprite": 16140,
+      "name": "Brindled hound",
+      "x": 28.5,
+      "y": 59.5,
+      "person": false,
+      "line": "The hound puts one paw on a crust. She looks back at the reeds before picking it up."
+    },
+    {
+      "map": 85,
+      "index": 762103,
+      "sprite": 16126,
+      "name": "Honey jar",
+      "x": 30.5,
+      "y": 58.5,
+      "person": false,
+      "line": "The rim is sticky. One little brown dog hair has caught in the wax."
+    },
+    {
+      "map": 4,
+      "index": 762104,
+      "sprite": 16202,
+      "name": "Slingmaker",
+      "x": 27.5,
+      "y": 76.5,
+      "person": true,
+      "line": "That lifting rope is mine. My son knows how to let it run without taking the skin off his palms. I wish I knew which shift they put him on."
+    },
+    {
+      "map": 4,
+      "index": 762105,
+      "sprite": 16203,
+      "name": "Sounder of Tingis",
+      "x": 26.5,
+      "y": 79.5,
+      "person": true,
+      "line": "They paid me to count the barrows. Three loads went to the harbour. None went on my slate as stone."
+    },
+    {
+      "map": 4,
+      "index": 762106,
+      "sprite": 16204,
+      "name": "Harbour surveyor",
+      "x": 29.5,
+      "y": 80.5,
+      "person": true,
+      "line": "I paid for three loads. The men keep asking where the hill went. A hill is a quantity of earth, surely?"
+    },
+    {
+      "map": 4,
+      "index": 762107,
+      "sprite": 16127,
+      "name": "Harbour lifting rope",
+      "x": 31.5,
+      "y": 76.5,
+      "person": false,
+      "line": "The outer turn is pale where a sling has drawn tight around a heavy load."
+    },
+    {
+      "map": 39,
+      "index": 762108,
+      "sprite": 16205,
+      "name": "Shore Netmaker",
+      "x": 41.5,
+      "y": 6.5,
+      "person": true,
+      "line": "A net is good for hauling somebody aboard. A man with pitch on his hands has been mending mine."
+    },
+    {
+      "map": 39,
+      "index": 762109,
+      "sprite": 16206,
+      "name": "Phocaean Caulker",
+      "x": 38.5,
+      "y": 8.5,
+      "person": true,
+      "line": "I can hear where a hull leaks. Getting the people on this shore to lend me a boat is the harder part."
+    },
+    {
+      "map": 39,
+      "index": 762110,
+      "sprite": 16207,
+      "name": "Petta’s cousin",
+      "x": 41.5,
+      "y": 10.5,
+      "person": true,
+      "line": "She has chosen her dress. She has chosen her guest. Everyone here seems to think there is still a decision to make."
+    },
+    {
+      "map": 39,
+      "index": 762111,
+      "sprite": 16130,
+      "name": "Net drying rack",
+      "x": 43.5,
+      "y": 7.5,
+      "person": false,
+      "line": "One corner is mended with a sailor’s knot. The rest is tied the way the fishers on this shore do it."
+    },
+    {
+      "map": 126,
+      "index": 762112,
+      "sprite": 16208,
+      "name": "Grain Widow",
+      "x": 52.5,
+      "y": 50.5,
+      "person": true,
+      "line": "I can tell seed grain by touch in the dark. Last winter that was how I kept the levy from eating next year’s bread."
+    },
+    {
+      "map": 126,
+      "index": 762113,
+      "sprite": 16209,
+      "name": "Young Standard Bearer",
+      "x": 49.5,
+      "y": 52.5,
+      "person": true,
+      "line": "My mother says count the sacks yourself. My captain says trust the tally. They both put me on the same door."
+    },
+    {
+      "map": 126,
+      "index": 762114,
+      "sprite": 16210,
+      "name": "Winter Quartermaster",
+      "x": 52.5,
+      "y": 54.5,
+      "person": true,
+      "line": "Three barns. Two keys on this ring. I would give a great deal to know whose belt the third hangs from."
+    },
+    {
+      "map": 126,
+      "index": 762115,
+      "sprite": 16134,
+      "name": "Seed tally",
+      "x": 54.5,
+      "y": 51.5,
+      "person": false,
+      "line": "A deep cut marks each full cart. Three smaller cuts beside it mark the families who filled it."
+    },
+    {
+      "map": 46,
+      "index": 762116,
+      "sprite": 16211,
+      "name": "Myrto",
+      "x": 50.5,
+      "y": 4.5,
+      "person": true,
+      "line": "Try the threshing song. I can take the low part. I keep starting at the wrong place when I sing it alone."
+    },
+    {
+      "map": 46,
+      "index": 762117,
+      "sprite": 16212,
+      "name": "Iambe",
+      "x": 47.5,
+      "y": 6.5,
+      "person": true,
+      "line": "Take this stool to the well. If our guest wants quiet, I know a dozen excellent things I can keep to myself."
+    },
+    {
+      "map": 46,
+      "index": 762118,
+      "sprite": 16129,
+      "name": "Harvest sheaf",
+      "x": 50.5,
+      "y": 8.5,
+      "person": false,
+      "line": "Two loops of thread bind the last sheaf. One is knotted for a right hand, one for a left."
+    },
+    {
+      "map": 67,
+      "index": 762119,
+      "sprite": 16213,
+      "name": "Veia",
+      "x": 52.5,
+      "y": 50.5,
+      "person": true,
+      "line": "An onion for the pot? Pick it up first. An honest weight feels different in your hand once you know it."
+    },
+    {
+      "map": 67,
+      "index": 762120,
+      "sprite": 16214,
+      "name": "Larce",
+      "x": 49.5,
+      "y": 52.5,
+      "person": true,
+      "line": "People remember very precisely what they wish someone had said. Wet clay gives them time to reconsider."
+    },
+    {
+      "map": 67,
+      "index": 762121,
+      "sprite": 16215,
+      "name": "Keeper of Measures",
+      "x": 52.5,
+      "y": 54.5,
+      "person": true,
+      "line": "Ask who owns a field and you’ll get one answer at the gate and another at the far corner."
+    },
+    {
+      "map": 67,
+      "index": 762122,
+      "sprite": 16128,
+      "name": "Veia’s market balance",
+      "x": 54.5,
+      "y": 50.5,
+      "person": false,
+      "line": "The bronze pans hang almost level. The smaller weight bears a nick under its rim."
+    },
+    {
+      "map": 170,
+      "index": 762123,
+      "sprite": 16216,
+      "name": "Min Boatwoman",
+      "x": 37.5,
+      "y": 51.5,
+      "person": true,
+      "line": "See that empty boat? Whoever tied it knew the river. Whoever dressed it for a wedding had never set foot in it."
+    },
+    {
+      "map": 170,
+      "index": 762124,
+      "sprite": 16217,
+      "name": "Salt Clerk",
+      "x": 36.5,
+      "y": 54.5,
+      "person": true,
+      "line": "Every household pays at this crossing. I have two names here in a different hand."
+    },
+    {
+      "map": 170,
+      "index": 762125,
+      "sprite": 16218,
+      "name": "Dike Cutter",
+      "x": 39.5,
+      "y": 55.5,
+      "person": true,
+      "line": "Stand on the bank you mean to flood before you put a spade in the other one."
+    },
+    {
+      "map": 170,
+      "index": 762126,
+      "sprite": 16135,
+      "name": "White river sash",
+      "x": 42.5,
+      "y": 53.5,
+      "person": false,
+      "line": "Two turns of pale cloth hang from the mooring post, high enough to show above muddy water."
+    },
+    {
+      "map": 168,
+      "index": 762127,
+      "sprite": 16219,
+      "name": "Potter’s Daughter",
+      "x": 45.5,
+      "y": 64.5,
+      "person": true,
+      "line": "Put both hands under the jar. I heard a voice when the water ran out between my fingers."
+    },
+    {
+      "map": 168,
+      "index": 762128,
+      "sprite": 16220,
+      "name": "Rope Twister",
+      "x": 44.5,
+      "y": 66.5,
+      "person": true,
+      "line": "Take the wet end. That splice will draw tight. If it slips now, I want to know on land."
+    },
+    {
+      "map": 168,
+      "index": 762129,
+      "sprite": 16221,
+      "name": "Reed Pilot",
+      "x": 47.5,
+      "y": 68.5,
+      "person": true,
+      "line": "Twice on the pole for a shelf. Once for deep water. You’ll hear the difference when you need both hands on a line."
+    },
+    {
+      "map": 168,
+      "index": 762130,
+      "sprite": 16131,
+      "name": "Potter’s fish jar",
+      "x": 50.5,
+      "y": 66.5,
+      "person": false,
+      "line": "Something the length of your little finger turns beneath the water."
+    },
+    {
+      "map": 353,
+      "index": 762131,
+      "sprite": 16222,
+      "name": "Keeper of the Gold",
+      "x": 5.5,
+      "y": 96.5,
+      "person": true,
+      "line": "I have watched that fire every night of the feast. Today I woke with my cloak drawn up around my shoulders. Who did that?"
+    },
+    {
+      "map": 353,
+      "index": 762132,
+      "sprite": 16223,
+      "name": "Watcher’s Foster Son",
+      "x": 3.5,
+      "y": 96.5,
+      "person": true,
+      "line": "Take the short circuit and our herd will have enough for years. She keeps looking past it toward the common wells."
+    },
+    {
+      "map": 353,
+      "index": 762133,
+      "sprite": 16224,
+      "name": "Remount Keeper",
+      "x": 7.5,
+      "y": 96.5,
+      "person": true,
+      "line": "Find where the white mare drinks when nobody leads her. That’s the crossing I’d trust."
+    },
+    {
+      "map": 353,
+      "index": 762134,
+      "sprite": 16132,
+      "name": "Looped bridle",
+      "x": 9.5,
+      "y": 96.5,
+      "person": false,
+      "line": "The leather is polished where a rider changes horses without setting a foot on the ground."
+    },
+    {
+      "map": 127,
+      "index": 762135,
+      "sprite": 16225,
+      "name": "Axle Maker",
+      "x": 52.5,
+      "y": 50.5,
+      "person": true,
+      "line": "Listen to the left wheel. Two creaks and a pause. I’d like it back in my yard before there’s a third."
+    },
+    {
+      "map": 127,
+      "index": 762136,
+      "sprite": 16226,
+      "name": "Marsh Ferrier",
+      "x": 49.5,
+      "y": 52.5,
+      "person": true,
+      "line": "Two heifers and the wagon. Anyone wanting passage with them can come take a turn at my sounding pole."
+    },
+    {
+      "map": 127,
+      "index": 762137,
+      "sprite": 16227,
+      "name": "Young Iron Warden",
+      "x": 52.5,
+      "y": 54.5,
+      "person": true,
+      "line": "Two companies have sworn to put away their weapons. Both captains say I’m to give the first key to them."
+    },
+    {
+      "map": 127,
+      "index": 762138,
+      "sprite": 16133,
+      "name": "Spare wagon wheel",
+      "x": 54.5,
+      "y": 51.5,
+      "person": false,
+      "line": "One spoke is younger and paler than the rest. Someone has tested it under load."
+    },
+    {
+      "map": 120,
+      "index": 762139,
+      "sprite": 16228,
+      "name": "Notch Cutter",
+      "x": 42.5,
+      "y": 59.5,
+      "person": true,
+      "line": "Somebody has brought back my oar. I cut that notch for a girl who could barely reach the thole."
+    },
+    {
+      "map": 120,
+      "index": 762140,
+      "sprite": 16229,
+      "name": "Fjord Sounder",
+      "x": 39.5,
+      "y": 61.5,
+      "person": true,
+      "line": "I know our boat by the noise of the oar in the socket. That noise out there this morning was my brother rowing a stranger’s boat."
+    },
+    {
+      "map": 120,
+      "index": 762141,
+      "sprite": 16125,
+      "name": "Mended shore oar",
+      "x": 42.5,
+      "y": 63.5,
+      "person": false,
+      "line": "A pale binding covers an older repair. The marks near the grip face the rower."
+    }
+  ]
 }
