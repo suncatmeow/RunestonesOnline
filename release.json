@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 163,
-  "serverVersion": "1.10.95",
+  "version": 164,
+  "serverVersion": "1.10.96",
   "date": "2026-11-21",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v162 / server 1.10.94",
+  "supersedes": "BattleMage Runestones v163 / server 1.10.95",
   "deployed": false,
   "files": [
     "index.html",
@@ -27,8 +27,8 @@
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "e2ab7cb6421a9b7d6f5e7b58aa11fbb0cc47eb58f2bb8667a9fc0fd21e2572fc",
-  "serverSha256": "94430fcebd6fff4026bd0522fb78bb041dec5ba64cc58e0a9763e245d8b81530",
+  "clientSha256": "25bb72c55bcc55445c8b94fe46b62c02fe22cd4d1c0bea7bded3df747477f0c6",
+  "serverSha256": "f19a3e77129ea7fd9d8df5db10cd4663bd005e151f06889d78ace219200f14ed",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -281,10 +281,10 @@
       "Available"
     ],
     "tracking": "One outlined focus; yellow stars remain for active authored objectives",
-    "recommendationCompletion": "Training/letter complete; promotion requirements retained separately",
     "knownMainChapters": "Encountered chapters persist in the log; unseen quests are not pre-completed or auto-accepted",
     "classRumors": "Personal favors and rumors use memory.classRumors150. Tracking an earned rumor shows the teacher until discovery. The apprenticeship has its own entry and acceptance.",
-    "minimap": "Local quest pins and boss stars. Cross-map route stars are omitted from the minimap."
+    "minimap": "Local markers show an available quest (?), a turn-in (!), or an active objective (★). Distant maps do not project markers onto this minimap.",
+    "world": "Nearby quest actors and interactable objects receive a gold silhouette. It brightens when faced and clears after completion."
   },
   "performance": {
     "nativeCherryPoseCache": "At most two sets, 8 directions × 4 frames × 160 × 160 RGBA: about 6.6 MB; reused across performances",
@@ -311,7 +311,7 @@
     }
   },
   "devlog": {
-    "current": "v163",
+    "current": "v164",
     "history": "Minigame Manual"
   },
   "historicalLiveInspection": {
@@ -338,13 +338,14 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Retired extra classes, their quests, field encounters and promotion interfaces. Retained the seven original class apprenticeships and the High Priestess initiation.",
-    "Class awards require the designated teacher and a completed apprenticeship."
+    "Trainer menus, Haven cast and Cherry’s performance and family visit",
+    "Sentence-aware dialogue and local quest outlines",
+    "Studio dice continuity and startup timing with real progress and flavor captions"
   ],
   "previousRelease": {
-    "version": 162,
-    "serverVersion": "1.10.94",
-    "summary": "Haven landing and Fisher referral."
+    "version": 163,
+    "serverVersion": "1.10.95",
+    "summary": "The original classes"
   },
   "validation": {
     "offlineFreshJournal": [
@@ -441,7 +442,17 @@
       "Exercised the seven teacher menus, field-actor stages and teacher turn-ins on fresh and saved clients. The full Warrior battle/escort/report and Haven referral regressions passed.",
       "Verified retired quests, awards, pins, trials and promotion options are unavailable, and a suspended retired trial returns to its entrance.",
       "Verified the High Priestess initiation, hidden class listing and switching back to the earned Battle-Mage title."
-    ]
+    ],
+    "v164": {
+      "classAccess": "All seven original classes were checked through their field teachers and turn-ins. Battle Mage still requires the High Priestess.",
+      "guildAndHaven": "The seven guild menus, the absence of the old local class contacts and the chart mender’s actual position passed interaction checks.",
+      "cherry": "Verified first performance, second conversation, departure on the following visit and directions into the existing family rescue.",
+      "dialogue": "Checked the awning description and sentence paging across four narrow dialogue boxes and in portrait Chromium.",
+      "questMarkers": "Checked the local active silhouette, its facing response and disappearance at distance or after interaction. Cross-map stars were absent.",
+      "studio": "Six dice animate across a menu refresh and a simulated browser visibility change.",
+      "loading": "Cold offline launch exercised in Chromium using a 412 × 875 viewport, with real portrait counts and the existing joke captions.",
+      "server": "The matching server answered /version with client 164 and server 1.10.96."
+    }
   },
   "limitations": [
     "Functional checks used simulated connected and offline clients and an isolated server without a live model or a physical device.",

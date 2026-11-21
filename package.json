@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.95",
+  "version": "1.10.96",
   "private": true,
-  "description": "BattleMage v163 · The original classes",
+  "description": "BattleMage v164 · At the guild and the quay",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"

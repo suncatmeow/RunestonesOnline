@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-21-bm-v163-original-classes"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">      <title>Battle-Mage · v163</title>
+      <meta name="suncat-build" content="2026-11-21-bm-v164-guild-and-haven"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">      <title>Battle-Mage · v164</title>
       <style>
         html,body {
           width:100%;
@@ -88,6 +88,9 @@
             100% { width: 0ch; }
         }
 
+        #loading-bar-progress.opening{width:24%;animation:bm-opening 1.25s ease-in-out infinite alternate}
+        @keyframes bm-opening{from{transform:translateX(0)}to{transform:translateX(310%)}}
+        @media(prefers-reduced-motion:reduce){#loading-bar-progress.opening{animation:none}}
         .loading-bar-fill {
         height: 100%;
         background-color: #ffcc00;
@@ -118,10 +121,10 @@
         </h1>
         
         <div style="width: 300px; height: 15px; border: 2px solid #ffcc00; border-radius: 8px; overflow: hidden; padding: 2px;">
-            <div id="loading-bar-progress" class="loading-bar-fill"></div>
+            <div id="loading-bar-progress" class="loading-bar-fill opening"></div>
         </div>
 
-    <p id="loading-text-sub" style="margin-top: 15px; color: gray;">Connecting...</p></div>
+    <p id="loading-text-sub" style="margin-top: 15px; color: gray;" role="status">Opening BattleMage…</p></div>
 
     <body style="background-color: #000000; margin: 0; overflow: hidden;">
 
@@ -192,8 +195,28 @@ const BMStorage=(()=>{
     ['pointerdown','pointerup','touchstart','touchend','click','keydown','keyup'].forEach(function(type){loader.addEventListener(type,function(event){event.stopPropagation();});});
   }
   state.report = report;
-  state.progress = function (stage) { state.stage = stage; };
-  state.complete = function () { if (!state.failed) state.ready = true; };
+  const caption=document.getElementById('loading-text-sub'),bar=document.getElementById('loading-bar-progress');
+  const began=performance.now();state.timings=[{stage:'Opening BattleMage',ms:began}];let actual='Opening BattleMage…',flavor=false,nextJoke=Math.floor(Math.random()*12);
+      const jokes = [
+        "Shuffling Deck...",
+        "Assembling skeleton bones...",
+        "Opening the pocket plane...",
+        "Setting up formation array...",
+        "Casting protection spells...",
+        "Tuning the instruments...",
+        "Generating infinite dungeons...",
+        "Buffing Suncat's stats...",
+        "Establishing neural link...",
+        "Requesting passage...",
+        "Bribing the Treasure Snake...",
+        "Warming grass porridge...",
+        
+    ];
+  const timer=setInterval(()=>{if(state.ready||state.failed){clearInterval(timer);return;}flavor=!flavor;caption.textContent=flavor?jokes[(nextJoke++)%jokes.length]:actual;},2200);
+  state.progress=function(stage){if(stage!==state.stage){state.stage=stage;state.timings.push({stage,ms:performance.now()});}actual=stage+'…';flavor=false;caption.textContent=actual;};
+  state.count=function(done,total){actual='Preparing portraits · '+done.toLocaleString()+' / '+total.toLocaleString();if(!flavor)caption.textContent=actual;bar.classList.remove('opening');bar.style.width=Math.min(99,done/total*99)+'%';};
+  state.yieldPaint=()=>new Promise(resolve=>setTimeout(resolve,18));
+  state.complete = function () { if (!state.failed){state.ready=true;clearInterval(timer);bar.classList.remove('opening');bar.style.width='100%';caption.textContent='Entering the pocket plane…';state.timings.push({stage:'Ready',ms:performance.now()});} };
   window.BattleMageStartup = state;
   window.addEventListener('error', function (event) {
     if (!event.message && !event.error) return; // Resource events are not script failures.
@@ -43349,7 +43372,7 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
                             ctx.save();ctx.globalAlpha=spriteAlpha;ctx.filter='none';ctx.clip(auraClip);
                             void 0, (0, host.drawActorAuraLayer)(ctx,auraBox,auraState,frameNow,false);ctx.restore();
                         }
-                        const drawImg=feedback.deathFrame((0, host.tintedAuraFrame)(srcImg,auraState,frameNow),sprite,frameNow, sprite._death148?(-dirY*sprite._death148.dx+dirX*sprite._death148.dy):0);
+                        const drawImg=feedback.deathFrame((0, host.tintedAuraFrame)(host.window.BMMapGuidance158?.glowFrame(srcImg,sprite,scene)||srcImg,auraState,frameNow),sprite,frameNow, sprite._death148?(-dirY*sprite._death148.dx+dirX*sprite._death148.dy):0);
                         ctx.globalAlpha=spriteAlpha;
                         ctx.filter = (sprite.damageFlashTimer>0&&bodyPose)?'brightness(1.22) saturate(1.28)':(sprite.damageFlashTimer > 0) ? 'brightness(50%) sepia(100%) hue-rotate(-50deg) saturate(1000%) contrast(200%)' : sprite.notoriety>0 ? 'sepia('+Math.min(1,.25+sprite.notoriety*.12)+') saturate(3) hue-rotate(310deg)' : 'none';
 
@@ -43474,15 +43497,6 @@ drawCombinedSprites(scene, ctx, viewX, viewY, viewW, viewH, dirX, dirY, planeX, 
 
                         } 
                         
-                host.window.BMMapGuidance158?.world(ctx,scene,(x,y,z)=>{
-                     const dx=x-camX,dy=y-camY,depth=invDet*(-planeY*dx+planeX*dy);
-                     if(depth<=.12||depth>dynamicMaxVis)return null;
-                     const column=Math.floor(viewW*.5*(1+invDet*(dirY*dx-dirX*dy)/depth));
-                     const sy=viewY+horizon+(scene.camZ-z)*wallScale/depth;
-                     if(column<0||column>=viewW||sy<viewY||sy>viewY+viewH)return null;
-                     const clip=checkOcclusion(column,depth);if(clip.isBlocked&&sy>=clip.minClipY)return null;
-                     return {x:viewX+column,y:sy,scale:wallScale/depth};
-                    });
                 // --- DRAW 3D PARTICLES ---
                     host.globalParticles.forEach(p => {
                         if (!p.active) return;
@@ -45550,11 +45564,6 @@ renderTopDown(scene, dt, simulationDone = false) {
                     }
                 });
                 host.ctx.globalAlpha = 1.0; 
-                host.window.BMMapGuidance158?.world(host.ctx,scene,(x,y,z)=>{
-                   const sx=viewX+viewW/10*(centerScreenX+(x-scene.x)*cellSize);
-                   const sy=viewY+viewH/10*(centerScreenY+(y-scene.y)*cellSize)-cellSize*viewH/10*.60;
-                   return {x:sx,y:sy,scale:cellSize*viewW/10};
-                });
                 } // Flat/isometric world; shared weather and HUD follow.
 
                 // ==========================================
@@ -46114,7 +46123,7 @@ const BMOverhead=(()=>{
     const image=a.type===-27?BMWorldCards.get(a,size):a.cachedBillboard,foot=getRingFoot(image);
     const lift=cell*Math.max(0,config.hover||0)*Math.cos(pitch);
     footprint(size*foot.radius);
-    g.drawImage(BMContactPose.deathFrame(image,a,Date.now(),a._death148?axes(a._death148.dx,a._death148.dy).x:0),p.x-size/2,p.y-size*foot.y-lift,size,size);continue;
+    g.drawImage(BMContactPose.deathFrame(BMMapGuidance158.glowFrame(image,a,d),a,Date.now(),a._death148?axes(a._death148.dx,a._death148.dy).x:0),p.x-size/2,p.y-size*foot.y-lift,size,size);continue;
    }
    if(a.model){footprint(cell*.24);BMContactPose.drawModel(g,a,p.x,p.y-cell*.3,cell*.4,a._death148?axes(a._death148.dx,a._death148.dy).x:0);BMLock.markBody(a,g,{x:p.x-cell*.2,y:p.y-cell*.7,w:cell*.4,h:cell*.4});continue;}
    let id=player?playerSprite:a.type??a.sprite??0;if(projectile)id=a.exploding?a.type:a.spellId===9999?316:SPELL_REGISTRY[a.spellId]?.sprite2D??-37;
@@ -46132,7 +46141,7 @@ const BMOverhead=(()=>{
     const body=spriteAuraBox(placement.index,placement.direction,placement.frame,placement);
     const state=getActorAura(a,Date.now());drawActorAuraLayer(g,body,state,Date.now(),false);const at=Date.now();BMContactPose.rememberBounds(a,body,"iso",at);const impact=BMContactPose.sample(a,at),strength=BMContactPose.flash(impact,at);
     if(impact){g.save();BMContactPose.wash(g,strength);BMContactPose.apply(g,impact,p.x,p.y,Math.max(-1,Math.min(1,axes(impact.dx,impact.dy).x)));}
-    stampPortrait(placement,BMContactPose.deathFrame(tintedAuraFrame(placement.image,state,at),a,at,a._death148?axes(a._death148.dx,a._death148.dy).x:0));if(impact)g.restore();
+    stampPortrait(placement,BMContactPose.deathFrame(tintedAuraFrame(BMMapGuidance158.glowFrame(placement.image,a,d),state,at),a,at,a._death148?axes(a._death148.dx,a._death148.dy).x:0));if(impact)g.restore();
     if(!projectile&&!player){
      const rim=!a._death148&&impact?.duration>100&&strength>0?()=>{
       g.save();BMContactPose.apply(g,impact,p.x,p.y,Math.max(-1,Math.min(1,axes(impact.dx,impact.dy).x)));
@@ -46144,7 +46153,7 @@ const BMOverhead=(()=>{
    if(BMLock.matches(a)){g.font='12px system-ui';g.textAlign='center';g.fillStyle='#f4df94';g.fillText(a.name||'Target',p.x,p.y+15);}
   }
   for(const p of globalParticles){if(!p.active||!visibility(d,p.x,p.y).seen)continue;const q=project(p.x,p.y,Number.isFinite(p.worldZ)?p.worldZ:ref+(p.z||.2));g.globalAlpha=Math.min(1,p.life??1);g.fillStyle=p.color||'#ffdd88';g.fillRect(q.x-2,q.y-2,4,4);}
-  g.globalAlpha=1;BMMapGuidance158.world(g,d,project,cell);g.restore();if(d.playerAttackTimer>0)d.playerAttackTimer=Math.max(0,d.playerAttackTimer-30*dt);drawSerial++;
+  g.globalAlpha=1;g.restore();if(d.playerAttackTimer>0)d.playerAttackTimer=Math.max(0,d.playerAttackTimer-30*dt);drawSerial++;
  }
  window.addEventListener('keydown',e=>{
   if(!active()||!BMTouch.live()||e.ctrlKey||e.metaKey||e.altKey||e.isComposing)return;
@@ -63868,6 +63877,7 @@ BMKernel.attachStore(this, 'renderState', () => ({}), ["renderList","visibleSpri
                         case 'classic_talk': if(!(this.currentSpeaker?.index===201&&globalThis.BMWilderness84?.dancerMenu(this.currentSpeaker,this,payload)))BMClassicChoices.talk(payload);break;
                         case 'road_encounter': BMRoadEncounters.action(payload,this);break;
                         case 'class_paths': BMClassPaths.open(typeof payload==='object'?payload?.patron:payload,typeof payload==='object'?payload?.path:null);break;
+                        case 'class_report164': {const n=this.currentSpeaker;globalThis.BMClassLineages?.visitReports(n,BMClassPaths.mentorKey(n)).find(([label])=>label===payload)?.[1]();break;}
                         case 'class_quest124': BMClassPaths.questTalk(payload);break;
                         case 'train': {
                             isBlocking=true;BMLearning.open(typeof payload==='object'?payload.trainer:payload);break;
@@ -82645,7 +82655,8 @@ const BMChatComposer=(()=>{
 
             // --- MATH FOR PROGRESS BAR ---
             // Calculate total drawings we need to do
-            const totalDraws = staticPortraits.length + (animatedPortraits.length * totalFrames) + (directionalPortraits.length * 8 * totalFrames);
+            const planned=new Map(directionalPortraits.map(id=>{const def=spriteDefinition(id);return [def.start,def];}));
+            const totalDraws=staticPortraits.length+animatedPortraits.length*totalFrames+[...planned.values()].reduce((total,def)=>total+(def.end-def.start+1)*8*totalFrames,0);
             let currentDraws = 0;
 
             // Helper function to let the browser breathe and update the UI
@@ -82665,7 +82676,7 @@ const BMChatComposer=(()=>{
                 // PROGRESS UPDATE
                 currentDraws++;
                 if (currentDraws % 10 === 0 && updateProgressCallback) {
-                    updateProgressCallback((currentDraws / totalDraws) * 100);
+                    updateProgressCallback(currentDraws/totalDraws*100,currentDraws,totalDraws);
                     await yieldThread(); // Pause and let the bar move!
                 }
             }
@@ -82681,7 +82692,7 @@ const BMChatComposer=(()=>{
                     // PROGRESS UPDATE
                     currentDraws++;
                     if (currentDraws % 10 === 0 && updateProgressCallback) {
-                        updateProgressCallback((currentDraws / totalDraws) * 100);
+                        updateProgressCallback(currentDraws/totalDraws*100,currentDraws,totalDraws);
                         await yieldThread(); // Pause and let the bar move!
                     }
                 }
@@ -82696,7 +82707,7 @@ for (const index of directionalPortraits) {
     await bakeSpriteFamily(def,async()=>{
         currentDraws++;
         if(currentDraws%10===0) {
-            if(updateProgressCallback)updateProgressCallback(currentDraws/totalDraws*100);
+            if(updateProgressCallback)updateProgressCallback(currentDraws/totalDraws*100,currentDraws,totalDraws);
             await yieldThread();
         }
     });
@@ -82739,7 +82750,7 @@ for (const index of directionalPortraits) {
             setConfig(363,368,5.5,-2.51); // Giants: normal world-size configuration.     // Ships, Aurochs, Women (Massive Range)
             setConfig(100, 106, 1.1, -0.15);      // Mech
             // Finish up
-            if (updateProgressCallback) updateProgressCallback(100);
+            if (updateProgressCallback) updateProgressCallback(100,currentDraws,totalDraws);
             // --- HARDCODED FACES ---
             // Format: ID, Scale, Hover, faceZ, facePan
             setSingle(63, 1.369, 0.39, 0.36, -0.15);
@@ -82861,8 +82872,8 @@ for (const index of directionalPortraits) {
                 const custom=variant==='creator'&&globalThis.BMAssets?.model(index);if(custom){if(meshOnly)return custom;render3dMesh(custom,x,y,z,rx,ry,rz);return;}
                 let mesh = { vertices: [], faces: [], facePos: null, hitboxData: [], hitboxRoles: [], jointIds: new Map(), jointData: [], partJoints: [] };
                 if(inside)mesh.viewParts=[];
-                if(variant==='haven_ferry'||variant==='haven_captain'){
-                    buildHavenSailor(mesh,variant==='haven_captain',index);
+                if(variant==='haven_ferry'||variant==='haven_captain'||variant==='haven_fisher'){
+                    buildHavenSailor(mesh,variant==='haven_captain',index,variant==='haven_fisher');
                     if(meshOnly)return mesh;
                     render3dMesh(mesh,x,y,z,rx,ry,rz);return;
                 }
@@ -89562,15 +89573,15 @@ function render3dMesh(mesh, x, y, scaleZ, rx, ry, rz) {
 
 // A cloth-and-mail adventurer, sharing the original 104 / 105 / 106 animation family.
 // The Haven crew share the trainers' skeletal animation and face/foot tracking.
-function buildHavenSailor(mesh,captain,state){
+function buildHavenSailor(mesh,captain,state ,fisher=false){
  const t=window.cacheAngle||0,walk=state===1,work=state===2,wave=Math.sin(t);
  const stride=walk?wave:0,breath=walk?Math.abs(stride)*.037:wave*.016;
  mesh.outwardRects=true;
  const skin=captain?{r:.70,g:.46,b:.32}:{r:.75,g:.52,b:.37};
  const hair=captain?{r:.22,g:.15,b:.13}:{r:.40,g:.36,b:.31};
- const shirt=captain?{r:.25,g:.43,b:.54}:{r:.53,g:.61,b:.56};
+ const shirt=fisher?{r:.51,g:.34,b:.22}:captain?{r:.25,g:.43,b:.54}:{r:.53,g:.61,b:.56};
  const linen={r:.86,g:.78,b:.60},dark={r:.18,g:.22,b:.25},eye={r:.16,g:.13,b:.12};
- const trim=captain?{r:.67,g:.26,b:.19}:{r:.26,g:.33,b:.36};
+ const trim=fisher?{r:.30,g:.40,b:.32}:captain?{r:.67,g:.26,b:.19}:{r:.26,g:.33,b:.36};
  const leather={r:.34,g:.23,b:.16},sole={r:.21,g:.17,b:.15},hemp={r:.70,g:.53,b:.32},wood={r:.48,g:.32,b:.19};
  const bone=(p,x,y,z,rx=0,ry=0,rz=0)=>computeBone(p,x,y,z,rx,ry,rz);
  const root={x:0,y:-.02+breath,z:0,rx:0,ry:walk?stride*.08:wave*.026,rz:0};
@@ -90182,7 +90193,7 @@ const BMBodySizes=(()=>{
  const feetPerTile=9,summonFactor=.8;
  // Resting head-to-foot height, including the stance of quadrupeds. Fantasy
  // animals are deliberately larger where their model represents a monster.
- const heights={16500:5.8,16503:5.65,104:6,108:1.5,111:4,114:1.5,117:3,120:8,123:6,126:2,129:4.6,131:1,134:4.5,137:7,140:1.5,143:3,146:3.5,149:2,152:8,155:6,158:6.5,161:3.5,164:6.5,167:14,170:5.5,173:3,176:3,179:3,182:3,185:3,188:4.5,191:3,194:3,197:6.2,200:8,203:9,206:12,210:1.8,213:.8,216:1.5,219:.7,222:2,225:1,228:1,231:2.5,234:.8,237:1.2,240:1.6,246:6,249:5.5,252:6.5,255:5.8,258:5.9,261:6+1/12,264:5+10/12,267:4,270:5,273:7,276:6.5,279:3,282:7,285:8,288:6.5,291:7,294:11,297:6,300:5,303:4.5,306:9,309:6.2,312:5.8,318:5.5,330:6+1/12,333:5.8,336:6+1/12,339:6+1/12,342:5.9,345:6.4,348:6+1/12,351:5.8,354:6.5,357:5.8,360:5.8,363:15,366:12,369:10,372:8,375:18,378:5.5};
+ const heights={16500:5.8,16503:5.65,16506:5.7,104:6,108:1.5,111:4,114:1.5,117:3,120:8,123:6,126:2,129:4.6,131:1,134:4.5,137:7,140:1.5,143:3,146:3.5,149:2,152:8,155:6,158:6.5,161:3.5,164:6.5,167:14,170:5.5,173:3,176:3,179:3,182:3,185:3,188:4.5,191:3,194:3,197:6.2,200:8,203:9,206:12,210:1.8,213:.8,216:1.5,219:.7,222:2,225:1,228:1,231:2.5,234:.8,237:1.2,240:1.6,246:6,249:5.5,252:6.5,255:5.8,258:5.9,261:6+1/12,264:5+10/12,267:4,270:5,273:7,276:6.5,279:3,282:7,285:8,288:6.5,291:7,294:11,297:6,300:5,303:4.5,306:9,309:6.2,312:5.8,318:5.5,330:6+1/12,333:5.8,336:6+1/12,339:6+1/12,342:5.9,345:6.4,348:6+1/12,351:5.8,354:6.5,357:5.8,360:5.8,363:15,366:12,369:10,372:8,375:18,378:5.5};
  const floats={108:.25,126:.2,131:.3,140:.25,149:.2,152:.15,164:.1,173:.3,176:.3,179:.3,182:.3,185:.3,213:.25,228:.2,267:.3};
  const metrics=new Map(),families=new Map(),actorCache=new Map();
  const summoned=a=>a?.role==='summoned_minion'||a?.isRemoteSummon===true;
@@ -90230,9 +90241,9 @@ const BMBodySizes=(()=>{
 function spriteDefinition(id) {
     const custom=globalThis.BMAssets?.definition(id);if(custom)return custom;
     id=Number(id);
-    if(Number.isInteger(id)&&id>=16500&&id<=16505){
-        const start=id<16503?16500:16503;
-        return {id,base:id-start,start,end:start+2,variant:start===16500?'haven_ferry':'haven_captain'};
+    if(Number.isInteger(id)&&id>=16500&&id<=16508){
+        const start=id<16503?16500:id<16506?16503:16506;
+        return {id,base:id-start,start,end:start+2,variant:start===16500?'haven_ferry':start===16503?'haven_captain':'haven_fisher'};
     }
     if (!Number.isInteger(id)||id<101||id>EXTRA_LAST_ID) return null;
     let base=id-100, variant='normal', start=id, end=id;
@@ -92798,7 +92809,7 @@ function tintedAuraFrame(image,state,now) {
     return auraTintCanvas;
 }
 function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1,rimQueue=null) {
-    if(actor?._groundLoot&&actor.cachedBillboard){ctx.drawImage(actor.cachedBillboard,tX+x*tL/10,tY+y*tH/10-((actor._lootLift||0)+(actor._floatingLootCard?.18:0))*z*tH,z*tL,z*tH);return null;}
+    if(actor?._groundLoot&&actor.cachedBillboard){ctx.drawImage(globalThis.BMMapGuidance158?.glowFrame(actor.cachedBillboard,actor,Dungeon)||actor.cachedBillboard,tX+x*tL/10,tY+y*tH/10-((actor._lootLift||0)+(actor._floatingLootCard?.18:0))*z*tH,z*tL,z*tH);return null;}
     if(Number(index)===-27||actor?.role==='dropped_card')return drawPortrait(index,x,y,z,card,direction,frameOverride);
     const now=Date.now(),state=getActorAura(actor,now);
     let p=actor===Dungeon?BMEquipment.playerPlacement(index,x,y,z,direction,frameOverride):portraitPlacement(index,x,y,z,direction,frameOverride,PORTRAIT_PIXELS,actor?._death148?.at);
@@ -92813,7 +92824,7 @@ function drawActorPortrait(actor,index,x,y,z,card=0,direction=0,frameOverride=-1
     BMContactPose.rememberBounds(actor,screenBox,'top',now);
     const contactPose=BMContactPose.sample(actor,now),strength=BMContactPose.flash(contactPose,now);
     if(contactPose){ctx.save();BMContactPose.wash(ctx,strength);BMContactPose.apply(ctx,contactPose,p.x+p.w*.5,p.y+p.h*.92,contactPose.dx);}
-    stampPortrait(p,BMContactPose.deathFrame(tintedAuraFrame(p.image,state,now),actor,now,actor?._death148?.dx));
+    stampPortrait(p,BMContactPose.deathFrame(tintedAuraFrame(globalThis.BMMapGuidance158?.glowFrame(p.image,actor,Dungeon)||p.image,state,now),actor,now,actor?._death148?.dx));
     if(contactPose)ctx.restore();
     if(!actor?._death148&&rimQueue&&(rimQueue.length||contactPose?.duration>100)&&(BMLock.hostile(actor)||BMPlayerMotion.battleAlly(actor))){
         const draw=contactPose?.duration>100&&strength>0?()=>{
@@ -98450,7 +98461,7 @@ const BMHerbs=(()=>{
           failed:()=>{Dungeon.memory.herbHarvests??={};Dungeon.memory.herbHarvests[p.key]=Date.now()+30000;Dungeon.requestSave();}});
     }
     function draw2D(centerX,centerY,cellSize,range){for(const p of world()){const dx=p.x-Dungeon.x,dy=p.y-Dungeon.y;if(Math.abs(dx)>range||Math.abs(dy)>range||Math.abs(BMPlayerMotion.feetZ-p.groundZ)>.6||!BMTerrainPhysics.sight(Dungeon,Dungeon,p.x,p.y,p))continue;
-        const size=tL/10*cellSize*.65,x=tX+tL/10*(centerX+dx*cellSize)-size/2,y=tY+tH/10*(centerY+dy*cellSize)-size*.85;ctx.drawImage(p.cachedBillboard,x,y,size,size);}}
+        const size=tL/10*cellSize*.65,x=tX+tL/10*(centerX+dx*cellSize)-size/2,y=tY+tH/10*(centerY+dy*cellSize)-size*.85;ctx.drawImage(globalThis.BMMapGuidance158?.glowFrame(p.cachedBillboard,p,Dungeon)||p.cachedBillboard,x,y,size,size);}}
     window.addEventListener('keydown',e=>{if(e.code==='KeyE'&&!e.repeat&&!isChatActive&&!/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||'')&&nearby()){e.preventDefault();gather();}});
     return {species,imageFor,world,nearby,gather,draw2D};
 })();
@@ -99217,6 +99228,7 @@ const BMShell=(()=>{
     function active(){return scenes.has(startGame)||startGame==='shop'||['journal','tarot','grimoire','guild_menu','trainer','wilderness_guild','wilderness_encounter','class_paths'].includes(startGame)||startGame==='deck_menu';}
     function sound(){MusicEngine.play3DSFX('click');}
     function invalidate(){
+        if((startGame===1||document.hidden)&&mode==='studio'&&root&&!root.hidden&&key)return;
         if(root?.hasAttribute('data-equipment')&&startGame==='deck_menu'&&activeDeckTab==='equipment'){
             gearCheckAt=0;return;
         }
@@ -99305,9 +99317,11 @@ const BMShell=(()=>{
     function tabs(items,current,onChange,target=nav){for(const [id,name]of items){const b=button(target,name,()=>{sound();selected=null;limit=100;listScroll=0;onChange(id);invalidate();});b.setAttribute('aria-pressed',String(id===current));}}
     function foot(label='Close',fn=exit){el('p',footer,'Swipe or scroll to read.','muted');button(footer,label,()=>{sound();fn();});}
     function surface(parent,kind,data){const c=el('canvas',parent);c.width=kind==='card'?384:['model','actor'].includes(kind)?384:192;c.height=kind==='card'?576:kind==='card-thumb'?288:c.width;c.setAttribute('aria-hidden','true');art.push({c,kind,data});return c;}
+    const studioDice=new Map();let studioTime=0,studioFrame=null;
+    document.addEventListener('visibilitychange',()=>{studioFrame=null;});
     function studio(){
         heading.textContent='A Suncat Studio Production';
-        const dice=el('div',body,null,'dice');for(const type of ['d4','d6','d8','d10','d12','d20']){const f=el('figure',dice);surface(f,'dice',new Dice(type));el('figcaption',f,type.toUpperCase());}
+        const dice=el('div',body,null,'dice');for(const type of ['d4','d6','d8','d10','d12','d20']){const f=el('figure',dice);if(!studioDice.has(type))studioDice.set(type,new Dice(type));surface(f,'dice',studioDice.get(type));el('figcaption',f,type.toUpperCase());}
         const card=el('article',body,null,'card');el('h2',card,'Runestones · Battle Mage');
         el('p',card,'An independent fantasy adventure, card game and musical world by Suncat.');
         el('p',card,'Development demo · features and saved-game formats may change. Keep a backup of this build and your save data.','muted');
@@ -99985,7 +99999,9 @@ const BMShell=(()=>{
         foot();
     }
     function drawArt(now){
-        if(document.hidden||BMBooks.active||now-lastFrame<70)return;
+        if(mode!=='studio')studioFrame=null;
+        if(document.hidden||BMBooks.active||mode!=='studio'&&now-lastFrame<70)return;
+        if(mode==='studio'){if(studioFrame!==null)studioTime+=Math.min(.1,Math.max(0,(now-studioFrame)/1000));studioFrame=now;}
         const dt=lastFrame?Math.min(.1,(now-lastFrame)/1000):.07;lastFrame=now;
         const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,angle=reduced?.5:now/4000;
         const saved={ctx,tX,tY,tL,tH};
@@ -100025,7 +100041,11 @@ const BMShell=(()=>{
                 if(a.kind==='card'||a.kind==='card-thumb'){a.data.location='field';a.data.place(.5,.35,4,false);}
                 if(a.kind==='model'){let m=modelCache.get(a.data);if(!m){m=BattleMusic.spriteDisplay.model(a.data,{width:7.7,height:7.7,centerY:5});modelCache.set(a.data,m);if(modelCache.size>8)modelCache.delete(modelCache.keys().next().value);}const pose=reduced?0:Math.floor(now/1100)%m.meshes.length;render3dMesh(m.meshes[pose][0],m.x,m.y,m.scale,0,angle,0);}
                 if(a.kind==='mesh')render3dMesh(a.data,5,5,a.c.classList.contains('shop-icon')?10:12,.12,a.c.classList.contains('shop-icon')?.35+Math.sin(angle)*.55:angle,0);
-                if(a.kind==='dice')a.data.animate(5,5,6,.7,reduced?.00001:dt);
+                if(a.kind==='dice'){
+                    const turn=reduced?.45:studioTime*.84;
+                    a.data.rx=turn;a.data.ry=turn*.75;a.data.rz=turn*.5;
+                    a.data.draw(ctx,tL/2,tH/2,a.data.scale*tL*.6,4);
+                }
                 if(a.kind==='fish')render3dMesh(BMFishSprites.mesh(a.data),5,5,11,.10,.45,0);
                 if(a.kind==='portrait'){
                     let card=cards.get(a.data);if(!card){card=new Card(a.data,0);cards.set(a.data,card);if(cards.size>64)cards.delete(cards.keys().next().value);}
@@ -100036,6 +100056,7 @@ const BMShell=(()=>{
         }finally{ctx=saved.ctx;tX=saved.tX;tY=saved.tY;tL=saved.tL;tH=saved.tH;}
     }
     function sync(){
+        if(document.hidden&&mode==='studio')return;
         BMAdvancement.sync();BMMenuInput.sync();
         if(BMBooks.active){if(root)root.hidden=true;return;}
         const on=active();if(!on&&!root)return;
@@ -100291,7 +100312,7 @@ const BM_RELEASE=(()=>{
  return Object.freeze({version:match?Number(match[2]):null,date:match?match[1]:'',label:match?'v'+match[2]:'Unversioned build'});
 })();globalThis.BM_RELEASE=BM_RELEASE;
 const BM_DEVLOG = [
- [BM_RELEASE.label+' · The original classes','Current version · '+BM_RELEASE.date,[
+ [BM_RELEASE.label+' · At the guild and the quay','Current version · '+BM_RELEASE.date,['The trainers open with their own greetings. Cherry has a performance and news of home. Look for the gold outline when a quest contact is close.']],['v163 · The original classes','2026-11-21',[
  'Seven apprenticeships are taught in the world. Each class is earned from its teacher.'
  ]],['v162 · At the Haven landing','2026-11-21',[
  'Fisher could use a hand with his nets. If you help him, he will point out the old shore priest’s awning.',
@@ -103101,68 +103122,17 @@ BMEngine.sync(startGame);
     }//END FUNCTION
   async function bootGame() {
     window.BattleMageStartup.progress('Restoring your adventure');
-    Dungeon.initializeGame();
+    await window.BattleMageStartup.yieldPaint();Dungeon.initializeGame();
     const loader = document.getElementById('loading-screen');
-    const progressBar = document.getElementById('loading-bar-progress');
-    const statusText = document.getElementById('loading-text-sub'); 
-    
-    // Reset bar and show loader
-    progressBar.style.width = '0%';
-    loader.style.display = 'flex';
-
-    // 1. CREATE THE LIST OF FAKE TASKS
-    const loadingPhrases = [
-        "Shuffling Deck...",
-        "Assembling skeleton bones...",
-        "Opening the pocket plane...",
-        "Setting up formation array...",
-        "Casting protection spells...",
-        "Tuning the instruments...",
-        "Generating infinite dungeons...",
-        "Buffing Suncat's stats...",
-        "Establishing neural link...",
-        "Requesting passage...",
-        "Bribing the Treasure Snake...",
-        "Warming grass porridge...",
-        
-    ];
-
-    // 2. START THE CYCLER
-    const phraseCycler = setInterval(() => {
-        if (window.BattleMageStartup.failed) return;
-        let randomText = loadingPhrases[Math.floor(Math.random() * loadingPhrases.length)];
-        statusText.innerText = randomText;
-    }, 800); 
-
-    // Give the UI a tiny moment to appear
-    await new Promise(r => setTimeout(r, 50)); 
-    
     window.BattleMageStartup.progress('Restoring the story archive');
-    initializeStoryArchive();
+    await window.BattleMageStartup.yieldPaint();initializeStoryArchive();
     resizeCanvas(); 
     
     // ==========================================
     // CACHING PHASE 1: PORTRAITS (0% -> 50%)
     // ==========================================
     window.BattleMageStartup.progress('Drawing sprite portraits');
-    await cacheAllPortraits((progressPercentage) => {
-        window.BattleMageStartup.progress('Drawing sprite portraits: ' + Math.round(progressPercentage) + '%');
-        // Scale portrait progress to take up the first half (0% to 50%)
-        progressBar.style.width = (progressPercentage * 0.5) + '%';
-    });
-    
-    // ==========================================
-    // Music is prepared on demand after the audio-unlocking gesture.
-    statusText.innerText = "Preparing your pocket plane...";
-    // --- MATH IS DONE ---
-    
-    // 3. STOP THE CYCLER AND SET FINAL TEXT!
-    clearInterval(phraseCycler);
-    statusText.innerText = "Success! Entering the pocket plane...";
-
-    progressBar.style.animation = 'none';
-    progressBar.style.width = '100%';
-
+    await window.BattleMageStartup.yieldPaint();await cacheAllPortraits((pct,done,total)=>{if(total)window.BattleMageStartup.count(done,total);});
     window.BattleMageStartup.progress('Drawing the first game frame');
     // Start the game engine silently behind the black loading screen
     resizeCanvas(); 
@@ -108189,7 +108159,7 @@ globalThis.BMMovementCourtyard=BMMovementCourtyard;
 
 </script>
 <script>
-(async()=>{try{if(!(window.BM_CREATOR_PREVIEW||window.BM_LAYER_PREVIEW)){const originalHTML=document.documentElement.outerHTML;window.BMCreatorSource=()=>originalHTML;}await BMStorage.ready;for(const source of document.querySelectorAll('script[type="text/x-bm-deferred"]')){const script=document.createElement("script");script.textContent=source.textContent;document.body.append(script);if(source.id!=='battle-serenade-core')source.remove();script.remove();if(window.BattleMageStartup?.failed)return;}await BMAssets.installEmbedded();try{const installed=JSON.parse(BMStorage.getItem('battlemage-creator-installed-v1')||'[]');for(const pack of installed)try{BMContent.register(pack);}catch(e){BMContent.issues.push(e.message);}}catch(e){BMContent.issues.push('Installed content: '+e.message);}/* Authored Moors renovation; compiled once, using the existing sparse layers. */
+(async()=>{try{const boot=window.BattleMageStartup;boot.progress('Opening game scripts');await boot.yieldPaint();if(!(window.BM_CREATOR_PREVIEW||window.BM_LAYER_PREVIEW)){const originalHTML=document.documentElement.outerHTML;window.BMCreatorSource=()=>originalHTML;}boot.progress('Opening saved adventures');await BMStorage.ready;boot.progress('Starting the game engine');await boot.yieldPaint();for(const source of document.querySelectorAll('script[type="text/x-bm-deferred"]')){const script=document.createElement("script");script.textContent=source.textContent;document.body.append(script);if(source.id!=='battle-serenade-core')source.remove();script.remove();if(window.BattleMageStartup?.failed)return;}boot.progress('Preparing artwork');await boot.yieldPaint();await BMAssets.installEmbedded();try{const installed=JSON.parse(BMStorage.getItem('battlemage-creator-installed-v1')||'[]');for(const pack of installed)try{BMContent.register(pack);}catch(e){BMContent.issues.push(e.message);}}catch(e){BMContent.issues.push('Installed content: '+e.message);}/* Authored Moors renovation; compiled once, using the existing sparse layers. */
 /* Tread markers are derived from the solid steps, so they follow creator stairs
    too. A level floor, table or pair of shelves cannot become a staircase. */
 const BMStairs=(()=>{
@@ -108455,7 +108425,7 @@ const BMSettlements=(()=>{
   }
   const hunter=MAP_DB[0].npcs.find(n=>n.index===8006);
   MAP_DB[0].npcs=MAP_DB[0].npcs.filter(n=>n.index!==8006);
-  moorsHunter={...hunter};const onSpawn=hunter.onSpawn;
+  moorsHunter={...hunter,dialogueFactory:()=>({text:['Nature teaches those who listen.'],options:['Listen','Talk','Become Hunter','Leave'],choiceActions:[[['train','hunter_trainer']],[['classic_talk',['A snapped twig tells you which way it broke. The tracks tell you why.']]],[['class_quest124','hunter']],[['close_dialogue',null]]],endActions:[['close_dialogue',null]]})};const onSpawn=hunter.onSpawn;
   Object.assign(hunter,{x:23.5,y:41.5,groundZ:0,homeX:23.5,homeY:41.5,name:'Hunter',state:'stationary',companionEligible:false,
    customDialogue:['Nature teaches those who listen. This cabin is my home now. If you have come to learn survival, you are welcome.'],
    onSpawn:(n,d)=>{onSpawn?.(n,d);Object.assign(n,{x:23.5,y:41.5,groundZ:0,homeX:23.5,homeY:41.5,state:'stationary',dirX:0,dirY:1});}});
@@ -108620,7 +108590,7 @@ const BMClassPaths=(()=>{
  const nodes={danceParcel:{map:2,id:8450,x:24.5,y:46.5,sprite:1163,name:'Dancer’s costume parcel',text:'You collect the wrapped ribbons and costume repairs. Bring the sealed parcel back to Dancer at the guild.'},moonleaf:{map:5,id:8421,x:8.5,y:52.5,sprite:1161,name:'Silver-veined moonleaf',text:'You take one mature leaf and leave the roots undisturbed.'},glowcap:{map:5,id:8422,x:24.5,y:52.5,sprite:1162,name:'Blue-flecked mushroom',text:'You identify the blue flecks and collect one sound specimen.'},ledger:{map:2,id:8423,x:12.5,y:56.5,sprite:1163,name:'Hidden ledger',text:'The ledger is sealed. You recover it without opening the binding.'},glyphCourt:{map:2,id:8424,x:31.5,y:37.5,sprite:1164,name:'Court ward stone',text:'The inner line turns inward: the ward gathers and holds mana.'},glyphGate:{map:2,id:8425,x:94.5,y:44.5,sprite:1164,name:'Boundary ward stone',text:'The outer line turns outward: the ward releases mana along the boundary.'}};
  let previous='explore',selectedPatron=null,notice='',skip=null,selectedPath=null;
  const cls=()=>String(Dungeon.playerClass||'none').toLowerCase(),def=id=>paths.find(p=>p.id===id||p.name.toLowerCase()===String(id).toLowerCase());
- function state(d=Dungeon){d.memory??={};const s=d.memory.classPaths??={version:2,paths:{},patrons:{}};s.paths??={};s.patrons??={};cleanRoster(s,d);const r=s.paths.dancer;if(r&&r.routeVersion!==2){r.stage=r.completed||r.finalized?6:r.stage>=2?5:r.stage===1?4:0;r.routeVersion=2;if(s.trial?.path==='dancer')s.trial.stage=r.stage;}if(String(d.playerClass||'none').toLowerCase()!=='none')s.branch=branch(d.playerClass);globalThis.BMApprenticeship101?.migrate(s);migrateAcquired(s,d);return s;}
+ function state(d=Dungeon){d.memory??={};const s=d.memory.classPaths??={version:2,paths:{},patrons:{}};s.paths??={};s.patrons??={};cleanRoster(s,d);const r=s.paths.dancer;if(r&&r.routeVersion!==2){r.stage=r.completed||r.finalized?6:r.stage>=2?5:r.stage===1?4:0;r.routeVersion=2;if(s.trial?.path==='dancer')s.trial.stage=r.stage;}if(r?.accepted&&!r.completed&&r.stage<4){r.stage=4;r.teacher150=true;r.firstStage150=4;}const lead=d.memory.classRumors150?.dancer;if(lead?.favor===1||lead?.favor===2)lead.favor=3;if(String(d.playerClass||'none').toLowerCase()!=='none')s.branch=branch(d.playerClass);globalThis.BMApprenticeship101?.migrate(s);migrateAcquired(s,d);return s;}
  const core=new Set(['warrior','knight','mage','priest','dancer','rogue','hunter']);
  const own={warrior:'warrior',knight:'knight',mage:'mage',priest:'priest',broker:'rogue',hunter:'hunter',clerk:'dancer',pupil:'dancer'};
  const gains={warrior:[0],knight:[1],mage:[2],priest:[2],dancer:[3],rogue:[3]};
@@ -108650,7 +108620,7 @@ const BMClassPaths=(()=>{
  function acquired(id,d=Dungeon){if(id==='battle-mage')return BMHotbar.isBattleMage(d);const p=def(id);return !!(p&&state(d).acquired[p.id]);}
  function trainingBonus(d,i){const owned=state(d).acquired;return paths.reduce((n,p)=>n+(owned[p.id]&&(gains[p.id]||p.growth||[]).includes(i)?1:0),0);}
  function trainingClasses(d=Dungeon){return [...new Set([String(d.playerClass||'none').toLowerCase(),...paths.filter(p=>acquired(p.id,d)).flatMap(p=>[p.id,p.base])])];}
- function mentorKey(n){if(!n)return null;return ({201:'clerk',8001:'warrior',8002:'broker',8003:'mage',8004:'priest',8005:'knight',8006:'hunter',8402:'priest',8403:'mage',8404:'broker',8405:'pupil'})[n.index]||Object.keys(patrons).find(k=>patrons[k].id===n.index)||null;}
+ function mentorKey(n){if(!n||[8402,8403,8404].includes(n.index))return null;return ({201:'clerk',8001:'warrior',8002:'broker',8003:'mage',8004:'priest',8005:'knight',8006:'hunter',8405:'pupil'})[n.index]||Object.keys(patrons).find(k=>patrons[k].id===n.index)||null;}
  const ownPath=n=>def(own[mentorKey(n)]);
  function acquire(p){const s=state(),r=rec(p.id);const L=globalThis.BMClassLineages,h=L?.house(p.id);if(!r?.completed||!h||!L.reportingTo(h)||s.acquired[p.id])return false;const prior=[0,1,2,3].map(i=>BMCollection.bonus(Dungeon,i));s.acquired[p.id]=true;r.finalized=r.completed=true;r.tracked=false;if(cls()==='none')Dungeon.playerClass=p.name;notice=p.name+' acquired.';BMSpent159.reconcile(Dungeon);for(let i=0;i<4;i++)if(!Dungeon.memory.statAllocation159?.spent[i]&&BMCollection.bonus(Dungeon,i)>prior[i])BMInteract.report('Your '+['STR','CON','INT','AGI'][i]+' improves!');Dungeon.updateSkills();BMActivity.record('class_acquired',notice,{path:p.id});return true;}
  function questTalk(id,n=Dungeon.currentSpeaker){if(globalThis.BMClassLineages?.route(id,n))return true;const p=def(id);if(!p||!n||!at(mentorKey(n)))return false;const r=rec(p.id),key=mentorKey(n),finish={warrior:'You kept another person standing when the road turned against them. What did you think a warrior was for?',knight:'You checked the claim, restored what was stolen and stood beside someone with no power. An oath is work. You have already begun to keep it.',mage:'You read the inscription, tested your idea and repaired the ward. You kept asking when I would teach you magic. What do you call what you just did?',priest:'You asked where it hurt before reaching for a remedy. The draught mattered; so did the care. That is the work.',rogue:'A sealed ledger, a quiet exit, and nobody hurt. You were waiting for a secret lesson? You just brought it back.',dancer:'You listened, read the room and changed its rhythm. You thought I was putting off teaching you? That was the dance.',hunter:'Tracks, food, a safe fire. You came back with more than a tale about something you killed. You know how to live out there now.'};
@@ -108678,7 +108648,7 @@ const BMClassPaths=(()=>{
  function patronLocation(key){const coast=globalThis.BMTintagelCoast;if(!coast?.settled(Dungeon)&&['warrior','priest','mage','broker','hunter'].includes(key))return 'Guild ground floor · Moors';if(key==='warrior')return 'Warrior’s cattle camp in Orcynia';if(coast?.settled(Dungeon)){if(key==='priest')return globalThis.BMPriestJourney?.arrived(Dungeon)?'Kemet’s healing house, west of the river':'The frozen village by the ice cave';if(key==='mage')return Dungeon.memory.athensJourney?.stage>=1?'Mage at the Athenian school in Hellas; the observatory apprentice also offers lessons in Ger':(Dungeon.memory.regionalGuilds?.mage?.stage||0)<2?'The inn at Ger':'Old Observatory, northeast of Ger';if(key==='knight')return 'The ruined keep, Armorica';if(key==='broker')return coast.phase(Dungeon)===2?'Rogue’s refuge, Tintagel slums':'Tintagel village inn';if(key==='clerk')return Dungeon.mapID===2&&Dungeon.npcs.some(n=>n.index===201&&n.x===41.5)||Dungeon.mapID!==2&&coast.phase()===2?'Tintagel guild hall':'Tintagel tavern';}return patrons[key].where;}
  function at(key){const p=patrons[key];const senior={warrior:8001,broker:8002,mage:8003,priest:8004,knight:8005,hunter:8006};if(key==='warrior')return Dungeon.npcs.some(n=>n.index===8001&&!n.isDead&&BMInteract.reachable(n));if(Dungeon.mapID===0&&!globalThis.BMTintagelCoast?.settled(Dungeon)&&senior[key])return Dungeon.npcs.some(n=>n.index===senior[key]&&!n.isDead&&BMInteract.reachable(n));if(key==='priest'&&globalThis.BMTintagelCoast?.settled(Dungeon))return [6,43].includes(Dungeon.mapID)&&Dungeon.npcs.some(n=>n.index===8004&&BMInteract.reachable(n));if(key==='mage'&&globalThis.BMTintagelCoast?.settled(Dungeon))return Dungeon.npcs.some(n=>((Dungeon.mapID===4&&n.index===8003)||(globalThis.BMAthens67?.desk(Dungeon,n))||(Dungeon.mapID===46&&n.index===8003&&Dungeon.memory.athensJourney?.stage>=1))&&BMInteract.reachable(n));if(key==='knight'&&globalThis.BMTintagelCoast?.settled(Dungeon))return Dungeon.mapID===33&&Dungeon.memory.regionalGuilds?.knight?.stage>=8&&Dungeon.npcs.some(n=>n.index===8005&&BMInteract.reachable(n));if(key==='hunter'){
   if(Dungeon.mapID===0&&!globalThis.BMBranches?.post(Dungeon))return Dungeon.npcs.some(n=>n.index===8006&&BMInteract.reachable(n));
-  if(Dungeon.mapID===5&&globalThis.BMBranches?.post(Dungeon)&&!Dungeon.memory.hunterLodge?.rank)return false;}if(Dungeon.mapID===2&&globalThis.BMTintagelCoast?.settled(Dungeon)&&['clerk','broker'].includes(key))return Dungeon.npcs.some(n=>n.index===(key==='clerk'?201:8002)&&BMInteract.reachable(n));if(!p||Dungeon.mapID!==p.map)return false;return Dungeon.npcs.some(n=>n.index===p.id&&BMInteract.reachable(n));}
+  if(Dungeon.mapID===5&&globalThis.BMBranches?.post(Dungeon)&&!Dungeon.memory.hunterLodge?.rank)return false;}if(Dungeon.mapID===2&&globalThis.BMTintagelCoast?.settled(Dungeon)&&['clerk','broker'].includes(key))return Dungeon.npcs.some(n=>n.index===(key==='clerk'?201:8002)&&BMInteract.reachable(n));if(['priest','mage','broker'].includes(key)&&senior[key])return Dungeon.npcs.some(n=>n.index===senior[key]&&BMInteract.reachable(n));if(!p||Dungeon.mapID!==p.map)return false;return Dungeon.npcs.some(n=>n.index===p.id&&BMInteract.reachable(n));}
  function finale(){return Number(Dungeon.memory.a_rank_progress||0)>=3;}
  function permanent(i){const d=BMCraftMastery.knowledgeDice(Dungeon,i);return d.numDice*d.diceSides;}
  function status(p){const r=rec(p.id),reasons=[];if(acquired(p.id))return {acquired:true,current:cls()===p.name.toLowerCase(),ok:false,reasons:['Acquired']};
@@ -108724,17 +108694,12 @@ const BMClassPaths=(()=>{
    if(r.accepted&&p.steps[r.stage]?.kind==='field')BMApprenticeship101.renderTask(p,panel,{el,button,portrait,invalidate});
   }
  }
- function dancerMessage(key){
-  const r=rec('dancer');
-  if(r.completed||r.finalized)return key==='clerk'?'Cherry tells me your first lesson went well. Keep practising; teaching her helped me understand my own steps, too.':'You listened and made room for someone who needed it. That was the dance. You have earned the Dancer class.';
-  if(key==='clerk')return !r.accepted||r.stage===0?'You want to become a dancer? I am too busy keeping this guild running to take another pupil. My apprentice Cherry teaches at the village inn. Teaching what she knows will help her learn, too. She will want my letter. Collect my costume parcel from the market and bring it here first—S-rank or no, I still need a hand.':r.stage===1?'My costume parcel is waiting beside the courier in Tintagel market. Bring it back, and I will sign your recommendation.':r.stage===2?'The ribbons and repairs—thank you. Hand me the parcel and I will write Cherry a proper recommendation.':'You have my signed letter. Take it to Cherry at the village inn; she will teach your first steps.';
-  return r.stage<3?'I do not teach strangers. Oh, you know my teacher? Prove it. So many people will say anything to get into my good graces. Visit Dancer at the Travelers’ Guild in Tintagel and earn her signed recommendation. She may need a hand with her work first.':r.stage===3?'A letter from my teacher? Let me see her signature before we begin.':r.stage===4?'That is her hand, all right. I will teach you. Speak to the uncomfortable guest in the inn. Find out what they want, then help them. Presence needs nimble feet and a quick mind—AGI and INT together.':'You listened and helped. Tell me how you helped the guest. You have been learning all along.';
- }
+ function dancerMessage(key){return key==='clerk'?'Cherry performs at the village inn down south. Ask her between sets.':'Stay for the performance, then ask me about the work.';}
  function dancerTalk(n,key='pupil'){return questTalk('dancer',n);}
  function interact(n){if(globalThis.BMApprenticeship101?.interact(n))return true;if(skip===n){skip=null;return false;}if(n._classTrialExit){leaveTrial(true);return true;}if(n._classTrialMark){markTrial(n);return true;}
   const nodeKey=Object.keys(nodes).find(k=>nodes[k].id===n.index&&nodes[k].map===Dungeon.mapID);if(nodeKey){let did=false;for(const p of paths){const r=rec(p.id),s=p.steps[r.stage];if(r.accepted&&!r.completed&&s?.kind==='node'&&s.key===nodeKey){advance(p,nodes[nodeKey].text);did=true;}}if(did&&n.interactionVerb==='Take')BMInteract.report(nodes[nodeKey].name+' · '+nodes[nodeKey].text);talk(n,did?nodes[nodeKey].text:'You recognize this place. A patron may have a task for you here.',[]);return true;}
   const key=Object.keys(patrons).find(k=>patrons[k].id===n.index&&patrons[k].map===Dungeon.mapID);if(!key)return false;
-  if(key==='pupil')return dancerTalk(n,key);if(own[key])return questTalk(own[key],n);
+  if(['mage','priest','broker'].includes(key)&&[8402,8403,8404].includes(n.index))return false;if(key==='pupil')return dancerTalk(n,key);if(own[key])return questTalk(own[key],n);
   BMTouch.cancel();BMLock.clear();Dungeon.isSlidingToTile=false;Dungeon.targetMapX=Dungeon.x;Dungeon.targetMapY=Dungeon.y;
   return BMClassicDialogue.show({speaker:n,text:key==='noble'?'My door is open to anyone who needs a hearing.':patrons[key].intro});
  }
@@ -109943,7 +109908,10 @@ const BMClassicChoices=(()=>{
  function talk(lines){const n=Dungeon.currentSpeaker;if(!n)return;hide();n.customDialogue=Array.isArray(lines)?lines:[String(lines)];n.options=null;n.choiceActions=null;n.yesActions=null;n.noActions=null;n.endActions=[['close_dialogue',null]];Dungeon.isProcessingActions=false;Dungeon.actionQueue=[];n.startDialogue(Dungeon);}
  function install(){const render=Explore.prototype.render;Explore.prototype.render=function(...a){if(startGame!=='dialogue'||shown!==this.currentSpeaker)hide();return render.apply(this,a);};
   for(const id of [201,8001,8002,8003,8004,8005]){const n=MAP_DB[0].npcs.find(n=>n.index===id);if(!n)continue;const original=n.dialogueFactory,yes=n.yesActions,opening=n.customDialogue?.slice();
-   n.dialogueFactory=d=>{const old=original?.(d)||{text:n.customDialogue||[],yesActions:yes},who=BMGuildStory.trainerInfo(n),key=({201:'dancer',8001:'warrior',8002:'rogue',8003:'mage',8004:'priest',8005:'knight'})[id];const choices=id===201?['Guild','Classes','Dance','Leave']:['Listen','Talk',...(key?['Become '+key[0].toUpperCase()+key.slice(1)]:[]),'Leave'];const actions=id===201?[[['open_guild_menu','moors']],[['class_paths',null]],[['class_quest124','dancer']],[['close_dialogue',null]]]:[old.yesActions||[['open_trainer',n.deck]],[['classic_talk',who?.text||old.text]],...(key?[[['class_quest124',key]]]:[]),[['close_dialogue',null]]];return {...old,text:id===201?['The guild register is open. What do you need?']:(opening?.length?opening.slice():old.text),options:choices,choiceActions:actions,yesActions:actions[0],noActions:actions[1],endActions:[['close_dialogue',null]]};};
+   n.dialogueFactory=d=>{const old=original?.(d)||{text:n.customDialogue||[],yesActions:yes},who=BMGuildStory.trainerInfo(n),key=({201:'dancer',8001:'warrior',8002:'rogue',8003:'mage',8004:'priest',8005:'knight'})[id];const choices=id===201?['Guild','Classes','Become Dancer','Leave']:['Listen','Talk',...(key?['Become '+key[0].toUpperCase()+key.slice(1)]:[]),'Leave'];const actions=id===201?[[['open_guild_menu','moors']],[['class_paths',null]],[['class_quest124','dancer']],[['close_dialogue',null]]]:[old.yesActions||[['open_trainer',n.deck]],[['classic_talk',who?.text||old.text]],...(key?[[['class_quest124',key]]]:[]),[['close_dialogue',null]]];const live=d.npcs?.find(a=>a.index===id),reports=live&&globalThis.BMClassLineages?.visitReports(live,BMClassPaths.mentorKey(live))||[];
+   if(reports.length){choices[1]=reports[0][0];actions[1]=[['class_report164',choices[1]]];}
+   if(id===201&&globalThis.BMCherryRescue87?.away(d)){choices[2]='Where’s Cherry?';actions[2]=[['class_quest124','dancer']];}
+   return {...old,text:id===201?['The guild register is open. What do you need?']:(opening?.length?opening.slice():old.text),options:choices,choiceActions:actions,yesActions:actions[0],noActions:actions[1],endActions:[['close_dialogue',null]]};};
   }
  }
  return {draw,touch,key,choose,hide,talk,install};
@@ -109986,13 +109954,60 @@ const BMDialogueText111=(()=>{
  const icons={STR:-4,CON:-6,INT:-5,AGI:-7};
  function width(text,fs){return String(text).split(/\b(STR|CON|INT|AGI)\b/).reduce((w,t)=>w+(icons[t]?fs:ctx.measureText(t).width),0);}
  function layout(text,w,h,fs=font()){
-  ctx.font=fs+'px '+face;const lines=[],lineH=fs*1.35,rows=Math.max(1,Math.floor(h/lineH));
-  for(const paragraph of String(text??'').split('\n')){let line='';for(const word of paragraph.split(/\s+/).filter(Boolean)){
-   if(line&&width(line+' '+word,fs)>w){lines.push(line);line='';}
-   if(width(word,fs)>w){for(const char of Array.from(word)){if(line&&width(line+char,fs)>w){lines.push(line);line='';}line+=char;}}
-   else line+=(line?' ':'')+word;
-  }lines.push(line);}
-  const pages=[];for(let i=0;i<lines.length;i+=rows)pages.push(lines.slice(i,i+rows));return {pages,fs,lineH,rows};
+  ctx.font=fs+'px '+face;
+  const lineH=fs*1.35,rows=Math.max(1,Math.floor(h/lineH)),pages=[];
+  const measured=new Map();
+  function measure(t){if(!measured.has(t))measured.set(t,width(t,fs));return measured.get(t);}
+  function wrap(t){
+   const out=[];
+   for(const block of t.split('\n')){
+    const firstLine=out.length;let line='';
+    for(const word of block.trim().split(/\s+/).filter(Boolean)){
+     if(line&&measure(line+' '+word)>w){out.push(line);line='';}
+     if(measure(word)>w){for(const ch of word){if(line&&measure(line+ch)>w){out.push(line);line='';}line+=ch;}}
+     else line+=(line?' ':'')+word;
+    }
+    if(out.length>firstLine&&line&&!line.includes(' ')){
+     const prev=out.at(-1).split(' ');
+     while(prev.length>2&&line.split(' ').length<3&&measure(prev.at(-1)+' '+line)<=w)line=prev.pop()+' '+line;
+     out[out.length-1]=prev.join(' ');
+    }
+    out.push(line);
+   }
+   return out;
+  }
+  let pending='';
+  function flush(){if(pending){pages.push(wrap(pending));pending='';}}
+  function splitLong(sentence){
+   let words=sentence.split(/\s+/);
+   while(words.length){
+    const full=words.join(' '),lines=wrap(full);
+    if(lines.length<=rows){pending=full;return;}
+    const desired=lines.length/Math.ceil(lines.length/rows);
+    let best=0,cost=Infinity;
+    for(let i=1;i<words.length;i++){
+     const left=words.slice(0,i).join(' '),height=wrap(left).length;
+     if(height>rows)break;
+     const last=words[i-1];
+     const penalty=(/[,:;—–][”’"')]*$/.test(last)?0:1.7)+Math.abs(height-desired)
+      +Math.abs(measure(left)/(w||1)-desired)*.20+(words.length-i<3?4:0);
+     if(penalty<cost){best=i;cost=penalty;}
+    }
+    if(!best){const long=wrap(words.shift());for(let i=0;i<long.length;i+=rows)pages.push(long.slice(i,i+rows));continue;}
+    pages.push(wrap(words.splice(0,best).join(' ')));
+   }
+  }
+  for(const [k,paragraph] of String(text??'').split('\n').entries()){
+   let sep=k?'\n':' ';
+   const sentences=paragraph.trim().split(/(?<=[.!?…][”’"')]{0,2})\s+(?=[\p{Lu}\p{N}“‘"'(])/u).filter(Boolean);
+   for(const sentence of sentences){
+    const together=pending?pending+sep+sentence:sentence;
+    if(wrap(together).length<=rows)pending=together;
+    else{flush();splitLong(sentence);}
+    sep=' ';
+   }
+  }
+  flush();return {pages:pages.length?pages:[['']],fs,lineH,rows};
  }
  function reset(){page=null;}
  function matches(){return page&&page.speaker===Dungeon.currentSpeaker&&page.counter===Dungeon.dCounter&&startGame==='dialogue';}
@@ -110228,7 +110243,7 @@ const BMWorldNames=(()=>{
  function apply(d){
   for(const n of d.npcs||[]){if(n.creator||n.creatorId||n.socketId)continue;
    if([201,8001,8002,8003,8004,8005,8006,8007,8008,2970,8401,8402,8403,8404,8405].includes(n.index)){
-    const names={201:'Dancer',8001:'Warrior',8002:'Rogue',8003:'Mage',8004:'Priest',8005:'Knight',8006:'Hunter',8007:'Card Reader',8008:'Bartender',2970:'Drunk',8401:'Noble',8402:'Priest',8403:'Mage',8404:'Rogue',8405:'Cherry'};n.name=names[n.index];
+    const names={201:'Dancer',8001:'Warrior',8002:'Rogue',8003:'Mage',8004:'Priest',8005:'Knight',8006:'Hunter',8007:'Card Reader',8008:'Bartender',2970:'Drunk',8401:'Noble',8403:'Chart mender',8405:'Cherry'};n.name=names[n.index];
    }
    if((d.mapID===0||MAP_DB[d.mapID]?.guildPersonal)&&[205,206,207].includes(n.index))n.name={205:'Elder',206:'Queen',207:'King'}[n.index];
    if(n._guildStronghold||n.index===d.memory?.guild_quest?.rivalId){n.name=text(n.name);if(Array.isArray(n.customDialogue))n.customDialogue=n.customDialogue.map(text);}
@@ -110924,9 +110939,9 @@ m.slabs=m.slabs.filter(q=>!q.coastHall);m.npcs=m.npcs.filter(q=>!q.coastHall);
   BMGuildDecor.addSurface(2,[...extras,...BMSettlements.floors(2).filter(q=>!q.road),...finishes]);
  }
  function settleTalk(n){if(Dungeon.mapID!==2||!settled(Dungeon))return false;if(n.index===ledger)return readLedger(n);if(!n._tintagelSettler||n.index===2970)return false;const w=works(),id=n.index,options=[],opt=(label,action)=>options.push({label,action});let text='';
-  if(id===201){text=shown===2?'F-rank work? Don’t be lazy. Leave those jobs to the younger ones. They need the experience. '+(Dungeon.memory.gerWell?'Your report from Ger reached the Queen.':'The Witch Queen has asked for you personally.'):'I am helping at the village inn until our hall opens. Queen knows how the building is coming along.';if(shown===2)opt('Guild desk',()=>Dungeon.executeActions([['open_guild_menu','moors']]));opt('Dance',()=>BMClassPaths.dancerTalk(n,'clerk'));if(shown===2)opt('Classes',()=>BMClassPaths.open());opt('Between journeys',()=>BMWilderness84.dancerMenu(n,Dungeon));opt('Guild news',()=>BMRegionalGuilds.directions(n,Dungeon));}
+  if(id===201){text=shown===2?'F-rank work? Don’t be lazy. Leave those jobs to the younger ones. They need the experience. '+(Dungeon.memory.gerWell?'Your report from Ger reached the Queen.':'The Witch Queen has asked for you personally.'):'I am helping at the village inn until our hall opens. Queen knows how the building is coming along.';if(shown===2)opt('Guild desk',()=>Dungeon.executeActions([['open_guild_menu','moors']]));opt(globalThis.BMCherryRescue87?.away(d)?'Where’s Cherry?':'Become Dancer',()=>BMClassPaths.dancerTalk(n,'clerk'));if(shown===2)opt('Classes',()=>BMClassPaths.open());opt('Between journeys',()=>BMWilderness84.dancerMenu(n,Dungeon));opt('Guild news',()=>BMRegionalGuilds.directions(n,Dungeon));}
   if(id===8008){text='Hot meals are ready. I buy herbs and kitchen ingredients, too.';opt('Meals',()=>Dungeon.executeActions([['open_shop',{...BMTavern.stock(),tab:'browse'}]]));opt('Sell ingredients',()=>Dungeon.executeActions([['open_shop',{...BMTavern.stock(),tab:'sell'}]]));}
-  if(id===8002){text=shown===2?'Come in. Quietly. The children have just fallen asleep.':'I can hear what the collectors are planning from this table. My kids are in the slums, southwest of the market.';if(refuge().safe){opt('Lessons',()=>Dungeon.executeActions([['train','rogue_trainer']]));opt('Rogue class',()=>BMClassPaths.open('broker'));}opt('The refuge',()=>aid(n));}
+  if(id===8002){text=shown===2?'Come in. Quietly. The children have just fallen asleep.':'I can hear what the collectors are planning from this table. My kids are in the slums, southwest of the market.';if(refuge().safe){opt('Lessons',()=>Dungeon.executeActions([['train','rogue_trainer']]));opt('Become Rogue',()=>BMClassPaths.questTalk('rogue',n));}opt('The refuge',()=>aid(n));}
   if(id===207){text=shown===2?'Welcome home. Dancer keeps the commissions by the door.':'The Queen is overseeing construction. Dancer and Barkeep are at the village inn to the southeast.';opt('The company',()=>BMClassicDialogue.show({speaker:n,text:'Hunter has gone east to Savage Forest. Rogue watches the children in the slums. Ask at the village inn if you need a bed.'}));}
   if(id===206){text=shown===2?'The hall is ready. There is room for the register, the kitchen, and everyone who comes home.':'First a foundation, then a frame, then a roof. You can see the work when you return.';if(shown<2&&!w.delivered.includes(shown)){if(w.delivery){opt('Deliver timber',()=>{if(!w.delivery||w.delivered.includes(shown))return;w.delivery=false;w.delivered.push(shown);w.help+=300;Dungeon.requestSave();BMClassicDialogue.show({speaker:n,text:'Thank you. With those timbers we can finish this part sooner.'});});}else opt('How can I help?',()=>BMClassicDialogue.show({speaker:n,text:'There is timber waiting at Haven. Ask at the landing and bring it here.'}));}}
   return BMClassicDialogue.show({speaker:n,text,options});
@@ -111087,6 +111102,7 @@ const BMBranches=(()=>{
    return show(n,'Our scouts follow the trail you marked. Good hunting, Master Hunter.');}
   if(work)return training();
   const options=h.rank?[opt('Talk',talk),opt('Guild',()=>BMRegionalGuilds.openDesk(n,'hunter')),opt('Train',()=>d.executeActions([['train','hunter_trainer']]))]:[opt('Talk',talk),opt('Establish the lodge',training)];
+  options.push(opt('Become Hunter',()=>BMClassPaths.questTalk('hunter',n)));
   return show(n,done?'Ah, welcome.':h.rank?'Come in, '+ranks[h.rank]+'.':'There you are. I have a roof. Now I need a way for people to find me.',options);
  }
  // Castle wolves now roam the countryside. Stable IDs keep them separate from the alpha wolf.
@@ -111170,7 +111186,7 @@ const BMBranches=(()=>{
    if(n.index===613||n.index===890089)return hermitTalk(n);
    if(n.index>=890070&&n.index<=890072){const h=lodge(d);if(h.task==='trail'&&!h.marks.includes(n.index)){h.marks.push(n.index);d.requestSave();}return show(n,'Trail marked. '+h.marks.length+' of 3.');}
   }
-  if(d.mapID===2&&n.index===8405){const options=[opt('Request a song',()=>BMCherryPerformance.menu(n)),opt('Dance lessons',()=>BMClassPaths.dancerTalk(n,'pupil'))];if(globalThis.BMCherryRescue87){const q=BMCherryRescue87.view(d);if(q.phase===0)options.push(opt('Family visit',()=>show(n,'I am going to visit my family in the Basque mountains, then spend a little time training in the wilderness. Mother lives in the eastern house (84,76) of southeastern Aquitania’s mountain settlement. Will you wish me a safe journey?',[opt('Safe travels, Cherry',()=>BMCherryRescue87.begin(n,d))])));if(q.phase===10)options.push(opt('Homeward Measure',()=>BMCherryRescue87.teach(n,d)));}if(!closed(d))options.unshift(opt('Shop',()=>shop(n,drinks())));return show(n,night(d)?'You caught my evening set. There is stew left if you are hungry.':'Pull up a chair. I sing here after dark.',options);}
+  if(d.mapID===2&&n.index===8405){const options=[opt('Become Dancer',()=>BMCherryRescue87.classStory(n,d)),opt('Request a song',()=>BMCherryPerformance.menu(n))];if(globalThis.BMCherryRescue87){const q=BMCherryRescue87.view(d);if(!q.phase&&!q.visitPlanned&&!BMCherryRescue87.needsStory(d))options.push(opt('Ask about home',()=>BMCherryRescue87.classStory(n,d,true)));if(q.phase===10)options.push(opt('Homeward Measure',()=>BMCherryRescue87.teach(n,d)));}if(!closed(d))options.unshift(opt('Shop',()=>shop(n,drinks())));return show(n,night(d)?'You caught my evening set. There is stew left if you are hungry.':'Pull up a chair. I sing here after dark.',options);}
   if(d.mapID===4&&n.index===887002)return show(n,'Welcome to Ger. Leave the sand at the door. The musicians have already started.',[opt('Shop',()=>shop(n,drinks()))]);
   if(d.mapID===2&&n.index>=890050&&n.index<=890052||d.mapID===4&&n.index>=890060&&n.index<=890062)return patrons(n);
   if((d.mapID===0||d.mapID===2||MAP_DB[d.mapID]?.guildPersonal)&&[890040,890041,890042].includes(n.index))return show(n,'Where are you riding?',stopList.filter((s,i)=>890040+i!==n.index).map(([label,id,x,y])=>opt(label,()=>warp(d,id,x,y))));
@@ -111863,7 +111879,7 @@ const BMFrozenCoast=(()=>{
  if(oldPatron){const before=oldPatron.spawnCondition;oldPatron.spawnCondition=d=>!settled(d)&&(!before||before(d));}
  function lead(d){if(globalThis.BMPriestJourney?.arrived(d)||chapelStage(d)>=3&&globalThis.BMPriestJourney?.ready(d))return BMPriestJourney.lead(d);if(!clear(d))return 'Priest keeps a fire in the surviving house by the ice cave. The Kraken still holds the grain route.';return ['The first supply boat is in. Find Priest at the surviving house in the frozen village.','Read the winter roll inside the northern cairn and copy the names for Priest.','Return the copied names to Priest at the village.','The winter names are in the chapel. Priest hopes to study medicine when the southern route opens.'][chapelStage(d)];}
  function priest(n,d){
-  const greet=(text,choices=[])=>n.index===896002?show(n,text,choices):show(n,text,[...choices,opt('Class path',()=>BMClassPaths.open('priest')),opt('Lessons',()=>d.executeActions([['train','priest_trainer']]))]);
+  const greet=(text,choices=[])=>n.index===896002?show(n,text,choices):show(n,text,[...choices,opt('Become Priest',()=>BMClassPaths.questTalk('priest',n)),opt('Lessons',()=>d.executeActions([['train','priest_trainer']]))]);
   if(!clear(d))return greet('We broke up the last grain chest for firewood. The dead are in the cairn north of here. Please stay out of it. I heard someone walking below last night.');
   const s=chapelStage(d);if(s>=3&&globalThis.BMPriestJourney?.ready(d))return greet(n.index===896002?'Priest writes from the healing house in Kemet. I keep the lamp lit and the names safe here.':'The chapel keeper will tend the memorial while I travel south. Find me at the healing house in Kemet, west of the river. From Ger, follow the eastern caravan road.');if(s===0)return greet('The grain boat arrived this morning. We have food for the living now. Help me give the dead their names. The winter roll is in the northern cairn.',[opt('Help with the chapel',()=>{if(chapelStage(d)!==0)return;d.memory.frozenChapel=1;report(lead(d));d.requestSave();})]);
   if(s===2)return greet('I remember her. She used to count the sacks twice and slip the boat boys an extra roll. May I hang the names where their families can read them?',[opt('Hang the winter roll',()=>{if(chapelStage(d)!==2)return;d.memory.frozenChapel=3;seatPriest(n,d);sync(d);report('The winter names hang in the chapel. The fire is lit.');d.requestSave();})]);
@@ -112471,7 +112487,7 @@ const BMCherryPerformance=(()=>{
  const world=d=>d.tacticsReturn?.config?.tavernGame?d.tacticsReturn:d;
  const inside=(d,x=world(d).x,y=world(d).y)=>world(d).mapID===2&&x>=68&&x<82&&y>=69&&y<82;
  const night=d=>BMBranches.night(d),request=d=>d.memory?.cherryRequest;
- const scheduled=d=>world(d).mapID===2&&!globalThis.BMCherryRescue87?.away(world(d))&&(night(d)||!!request(d));
+ const scheduled=d=>world(d).mapID===2&&!globalThis.BMCherryRescue87?.away(world(d))&&(night(d)||!!request(d)||!!globalThis.BMCherryRescue87?.onStage(d));
  function finish(d,refund=false){const r=request(d);if(!r)return false;delete d.memory.cherryRequest;show=null;lastPlayer=null;lastAudio=0;if(refund&&!r.started){BMCurrency.add(r.cost);BMInteract.report('Cherry returns your '+r.cost+' silver. The song could not start.');}d.requestSave();return true;}
  function pulse(d){const r=request(d);if(!r)return;if(!inside(d)||d.isDead||d.isDying||r.sawNight&&!night(d)){finish(d,!r.started);return;}if(night(d))r.sawNight=true;
   const c=BattleMusic.current,p=c?.player;if(c?.scene.requestId!==r.id||!p?.playing||p.ctx.state!=='running'||document.hidden){lastPlayer=null;return;}
@@ -112493,7 +112509,7 @@ const BMCherryPerformance=(()=>{
   show.turn=++showSerial;return true;
  }
  function failed(scene){if(scene.requestId===request(Dungeon)?.id)finish(Dungeon,true);}
- function ready(d){if(!scheduled(d))return false;if(!inside(d)||window.settingsAudio===false||BattleMusic.settings.music===0)return true;const c=BattleMusic.current;return c?.scene.performance==='cherry'&&c.player?.playing&&c.player.ctx.state==='running';}
+ function ready(d){if(!scheduled(d))return false;if(globalThis.BMCherryRescue87?.onStage(d))return true;if(!inside(d)||window.settingsAudio===false||BattleMusic.settings.music===0)return true;const c=BattleMusic.current;return c?.scene.performance==='cherry'&&c.player?.playing&&c.player.ctx.state==='running';}
  function order(key,n){const d=Dungeon;if(!songs[key]||!inside(d)||d.isDead||d.isDying)return false;if(request(d))return menu(n,'Your requested song is already on its way.');
   if(window.settingsAudio===false||BattleMusic.settings.music===0)return menu(n,'Turn on music first, then I can sing for you.');
   if(!BMCurrency.spend(5))return menu(n,'A request costs 5 silver. Come back when you have enough.');
@@ -112706,7 +112722,7 @@ const BMPriestJourney=(()=>{
  }
  R.actor(E,P,38.5,40.5,255,'Priest',{spawnCondition:ready});
  R.bind(E,P,(n,d)=>show(n,stage(d)>=6?'A place to learn, a place to recover. There is work enough for both.':'Welcome to the healing house. The river has brought us teachers from several shores.',[
-  opt('Talk',()=>work(n,d)),...(stage(d)>=6?[opt('Guild',()=>BMRegionalGuilds.openDesk(n,'priest'))]:[]),opt('Train',()=>d.executeActions([['train','priest_trainer']])),opt('Class path',()=>BMClassPaths.open('priest'))]));
+  opt('Talk',()=>work(n,d)),...(stage(d)>=6?[opt('Guild',()=>BMRegionalGuilds.openDesk(n,'priest'))]:[]),opt('Train',()=>d.executeActions([['train','priest_trainer']])),opt('Become Priest',()=>BMClassPaths.questTalk('priest',n))]));
  R.actor(E,DOCTOR,40.5,38.5,255,'River Physician');
  R.bind(E,DOCTOR,(n,d)=>{
   const s=q(d);
@@ -112986,17 +113002,17 @@ const BMNPCKnowledge=(()=>{
  function facts(n,map,p={}){
   p=progress(p);const name=String(n.name||'Resident'),id=Number(n.index),out={name,voice:'A local inhabitant; courteous, plain spoken, willing to admit uncertainty.',local:[],quest:[],rumors:[],limits:'Only the supplied facts are known. Do not infer unknown quests, private thoughts, rewards, places or prior meetings.'};
   const is=(...ids)=>ids.includes(id),has=s=>new RegExp(s,'i').test(name);
-  if(map===2){out.local.push('Tintagel has a marketplace in its western quarter. The market courier is at (22,46); Dancer’s wrapped costume parcel is beside him at (24,46) while that collection task is active. Dancer is a teacher and guild clerk; Cherry is her apprentice and performs at the village inn.');out.local.push(p.guildHall===2?'The new guild hall is established. Dancer works at its desk.':p.guildSettled?'The old guild has fallen. Dancer is helping organise the company at the village tavern until the new hall is established.':'Dancer works at the Adventurers’ Guild; ask at its desk about her recommendation for Cherry.');} 
+  if(map===2){out.local.push('Tintagel has a marketplace in its western quarter. The market courier works near the western market. Dancer is a teacher and guild clerk; Cherry is her apprentice and performs at the village inn.');out.local.push(p.guildHall===2?'The new guild hall is established. Dancer works at its desk.':p.guildSettled?'The old guild has fallen. Dancer is helping organise the company at the village tavern until the new hall is established.':'Dancer works at the Adventurers’ Guild; ask her where to find Cherry.');} 
   if(map===2){out.local.push('Tintagel’s village inn has a stage and a southern entrance onto the forecourt. The village stable is east of the inn. The east road leads into Savage Forest.');out.rumors.push('Travellers speak of Deshret, the Red Land, far to the south. This is a secondhand story, not a quest or a claim that the speaker has visited.');}
   const regional={"4":"Ger lies directly south of Gibraltar. Its port is Tingis; the harbour pilot sails to Olisipo in Lusitania. East lies Deshret.","14":"Armorica lies south of the Moors across shared coastal waters. The ruined keep stands near the northern coast, with the forest and lake to the southeast. South is Aquitania; east is the Rhine crossing in Orcynia.","22":"Eastern Iberia’s Basque festival square is outdoors in the northeastern mountains (88,22). The local road to La Rioja is at (79,24). Follow the gulf trail north into Aquitania; west lies Lusitania and south the Mediterranean shore; reach Gibraltar through Western Iberia.","38":"The Rhine crossing, old watchhouse and Black Forest are within Orcynia. Armorica lies west across the river; Dacia lie east, and Nori Pass south. Warrior stays with the tribe at (17,12).","39":"Aquitania continues Armorica’s western coastline into the gulf. The small Basque mountain settlement is outdoors in the southeast (85,84). Its mountain trail crosses the southern border at (88,99) into the festival square in Eastern Iberia. Nori Pass lie east.","66":"The Alpine foothills and passes are here in one region. North is Orcynia, west Aquitania, south Oenos. Valleys give walking routes; stepped slopes lead to snowy summits.","72":"Maf joins Ret to the north and Qedar to the south. To reach Kemet, go south to the isthmus junction in northern Qedar and turn west, above the Red Sea.","74":"Eastern Deshret links Deshret to the west with Kemet to the east. The Libyan desert lies in its southern sands.","85":"Western Iberia is Lusitania. Olisipo is its Atlantic port. East is Eastern Iberia; south is Gibraltar. The pilot offers free passage to Tingis in Ger.","89":"the southern Iberian coast contains broad mountains and a coastal road, with the Mediterranean to its south and east. North is Eastern Iberia, west Gibraltar. Mountain ridges can be climbed; the highest peaks have snow.","43":"The Nile Delta occupies north-central Kemet. The river market is at (37,24); its bridge at (51,28) leads to the eastern isthmus road. The western bank road runs south to the Priest’s clinic at (38,40). There is no separate delta region north of Kemet."};if(regional[map])out.local.push(regional[map]);
   if(map===5){out.local.push('This is Savage Forest, east of Tintagel. Hunter keeps a cabin near its western side.');out.rumors.push('Travellers warn of goblins below the forest. Ask a local guide about the cavern entrance.');}
   if([45,46,48,49].includes(map)){out.local.push(({45:'The Dacian road runs west toward Orcynia and south toward Hellas. The northern gate is closed.',46:'The eastern Aegean landing offers a free ferry to Hatti. Follow the coast road to the boatman (76,65).',48:'The road links the western ferry, roadside inn (48,50), ridge watch (76,48) and southern pass into the Ret.',49:'The northern pass returns to Hatti. The waystation (49,47) offers rest and supplies. The southern road crosses Maf into Qedar. At the northern Qedari isthmus, turn west to Kemet above the Red Sea.'})[map]);}
   if([42,43,44].includes(map))out.local.push(({42:'Deshret is called the Red Land. Follow the caravan road east to Kemet or west to Ger.',43:'Kemet’s healing house stands west of the river. The delta lies within northern Kemet. Follow the northern road east over the isthmus into Qedar; its junction turns north for Maf. The western road crosses Eastern Deshret and Deshret, whose eastern sands contain the Great Dunes, toward Ger.',44:'The study house is at the oasis (69,39). The northern road reaches Maf. The northern isthmus road turns west into Kemet. From Maf continue north through the Ret toward Hatti.'})[map]);
   if(has('hunter')||id===8006){out.voice='A practical hunter who notices tracks and habits; no expertise in distant politics.';out.quest.push('My guild supply jobs ask for two boar tusks or three pixie mushrooms. Hunt boars south of the cabin and gather their drops. Pixies carry mushrooms. Use my Guild desk to accept and deliver a job; asking about it does not accept it.');out.local.push('Boars and pixies provide useful supplies. Pick up what a defeated creature drops.');out.rumors=['Other hunters warn of deeper forest dangers. I cannot vouch for distant kingdoms.'];}
-  if(is(8405)||map===2&&has('^Cherry$')){out.voice='Cherry, a spirited tavern performer and the Dancer’s apprentice. Warm with patrons, firm about lessons.';out.local.push('My teacher learned her first steps in the Basque mountain village. I learned from her; that does not mean I grew up in her hometown.');out.local.push('My stage is in Tintagel’s village inn. I perform at night; paid requests are chosen through my performance menu.');out.quest.push(p.dancer>=6?'You have completed my Dancer lesson. Use the class menu for your earned progression.':p.dancer>=4?'With the recommendation accepted, finish the three travelling steps in my rehearsal, return through its sigil and speak to me about the lesson.':'I do not teach strangers. Ask my teacher, Dancer, for a recommendation. Help with her costume parcel beside the Tintagel market courier (24,46), return it to her, and bring her letter to me. S-rank alone does not replace her word.');out.rumors=['A visiting performer spoke of the Red Land far to the south. I know the song and the story, not the desert roads.'];}
-  if(id===201||has('^Dancer$')){out.voice='Dancer, a busy teacher who expects students to help and then learn by teaching.';out.local.push('I grew up in the Basque mountain village and learned its festival dances. Cherry learned from me here in Tintagel.');out.quest.push('Cherry is my apprentice. I can recommend you after you help retrieve my costume parcel beside Tintagel’s market courier (24,46). Return it to me for the letter, then take it to Cherry. Use the Dance or class-path choices to begin.');}
+  if(is(8405)||map===2&&has('^Cherry$')){out.voice='Cherry, a spirited tavern performer and the Dancer’s apprentice. Warm with patrons, firm about lessons.';out.local.push('My teacher learned her first steps in the Basque mountain village. I learned from her; that does not mean I grew up in her hometown.');out.local.push('My stage is in Tintagel’s village inn. I perform at night; paid requests are chosen through my performance menu.');out.quest.push('Ask me about becoming a Dancer between performances. I teach by helping people in the room.');out.rumors=['A visiting performer spoke of the Red Land far to the south. I know the song and the story, not the desert roads.'];}
+  if(id===201||has('^Dancer$')){out.voice='Dancer, a busy teacher who expects students to help and then learn by teaching.';out.local.push('I grew up in the Basque mountain village and learned its festival dances. Cherry learned from me here in Tintagel.');out.quest.push('Cherry is my apprentice. I send people to Cherry at the village inn down south. Ask her about becoming a dancer between sets.');}
   if([903434,903435].includes(id))out.local.push('The market bridge is at (51,28). Homes line the western bank, market stores the eastern bank. The clinic road follows the western bank south; the isthmus road leads east to Qedar and its Maf junction.');
-  if(id===901864){out.voice='A village dance keeper who preserves local festival steps and knows the Dancer from her youth.';out.local.push('Dancer, now teaching in Tintagel, learned her first steps here. Cherry is her apprentice. I cannot grant the recommendation or teach their class lesson.');}
+  if(id===901864){out.voice='A village dance keeper who preserves local festival steps and knows the Dancer from her youth.';out.local.push('Dancer, now teaching in Tintagel, learned her first steps here. Cherry is her apprentice. Cherry performs at the village inn in Tintagel.');}
   if(is(899001,899002,899010,899011,899012)){out.quest.push(aegean[p.aegean]);out.rumors.push('Caravan travellers call the southern desert Deshret, the Red Land. Kemet lies beyond the desert, on its river.');}
   if(is(899012,900010,900011)){out.quest.push(caravan[p.caravan]);}
   if(is(899012)){out.voice='The ridge watchkeeper, a careful keeper of inherited fortifications; knows his road and dispatches.';out.local.push('Local families maintain these old walls. Beyond the ridge gate, the road turns south to the Ret; keep to the marked pass.');}
@@ -113679,7 +113695,7 @@ const BMAtlas58=(()=>{
  road(86,[[70.5,28],[72.5,38],[67.5,46],[60,66]]);road(86,[[63.5,36],[63.5,46],[80.5,46]]);road(86,[[56.5,56],[56.5,61],[60,66]]);
  for(let y=39;y<42;y++)for(let x=59;x<65;x++)bm.slabs.push({x,y,bottom:0,top:.2,tile:15});
  R.prop(86,901861,62.5,33.5,1170,'Village cot');R.prop(86,901862,70.5,33.5,1165,'Festival records');R.prop(86,901863,55.5,53.5,1167,'Water jug');
- resident(86,901864,68.5,44.5,249,'Dance keeper','Our festival steps are taught in the square. The Dancer who now teaches in Tintagel learned her first steps here. Her apprentice Cherry performs at the village inn there. Visit her teacher for a recommendation; we cannot grant it in her place.');
+ resident(86,901864,68.5,44.5,249,'Dance keeper','Our festival steps are taught in the square. The Dancer who now teaches in Tintagel learned her first steps here. Her apprentice Cherry performs at the village inn there. Ask her about Cherry at the village inn.');
  resident(86,901865,74.5,48.5,252,'Pass guide','North follows the coast to Aquitania. South, the trail bends through the hills into the northwestern part of Eastern Iberia. Western Iberia and the port of Olisipo lie beyond its western road.');
  sign(86,901866,10.5,97.5,'South · Eastern Iberia','Cross south into the northwestern corner of Eastern Iberia. The western road there reaches Lusitania and Olisipo.');
  sign(39,901839,72.5,92.5,'South · Basque coast and passes','The southern trail follows the curve of the gulf, passes the cliffside town and continues south into Eastern Iberia.');
@@ -114519,7 +114535,7 @@ const BMAthens67=(()=>{
  }
  function work(n,d){const s=stage(d);if(s===0)return show(n,'The observatory can stand on its own now. A scholar in Athens has offered us room to teach and learn together. Shall we make the journey?',[opt('Prepare the Athens expedition',()=>accept(n,d))]);if(s===3&&d.mapID===MAP&&n.index===MAGE)return show(n,'The scholar has agreed to our charter. Will you witness the opening of the Athenian guildhouse?',[opt('Found the guild · 60 silver',()=>found(n,d))]);return show(n,lead(d));}
  function desk(d,n){return !!n&&(d.mapID===OBS&&(n.index===MAGE&&stage(d)===0||n.index===892019&&stage(d)>=1)||d.mapID===MAP&&n.index===MAGE&&stage(d)>=4);}
- function deskChoices(n,d){return [opt('Talk',()=>work(n,d)),opt('Guild',()=>BMRegionalGuilds.openDesk(n,'mage')),opt('Train',()=>{if(desk(d,n)&&Math.hypot(d.x-n.x,d.y-n.y)<2.9)d.executeActions([['train','mage_trainer']]);}),opt('Mage class',()=>BMClassPaths.open('mage'))];}
+ function deskChoices(n,d){return [opt('Talk',()=>work(n,d)),opt('Guild',()=>BMRegionalGuilds.openDesk(n,'mage')),opt('Train',()=>{if(desk(d,n)&&Math.hypot(d.x-n.x,d.y-n.y)<2.9)d.executeActions([['train','mage_trainer']]);}),opt(n.index===8003?'Become Mage':'Classes',()=>n.index===8003?BMClassPaths.questTalk('mage',n):BMClassPaths.open())];}
  function meet(n,d){return show(n,stage(d)>=4?'Welcome to the Athenian guildhouse. Ger’s observatory remains part of our school.':lead(d),stage(d)>=4?deskChoices(n,d):[opt('The Athenian school',()=>work(n,d))]);}
  function sail(n,d){if(!near(d,n,ids.pilot,MAP))return false;return R.enter(d,118,{...N.landing});}
  // The town grows beside existing inland and harbour roads, away from the old caravan camp.
@@ -114813,7 +114829,7 @@ const BMTower71=(()=>{
  function near(n,d,id,map=MAP){return d===Dungeon&&!d.isDead&&!d.isDying&&!d.isLoading&&d.mapID===map&&n?.index===id&&!n.isDead&&d.npcs.includes(n)&&Math.hypot(d.x-n.x,d.y-n.y)<2.7&&BMInteract.reachable(n);}
  function save(d,text){BMActivity.record('quest_progress',text,{quest:'living-hallows-tower',chapter:'Guests at the Watchfire'});d.requestSave();BMShell.invalidate();}
  function sync(d){if(d.mapID!==MAP)return;for(const n of d.npcs){if(n.index===ids.sailor){const p=view(d).skiff?.rescued?{x:40.5,y:52.5}:{x:22.5,y:67.5};Object.assign(n,p);n.spawnX=p.x;n.spawnY=p.y;n.name=view(d).skiff?.rescued?'Rescued sailor':'Stranded sailor';}if(n.index===ids.captain&&view(d).skiff?.rescued){n.customDialogue=['Haha, c’mon, guys! One sailor, one rope, and only a very small amount of drowning. A splendid afternoon.'];n.publicDialogue=n.customDialogue.slice();}}}
- function lead(d){const s=view(d);if(stage(d)<2)return 'Meet Iobáth inside Conaing’s Tower (48,34). The western ferryman at Tintagel’s harbour (35,20) offers free passage; the return boat waits at the island landing (30,65).';if(s.claimed)return 'Guests at the Watchfire is complete. The stores are dry, the last sailor is safe, and the missing families have their names back. You have a place at the tower’s hearth.';if(done(d))return 'Return to Iobáth inside the tower (48,34). The community is ready to share its evening meal.';const next=[];
+ function lead(d){const s=view(d);if(stage(d)<2)return 'Meet Iobáth inside Conaing’s Tower (48,34). The western ferryman at Haven’s quay offers free passage; the return boat waits at the island landing (30,65).';if(s.claimed)return 'Guests at the Watchfire is complete. The stores are dry, the last sailor is safe, and the missing families have their names back. You have a place at the tower’s hearth.';if(done(d))return 'Return to Iobáth inside the tower (48,34). The community is ready to share its evening meal.';const next=[];
   if(!s.stores?.done)next.push(!s.stores?.accepted?'Simeon in the courtyard (36,47) needs help with the stores.':!s.stores?.recovered?'Recover the food chest on the west shore (25,58).':'Bring the salvaged stores to Simeon (36,47).');
   if(!s.skiff?.done)next.push(!s.skiff?.accepted?'Briotán at the boatyard (34,60) is missing a sailor.':!s.metCaptain?'Meet Captain Brannic by the landing (29,62).':!s.skiff?.rope?'Collect the spare rope beside the landing (26,65).':!s.skiff?.rescued?'Secure the rescue line at the outer mooring (26,67).':'Tell Briotán (34,60) that his sailor is safe.');
   if(!s.names?.done)next.push(!s.names?.accepted?'Ask Iobáth (48,34) about the stolen names.':!s.names?.roll?'Recover the tribute roll in the tower’s upper records room (45,31), reached by the west stair.':!s.names?.checked?'Compare the roll with Eithne’s family list by the hearth (39,53).':'Return the corrected family roll to Iobáth (48,34).');return next.join(' ');
@@ -116177,7 +116193,31 @@ const BMCherryRescue87=(()=>{
   const wanted=targets(d);for(const n of d.npcs){if(n._cherryActor87)n.isTarget=wanted.includes(n.index)||!!n._cherryFoe87;if([986006,986015,986005].includes(n.index)&&d.mapID===151)n.isTarget=wanted.includes(n.index);if(n._cherry87){n.isTarget=wanted.includes(n.index);n._cherryDance=(n.index===ids.stage||q.phase===6)&&!n._incap87;}}
   custody(d);
  }
- function begin(n,d=Dungeon){if(!near(n,d,8405,2)||view(d).phase!==0)return false;const q=state(d);q.phase=1;q.elapsed=0;q.power=Math.max(8,Math.min(20,Math.round(d.stat.reduce((v,s)=>v+(s[1]||4),0)/4)));BMCherryPerformance.finish(d,true);close(d);record(d,'Cherry left Tintagel to visit her mother at the Basque mountain settlement in southeastern Aquitania (84,76). She planned wilderness training afterward.');sync(d);report('Cherry has left on her family visit. Her letter remains in the tavern.');return true;}
+ const insideInn=d=>BMCherryPerformance.inside(d);
+ const onStage=d=>view(d).introBeat==='performing'&&!view(d).phase;
+ const needsStory=d=>!view(d).phase&&!view(d).visitPlanned&&!BMClassPaths.state(d).paths.dancer?.accepted&&!BMClassPaths.acquired('dancer',d);
+ function where(d){const q=view(d);return q.phase===1?'“Cherry’s gone home to visit her mother. Look for the eastern house in the Basque mountain settlement, in southeastern Aquitania. She left a letter at the inn.”':q.phase<8?'“Still no word from Cherry. Ask her mother in the eastern house in the Basque settlement in Aquitania. She may have had a letter.”':q.phase<10?'“She’s with her mother in Aquitania. Give her time to get back on her feet.”':'“She’s back down at the village inn. She’s been asking after you.”';}
+ function finishSet(d){const q=state(d);if(q.introBeat!=='performing')return;q.introBeat='performed';delete q.setTime;d.requestSave();}
+ function classStory(n,d=Dungeon,personal=false){
+  if(!near(n,d,8405,2))return false;
+  const q=state(d);
+  if(!needsStory(d)&&(!personal||q.phase||q.visitPlanned))return BMClassLineages.teacherMenu(BMClassLineages.houses.dancer,n);
+  if(q.introBeat==='performing')return show(n,'Cherry catches your eye and points to the last few bars on the fiddler’s page. “Just a moment!”',[],false);
+  if(q.introBeat!=='performed')return show(n,'“You want to be a dancer? Oh! There’s my cue. Stay and watch my feet on the last turn.”',[opt('Watch Cherry perform',()=>{
+   if(!near(n,d,8405,2)||state(d).introBeat)return;
+   q.introBeat='performing';q.setTime=0;close(d);d.requestSave();BattleMusic.followScene();
+  })],false);
+  q.visitPlanned=true;
+  record(d,'Cherry spoke about how she learned to dance and her family in Aquitania.');
+  return show(n,['“I used to count under my breath. Then one night the fiddle string broke, and the whole room kept the tune with their heels. That was when I learned to listen to the people I was dancing with.”',
+   '“That tune makes me miss home. Mother still taps it with her spoon. I think I’ll go see her, up in the Basque mountains of Aquitania.”',
+   '“You want to learn? See the guest by the stage? Someone keeps getting between her and her chair. Start by asking her where she wants to sit.”'],BMClassPaths.state(d).paths.dancer?.accepted||BMClassPaths.acquired('dancer',d)?[]:[opt('I’ll help',()=>{if(BMClassPaths.accept('dancer'))BMClassLineages.teacherMenu(BMClassLineages.houses.dancer,n);})],false);
+ }
+ function depart(d){const q=state(d);if(q.phase||!q.visitPlanned)return false;
+  q.phase=1;q.elapsed=0;delete q.visitPlanned;q.power=Math.max(8,Math.min(20,Math.round(d.stat.reduce((v,s)=>v+(s[1]||4),0)/4)));
+  BMCherryPerformance.finish(d,true);record(d,'Cherry went home to visit her mother. There is a letter at the inn, and Dancer knows the way.');return true;
+ }
+ function begin(n,d=Dungeon){return classStory(n,d,true);}
  function overdue(d){if(view(d).phase!==1)return false;state(d).phase=2;record(d,'Time passed without news from Cherry. Visit her mother in the Basque mountain settlement, southeastern Aquitania (84,76).');report('Cherry is overdue. The missing performer has been added to your quest log.');sync(d);return true;}
  function family(n,d){if(!near(n,d,ids.family,FAMILY))return false;const q=state(d);
   if(q.phase===0)return show(n,'“Cherry sends letters from Tintagel. We keep her room ready whenever the road brings her this way.”');
@@ -116240,14 +116280,15 @@ const BMCherryRescue87=(()=>{
  const hit=NPC.prototype.absorbHit;NPC.prototype.absorbHit=function(attacker,...args){const d=Dungeon;if(this._cherryProp87||this._cherryActor87&&!this._cherryFoe87&&!this._cherry87)return true;if(this._cherry87){if(this.index===ids.stage){abduct(this,d,true);return true;}if(view(d).phase!==6||this._incap87)return true;const before=this.currentWardTime,r=hit.call(this,attacker,...args);if(this.currentWardTime<before||!r){interrupt(this,d,!r||this.currentWardTime<=0);this.currentWardTime=Math.max(.01,this.currentWardTime);}return true;}if(this._patron87&&view(d).phase===5){if((view(d).work&3)!==3)return true;state(d).phase=6;this.alignment='foe';this.role='battle';record(d,'Attacked the vampire patron and broke the silence in the high chamber.');}return hit.call(this,attacker,...args);};
  const kill=Explore.prototype.killNPC;Explore.prototype.killNPC=function(n,...args){if(n?._cherryProp87||n?._cherryActor87&&!n._cherryFoe87&&!n._cherry87)return false;if(n?._cherry87){if(this.mapID===151)return abduct(n,this,true);if(view(this).phase===6)interrupt(n,this,true);return false;}if(n?._patron87){if(n.currentWardTime>0)return false;return free(this,n);}if(n?._cherryFoe87){if(n.currentWardTime>0||n.isDead||!foes.some(f=>f.id===n.index))return false;const q=state(this);if(!q.defeated.includes(n.index))q.defeated.push(n.index);n.isDead=true;n.visible=false;n.isDying=false;this.projectiles=this.projectiles.filter(p=>p.owner!==n&&p.target!==n&&p.targetNPC!==n);record(this,n.name+' broke into scattered bats. The gallery defence weakened.');return true;}if(charmed.has(n))restoreOne(n);return kill.call(this,n,...args);};
  const update=NPC.prototype.update;NPC.prototype.update=function(maze,x,y,d,dt,...args){if(this._cherryProp87)return;if((this._patron87||this._cherry87&&d.mapID===SPIRE&&view(d).phase===6)&&!this._incap87){const a=this.alignment,r=this.role,non=this.nonBlocking;this.alignment='friendly';this.role='decoration';this.nonBlocking=true;this.state='stationary';this.cachedPrey=null;try{update.call(this,maze,x,y,d,dt,...args);}finally{this.alignment=a;this.role=r;this.nonBlocking=non;}if(this.isDead||this.isDying)return;}if(this._cherry87){if(this._cherryDance&&startGame==='explore'&&!d.isDead&&!d.isDying&&!document.hidden){this._danceClock=(this._danceClock||0)+Math.max(0,Math.min(.1,Number(dt)||0))*2;const p=BMCherryMotion68.sample(this._danceClock),cx=this.index===ids.stage?50.5:15.5,cy=this.index===ids.stage?30.5:9.5;this.x=cx+p.x-76;this.y=cy+p.y-71.5;this.fixedWorldAngle=p.angle;this.dirX=Math.cos(p.angle);this.dirY=Math.sin(p.angle);this.isMoving=p.moving;}return;}if(this._patron87)return;return update.call(this,maze,x,y,d,dt,...args);};
- function tick(d,dt){if(d!==Dungeon||d.isDead||d.isDying||d.isLoading||startGame!=='explore'||document.hidden||!Number.isFinite(dt)||dt<=0)return;dt=Math.min(.1,dt);const q=view(d);if(q.phase===1&&d.mapID!==2){q.elapsed+=dt;if(q.elapsed>=180)overdue(d);}if(q.phase===8){q.carried+=dt;if(q.carried>=120)recover(d,true);}if(q.phase===9){q.recovery+=dt;if(q.recovery>=180)home(d);}if([1,8,9].includes(q.phase)){q.saveTimer=(q.saveTimer||0)+dt;if(q.saveTimer>=15){q.saveTimer=0;d.requestSave();}}combat(d,dt);}
+ function tick(d,dt){if(d!==Dungeon||d.isDead||d.isDying||d.isLoading||startGame!=='explore'||document.hidden||!Number.isFinite(dt)||dt<=0)return;dt=Math.min(.1,dt);const q=view(d);if(q.introBeat==='performing'){if(!insideInn(d)||d.mapID!==2)finishSet(d);else if((q.setTime=(q.setTime||0)+dt)>=8)finishSet(d);}
+  if(q.phase===1&&d.mapID!==2){q.elapsed+=dt;if(q.elapsed>=180)overdue(d);}if(q.phase===8){q.carried+=dt;if(q.carried>=120)recover(d,true);}if(q.phase===9){q.recovery+=dt;if(q.recovery>=180)home(d);}if([1,8,9].includes(q.phase)){q.saveTimer=(q.saveTimer||0)+dt;if(q.saveTimer>=15){q.saveTimer=0;d.requestSave();}}combat(d,dt);}
  const perfTick=BMCherryPerformance.tick;BMCherryPerformance.tick=function(d,dt){const r=perfTick.call(this,d,dt);tick(d,dt);return r;};
  let recitalTurn=1,recitalMode=null,recitalFailed=0;
  const musicScene=BMCherryPerformance.scene,musicEnd=BMCherryPerformance.ended,musicFail=BMCherryPerformance.failed;
  BMCherryPerformance.scene=function(d,mode){const q=view(d);if(d.mapID!==151||q.phase<2||q.phase>4||V.view(d).hostile||d.x<38||d.x>63||d.y<25||d.y>42||d.isDead||d.isDying||recitalFailed>1)return musicScene.call(this,d,mode);recitalMode??=BMOnline.connected()?'classic':'serenade';return {profile:recitalMode==='classic'?'cherry':'style:ambient',identity:'court-cherry87:'+recitalTurn+':'+recitalMode,performance:'cherry',performanceTurn:recitalTurn,courtRecital87:true,classicId:recitalMode==='classic'?46:undefined,vocalRequest:recitalMode!=='classic',performanceStyle:'ambient',urgent:true,duck:1};};
  BMCherryPerformance.ended=function(scene,p){if(!scene?.courtRecital87)return musicEnd.call(this,scene,p);recitalTurn++;recitalMode=BMOnline.connected()?'classic':'serenade';return true;};
  BMCherryPerformance.failed=function(scene){if(!scene?.courtRecital87)return musicFail.call(this,scene);recitalFailed++;recitalMode='serenade';recitalTurn++;};
- const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...args){restore(this);if(this===Dungeon&&view(this).phase===6)state(this).phase=5;const r=load.call(this,id,...args);if(r!==false){if(away(this))BMCherryPerformance.finish(this,true);sync(this);}return r;};
+ const load=Explore.prototype.loadMap;Explore.prototype.loadMap=function(id,...args){restore(this);if(this===Dungeon&&view(this).phase===6)state(this).phase=5;const r=load.call(this,id,...args);if(r!==false){const q=view(this);if(this.mapID!==2&&q.introBeat==='performing')finishSet(this);if(this.mapID===2&&q.visitPlanned&&!q.phase)depart(this);if(away(this))BMCherryPerformance.finish(this,true);sync(this);}return r;};
  const die=Explore.prototype.killPlayer;Explore.prototype.killPlayer=function(...args){restore(this);return die.apply(this,args);};
  function revive(d){if(!castle(d))return false;restore(d);if(view(d).phase===6)state(d).phase=5;Object.assign(d,{isDead:false,isDying:false,isLoading:false});close(d);d.loadMap(151);Object.assign(d,{x:50.5,y:23.5,dir:0,groundZ:0,isSlidingToTile:false});BMPlayerMotion.reset();sync(d);return true;}
  R.bind(FAMILY,ids.resting,(n,d)=>show(n,'“I am all right. Mother insists on another bowl of broth before I try dancing again.”',[opt('Rest with the family',()=>{if(!near(n,d,ids.resting,FAMILY)||view(d).phase!==9)return false;home(d);return show(n,'After several quiet days, Cherry packs for Tintagel. “Come find me by the stage. I have something to teach you.”',[],false);})]));
@@ -116262,7 +116303,7 @@ const BMCherryRescue87=(()=>{
  R.bind(SPIRE,ids.captive,(n,d)=>view(d).phase===7?show(n,'“What happened? I remember the hall… then only dancing.” You explain. She tries to stand, but her knees buckle. “Please. I need to go home.”',[opt('Carry Cherry',()=>carry(n,d))],false):show(n,'Cherry watches the patron. For a moment her eyes meet yours, but she says nothing.',[],false));
  const interact=R.interact;R.interact=function(n,d){const q=view(d);if(d.mapID===151&&q.phase>=2){if(n.index===986006&&near(n,d,n.index,151)&&q.phase>=5)return show(n,q.early?'The patron’s invitation is pinned to the gate: “Since you insist, come hear the rest.”':'The patron’s invitation bears the same seal as the programme. The door stands ajar.',[opt('Enter the castle',()=>enterCastle(n,d))],false);if([986015,986005,986016].includes(n.index)&&near(n,d,n.index,151)){if(n._vampire85&&!V.available(n,d))return interact.call(this,n,d);if(q.phase>=7)return show(n,q.phase>=10?'The guest performer has returned to Tintagel. The court musician has resumed the public recitals.':'The guest performance is over. Cherry has been freed from the patron’s control.',n._vampire85?[opt('Draw weapon',()=>V.provoke(n,d))]:[],!!n._vampire85);if(q.phase<=4){if(n._vampire85&&!V.available(n,d))return interact.call(this,n,d);const opts=[opt('Watch Cherry',()=>recital(n,d))];if(n._vampire85)opts.push(opt('Draw weapon',()=>{if(!V.provoke(n,d))return false;return abduct(n,d,true);}));return show(n,n.index===986016?'“Ah, you have heard of our visiting maiden? Such grace! Do go in. Perhaps you will understand our admiration.”':'Tonight: Cherry of Tintagel. Admission free. The performance is beginning.',opts,!!n._vampire85);}return show(n,n.index===986016?'“You wish to meet her privately? Naturally. The patron keeps the finest company in his castle. His gate is north at (50,21). He left an invitation for the visitor from Tintagel.”':'The visiting performance has ended. The patron receives callers at the castle gate (50,21).',[...(n._vampire85&&V.available(n,d)?[opt('Draw weapon',()=>V.provoke(n,d))]:[])],!!n._vampire85);}}return interact.call(this,n,d);};
  const entries=BMAegeanRoad.entries;BMAegeanRoad.entries=function(d){const q=view(d),texts={1:'Cherry is visiting her family, then training. Her mother is in the eastern house (84,76) of the Basque settlement in southeastern Aquitania. You may stay there to wait for news.',2:'Cherry is overdue. Ask her mother in southeastern Aquitania’s Basque settlement (84,76).',3:'Follow the last letter to Dacia. Search the ribbon beside the Night Court road (71,53), north of its gate (74,64).',4:'Enter the Night Court through Dacia (74,64). The free performance hall is at (50,39); Cherry is on its stage (50,30).',5:'The patron took Cherry to his castle. Enter at (50,21). Defeat the gallery guards and ward bats; release both seals (6,11) and (29,11). The northern stair (18,4) leads to the high chamber.',6:'Defeat the flying patron. Move out of crimson circles. Cherry’s dance can briefly turn your owned summons; interrupt or incapacitate her to free them. Retreat restores their allegiance.',7:'The patron’s hold has broken. Speak to Cherry in the high chamber (15,9) and help her home.',8:'Cherry is resting in your care. Return to her mother in southeastern Aquitania (84,76). If she wakes before you arrive, she will go home herself.',9:'Cherry is recovering with her family (84,76), southeastern Aquitania. Stay through her recovery or continue your travels.',10:'Cherry is back at the Tintagel tavern, with her songs and lessons. Trained Dancers can ask her to teach Homeward Measure.'};return [...entries(d).map(e=>e.id==='night-court85'&&q.phase>=5?{...e,text:e.text.replace('The castle remains private.','The patron’s invitation opens the castle at (50,21).')}:e),...(q.phase?[{id:'cherry-rescue87',title:'The missing performer',text:texts[q.phase]||texts[10],completed:q.phase===10}]:[])];};
- BMLayers.invalidate(hall);BMLayers.invalidate(spire);BMAtlas.invalidate();return {HALL,SPIRE,FAMILY,CARRY,LESSON,BLAST,ids,foes,view,state,away,castle,sync,begin,overdue,abduct,enterCastle,seal,fight,free,carry,recover,home,teach,measure,charm,restore,tick,revive,targets,get encounter(){return encounter;},get charmed(){return charmed;}};
+ BMLayers.invalidate(hall);BMLayers.invalidate(spire);BMAtlas.invalidate();return {HALL,SPIRE,FAMILY,CARRY,LESSON,BLAST,ids,foes,view,state,away,castle,sync,begin,classStory,needsStory,onStage,where,overdue,abduct,enterCastle,seal,fight,free,carry,recover,home,teach,measure,charm,restore,tick,revive,targets,get encounter(){return encounter;},get charmed(){return charmed;}};
 })();globalThis.BMCherryRescue87=BMCherryRescue87;
 
 /* v93: existing world art, with explicit identities so ordinary vessels remain vessels. */
@@ -117607,7 +117648,7 @@ const BMCottage127=(()=>{
  return {herbs,garden,observed,action,open,interact};
 })();globalThis.BMCottage127=BMCottage127;
 
- await bakeSpriteFamily({start:16500,end:16502});await bakeSpriteFamily({start:16503,end:16505});
+ await bakeSpriteFamily({start:16500,end:16502});await bakeSpriteFamily({start:16503,end:16505});await bakeSpriteFamily({start:16506,end:16508});
 BM_TRAINER_CATALOGS.dancer_trainer=[1180,1181,1182].map(id=>({id,name:BMLearning.name(id),reqs:{dancer:{lvl:0,stats:{}}}}));
 /* v124: remove redundant grass masks left by coastline restoration. */
 BMGuildDecor.transformSurface(0,rows=>rows.filter(q=>!(q.color===MAP_DB[0].floorColor&&!(q.z>0))));
@@ -118646,7 +118687,7 @@ const BMClassLineages=(()=>{
  const referralIds={warrior:'warrior',knight:'knight',mage:'mage',priest:'priest',broker:'rogue',hunter:'hunter',clerk:'dancer'};
  Object.assign(houses.warrior,{teacher:'Village arms teacher',map:38,x:19.5,y:17.5,sprite:16230,where:'beside the cattle pen in Orcynia',paths:['warrior'],greeting:'Warrior shows you an old horn button. “Off the harness of my first red ox. I still carry it.”',again:'The old teacher rests a hand on the cattle rail.',favor:'The captain who took me and my red ox into her company keeps the landing at Haven. Take a watch with her. She still knows the way to my village.',item:'A watch on the landing',returnLine:'“I took that lad and his red ox into my company after the serpent came. His first teacher still lives in Orcynia. Look for the cattle pen.”',first:'“Careful with that gate. The little red heifer can lift the latch with her tongue.” The old teacher slides the pin home.',known:'“The captain sent you? She always did remember which end of an ox could kick.”',task:'A drover is caught outside the pen with a raider between him and the gate. Give him room to get clear, then bring him back to the rail.',finish:'“You watched his back the whole way home. I’d trust you with the herd.”'});
  Object.assign(houses.priest,{greeting:'Priest threads a netting needle with twine.',favor:'Fisher at Haven split his thumb hauling a net. He could use another pair of hands to mend it. Look for him by his cottage.',item:'Fisher’s torn net',where:'under the linen awning beside Fisher’s cottage at Haven',returnLine:'“See the linen awning beside the cottage? You’ll find the old shore priest there.”',known:'“You helped with the net? Good. How’s that thumb of his?”'});
- Object.assign(houses.dancer,{greeting:'Dancer kicks a chair clear of the guild floor.',favor:'“See him tapping out the tune? He taught half this room the figures. His knee’s sore tonight. Come over with me.”',item:'A place in the dance',returnLine:'“Go see Cherry at the village inn in Tintagel. She used to stand on my boots to learn the turn. These days I watch her feet.”',known:'“Dancer sent you? Pull up a chair. You can see the whole room from here.”'});
+ Object.assign(houses.dancer,{greeting:'Dancer kicks a chair clear of the guild floor.',favor:'“See him tapping out the tune? He taught half this room the figures. His knee’s sore tonight. Come over with me.”',item:'Cherry at the village inn',returnLine:'“I haven’t time to take a pupil today. Cherry’s at the village inn down south. Catch her between songs and tell her I sent you.”',known:'“Dancer sent you? Pull up a chair. You can see the whole room from here.”'});
  for(const [family,h] of Object.entries(houses)){h.family=family;for(const id of h.paths)families.set(id,h);byActor.set(h.map+'/'+h.id,h);}
  const house=id=>families.get(id),teacher=n=>n&&byActor.get(Dungeon.mapID+'/'+n.index);
  const leadId=h=>'class-rumor:'+h.family;
@@ -118663,7 +118704,8 @@ const BMClassLineages=(()=>{
   return h.teacher+' · '+h.where;
  }
  function leadText(h,d=Dungeon){const r=info(h,d);
-  if(r.favor===1)return h.family==='dancer'?'Speak to Dancer and join the carter at the dance.':h.favor;
+  if(h.family==='dancer')return directions(h,d);
+  if(r.favor===1)return h.favor;
   if(r.favor===2&&h.family==='priest')return h.favor;
   if(r.favor===2&&social(h))return 'Speak about '+h.item.toLowerCase()+'.';
   if(r.favor===2)return 'Bring '+h.item.toLowerCase()+' back to '+Q.paths.find(p=>p.id===h.family).name+'.';
@@ -118686,12 +118728,8 @@ const BMClassLineages=(()=>{
  function socialLead(h,n,extra){
   const r=info(h);
   if(h.family==='dancer'){
-   if(r.favor===3||r.met)return menu(n,h.returnLine,extra);
-   const join=()=>{beginLead(h);return menu(n,'The carter taps the tune on his knee. “I used to call this one.” Dancer draws back a chair to make room for you.',[
-    ['Ask him to call the figures',()=>tell(h,n,'He cups his hands. “Two to the left!” Three couples turn together. By the next verse he’s loud enough to reach the kitchen.')],
-    ['Offer him your arm',()=>tell(h,n,'“Just the once,” he says. He rests a hand on your sleeve and walks the turn. When you bring him back to his chair, he asks for one more.')],
-    ...extra]);};
-   return menu(n,h.favor,[['Join them',join],...extra]);
+   const lead=record(h);if(lead.favor!==3){lead.favor=3;if(!lead.met)BMQuestLog97.state().tracked=leadId(h);save();}
+   return menu(n,BMCherryRescue87.away(Dungeon)?BMCherryRescue87.where(Dungeon):h.returnLine,extra);
   }
   if(r.favor===3||r.met)return menu(n,h.returnLine,extra);
   if(r.favor===2&&h.family!=='priest')return tell(h,n,'“I’m glad you stayed.”');
@@ -118722,11 +118760,6 @@ const BMClassLineages=(()=>{
   }],...options]);
   if(r.met||r.favor===3)return menu(n,r.favor===3?h.returnLine:'You’ve already found '+h.teacher+'. You’ll know your own way back there.',options);
   return menu(n,h.favor,[['I’ll do it',()=>{if(r.favor)return;r.favor=1;BMQuestLog97.state().tracked=leadId(h);note('Promised to bring '+h.item.toLowerCase()+'.');save();menu(n,h.favor,options);}],...options]);
- }
- function trainer(h,n){const r=info(h),title=Q.paths.find(p=>p.id===h.family).name;
-  return menu(n,r.favor===2?'You’re back. How did you get on?':r.met?'You found the way, then.':'You look as though you have something to ask.',
-   [[r.favor===1?'About your errand':r.favor===2?'Return '+h.item:r.favor===3||r.met?'About your teacher':'How do I become a '+title+'?',()=>favor(h,n)],
-    ...(Q.ownPath(n)?[['Listen to a skill lesson',()=>BMLearning.open(h.family+'_trainer')]]:[])]);
  }
  function take(h,n,text){const r=record(h);if(r.favor!==1)return menu(n,'Everything is accounted for.');r.favor=2;save();note('Collected '+h.item+'.');return menu(n,text);}
  function add(map,index,x,y,sprite,name,open,verb='Inspect'){
@@ -118794,32 +118827,19 @@ const BMClassLineages=(()=>{
   return work.map(p=>[p.steps[Q.record(p.id).stage].text,()=>{Q.progress(p.id);menu(n,BMApprenticeship101.objective(p.id)||'Your report is recorded.');}]);
  }
  function route(id,n){const h=house(id),r=Q.record(id);if(!h||!n||!BMInteract.reachable(n))return false;
-  if(teacher(n)===h)return teacherMenu(h,n);
-  if(n.index===201&&id==='dancer'){
-   const lesson=[...visitReports(n,Q.mentorKey(n)),['Listen to a skill lesson',()=>BMLearning.open('dancer_trainer')]];
-   return socialLead(h,n,lesson);
-  }
-  if(instructor(n,h))return trainer(h,n);
+  if(teacher(n)===h)return h.family==='dancer'&&BMCherryRescue87.needsStory(Dungeon)?BMCherryRescue87.classStory(n,Dungeon):teacherMenu(h,n);
+  if(n.index===201&&id==='dancer')return socialLead(h,n,[]);
+  if(instructor(n,h))return favor(h,n,visitReports(n,Q.mentorKey(n)));
   if(h&&Q.mentorKey(n)&&!r.accepted)return menu(n,leadText(h));
   return false;
  }
- let other=null;
- function otherBusiness(n){
-  other=n;
-  try{return BMInteract.open(n);}finally{other=null;}
- }
- function worldInteract(n){if(!n||n===other)return false;
-  const open=objects.get(Dungeon.mapID+'/'+n.index);if(open)return BMInteract.reachable(n)&&open(n);
-  if(![201,8001,8002,8003,8004,8005,8006,8401,8402,8403,8404].includes(n.index))return false;
-  const key=Q.mentorKey(n);if(!key||!BMInteract.reachable(n))return false;
-  if(n.index===201)return false;
-  const reports=visitReports(n,key);
-  const h=houses[referralIds[key]],r=h&&Q.state().paths[h.family];
-  const offer=h&&!(r?.accepted&&!r.teacher150)&&(!Q.acquired(h.family)||[1,2].includes(info(h).favor));
-  if(!reports.length&&!offer){if(Q.paths.some(p=>{const r=Q.state().paths[p.id];return r?.accepted&&!r.completed&&!r.teacher150&&p.steps[r.stage]?.key===key;}))return false;if([8402,8403,8404].includes(n.index))return menu(n,({8402:'“There’s drinking water under the awning. Take what you need.”',8403:'“Mind the ink. That chart took all morning.”',8404:'“I settle the accounts when the market closes. What a day it’s been.”'})[n.index]);if(n.index===8401)return menu(n,'The Noble folds the rent roll. “The tenants can come to me themselves. I keep this door open.”');return false;}
-  const lead=h&&info(h),title=h&&Q.paths.find(p=>p.id===h.family).name;
-  const about=offer?[[lead.favor===2?'Return '+h.item:lead.favor===1?'About your errand':lead.met||lead.favor===3?'About your teacher':'How do I become a '+title+'?',()=>favor(h,n)]]:[];
-  return menu(n,offer?(lead.favor===2?'You’re back. Did you find it?':lead.favor||lead.met?'What news do you have for me?':h.greeting):'What news do you bring?',[...reports,...about,['Other business',()=>otherBusiness(n)]]);
+ function worldInteract(n){
+  if(!n||Dungeon.customMapInstance||!BMInteract.reachable(n))return false;
+  const open=objects.get(Dungeon.mapID+'/'+n.index);if(open)return open(n);
+  if(Dungeon.mapID===2&&n.index===8403)return menu(n,'The chart mender flattens the curling edge of a map. “Mind the silver on that mirror. Mage lent it to me.”',
+   info(houses.mage).favor===1?[['Ask about the mirror',()=>menu(n,'“Just there on the chamois by the crates. Lift it by the rim.”')]]:[]);
+  if(Dungeon.mapID===2&&n.index===8401)return menu(n,'The Noble folds the rent roll. “The tenants can come to me themselves. I keep this door open.”',visitReports(n,'noble'));
+  return false;
  }
  function prePanel(p,r,panel,el,button){const h=house(p.id);if(!h||r.accepted)return false;
   el('p',panel,leadText(h),'prose');const lead=info(h);
@@ -118828,9 +118848,35 @@ const BMClassLineages=(()=>{
   if(p.id!==h.family)el('p',panel,Q.status(p).reasons.filter(t=>!t.startsWith('Ask ')&&!t.startsWith('Return ')).join(' · '),'muted');
   return true;
  }
- return {houses,house,teacher,nearby,reportingTo,finalStep,objective,begin,route,worldInteract,prePanel,leadEntries,info,leadId,leadText,leadPlaces,directions,install};
+ return {houses,house,teacher,visitReports,nearby,reportingTo,teacherMenu,finalStep,objective,begin,route,worldInteract,prePanel,leadEntries,info,leadId,leadText,leadPlaces,directions,install};
 })();
 globalThis.BMClassLineages=BMClassLineages;BMClassLineages.install();
+
+const BMCampaignCast164=(()=>{
+ const rows=[[0,886004,16500,null,null],[2,8403,16204,"Chart mender","Mind the silver on that sighting mirror. Mage lent it to me."],[2,888240,16506,null,null],[2,888316,161,null,null],[2,891004,161,null,null],[2,9901530,16206,null,null],[2,9901540,16210,null,null],[5,9901550,16207,null,null],[6,896002,16206,null,null],[9,893020,16500,null,null],[9,985106,16500,null,null],[10,890096,16223,null,null],[10,890092,16223,null,null],[22,901864,1160,null,null],[33,9901510,161,null,null],[38,897001,158,null,null],[43,896200,16206,null,null],[44,896210,16206,null,null],[45,898011,161,null,null],[45,969001,161,null,null],[45,970006,16223,null,null],[48,899011,16210,null,null],[48,899012,158,null,null],[137,977014,16210,null,null],[137,977015,16214,null,null],[137,977101,16214,null,null],[137,977120,161,null,null],[137,977121,161,null,null],[138,977014,16210,null,null],[138,977015,16214,null,null],[138,978002,16214,null,null],[138,978005,158,null,null],[138,978006,16214,null,null],[139,977014,16210,null,null],[139,977015,16214,null,null],[140,977015,16214,null,null],[140,979002,161,null,null],[140,979003,158,null,null],[140,977014,16210,null,null],[140,979025,16214,null,null],[141,977015,16214,null,null],[141,977014,16210,null,null],[142,977015,16214,null,null],[142,977014,16210,null,null],[142,979025,16214,null,null],[143,981013,16206,null,null],[143,981027,16214,null,null],[145,977015,16214,null,null],[145,977014,16210,null,null],[149,984011,16214,null,null],[150,985001,16223,null,null],[150,985020,16210,null,null],[161,995001,16223,null,null],[162,995006,16223,null,null],[163,995011,16223,null,null],[164,995016,16223,null,null],[165,995021,16223,null,null],[166,995026,16223,null,null],[167,995031,16223,null,null],[168,995036,16223,null,null],[169,995041,16223,null,null],[170,995046,16223,null,null],[171,995051,16223,null,null],[173,995056,16223,null,null],[174,995061,16223,null,null],[175,995066,16223,null,null],[180,995071,16223,null,null],[182,997001,16223,null,null],[184,997006,16223,null,null],[185,997011,16223,null,null],[191,997015,16223,null,null]];
+ const identities=new Map(rows.map(([map,id,...data])=>[map+'/'+id,data]));
+ const retired=new Set([8402,8404]);
+ function install(){
+  MAP_DB[2].npcs=MAP_DB[2].npcs.filter(n=>!retired.has(n.index));
+  for(const [map,id,sprite,name,text] of rows){
+   const n=MAP_DB[map]?.npcs?.find(a=>a.index===id);if(!n)continue;
+   n.sprite=sprite;n.fieldSprite156=sprite;if(n.type!==undefined)n.type=sprite;
+   if(name)n.name=name;if(text)n.customDialogue=[text];
+   if(map===2&&id===8403)Object.assign(n,{x:48.5,y:24.5,spawnCondition:()=>true,dialogueFactory:null,options:null});
+  }
+  const build=Explore.prototype.buildNPC;
+  Explore.prototype.buildNPC=function(def,map,...rest){
+   const n=build.call(this,def,map,...rest),identity=identities.get((map??this.mapID)+'/'+def.index);
+   if(!identity||this.customMapInstance||!MAP_DB[map??this.mapID]?.npcs?.some(a=>a.index===def.index))return n;
+   const [sprite,name,text]=identity;
+   n.type=sprite;if(name)n.name=name;if(text)n.customDialogue=[text];if((map??this.mapID)===2&&n.index===8403)Object.assign(n,{x:48.5,y:24.5,homeX:48.5,homeY:24.5,originx:48.5,originy:24.5,targetX:48.5,targetY:24.5});
+   if(sprite>=16100&&sprite<16300){BMFieldActors156.install(n,sprite);}
+   else{delete n._classArt;delete n._sectScale;delete n._sectHover;n.cachedBillboard=null;n.needsBillboardUpdate=false;}
+   return n;
+  };
+ }
+ return {install};
+})();
 
 const BMFieldActors156=(()=>{
  const roads=BMSouthernRoads;
@@ -118851,7 +118897,7 @@ const BMFieldActors156=(()=>{
   const id=declared??fieldArt(current,n.index,n.name,n.role);
   if(id==null||n._fieldArt156===id)return n;
   n._fieldArt156=id;n.type=id;
-  if(id===16500||id===16503){
+  if(id===16500||id===16503||id===16506){
    delete n._classArt;delete n._sectScale;delete n._sectHover;delete n.fixedWorldAngle;
    n.cachedBillboard=null;n.needsBillboardUpdate=false;return n;
   }
@@ -118890,7 +118936,7 @@ const BMFieldActors156=(()=>{
   if(roads.enter(d,o.destination.mapID,o.destination))last={map:d.mapID,x:d.x,y:d.y};
  }
  return {install,threshold,cast:REGIONAL_CAST};
-})();globalThis.BMFieldActors156=BMFieldActors156;
+})();globalThis.BMFieldActors156=BMFieldActors156;BMCampaignCast164.install();
 
 const BMMapGuidance158=(()=>{
  const visible=n=>n&&n.visible!==false&&!n.isDead&&!n.isDying;
@@ -118899,7 +118945,7 @@ const BMMapGuidance158=(()=>{
  const favors={warrior:[9901601],knight:[9901602,9901603],mage:[9901604],priest:[888240],rogue:[9901606],hunter:[9901607],dancer:[201]};
  const mentors={warrior:8001,knight:8005,mage:8003,priest:8004,rogue:8002,hunter:8006,dancer:201};
  const offers={'frontier-parcel':[45,898010],'aegean-route-book':[46,899010],'levant-medicine':[48,899012],'carpathian-invitation':[45,969001],'silver-thorn-estate':[45,969001],'athens-guild':[46,8003],'cherry-rescue87':[2,8405],'eastern-waystones':[136,976139]};
- let here=[],byActor=new Map(),roofCache={},routeBase=null,routeScene=null,routeStamp='',hops=new Map(),crossings=new Map();
+ let here=[],byActor=new Map(),byPlace=new Map(),roofCache={},routeBase=null,routeScene=null,routeStamp='',hops=new Map(),crossings=new Map();
  const staged=n=>!!(n?._apprentice101||n?._cherryActor87||n?._cherry87||[986006,986015,986005].includes(n?.index));
  function supply(key,d,out,lookup,preferred){
   const herb=key.startsWith('herb:')||key.startsWith('powder:')?key.split(':')[1]:null;
@@ -118912,7 +118958,7 @@ const BMMapGuidance158=(()=>{
   if(!out.length&&preferred!==d.mapID&&MAP_DB[preferred])out.push({mapID:preferred,id:null,...MAP_DB[preferred].spawn,arrivalOnly:true,name:'Gather supplies',kind:'★'});
  }
  function mentorMap(key,d){
-  if(!BMTintagelCoast.settled(d))return key==='hunter'?5:0;
+  if(!BMTintagelCoast.settled(d))return key==='hunter'&&BMBranches.post(d)?5:0;
   return {warrior:38,knight:33,mage:d.memory.athensJourney?.stage?46:4,priest:BMPriestJourney.arrived(d)?43:6,rogue:2,hunter:5,dancer:2}[key];
  }
  function fieldNeeded(action,w,d){
@@ -118942,6 +118988,7 @@ const BMMapGuidance158=(()=>{
   const out=[],m=d.memory||{},put=(map,id,kind='★')=>{const p=lookup(map,id,d);if(p)out.push({...p,kind});};
   if(e.lead150){
    const L=BMClassLineages,h=L.houses[e.lead150],r=L.info(h,d),id=h.family;
+   if(id==='dancer'){if(!r.met&&!BMCherryRescue87.away(d))put(2,8405);return out;}
    if(r.favor===1){const ids=favors[id];const i=ids.length===1?0:(id==='warrior'?r.cup:r.measured)?1:0;const maps={warrior:2,knight:0,mage:2,priest:2,rogue:0,hunter:0,dancer:mentorMap('dancer',d)};put(maps[id],ids[i]);}
    if(r.favor===2){if(id==='priest')put(2,favors.priest[0]);else put(mentorMap(id,d),mentors[id],'!');}
    if(r.favor===3&&!r.met)out.push(...L.leadPlaces(h,d));return out;
@@ -119094,7 +119141,7 @@ const BMMapGuidance158=(()=>{
   for(const p of locations){if(p.menuStep)continue;if(p.mapID===d.mapID&&!p.arrivalOnly){
    const n=p.id!=null?localById.get(p.id):null;if(p.id!=null&&!n)continue;
    add({...p,kind:p.kind||'★'},n);
-  }else if(p.mapID!==d.mapID&&p.kind!=='?'&&(p.tracked||!tracked)){const step=route(d,p.mapID);if(step)add({...step,kind:'★',tracked:p.tracked,route:true},null);}}
+  }}
   for(const def of MAP_DB[d.mapID]?.npcs||[])for(const q of def.questSignals158||[]){
    const mem=d.memory;if(mem[q.reward])continue;const n=localById.get(def.index);
    const kind=q.giver?(!mem[q.accepted]?'?':mem[q.objective]?'!':null):mem[q.accepted]&&!mem[q.objective]?'★':null;
@@ -119112,7 +119159,7 @@ const BMMapGuidance158=(()=>{
    const teacher=BMClassLineages.teacher(n);if(teacher&&!kind&&teacher.paths.some(id=>!BMClassPaths.state(d).paths[id]?.accepted&&!BMClassPaths.acquired(id,d)))kind='?';
    if(kind)add({x:n.x,y:n.y,id:n.index,kind},n);
   }
-  here=[...seen.values()];byActor=new Map(here.filter(p=>p.n).map(p=>[p.n,p]));
+  here=[...seen.values()];byActor=new Map(here.filter(p=>p.n).map(p=>[p.n,p]));byPlace=new Map(here.filter(p=>!p.n&&!p.route&&p.id==null).map(p=>[p.x+","+p.y,p]));
  }
  let lastGlyph=0;
  function glyph(g,x,y,r,kind,boss,world=false){
@@ -119138,15 +119185,24 @@ const BMMapGuidance158=(()=>{
   }
   for(const {p,px,py,r}of pins.values())glyph(g,px,py,r,p.kind,p.n?.isBoss);
  }
- function world(g,d,project,scale){for(const p of here){
-  const n=p.n;if(n&&(!visible(n)||n.isBoss&&p.kind==='★'))continue;const obj=n||p;
-  if(Math.hypot(obj.x-d.x,obj.y-d.y)>Math.min(32,Math.max(5,d.dSense||10)))continue;
-  if(!d.checkLineOfSight(obj.x,obj.y))continue;
-  const base=n?BMTerrainPhysics.feet(d,n):MAP_DB[d.mapID]?.mountainHeights?.[Math.floor(obj.y)]?.[Math.floor(obj.x)]||0;
-  const height=n?Math.max(.42,BMBodySizes.actor(d,n).height||.85):.34;
-  const pos=project(obj.x,obj.y,base+height+.28);if(!pos||pos.hidden)continue;
-  glyph(g,pos.x,pos.y,Math.min(22,Math.max(5,(pos.scale??scale)*.17)),p.kind,n?.isBoss,true);
- }}
+ const rimCache=new WeakMap(),recentRims=[];
+ function glowFrame(image,n,d){
+  if(!image||!n||d!==Dungeon||startGame!=='explore'||!visible(n))return image;
+  const mark=byActor.get(n)||(n.role==="herb"&&byPlace.get(n.x+","+n.y));
+  if(!mark||mark.route)return image;
+  const dx=n.x-d.x,dy=n.y-d.y,range=Math.hypot(dx,dy);
+  if(range>=3||Math.abs(BMTerrainPhysics.feet(d,n)-BMPlayerMotion.feetZ)>1.1||!d.checkLineOfSight(n.x,n.y))return image;
+  const angle=(d.currentAngle??d.dir*Math.PI/2)+(d.lookPan||0),facing=(Math.sin(angle)*dx-Math.cos(angle)*dy)/Math.max(.02,range);
+  const gain=Math.min(1,(3-range)/1.4)*(.38+.62*Math.max(0,facing)**5);
+  const band=Math.round(gain*5);if(!band)return image;
+  let frames=rimCache.get(image);if(!frames){frames=[];rimCache.set(image,frames);}if(frames[band])return frames[band];
+  const c=document.createElement('canvas');c.width=image.width;c.height=image.height;if(!c.width||!c.height)return image;
+  const g=c.getContext('2d'),r=Math.max(1,Math.min(4,Math.round(Math.min(c.width,c.height)*.014)));
+  g.shadowColor='#f6ca68';g.shadowBlur=r*1.4;
+  for(const [x,y]of [[r,0],[-r,0],[0,r],[0,-r]])g.drawImage(image,x,y);
+  g.shadowBlur=0;g.globalCompositeOperation='source-in';g.fillStyle='rgba(250,205,106,'+(.16+band*.12)+')';g.fillRect(0,0,c.width,c.height);
+  g.globalCompositeOperation='source-over';g.drawImage(image,0,0);frames[band]=c;recentRims.push([frames,band]);if(recentRims.length>48){const [old,level]=recentRims.shift();delete old[level];}return c;
+ }
  function roof(d){
   const w=d.maze[0].length,x=Math.floor(d.x),y=Math.floor(d.y),z=d.groundZ||0,key=x+','+y+','+z;
   if(roofCache.cells===d.layerCells&&roofCache.key===key)return roofCache.area;
@@ -119157,7 +119213,7 @@ const BMMapGuidance158=(()=>{
    const s=above(xx,yy);if(!s||Math.abs(s.top-top.top)>.22||s.building108!==top.building108)continue;area.add(k);q.push([xx,yy]);}}
   roofCache={cells:d.layerCells,key,area};return area;
  }
- return {update,goals,staged,fieldNeeded,route,roof,world,minimap,glyph,marker:n=>byActor.get(n),get marks(){return here;}};
+ return {update,goals,staged,fieldNeeded,route,roof,glowFrame,minimap,glyph,marker:n=>byActor.get(n),get marks(){return here;}};
 })();
 globalThis.BMMapGuidance158=BMMapGuidance158;
 
@@ -119172,5 +119228,5 @@ globalThis.BMMapGuidance158=BMMapGuidance158;
  };
 }
 globalThis.BMResponsive113={upper:upperHUDLayout,controls:controlHUDLayout};
-BMContent.installEmbedded();await bootGame();BMMovementCourtyard.previewStart();BMCreator.previewStart();}catch(error){window.BattleMageStartup?.report(error,"Saved-game startup");if(window.BM_CREATOR_PREVIEW)parent.postMessage({type:"bm-creator-error",message:String(error.message||error)},"*");}})();
+boot.progress('Preparing the world');await boot.yieldPaint();BMContent.installEmbedded();await bootGame();BMMovementCourtyard.previewStart();BMCreator.previewStart();}catch(error){window.BattleMageStartup?.report(error,"Saved-game startup");if(window.BM_CREATOR_PREVIEW)parent.postMessage({type:"bm-creator-error",message:String(error.message||error)},"*");}})();
 </script>
