@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 164,
-  "serverVersion": "1.10.96",
+  "version": 166,
+  "serverVersion": "1.10.98",
   "date": "2026-11-21",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v163 / server 1.10.95",
+  "supersedes": "BattleMage Runestones v165 / server 1.10.97",
   "deployed": false,
   "files": [
     "index.html",
@@ -27,8 +27,8 @@
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "25bb72c55bcc55445c8b94fe46b62c02fe22cd4d1c0bea7bded3df747477f0c6",
-  "serverSha256": "f19a3e77129ea7fd9d8df5db10cd4663bd005e151f06889d78ace219200f14ed",
+  "clientSha256": "60837888a8494ed10c72b9b21c168fa23e6ef4c154d1b3fa17c171878d35abc6",
+  "serverSha256": "4d4d97120d74b14465d92f7e17fe94d3a3b6e44deff023a1b9a4ffbfacc315d2",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -311,7 +311,7 @@
     }
   },
   "devlog": {
-    "current": "v164",
+    "current": "v166",
     "history": "Minigame Manual"
   },
   "historicalLiveInspection": {
@@ -338,14 +338,13 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Trainer menus, Haven cast and Cherry’s performance and family visit",
-    "Sentence-aware dialogue and local quest outlines",
-    "Studio dice continuity and startup timing with real progress and flavor captions"
+    "Ten original sprite strips, with distinct northern elf palettes for three families",
+    "Thirteen animated, collectible monster cards and regional encounters in the extended deck"
   ],
   "previousRelease": {
-    "version": 163,
-    "serverVersion": "1.10.95",
-    "summary": "The original classes"
+    "version": 165,
+    "serverVersion": "1.10.97",
+    "summary": "On the moor and in the forest"
   },
   "validation": {
     "offlineFreshJournal": [
@@ -452,6 +451,17 @@
       "studio": "Six dice animate across a menu refresh and a simulated browser visibility change.",
       "loading": "Cold offline launch exercised in Chromium using a 412 × 875 viewport, with real portrait counts and the existing joke captions.",
       "server": "The matching server answered /version with client 164 and server 1.10.96."
+    },
+    "v165": {
+      "cast": "The Moors sailor and the Savage Forest trapper use their own directional art. Hunter and the two Haven crew retain their v164 models.",
+      "progression": "The seven class report interactions and the High Priestess initiation passed the saved-game test.",
+      "server": "The server answered /version with client 165 and server 1.10.97."
+    },
+    "v166": {
+      "cards": "All thirteen regional drops were collected and restored from a save. A Bandit card was summoned.",
+      "encounters": "Fifteen habitat entries across twelve maps were checked against the in-game actors.",
+      "art": "A phone-sized Chromium viewport loaded the standalone file offline, decoded all sheets, and opened Elf Knight from Extra Cards.",
+      "server": "Server actor and card dice, habitat links, spell IDs and /version were checked locally."
     }
   },
   "limitations": [
@@ -3931,7 +3941,7 @@
     {
       "map": 85,
       "index": 762100,
-      "sprite": 16200,
+      "sprite": 16700,
       "name": "Honeywife",
       "x": 28.5,
       "y": 57.5,
@@ -3941,7 +3951,7 @@
     {
       "map": 85,
       "index": 762101,
-      "sprite": 16201,
+      "sprite": 16701,
       "name": "Kennel Girl",
       "x": 25.5,
       "y": 59.5,
@@ -3971,7 +3981,7 @@
     {
       "map": 4,
       "index": 762104,
-      "sprite": 16202,
+      "sprite": 16702,
       "name": "Slingmaker",
       "x": 27.5,
       "y": 76.5,
@@ -4051,7 +4061,7 @@
     {
       "map": 126,
       "index": 762112,
-      "sprite": 16208,
+      "sprite": 16708,
       "name": "Grain Widow",
       "x": 52.5,
       "y": 50.5,
@@ -4061,7 +4071,7 @@
     {
       "map": 126,
       "index": 762113,
-      "sprite": 16209,
+      "sprite": 16709,
       "name": "Young Standard Bearer",
       "x": 49.5,
       "y": 52.5,
@@ -4091,7 +4101,7 @@
     {
       "map": 46,
       "index": 762116,
-      "sprite": 16211,
+      "sprite": 16711,
       "name": "Myrto",
       "x": 50.5,
       "y": 4.5,
@@ -4101,7 +4111,7 @@
     {
       "map": 46,
       "index": 762117,
-      "sprite": 16212,
+      "sprite": 16712,
       "name": "Iambe",
       "x": 47.5,
       "y": 6.5,
@@ -4121,7 +4131,7 @@
     {
       "map": 67,
       "index": 762119,
-      "sprite": 16213,
+      "sprite": 16713,
       "name": "Veia",
       "x": 52.5,
       "y": 50.5,
@@ -4161,7 +4171,7 @@
     {
       "map": 170,
       "index": 762123,
-      "sprite": 16216,
+      "sprite": 16716,
       "name": "Min Boatwoman",
       "x": 37.5,
       "y": 51.5,
@@ -4201,7 +4211,7 @@
     {
       "map": 168,
       "index": 762127,
-      "sprite": 16219,
+      "sprite": 16719,
       "name": "Potter’s Daughter",
       "x": 45.5,
       "y": 64.5,
@@ -4241,7 +4251,7 @@
     {
       "map": 353,
       "index": 762131,
-      "sprite": 16222,
+      "sprite": 16722,
       "name": "Keeper of the Gold",
       "x": 5.5,
       "y": 96.5,
@@ -4321,7 +4331,7 @@
     {
       "map": 120,
       "index": 762139,
-      "sprite": 16228,
+      "sprite": 16728,
       "name": "Notch Cutter",
       "x": 42.5,
       "y": 59.5,
@@ -4331,7 +4341,7 @@
     {
       "map": 120,
       "index": 762140,
-      "sprite": 16229,
+      "sprite": 16729,
       "name": "Fjord Sounder",
       "x": 39.5,
       "y": 61.5,
