@@ -1,8 +1,8 @@
 {
   "name": "battlemage-server",
-  "version": "1.10.102",
+  "version": "1.10.105",
   "private": true,
-  "description": "BattleMage v170 \u00b7 Moonlit Grove",
+  "description": "BattleMage v173 \u00b7 At the card table",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js"

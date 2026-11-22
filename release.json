@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 170,
-  "serverVersion": "1.10.102",
+  "version": 173,
+  "serverVersion": "1.10.105",
   "date": "2026-11-21",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v169 / server 1.10.101",
+  "supersedes": "BattleMage Runestones v172 / server 1.10.104",
   "deployed": false,
   "files": [
     "index.html",
@@ -27,8 +27,8 @@
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "5f387f8212c98d6b6f9f5ca3872945b675c32f25b6aa53c34355203d77c6ee41",
-  "serverSha256": "8d4e6557ccdbade20f6b069946ed4c2bf8e3426fe4b434b3ba00f5c0858f23e0",
+  "clientSha256": "585ffbd973d11f294c002a8c02410134a088ae662d7da0e1d07adee64698a478",
+  "serverSha256": "be7d5b04e04da46ec8e93b4ee738579838cd84e8cb87c270b2993b53b2d3ac7e",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -324,7 +324,7 @@
     }
   },
   "devlog": {
-    "current": "v170",
+    "current": "v173",
     "history": "Minigame Manual"
   },
   "historicalLiveInspection": {
@@ -351,14 +351,13 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Original paintings for Curse, Wisp, Pixie, Defense and the Stone Battle Axe. Physical equipment and the Healing Potion display their field models.",
-    "Walking Elder · Moonlit Grove is collectible at the Haven Card Dealer. Both prints use the original creature model and the same combat and mastery rules.",
-    "The Witch Hunter, Island Warrior and Zombie each have regional encounters, a painted card and an articulated field model."
+    "The green-apron figure was removed from the regional sprite definitions. Older actor records use native models. Other regional townspeople no longer use the shared broad male face and body.",
+    "Adventure and standalone card battles draw at higher device resolution. Card titles have stronger lettering."
   ],
   "previousRelease": {
-    "version": 169,
-    "serverVersion": "1.10.101",
-    "summary": "The painted cards"
+    "version": 172,
+    "serverVersion": "1.10.104",
+    "summary": "Boss encounters"
   },
   "validation": {
     "offlineFreshJournal": [
@@ -550,6 +549,23 @@
         }
       ],
       "scope": "Isolated engine checks. Live multiplayer and a physical phone playthrough are unverified."
+    },
+    "v171": {
+      "cards": 197,
+      "paintings": 19,
+      "npcTicks": 1200,
+      "modelDirections": 8,
+      "gallery": "Reproduced the v170 Trick exception. Exercised rank and text drawing in 197 gallery entries at both sizes. Verified cover geometry on 19 images in three art window sizes.",
+      "quest": "Verified the initial hint, incorrect choice and a single successful collection. Checked fresh and restored client actors, server catalog and saved map ledgers.",
+      "scope": "Engine and native Canvas checks. Physical Android and live multiplayer sessions unverified."
+    },
+    "v172": {
+      "scope": "Native Canvas regression of the shared overworld renderer, with automatic boss stars, tracked boss objectives, regular quest contacts, and actors reusing the same sprite frames. No phone or live multiplayer session."
+    },
+    "v173": {
+      "retiredSprite": "Checked all six authored users, restored and custom actors and server ledger migration. The old sprite recipe is absent. Compared the 48 surviving regional sprite renders. Verified the native Priest mesh.",
+      "cardTable": "Rendered actual card faces with a native canvas. The 360 × 740 CSS viewport rendered at 1080 × 2220 for a 3× display and reverted to 360 × 740 for the mobile exploration profile. Tested both sides, numeric modes 4 to 8, Adventure battle, rotation, device pixel ratios and the 4-megapixel budget. Checked title and dice drawing.",
+      "scope": "Renderer and save-data tests. Physical Android and live multiplayer not tested."
     }
   },
   "limitations": [

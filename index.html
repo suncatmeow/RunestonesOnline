@@ -2,8 +2,8 @@
   <html>
     <head>
       <meta charset="utf-8"/>
-      <meta name="suncat-build" content="2026-11-21-bm-v170-moonlit-grove"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">      <title>Battle-Mage · v170</title>
+      <meta name="suncat-build" content="2026-11-21-bm-v173-card-table"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual">      <title>Battle-Mage · v173</title>
       <style>
         html,body {
           width:100%;
@@ -35786,7 +35786,7 @@ class Card{
             case 28888://Trick, 7                              SPELL - CAST
         
               this.name = 'Trick';
-              //this.portrait = 28888;
+              this.portrait = 28888;
               this.type = 2;//null 0-monster, 1-item, 2-spell
               this.desc = 'Caster rolls INT  to attack. Choose which stat the foe must roll to defend.';
               this.subType = 'cast'; 
@@ -36062,7 +36062,7 @@ class Card{
                         else if (this.rank === 'Eight') rankTextToDraw = 'VIII';
                         else if (this.rank === 'Nine') rankTextToDraw = 'IX';
                         else if (this.rank === 'Ten') rankTextToDraw = 'X';
-                        else rankTextToDraw = this.rank; 
+                        else rankTextToDraw = this.rank || null; 
                     }
 
                 // --- DRAWING EXECUTION ---
@@ -36079,12 +36079,12 @@ class Card{
 
               // NAME
                 host.ctx.textAlign= 'center';
-                void 0, (0, host.drawText)(x+(this.l*z/1.97),y+(this.h-this.h*.989),this.l*.73,this.h*.0857,this.name,'black',z);
+                void 0, (0, host.drawText)(x+this.l*z*.5,y+.019*z,this.l*.73,this.h*.0857,this.name,'black',z,'left','600');
                 host.ctx.textAlign= 'left';
               
              // PORTRAIT BACKGROUND
               void 0, (0, host.drawShape)('rec',x,y,z,.221,1.66, 1.809, 1.75, 0,0,0,0,'rgba(48,48,48,.5)',1);
-              void 0, (0, host.drawShape)('rec',x,y,z,.25,1.66, 1.75, 1.75, 0,0,0,0,'black',1);
+              void 0, (0, host.drawShape)('rec',x,y,z,.25,1.66, 1.75, 1.75, 0,0,0,0,'#39343c',1);
               
               // --- THE FIX: DYNAMIC SCALING & CENTERING ---
               let portScale = (((host.tL / 10) * 1.75) / host.tL) * z; 
@@ -48413,10 +48413,17 @@ const BMPerformance=(()=>{
         {name:'Minimum',dpr:1,rayStep:4,floorStep:4,fps:30,particles:48}];
     let mode='auto';try{const stored=BMStorage.getItem('battle-mage-graphics-v1');if(['auto','0','1','2','3'].includes(stored))mode=stored;}catch(_){}
     let tier=mode==='auto'?(mobile?1:0):Number(mode),last=0,changedAt=-Infinity;
-    let fps=0,frameMs=0,renderMs=0,active=false,count=0,total=0,drawTotal=0,resizePending=false,sampled=false;
+    let fps=0,frameMs=0,renderMs=0,active=false,count=0,total=0,drawTotal=0,sampled=false;
     let slow=0,healthy=0,stalls=0,worst=0,lastFrameMs=0;
     function clear(){count=total=drawTotal=0;slow=healthy=stalls=worst=0;}
-    function apply(value,time){if(tier===value)return;tier=value;changedAt=time;resizePending=true;clear();}
+    let appliedRatio=0;
+    function canvasRatio(){
+        const device=window.devicePixelRatio||1;
+        if(startGame!=='battle'&&!(startGame>3))return Math.min(device,levels[tier].dpr);
+        const area=Math.max(1,window.innerWidth*window.innerHeight);
+        return Math.min(device,3,Math.max(1,Math.sqrt(4194304/area)));
+    }
+    function apply(value,time){if(tier===value)return;tier=value;changedAt=time;clear();}
     function begin(time,isActive){
         sampled=false;
         if(!isActive||document.hidden){active=false;last=0;clear();return;}
@@ -48441,9 +48448,11 @@ const BMPerformance=(()=>{
         else if(healthy>=30000&&tier>0&&time-changedAt>=30000)apply(tier-1,time);
     }
     document.addEventListener('visibilitychange',()=>{active=false;last=0;clear();});
-    return {begin,end,cache3D,cacheCards,get profile(){return levels[tier];},get mode(){return mode;},
+    return {begin,end,cache3D,cacheCards,canvasRatio,markCanvasRatio(value){appliedRatio=value;},get profile(){return levels[tier];},get mode(){return mode;},
         get status(){return {mode,tier:levels[tier].name,fps:Math.round(fps),frameMs,renderMs,cache3D,cacheCards};},
-        flushResize(){if(resizePending&&!isChatActive){resizePending=false;resizeCanvas();}},
+        flushResize(){
+            if(!isChatActive&&canvasRatio()!==appliedRatio)resizeCanvas();
+        },
         setMode(value){if(!['auto','0','1','2','3'].includes(String(value)))return;mode=String(value);apply(mode==='auto'?(mobile?1:0):Number(mode),performance.now());clear();active=false;try{BMStorage.setItem('battle-mage-graphics-v1',mode);}catch(_){}},
         reset(){active=false;last=0;clear();}
     };
@@ -51607,12 +51616,26 @@ function regionalFigure167(id){
 }
 const regionalCardPrints167=new Map();
 const paintedCards169=new Map();
+const cardPaintFocus={23:.46,60:.42,188:.59,4700:.28,4703:.27,4706:.27,4720:.32,4723:.39,4726:.28,4730:.37};
+const darkGroundPaints=new Set([15,25,27,30,4710,4711]);
 function stampCardPainting169(id,x,y,z) {
-    const image=paintedCards169.get(Number(id)===60.1?60:Number(id));
+    const key=Number(id)===60.1?60:Number(id),image=paintedCards169.get(key);
     if(!image)return false;
-    const w=tL*z,h=tH*z,fit=Math.min(w/image.width,h/image.height);
-    const dw=image.width*fit,dh=image.height*fit;
-    ctx.drawImage(image,tX+x*tL/10+(w-dw)/2,tY+y*tH/10+(h-dh)/2,dw,dh);
+    const w=tL*z,h=tH*z;
+    if(!(w>0&&h>0))return false;
+    const fit=Math.max(w/image.width,h/image.height);
+    const sw=w/fit,sh=h/fit,left=(image.width-sw)*.5,top=(image.height-sh)*(cardPaintFocus[key]??.5);
+    const dx=tX+x*tL/10,dy=tY+y*tH/10;
+    ctx.save();
+    if(darkGroundPaints.has(key)){
+        // Lift the empty black ground on isolated item paintings, keeping their colored brushwork.
+        const ground=ctx.createLinearGradient(dx,dy,dx+w,dy+h);
+        ground.addColorStop(0,'#302b34');ground.addColorStop(1,'#1f1c24');
+        ctx.fillStyle=ground;ctx.fillRect(dx,dy,w,h);
+        ctx.globalCompositeOperation='lighten';
+    }
+    ctx.drawImage(image,left,top,sw,sh,dx,dy,w,h);
+    ctx.restore();
     return true;
 }
 function regionalRig(mesh){
@@ -56896,6 +56919,11 @@ super(BMActorRules, 'npc');
 
                 this.attackAnimTimer = Math.max(0,(this.attackAnimTimer || 0)-tickScale);
                 this.searchTimer = Math.max(0,(this.searchTimer || 0)-tickScale);
+                if(this._chartDesk){
+                    const dx=playerX-this.x,dy=playerY-this.y,dist=Math.hypot(dx,dy);
+                    if(dist>.05&&dist<3){this.dirX=dx/dist;this.dirY=dy/dist;}
+                    return;
+                }
                 if(this.index===8405&&dungeon.mapID===2&&this._eveningSet&&this._cherryDance){
                     this.state='stationary';this.speed=0;this.currentEnemy=null;this.cachedPrey=null;
                     this.isSliding=this.isAggroDashing=this.isAttacking=false;return;
@@ -73391,8 +73419,8 @@ const BMChatComposer=(()=>{
         function resizeCanvas() {
             BMTouch.cancel();BMFishing.cancel();
             if (isChatActive&&startGame!='charSelect') return;      
-            const mobile=/Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
-            const dpr=Math.min(window.devicePixelRatio||1,BMPerformance.profile.dpr);
+            const dpr=BMPerformance.canvasRatio();
+            BMPerformance.markCanvasRatio(dpr);
             wX=Math.max(1,window.innerWidth);wY=Math.max(1,window.innerHeight);
             refreshHUDSafeInsets();
             const pixelWidth=Math.max(1,Math.round(wX*dpr));
@@ -73541,7 +73569,10 @@ const BMChatComposer=(()=>{
             } //END SWITCH x,y,radX,radY,rotation,start angle,end angle[,anticlockwise])
             if(fill>0){ctx.fill();}else{ctx.stroke();}
             }//end function
-        function drawText(x, y, boxW, boxH, text, color, z, align) {
+        function drawText(x, y, boxW, boxH, text, color, z, align, weight='') {
+            const fontPrefix=weight?weight+' ':'';
+            text=String(text??'');
+            if(!text)return;
             
             // Default to 'left' if they forget to add the argument
             if (typeof align === 'undefined') align = 'left';
@@ -73557,7 +73588,7 @@ const BMChatComposer=(()=>{
             var maxHeight = (tH / 10) * boxH * z;
             
             // --- CACHE LOGIC START ---
-            let cacheKey = `${text}_${maxWidth}_${maxHeight}_${align}`;
+            let cacheKey = `${text}_${maxWidth}_${maxHeight}_${align}_${weight}`;
             let layout;
 
             if (textLayoutCache.has(cacheKey)) {
@@ -73588,7 +73619,7 @@ const BMChatComposer=(()=>{
                 let fitFound = false;
                 
                 while (!fitFound && fs > 1) {
-                    ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+                    ctx.font = fontPrefix + fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
                     linesArr = getWrappedLines(ctx, text, maxWidth);
                     
                     if ((linesArr.length * fs) > maxHeight) {
@@ -73617,7 +73648,7 @@ const BMChatComposer=(()=>{
 
                 // Force the standard font BEFORE doing any measurements 
                 // so bold text from previous loops doesn't inflate the width!
-                ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+                ctx.font = fontPrefix + fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
 
                 // --- ALIGNMENT LOGIC ---
                 let centerOffset = 0;
@@ -73672,7 +73703,7 @@ const BMChatComposer=(()=>{
                 const diceRe = /^\s*\d+d\d+\s*$/;
                 const hasToken = /\b(?:STR|CON|INT|AGI)\b/.test(lineStr);
                 
-                ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+                ctx.font = fontPrefix + fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
                 
                 if (!hasToken) {
                     let w = ctx.measureText(drawStr).width;
@@ -73682,7 +73713,7 @@ const BMChatComposer=(()=>{
                         if (diceRe.test(drawStr)) {
                             ctx.font = "bold " + (fs * scale) + "px Franklin Gothic, Helvetica, Arial, sans-serif";
                         } else {
-                            ctx.font = (fs * scale) + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+                            ctx.font = fontPrefix + (fs * scale) + "px Franklin Gothic, Helvetica, Arial, sans-serif";
                         }
                         centerOffset = 0; 
                     } else {
@@ -73697,7 +73728,7 @@ const BMChatComposer=(()=>{
             }
             
             // Reset to standard font at the very end to be safe
-            ctx.font = fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
+            ctx.font = fontPrefix + fs + "px Franklin Gothic, Helvetica, Arial, sans-serif";
             }
         
         function drawJournalBody(x, y, width, text, color) {
@@ -83652,7 +83683,7 @@ for (const index of directionalPortraits) {
                     if(meshOnly)return mesh;
                     render3dMesh(mesh,x,y,z,rx,ry,rz);return;
                 }
-                if(variant==='moors_sailor'||variant==='forest_trapper'){
+                if(variant==='moors_sailor'||variant==='forest_trapper'||variant==='chart_mender'){
                     buildFieldWorker165(mesh,variant,index);
                     if(meshOnly)return mesh;
                     render3dMesh(mesh,x,y,z,rx,ry,rz);return;
@@ -90361,11 +90392,11 @@ function render3dMesh(mesh, x, y, scaleZ, rx, ry, rz) {
 // The Haven crew share the trainers' skeletal animation and face/foot tracking.
 // Two working people share a gait; their headwear, carriage, clothes and tools identify them at a distance.
 function buildFieldWorker165(mesh,role,state) {
- const trapper=role==='forest_trapper',time=window.cacheAngle||0;
+ const trapper=role==='forest_trapper',mender=role==='chart_mender',time=window.cacheAngle||0;
  const wave=Math.sin(time),stride=state===1?wave:0,working=state===2;
  const rgb=hex=>({r:(hex>>16)/255,g:((hex>>8)&255)/255,b:(hex&255)/255});
  const face=rgb(trapper?0xb98461:0xb37451),hair=rgb(trapper?0x65635a:0x44352b);
- const wool=rgb(trapper?0x53624a:0x83503c),linen=rgb(trapper?0xd4c6a1:0xe0cdae);
+ const wool=rgb(mender?0x386169:trapper?0x53624a:0x83503c),linen=rgb(trapper?0xd4c6a1:0xe0cdae);
  const leather=rgb(0x5b3c2e),sole=rgb(0x34302d),cloth=rgb(trapper?0x444c3e:0x414f59);
  const brass=rgb(0xc39a54),shadow=rgb(0x40322d),basket=rgb(0xa57949);
  const bone=(p,x,y,z,rx=0,ry=0,rz=0)=>computeBone(p,x,y,z,rx,ry,rz);
@@ -90375,10 +90406,10 @@ function buildFieldWorker165(mesh,role,state) {
  const limb=(a,b,r,c)=>addAuraBodySpan(mesh,a,b,r,c,.018);
  mesh.outwardRects=true;
  const neck=bone(root,0,-.65,0),head=bone(neck,0,-.36,0,0,.035*wave);
- band(root,-.11,.43,trapper?.415:.46,.235,.34,.225,wool);
+ band(root,-.11,.43,mender?.334:trapper?.415:.46,mender?.185:.235,mender?.272:.34,mender?.178:.225,wool);
  band(neck,.035,.16,.155,.148,.16,.15,face);
- band(root,.36,trapper?.30:.19,.34,.23,trapper?.48:.415,.265,wool);
- band(root,.245,.055,.36,.25,.37,.252,leather);
+ band(root,.36,trapper?.30:.19,mender?.274:.34,mender?.183:.23,mender?.313:trapper?.48:.415,mender?.192:.265,wool);
+ band(root,.245,.055,mender?.29:.36,mender?.197:.25,mender?.30:.37,mender?.2:.252,leather);
  patch('rec',root,.014,.245,-.258,.067,.041,.014,brass);
  add3dFace(mesh,'arc',head,.255,.323,.247,face);
  band(head,.193,.09,.207,.201,.137,.144,face);
@@ -90389,7 +90420,19 @@ function buildFieldWorker165(mesh,role,state) {
  }
  patch('arc',head,0,.027,-.249,.044,.069,.055,face);
  patch('rec',head,0,.145,-.226,.055,.011,.013,leather);
- if(trapper){
+ if(mender){
+  // A narrow felt cap, spectacles and the rolled charts distinguish the dockside tradesman.
+  band(head,-.213,.103,.202,.177,.269,.234,wool);
+  patch('arc',head,.045,-.294,.024,.205,.074,.172,wool,-.15);
+  for(const side of [-1,1]){
+   patch('arc',head,side*.232,-.015,.048,.034,.13,.104,hair);
+   patch('rec',head,side*.091,-.035,-.252,.059,.033,.014,brass);
+   patch('rec',head,side*.091,-.035,-.269,.043,.021,.008,shadow);
+  }
+  patch('rec',head,0,-.042,-.258,.043,.009,.008,brass);
+  patch('rec',root,-.007,.064,-.19,.211,.378,.025,linen);
+  patch('rec',root,.263,.299,.09,.089,.169,.104,leather);
+ }else if(trapper){
   // Centre-parted grey hair and a low braided knot. The face stays clear in profile.
   band(head,-.205,.105,.196,.180,.261,.240,hair);
   for(const side of [-1,1]){
@@ -90430,13 +90473,19 @@ function buildFieldWorker165(mesh,role,state) {
  const hands={};
  for(const side of [-1,1]){
   const carry=side===(trapper?-1:1),lift=working&&carry?(1+wave)*.065:0;
-  const shoulder=bone(root,side*(trapper?.393:.423),-.432,.006,-side*stride*.22);
-  const elbow=bone(shoulder,side*.045,.385,.001),hand=bone(elbow,carry?-side*.052:side*.007,(carry?.229:.331)-lift,carry?-.226-lift:-.062);
+  const shoulder=bone(root,side*(mender?.325:trapper?.393:.423),-.432,.006,-side*stride*.22);
+  const elbow=bone(shoulder,side*.045,.385,.001),hand=bone(elbow,carry?-side*.052:side*.007,(carry?.229:.331)-lift,mender?(carry?-.34-lift:-.27):carry?-.226-lift:-.062);
   limb(shoulder,elbow,.125,trapper?wool:linen);
   band(elbow,-.029,.052,.132,.126,.13,.12,trapper?cloth:linen);
   limb(elbow,hand,.086,face);patch('arc',hand,0,.029,0,.084,.093,.077,face);hands[side]=hand;
  }
- if(trapper){
+ if(mender){
+  const h=hands[-1],page=bone(h,.131,.048,-.108,-.39,0,.16);
+  patch('rec',page,0,0,0,.203,.131,.017,linen);
+  for(const x of [-.204,.204])patch('arc',page,x,0,.006,.036,.148,.038,basket);
+  for(let k=0;k<3;k++)patch('rec',page,-.035+k*.024,-.064+k*.046,-.019,.082-k*.008,.008,.004,wool,k*.12);
+  const pen=hands[1];addFormSpan(mesh,bone(pen,-.048,.076,-.084),bone(pen,.077,-.177,-.045),.014,brass);
+ }else if(trapper){
   const h=hands[-1],centre=bone(h,-.045,.40,0);
   band(centre,0,.165,.217,.154,.16,.122,basket);
   for(const y of [-.152,-.047,.074])band(centre,y,.018,.224-y*.15,.162-y*.11,.224-y*.15,.162-y*.11,leather);
@@ -91080,7 +91129,7 @@ const BMBodySizes=(()=>{
  const feetPerTile=9,summonFactor=.8;
  // Resting head-to-foot height, including the stance of quadrupeds. Fantasy
  // animals are deliberately larger where their model represents a monster.
- const heights={4720:5.9,4723:5.9,4726:5.45,4700:7.4,4703:5.8,4706:5.1,16500:5.8,16503:5.65,16506:5.7,16509:5.75,16512:5.55,104:6,108:1.5,111:4,114:1.5,117:3,120:8,123:6,126:2,129:4.6,131:1,134:4.5,137:7,140:1.5,143:3,146:3.5,149:2,152:8,155:6,158:6.5,161:3.5,164:6.5,167:14,170:5.5,173:3,176:3,179:3,182:3,185:3,188:4.5,191:3,194:3,197:6.2,200:8,203:9,206:12,210:1.8,213:.8,216:1.5,219:.7,222:2,225:1,228:1,231:2.5,234:.8,237:1.2,240:1.6,246:6,249:5.5,252:6.5,255:5.8,258:5.9,261:6+1/12,264:5+10/12,267:4,270:5,273:7,276:6.5,279:3,282:7,285:8,288:6.5,291:7,294:11,297:6,300:5,303:4.5,306:9,309:6.2,312:5.8,318:5.5,330:6+1/12,333:5.8,336:6+1/12,339:6+1/12,342:5.9,345:6.4,348:6+1/12,351:5.8,354:6.5,357:5.8,360:5.8,363:15,366:12,369:10,372:8,375:18,378:5.5};
+ const heights={4720:5.9,4723:5.9,4726:5.45,4700:7.4,4703:5.8,4706:5.1,16515:5.15,16500:5.8,16503:5.65,16506:5.7,16509:5.75,16512:5.55,104:6,108:1.5,111:4,114:1.5,117:3,120:8,123:6,126:2,129:4.6,131:1,134:4.5,137:7,140:1.5,143:3,146:3.5,149:2,152:8,155:6,158:6.5,161:3.5,164:6.5,167:14,170:5.5,173:3,176:3,179:3,182:3,185:3,188:4.5,191:3,194:3,197:6.2,200:8,203:9,206:12,210:1.8,213:.8,216:1.5,219:.7,222:2,225:1,228:1,231:2.5,234:.8,237:1.2,240:1.6,246:6,249:5.5,252:6.5,255:5.8,258:5.9,261:6+1/12,264:5+10/12,267:4,270:5,273:7,276:6.5,279:3,282:7,285:8,288:6.5,291:7,294:11,297:6,300:5,303:4.5,306:9,309:6.2,312:5.8,318:5.5,330:6+1/12,333:5.8,336:6+1/12,339:6+1/12,342:5.9,345:6.4,348:6+1/12,351:5.8,354:6.5,357:5.8,360:5.8,363:15,366:12,369:10,372:8,375:18,378:5.5};
  const floats={4652:.24,4625:.17,108:.25,126:.2,131:.3,140:.25,149:.2,152:.15,164:.1,173:.3,176:.3,179:.3,182:.3,185:.3,213:.25,228:.2,267:.3};
  const metrics=new Map(),families=new Map(),actorCache=new Map();
  const summoned=a=>a?.role==='summoned_minion'||a?.isRemoteSummon===true;
@@ -91130,9 +91179,9 @@ function spriteDefinition(id) {
     id=Number(id);
     if(id>=4610&&id<4649)return regionalFigure167(id);
     if((id>=4649&&id<4673)||(id>=4700&&id<4709)||(id>=4720&&id<4729))return wildFigureDefinition(id);
-    if(Number.isInteger(id)&&id>=16509&&id<=16514){
-        const start=id<16512?16509:16512;
-        return {id,base:id-start,start,end:start+2,variant:start===16509?'moors_sailor':'forest_trapper'};
+    if(Number.isInteger(id)&&id>=16509&&id<=16517){
+        const start=id<16512?16509:id<16515?16512:16515;
+        return {id,base:id-start,start,end:start+2,variant:start===16509?'moors_sailor':start===16512?'forest_trapper':'chart_mender'};
     }
     if(Number.isInteger(id)&&id>=16500&&id<=16508){
         const start=id<16503?16500:id<16506?16503:16506;
@@ -100456,7 +100505,7 @@ const BMShell=(()=>{
             const count=el('p',body,'','muted'),grid=el('div',body,null,'grid gallery-grid');
             function list(){grid.replaceChildren();for(let i=art.length-1;i>=0;i--)if(!art[i].c.isConnected)art.splice(i,1);
                 const entries=source.filter(c=>(gallerySuit==='ALL'||c.suit===gallerySuit)&&(galleryRank==='ALL'||c.rank===galleryRank)&&(`${c.name} ${c.suit} ${c.rank} ${(BM_EXTRA_CARD_DEFS[c.index]?.aliases||[]).join(' ')}`).toLowerCase().includes(galleryQuery.toLowerCase()));count.textContent=entries.length+' cards';
-                for(const c of entries){const b=button(grid,'',action(()=>{galleryId=c.index;galleryArt3D=galleryTab==='extra'&&c.type===0&&!regionalCardPrints167.has(c.index)&&!paintedCards169.has(c.index);}),'entry');cardPortrait(b,c);el('strong',b,c.name);el('small',b,`${c.rank} · ${c.suit}`);el('span',b,c.type===0?'View stats & summon':c.type===2?'View spell':'View item');}
+                for(const c of entries){const b=button(grid,'',action(()=>{galleryId=c.index;galleryArt3D=galleryTab==='extra'&&c.type===0&&!regionalCardPrints167.has(c.index)&&!paintedCards169.has(c.index);}),'entry');cardPortrait(b,c);el('strong',b,c.name);el('small',b,[c.rank,c.suit].filter(Boolean).join(' · ')||['Summon','Item','Spell'][c.type]);el('span',b,c.type===0?'View stats & summon':c.type===2?'View spell':'View item');}
                 if(!entries.length)el('p',grid,'No cards match these filters.','muted');
             }
             search.oninput=()=>{galleryQuery=search.value;list();};suit.onchange=()=>{gallerySuit=suit.value;list();};rank.onchange=()=>{galleryRank=rank.value;list();};list();
@@ -101208,7 +101257,7 @@ const BM_RELEASE=(()=>{
  return Object.freeze({version:match?Number(match[2]):null,date:match?match[1]:'',label:match?'v'+match[2]:'Unversioned build'});
 })();globalThis.BM_RELEASE=BM_RELEASE;
 const BM_DEVLOG = [
- [BM_RELEASE.label+' · Moonlit Grove','Current version · '+BM_RELEASE.date,['The Haven Card Dealer carries two prints of the Walking Elder. Meet the Witch Hunter in Armorica, the Island Warrior in the Solomon Isles and Zombies in the ruined keep.']],['v169 · The painted cards','2026-11-21',['Look for Antonio, the Lycan Ace of Dacia, the twin-blade Mononofu in Southern Japan and green Dorn in Orcynia. The Haven Armorer carries the Ice Dagger and Wardstone.']],['v168 · The Walking Elder','2026-11-21',['Eight new encounters have animated card prints and eight-direction overworld models. Watch for the Crag Wyvern in Cairngorm and the Walking Elder in Savage Forest.']],['v167 · On four hooves and two feet','2026-11-21',['Walk around the northern elves, Avalon court and other regional creatures to see their new figures in motion. Their cards carry the original pixel illustrations.']],['v166 · The courts and the northern woods','2026-11-21',['Thirteen new monster cards use the original animated sprites. Find the fay in Avalon and the northern elves in Lochlann and Scandia.']],['v165 · On the moor and in the forest','2026-11-21',['The Moors sailor carries a sounding line. In Savage Forest, the trapper keeps a willow basket by her side.']],['v164 · At the guild and the quay','2026-11-21',['The trainers open with their own greetings. Cherry has a performance and news of home. Look for the gold outline when a quest contact is close.']],['v163 · The original classes','2026-11-21',[
+ [BM_RELEASE.label+' · At the card table','Current version · '+BM_RELEASE.date,['Duel cards use a sharper drawing surface. The old green-apron figure has been retired throughout the world.']],['v172 · Boss encounters','2026-11-21',['Bosses keep their normal appearance when you approach them, including during tracked quests.']],['v171 · Back at the quay','2026-11-21',['Painted cards fill their frames. Trick opens in the gallery. Haven’s Chart mender keeps his post beside the sighting mirror.']],['v170 · Moonlit Grove','2026-11-21',['The Haven Card Dealer carries two prints of the Walking Elder. Meet the Witch Hunter in Armorica, the Island Warrior in the Solomon Isles and Zombies in the ruined keep.']],['v169 · The painted cards','2026-11-21',['Look for Antonio, the Lycan Ace of Dacia, the twin-blade Mononofu in Southern Japan and green Dorn in Orcynia. The Haven Armorer carries the Ice Dagger and Wardstone.']],['v168 · The Walking Elder','2026-11-21',['Eight new encounters have animated card prints and eight-direction overworld models. Watch for the Crag Wyvern in Cairngorm and the Walking Elder in Savage Forest.']],['v167 · On four hooves and two feet','2026-11-21',['Walk around the northern elves, Avalon court and other regional creatures to see their new figures in motion. Their cards carry the original pixel illustrations.']],['v166 · The courts and the northern woods','2026-11-21',['Thirteen new monster cards use the original animated sprites. Find the fay in Avalon and the northern elves in Lochlann and Scandia.']],['v165 · On the moor and in the forest','2026-11-21',['The Moors sailor carries a sounding line. In Savage Forest, the trapper keeps a willow basket by her side.']],['v164 · At the guild and the quay','2026-11-21',['The trainers open with their own greetings. Cherry has a performance and news of home. Look for the gold outline when a quest contact is close.']],['v163 · The original classes','2026-11-21',[
  'Seven apprenticeships are taught in the world. Each class is earned from its teacher.'
  ]],['v162 · At the Haven landing','2026-11-21',[
  'Fisher could use a hand with his nets. If you help him, he will point out the old shore priest’s awning.',
@@ -109696,8 +109745,8 @@ const BMClassPaths=(()=>{
 globalThis.BMClassPaths=BMClassPaths;
 
 /* Dancer’s Pupil shares the original dancer's choreography, with a distinct palette. */
-const REGIONAL_CAST=[{"map":85,"index":762100,"sprite":16700,"name":"Honeywife","x":28.5,"y":57.5,"person":true,"line":"There was a little pin in the rushes. No bigger than a bee. I’ve kept it in my apron in case his mother comes."},{"map":85,"index":762101,"sprite":16701,"name":"Kennel Girl","x":25.5,"y":59.5,"person":true,"line":"She eats enough for two dogs now. Watch where she goes when she carries her supper away."},{"map":85,"index":762102,"sprite":16140,"name":"Brindled hound","x":28.5,"y":59.5,"person":false,"line":"The hound puts one paw on a crust. She looks back at the reeds before picking it up."},{"map":85,"index":762103,"sprite":16126,"name":"Honey jar","x":30.5,"y":58.5,"person":false,"line":"The rim is sticky. One little brown dog hair has caught in the wax."},{"map":4,"index":762104,"sprite":16702,"name":"Slingmaker","x":27.5,"y":76.5,"person":true,"line":"That lifting rope is mine. My son knows how to let it run without taking the skin off his palms. I wish I knew which shift they put him on."},{"map":4,"index":762105,"sprite":16203,"name":"Sounder of Tingis","x":26.5,"y":79.5,"person":true,"line":"They paid me to count the barrows. Three loads went to the harbour. None went on my slate as stone."},{"map":4,"index":762106,"sprite":16204,"name":"Harbour surveyor","x":29.5,"y":80.5,"person":true,"line":"I paid for three loads. The men keep asking where the hill went. A hill is a quantity of earth, surely?"},{"map":4,"index":762107,"sprite":16127,"name":"Harbour lifting rope","x":31.5,"y":76.5,"person":false,"line":"The outer turn is pale where a sling has drawn tight around a heavy load."},{"map":39,"index":762108,"sprite":16205,"name":"Shore Netmaker","x":41.5,"y":6.5,"person":true,"line":"A net is good for hauling somebody aboard. A man with pitch on his hands has been mending mine."},{"map":39,"index":762109,"sprite":16206,"name":"Phocaean Caulker","x":38.5,"y":8.5,"person":true,"line":"I can hear where a hull leaks. Getting the people on this shore to lend me a boat is the harder part."},{"map":39,"index":762110,"sprite":16207,"name":"Petta’s cousin","x":41.5,"y":10.5,"person":true,"line":"She has chosen her dress. She has chosen her guest. Everyone here seems to think there is still a decision to make."},{"map":39,"index":762111,"sprite":16130,"name":"Net drying rack","x":43.5,"y":7.5,"person":false,"line":"One corner is mended with a sailor’s knot. The rest is tied the way the fishers on this shore do it."},{"map":126,"index":762112,"sprite":16708,"name":"Grain Widow","x":52.5,"y":50.5,"person":true,"line":"I can tell seed grain by touch in the dark. Last winter that was how I kept the levy from eating next year’s bread."},{"map":126,"index":762113,"sprite":16709,"name":"Young Standard Bearer","x":49.5,"y":52.5,"person":true,"line":"My mother says count the sacks yourself. My captain says trust the tally. They both put me on the same door."},{"map":126,"index":762114,"sprite":16210,"name":"Winter Quartermaster","x":52.5,"y":54.5,"person":true,"line":"Three barns. Two keys on this ring. I would give a great deal to know whose belt the third hangs from."},{"map":126,"index":762115,"sprite":16134,"name":"Seed tally","x":54.5,"y":51.5,"person":false,"line":"A deep cut marks each full cart. Three smaller cuts beside it mark the families who filled it."},{"map":46,"index":762116,"sprite":16711,"name":"Myrto","x":50.5,"y":4.5,"person":true,"line":"Try the threshing song. I can take the low part. I keep starting at the wrong place when I sing it alone."},{"map":46,"index":762117,"sprite":16712,"name":"Iambe","x":47.5,"y":6.5,"person":true,"line":"Take this stool to the well. If our guest wants quiet, I know a dozen excellent things I can keep to myself."},{"map":46,"index":762118,"sprite":16129,"name":"Harvest sheaf","x":50.5,"y":8.5,"person":false,"line":"Two loops of thread bind the last sheaf. One is knotted for a right hand, one for a left."},{"map":67,"index":762119,"sprite":16713,"name":"Veia","x":52.5,"y":50.5,"person":true,"line":"An onion for the pot? Pick it up first. An honest weight feels different in your hand once you know it."},{"map":67,"index":762120,"sprite":16214,"name":"Larce","x":49.5,"y":52.5,"person":true,"line":"People remember very precisely what they wish someone had said. Wet clay gives them time to reconsider."},{"map":67,"index":762121,"sprite":16215,"name":"Keeper of Measures","x":52.5,"y":54.5,"person":true,"line":"Ask who owns a field and you’ll get one answer at the gate and another at the far corner."},{"map":67,"index":762122,"sprite":16128,"name":"Veia’s market balance","x":54.5,"y":50.5,"person":false,"line":"The bronze pans hang almost level. The smaller weight bears a nick under its rim."},{"map":170,"index":762123,"sprite":16716,"name":"Min Boatwoman","x":37.5,"y":51.5,"person":true,"line":"See that empty boat? Whoever tied it knew the river. Whoever dressed it for a wedding had never set foot in it."},{"map":170,"index":762124,"sprite":16217,"name":"Salt Clerk","x":36.5,"y":54.5,"person":true,"line":"Every household pays at this crossing. I have two names here in a different hand."},{"map":170,"index":762125,"sprite":16218,"name":"Dike Cutter","x":39.5,"y":55.5,"person":true,"line":"Stand on the bank you mean to flood before you put a spade in the other one."},{"map":170,"index":762126,"sprite":16135,"name":"White river sash","x":42.5,"y":53.5,"person":false,"line":"Two turns of pale cloth hang from the mooring post, high enough to show above muddy water."},{"map":168,"index":762127,"sprite":16719,"name":"Potter’s Daughter","x":45.5,"y":64.5,"person":true,"line":"Put both hands under the jar. I heard a voice when the water ran out between my fingers."},{"map":168,"index":762128,"sprite":16220,"name":"Rope Twister","x":44.5,"y":66.5,"person":true,"line":"Take the wet end. That splice will draw tight. If it slips now, I want to know on land."},{"map":168,"index":762129,"sprite":16221,"name":"Reed Pilot","x":47.5,"y":68.5,"person":true,"line":"Twice on the pole for a shelf. Once for deep water. You’ll hear the difference when you need both hands on a line."},{"map":168,"index":762130,"sprite":16131,"name":"Potter’s fish jar","x":50.5,"y":66.5,"person":false,"line":"Something the length of your little finger turns beneath the water."},{"map":353,"index":762131,"sprite":16722,"name":"Keeper of the Gold","x":5.5,"y":96.5,"person":true,"line":"I have watched that fire every night of the feast. Today I woke with my cloak drawn up around my shoulders. Who did that?"},{"map":353,"index":762132,"sprite":16223,"name":"Watcher’s Foster Son","x":3.5,"y":96.5,"person":true,"line":"Take the short circuit and our herd will have enough for years. She keeps looking past it toward the common wells."},{"map":353,"index":762133,"sprite":16224,"name":"Remount Keeper","x":7.5,"y":96.5,"person":true,"line":"Find where the white mare drinks when nobody leads her. That’s the crossing I’d trust."},{"map":353,"index":762134,"sprite":16132,"name":"Looped bridle","x":9.5,"y":96.5,"person":false,"line":"The leather is polished where a rider changes horses without setting a foot on the ground."},{"map":127,"index":762135,"sprite":16225,"name":"Axle Maker","x":52.5,"y":50.5,"person":true,"line":"Listen to the left wheel. Two creaks and a pause. I’d like it back in my yard before there’s a third."},{"map":127,"index":762136,"sprite":16226,"name":"Marsh Ferrier","x":49.5,"y":52.5,"person":true,"line":"Two heifers and the wagon. Anyone wanting passage with them can come take a turn at my sounding pole."},{"map":127,"index":762137,"sprite":16227,"name":"Young Iron Warden","x":52.5,"y":54.5,"person":true,"line":"Two companies have sworn to put away their weapons. Both captains say I’m to give the first key to them."},{"map":127,"index":762138,"sprite":16133,"name":"Spare wagon wheel","x":54.5,"y":51.5,"person":false,"line":"One spoke is younger and paler than the rest. Someone has tested it under load."},{"map":120,"index":762139,"sprite":16728,"name":"Notch Cutter","x":42.5,"y":59.5,"person":true,"line":"Somebody has brought back my oar. I cut that notch for a girl who could barely reach the thole."},{"map":120,"index":762140,"sprite":16729,"name":"Fjord Sounder","x":39.5,"y":61.5,"person":true,"line":"I know our boat by the noise of the oar in the socket. That noise out there this morning was my brother rowing a stranger’s boat."},{"map":120,"index":762141,"sprite":16125,"name":"Mended shore oar","x":42.5,"y":63.5,"person":false,"line":"A pale binding covers an older repair. The marks near the grip face the rower."}];
-const REGIONAL_FIGURES={"16200":["727d46","bd8866","473a36","basket",0],"16201":["886641","99684d","574034","rope",2],"16202":["8f5361","99684d","574034","rope",1],"16203":["775e77","ae7955","63574b","tablet",3],"16204":["54777d","c6946e","39343a","tablet",1],"16205":["596c84","ae7955","63574b","rope",2],"16206":["68805f","c6946e","39343a","apron",0],"16207":["936348","a87453","473a36","staff",2],"16208":["886641","c6946e","39343a","basket",3],"16209":["a45543","a87453","473a36","standard",1],"16210":["516b82","bd8866","574034","tablet",3],"16211":["775e77","a87453","473a36","sickle",0],"16212":["54777d","bd8866","574034","basket",2],"16213":["68805f","bd8866","574034","basket",1],"16214":["936348","99684d","63574b","tablet",3],"16215":["727d46","ae7955","39343a","keys",1],"16216":["a45543","99684d","63574b","staff",2],"16217":["516b82","ae7955","39343a","tablet",0],"16218":["8f5361","c6946e","473a36","apron",2],"16219":["54777d","ae7955","39343a","basket",3],"16220":["635d76","c6946e","473a36","rope",1],"16221":["596c84","a87453","574034","staff",3],"16222":["936348","c6946e","473a36","standard",0],"16223":["727d46","a87453","574034","staff",2],"16224":["886641","bd8866","63574b","rope",0],"16225":["516b82","a87453","574034","apron",1],"16226":["8f5361","bd8866","63574b","staff",3],"16227":["775e77","99684d","39343a","keys",1],"16228":["635d76","bd8866","63574b","apron",2],"16229":["596c84","99684d","39343a","staff",0]};
+const REGIONAL_CAST=[{"map":85,"index":762100,"sprite":16700,"name":"Honeywife","x":28.5,"y":57.5,"person":true,"line":"There was a little pin in the rushes. No bigger than a bee. I’ve kept it in my apron in case his mother comes."},{"map":85,"index":762101,"sprite":16701,"name":"Kennel Girl","x":25.5,"y":59.5,"person":true,"line":"She eats enough for two dogs now. Watch where she goes when she carries her supper away."},{"map":85,"index":762102,"sprite":16140,"name":"Brindled hound","x":28.5,"y":59.5,"person":false,"line":"The hound puts one paw on a crust. She looks back at the reeds before picking it up."},{"map":85,"index":762103,"sprite":16126,"name":"Honey jar","x":30.5,"y":58.5,"person":false,"line":"The rim is sticky. One little brown dog hair has caught in the wax."},{"map":4,"index":762104,"sprite":16702,"name":"Slingmaker","x":27.5,"y":76.5,"person":true,"line":"That lifting rope is mine. My son knows how to let it run without taking the skin off his palms. I wish I knew which shift they put him on."},{"map":4,"index":762105,"sprite":16203,"name":"Sounder of Tingis","x":26.5,"y":79.5,"person":true,"line":"They paid me to count the barrows. Three loads went to the harbour. None went on my slate as stone."},{"map":4,"index":762106,"sprite":16204,"name":"Harbour surveyor","x":29.5,"y":80.5,"person":true,"line":"I paid for three loads. The men keep asking where the hill went. A hill is a quantity of earth, surely?"},{"map":4,"index":762107,"sprite":16127,"name":"Harbour lifting rope","x":31.5,"y":76.5,"person":false,"line":"The outer turn is pale where a sling has drawn tight around a heavy load."},{"map":39,"index":762108,"sprite":16205,"name":"Shore Netmaker","x":41.5,"y":6.5,"person":true,"line":"A net is good for hauling somebody aboard. A man with pitch on his hands has been mending mine."},{"map":39,"index":762109,"sprite":16509,"name":"Phocaean Caulker","x":38.5,"y":8.5,"person":true,"line":"I can hear where a hull leaks. Getting the people on this shore to lend me a boat is the harder part."},{"map":39,"index":762110,"sprite":16207,"name":"Petta’s cousin","x":41.5,"y":10.5,"person":true,"line":"She has chosen her dress. She has chosen her guest. Everyone here seems to think there is still a decision to make."},{"map":39,"index":762111,"sprite":16130,"name":"Net drying rack","x":43.5,"y":7.5,"person":false,"line":"One corner is mended with a sailor’s knot. The rest is tied the way the fishers on this shore do it."},{"map":126,"index":762112,"sprite":16708,"name":"Grain Widow","x":52.5,"y":50.5,"person":true,"line":"I can tell seed grain by touch in the dark. Last winter that was how I kept the levy from eating next year’s bread."},{"map":126,"index":762113,"sprite":16709,"name":"Young Standard Bearer","x":49.5,"y":52.5,"person":true,"line":"My mother says count the sacks yourself. My captain says trust the tally. They both put me on the same door."},{"map":126,"index":762114,"sprite":16210,"name":"Winter Quartermaster","x":52.5,"y":54.5,"person":true,"line":"Three barns. Two keys on this ring. I would give a great deal to know whose belt the third hangs from."},{"map":126,"index":762115,"sprite":16134,"name":"Seed tally","x":54.5,"y":51.5,"person":false,"line":"A deep cut marks each full cart. Three smaller cuts beside it mark the families who filled it."},{"map":46,"index":762116,"sprite":16711,"name":"Myrto","x":50.5,"y":4.5,"person":true,"line":"Try the threshing song. I can take the low part. I keep starting at the wrong place when I sing it alone."},{"map":46,"index":762117,"sprite":16712,"name":"Iambe","x":47.5,"y":6.5,"person":true,"line":"Take this stool to the well. If our guest wants quiet, I know a dozen excellent things I can keep to myself."},{"map":46,"index":762118,"sprite":16129,"name":"Harvest sheaf","x":50.5,"y":8.5,"person":false,"line":"Two loops of thread bind the last sheaf. One is knotted for a right hand, one for a left."},{"map":67,"index":762119,"sprite":16713,"name":"Veia","x":52.5,"y":50.5,"person":true,"line":"An onion for the pot? Pick it up first. An honest weight feels different in your hand once you know it."},{"map":67,"index":762120,"sprite":16214,"name":"Larce","x":49.5,"y":52.5,"person":true,"line":"People remember very precisely what they wish someone had said. Wet clay gives them time to reconsider."},{"map":67,"index":762121,"sprite":16215,"name":"Keeper of Measures","x":52.5,"y":54.5,"person":true,"line":"Ask who owns a field and you’ll get one answer at the gate and another at the far corner."},{"map":67,"index":762122,"sprite":16128,"name":"Veia’s market balance","x":54.5,"y":50.5,"person":false,"line":"The bronze pans hang almost level. The smaller weight bears a nick under its rim."},{"map":170,"index":762123,"sprite":16716,"name":"Min Boatwoman","x":37.5,"y":51.5,"person":true,"line":"See that empty boat? Whoever tied it knew the river. Whoever dressed it for a wedding had never set foot in it."},{"map":170,"index":762124,"sprite":16217,"name":"Salt Clerk","x":36.5,"y":54.5,"person":true,"line":"Every household pays at this crossing. I have two names here in a different hand."},{"map":170,"index":762125,"sprite":16218,"name":"Dike Cutter","x":39.5,"y":55.5,"person":true,"line":"Stand on the bank you mean to flood before you put a spade in the other one."},{"map":170,"index":762126,"sprite":16135,"name":"White river sash","x":42.5,"y":53.5,"person":false,"line":"Two turns of pale cloth hang from the mooring post, high enough to show above muddy water."},{"map":168,"index":762127,"sprite":16719,"name":"Potter’s Daughter","x":45.5,"y":64.5,"person":true,"line":"Put both hands under the jar. I heard a voice when the water ran out between my fingers."},{"map":168,"index":762128,"sprite":16220,"name":"Rope Twister","x":44.5,"y":66.5,"person":true,"line":"Take the wet end. That splice will draw tight. If it slips now, I want to know on land."},{"map":168,"index":762129,"sprite":16221,"name":"Reed Pilot","x":47.5,"y":68.5,"person":true,"line":"Twice on the pole for a shelf. Once for deep water. You’ll hear the difference when you need both hands on a line."},{"map":168,"index":762130,"sprite":16131,"name":"Potter’s fish jar","x":50.5,"y":66.5,"person":false,"line":"Something the length of your little finger turns beneath the water."},{"map":353,"index":762131,"sprite":16722,"name":"Keeper of the Gold","x":5.5,"y":96.5,"person":true,"line":"I have watched that fire every night of the feast. Today I woke with my cloak drawn up around my shoulders. Who did that?"},{"map":353,"index":762132,"sprite":16223,"name":"Watcher’s Foster Son","x":3.5,"y":96.5,"person":true,"line":"Take the short circuit and our herd will have enough for years. She keeps looking past it toward the common wells."},{"map":353,"index":762133,"sprite":16224,"name":"Remount Keeper","x":7.5,"y":96.5,"person":true,"line":"Find where the white mare drinks when nobody leads her. That’s the crossing I’d trust."},{"map":353,"index":762134,"sprite":16132,"name":"Looped bridle","x":9.5,"y":96.5,"person":false,"line":"The leather is polished where a rider changes horses without setting a foot on the ground."},{"map":127,"index":762135,"sprite":16225,"name":"Axle Maker","x":52.5,"y":50.5,"person":true,"line":"Listen to the left wheel. Two creaks and a pause. I’d like it back in my yard before there’s a third."},{"map":127,"index":762136,"sprite":16226,"name":"Marsh Ferrier","x":49.5,"y":52.5,"person":true,"line":"Two heifers and the wagon. Anyone wanting passage with them can come take a turn at my sounding pole."},{"map":127,"index":762137,"sprite":16227,"name":"Young Iron Warden","x":52.5,"y":54.5,"person":true,"line":"Two companies have sworn to put away their weapons. Both captains say I’m to give the first key to them."},{"map":127,"index":762138,"sprite":16133,"name":"Spare wagon wheel","x":54.5,"y":51.5,"person":false,"line":"One spoke is younger and paler than the rest. Someone has tested it under load."},{"map":120,"index":762139,"sprite":16728,"name":"Notch Cutter","x":42.5,"y":59.5,"person":true,"line":"Somebody has brought back my oar. I cut that notch for a girl who could barely reach the thole."},{"map":120,"index":762140,"sprite":16729,"name":"Fjord Sounder","x":39.5,"y":61.5,"person":true,"line":"I know our boat by the noise of the oar in the socket. That noise out there this morning was my brother rowing a stranger’s boat."},{"map":120,"index":762141,"sprite":16125,"name":"Mended shore oar","x":42.5,"y":63.5,"person":false,"line":"A pale binding covers an older repair. The marks near the grip face the rower."}];
+const REGIONAL_FIGURES={"16200":["727d46","bd8866","473a36","basket",0],"16201":["886641","99684d","574034","rope",2],"16202":["8f5361","99684d","574034","rope",1],"16203":["775e77","ae7955","63574b","tablet",3],"16204":["54777d","c6946e","39343a","tablet",1],"16205":["596c84","ae7955","63574b","rope",2],"16207":["936348","a87453","473a36","staff",2],"16208":["886641","c6946e","39343a","basket",3],"16209":["a45543","a87453","473a36","standard",1],"16210":["516b82","bd8866","574034","tablet",3],"16211":["775e77","a87453","473a36","sickle",0],"16212":["54777d","bd8866","574034","basket",2],"16213":["68805f","bd8866","574034","basket",1],"16214":["936348","99684d","63574b","tablet",3],"16215":["727d46","ae7955","39343a","keys",1],"16216":["a45543","99684d","63574b","staff",2],"16217":["516b82","ae7955","39343a","tablet",0],"16218":["8f5361","c6946e","473a36","apron",2],"16219":["54777d","ae7955","39343a","basket",3],"16220":["635d76","c6946e","473a36","rope",1],"16221":["596c84","a87453","574034","staff",3],"16222":["936348","c6946e","473a36","standard",0],"16223":["727d46","a87453","574034","staff",2],"16224":["886641","bd8866","63574b","rope",0],"16225":["516b82","a87453","574034","apron",1],"16226":["8f5361","bd8866","63574b","staff",3],"16227":["775e77","99684d","39343a","keys",1],"16228":["635d76","bd8866","63574b","apron",2],"16229":["596c84","99684d","39343a","staff",0]};
 // A work apron, a tool and a head covering identify the locals at a distance.
 Object.assign(REGIONAL_FIGURES,{
  16230:['815437','b78568','5d4b40','staff',2],16231:['496776','ad7759','51423a','rope',1],
@@ -109747,33 +109796,52 @@ function makeRegionalFigure(id,p){
   if(hat===3)box(0,-.524,-.009,.110,.014,.102,brass);
  }
  }else{
- for(const s of [-1,1]){box(s*.10,.22,0,.074,.19,.08,boots);oval(s*.10,.41,-.04,.09,.058,.13,boots);}
- oval(0,-.06,0,.22,.29,.135,dye);box(0,.07,-.015,.20,.025,.14,boots);
- for(const s of [-1,1]){oval(s*.23,-.12,0,.085,.17,.087,dye,s*.16);oval(s*.26,.027,-.05,.064,.085,.06,face);}
- oval(0,-.46,0,.146,.19,.135,face);oval(0,-.58,.02,.15,.09,.14,locks);
- for(const s of [-1,1])oval(s*.055,-.473,-.128,.013,.015,.014,boots);oval(0,-.433,-.143,.028,.036,.03,face);
- if(hat===0){oval(0,-.615,0,.19,.045,.17,linen);oval(0,-.656,0,.13,.064,.12,linen);}
- if(hat===1){oval(0,-.58,0,.156,.079,.142,dye);box(.13,-.42,.06,.035,.167,.065,dye);}
- if(hat===2){for(const s of [-1,1])oval(s*.126,-.42,.035,.046,.165,.07,locks);}
- if(hat===3){box(0,-.58,0,.15,.028,.14,brass);}
+ // Slim tunic, jaw, separate neck and bent elbows for regional townspeople.
+ for(const side of [-1,1]){
+  oval(side*.076,.178,.008,.058,.135,.063,dye);
+  box(side*.080,.315,.008,.046,.094,.053,boots);
+  oval(side*.083,.408,-.024,.061,.043,.094,boots);
+ }
+ part('robe',0,.051,.003,.157,.142,.100,dye);
+ oval(0,-.132,.005,.169,.175,.103,dye);
+ box(0,.005,-.002,.146,.012,.106,boots);
+ oval(0,-.292,0,.049,.063,.047,face);
+ oval(0,-.425,.002,.102,.138,.096,face);
+ oval(0,-.362,-.034,.079,.077,.064,face);
+ oval(0,-.504,.019,.104,.073,.101,locks);
+ for(const side of [-1,1]){
+  oval(side*.101,-.43,.011,.021,.034,.024,face);
+  oval(side*.088,-.463,.031,.024,.065,.064,locks);
+  box(side*.040,-.449,-.089,.013,.007,.008,boots);
+  box(side*.040,-.465,-.086,.023,.005,.008,locks,side*.10);
+  oval(side*.165,-.147,.005,.052,.112,.057,dye,side*.12);
+  oval(side*.196,-.047,-.018,.043,.074,.050,face,-side*.08);
+  oval(side*.202,.002,-.052,.042,.045,.040,face);
+ }
+ oval(0,-.422,-.094,.018,.032,.027,face);
+ box(0,-.377,-.092,.029,.004,.004,cuffs);
+ if(hat===0){oval(0,-.532,.014,.111,.045,.109,linen);box(-.079,-.488,.072,.025,.071,.029,linen,.16);}
+ if(hat===1){oval(0,-.529,.028,.113,.059,.108,dye);box(.090,-.435,.071,.029,.104,.035,dye);}
+ if(hat===2){for(const side of [-1,1])oval(side*.091,-.415,.042,.026,.082,.058,locks);}
+ if(hat===3)box(0,-.507,.005,.105,.012,.096,brass);
  }
  // Dress and carried work distinguish neighbours even when the camera faces their backs.
  const cloak=tint(coat).r>.45?boots:linen;
- for(const side of [-1,1])box(side*(woman?.186:.258),-.013,-.045,woman?.047:.061,.019,woman?.049:.062,cuffs);
+ for(const side of [-1,1])box(side*(woman?.186:.200),-.013,-.045,woman?.047:.045,.019,woman?.049:.047,cuffs);
  if(hat===0||hat===2){box(.055,-.12,-.145,.036,.19,.019,linen,.60);oval(-.05,-.26,-.164,.030,.032,.018,brass);}
  if([16200,16208,16211,16218,16221,16228].includes(id)){
   if(!woman)part('robe',0,.15,.02,.20,.21,.155,dye);box(0,.11,-.135,.082,.17,.018,linen);
  }
- if([16202,16203,16206,16213,16214,16229].includes(id)){
+ if([16202,16203,16213,16214,16229].includes(id)){
   box(-.14,.095,-.12,.065,.083,.035,boots);box(-.14,.06,-.163,.06,.021,.012,brass);
  }
  if([16205,16209,16216,16223,16225,16226].includes(id)){
   oval(-.12,-.18,.10,.17,.20,.105,cloak,-.20);box(-.135,.035,.115,.115,.145,.055,cloak,.10);
  }
  if(id===16200&&woman){for(const x of [-.084,.084])box(x,-.453,-.103,.021,.088,.014,linen);for(const x of [-.050,0,.050])box(x,-.442,-.119,.006,.056,.008,brass);}
- else if(id===16200){for(const x of [-.12,.12])box(x,-.46,-.115,.027,.135,.020,linen);for(const x of [-.08,0,.08])box(x,-.45,-.156,.006,.097,.009,brass);}
+ else if(id===16200){for(const x of [-.12,.12])box(x*.75,-.445,-.099,.019,.095,.015,linen);for(const x of [-.055,0,.055])box(x,-.436,-.114,.006,.075,.006,brass);}
  if(id===16209||id===16221){oval(0,-.32,.02,.162,.061,.14,brass);box(0,-.26,-.14,.045,.07,.02,dye);}
- const hold=(x)=>woman?x-Math.sign(x)*.067:x;
+ const hold=(x)=>x-Math.sign(x)*(woman?.067:.054);
  const handBox=(x,...parts)=>box(hold(x),...parts);
  const handOval=(x,...parts)=>oval(hold(x),...parts);
  if(tool==='shield'){handOval(-.24,.0,-.10,.163,.21,.047,boots);handOval(-.24,.0,-.145,.055,.062,.031,brass);}
@@ -118671,7 +118739,7 @@ const BMCottage127=(()=>{
 
 }
  await bakeSpriteFamily({start:16500,end:16502});await bakeSpriteFamily({start:16503,end:16505});await bakeSpriteFamily({start:16506,end:16508});
- await bakeSpriteFamily({start:16509,end:16511});await bakeSpriteFamily({start:16512,end:16514});
+ await bakeSpriteFamily({start:16509,end:16511});await bakeSpriteFamily({start:16512,end:16514});await bakeSpriteFamily({start:16515,end:16517});
 BM_TRAINER_CATALOGS.dancer_trainer=[1180,1181,1182].map(id=>({id,name:BMLearning.name(id),reqs:{dancer:{lvl:0,stats:{}}}}));
 /* v124: remove redundant grass masks left by coastline restoration. */
 BMGuildDecor.transformSurface(0,rows=>rows.filter(q=>!(q.color===MAP_DB[0].floorColor&&!(q.z>0))));
@@ -119808,7 +119876,7 @@ const BMClassLineages=(()=>{
   add(2,9901601,45.5,24.5,16503,'Landing captain',captain,'Talk');
   prop(H.knight,9901602,0,69.5,84.5,15019,'Mare’s worn bridle','A piece of lambskin covers the narrow cheek strap at the Moors stable.',(n,r)=>menu(n,'The narrow strap has two holes close together. The side against the mare’s scar is covered in lambskin.',[['Measure it against your fingers',()=>{r.measured=true;save();menu(n,'Two fingers wide. The saddler is among the store crates at the Moors port.');}]]));
   prop(H.knight,9901603,0,93.5,87.5,312,'Port saddler','The saddler pares a strip of leather among the Moors port crates.',(n,r)=>menu(n,r.measured?'“Show me the width. Plain oxhide or the lined one?”':'“I stock three widths. Take the measure off her own strap at the stable.”',r.measured?[['Two fingers, lambskin inside',()=>take(H.knight,n,'The saddler rolls the soft side inward and slips a new keeper over the strap.')],['The broad oxhide',retry(n,'“A broad strap would rub the scar raw. Check her bridle again.”')]]:[]),'Talk');
-  prop(H.mage,9901604,2,49.5,25.5,15020,'Chart mender’s mirror','An oval sighting mirror rests face down on a chamois beside the landing crates.',n=>menu(n,'Soot dulls the glass on top. The silvered back rests on clean chamois. One corner of the cloth is already black.',[['Lift by the rim and wipe the glass',()=>take(H.mage,n,'The soot comes away. You wrap the lens silver-side down in the clean cloth.')],['Try the silver with the black cloth',retry(n,'A flake of silver already clings to the cloth. Better leave the backing alone.')]]));
+  prop(H.mage,9901604,2,50.5,22.5,15020,'Chart mender’s mirror','An oval sighting mirror rests face down on a chamois beside the landing crates.',n=>menu(n,'Soot dulls the glass on top. The silvered back rests on clean chamois. One corner of the cloth is already black.',[['Lift by the rim and wipe the glass',()=>take(H.mage,n,'The soot comes away. You wrap the lens silver-side down in the clean cloth.')],['Try the silver with the black cloth',retry(n,'A flake of silver already clings to the cloth. Better leave the backing alone.')]]));
   objects.set('2/888240',fisher);
   prop(H.rogue,9901606,0,92.5,81.5,16231,'Port letter clerk','The boat clerk sorts letters beside the dock worker in the Moors port.',n=>menu(n,'“Two letters for the same berth. Tell me the fold and the thread. I needn’t know the name.” One is flat with black wax. Two corners of the other are turned in.',[['Green thread, corners turned in',()=>take(H.rogue,n,'The clerk hands you the folded letter. The green thread and the seal are intact.')],['Ask to open both',retry(n,'The clerk slides both letters back into the drawer. “The outside will do.”')]]),'Talk');
   prop(H.hunter,9901607,0,77.5,84.5,15022,'Harbour smoke rack','Slabs of boar shoulder hang on the smoke rack near the Moors port sailor.',n=>menu(n,'Sweet juniper needles hiss under the near hook. The other hook hangs over pale ash embers. A butcher’s tally reserves one shoulder for Hunter.',[['Wrap the shoulder over the ash',()=>take(H.hunter,n,'You wrap the ash-smoked shoulder in butcher’s paper, leaving the ends loose so the rind stays dry.')],['Choose the fragrant juniper cut',retry(n,'The butcher points at Hunter’s tally. “He sent the last one back. Hiccups all afternoon.”')]]));
@@ -119876,24 +119944,29 @@ const BMClassLineages=(()=>{
 globalThis.BMClassLineages=BMClassLineages;BMClassLineages.install();
 
 const BMCampaignCast164=(()=>{
- const rows=[[0,886004,16500,null,null],[2,8403,16204,"Chart mender","Mind the silver on that sighting mirror. Mage lent it to me."],[2,888240,16506,null,null],[2,888316,161,null,null],[2,891004,161,null,null],[2,9901530,16206,null,null],[2,9901540,16210,null,null],[5,9901550,16512,null,null],[0,886005,16509,null,null],[6,896002,16206,null,null],[9,893020,16500,null,null],[9,985106,16500,null,null],[10,890096,16223,null,null],[10,890092,16223,null,null],[22,901864,1160,null,null],[33,9901510,161,null,null],[38,897001,158,null,null],[43,896200,16206,null,null],[44,896210,16206,null,null],[45,898011,161,null,null],[45,969001,161,null,null],[45,970006,16223,null,null],[48,899011,16210,null,null],[48,899012,158,null,null],[137,977014,16210,null,null],[137,977015,16214,null,null],[137,977101,16214,null,null],[137,977120,161,null,null],[137,977121,161,null,null],[138,977014,16210,null,null],[138,977015,16214,null,null],[138,978002,16214,null,null],[138,978005,158,null,null],[138,978006,16214,null,null],[139,977014,16210,null,null],[139,977015,16214,null,null],[140,977015,16214,null,null],[140,979002,161,null,null],[140,979003,158,null,null],[140,977014,16210,null,null],[140,979025,16214,null,null],[141,977015,16214,null,null],[141,977014,16210,null,null],[142,977015,16214,null,null],[142,977014,16210,null,null],[142,979025,16214,null,null],[143,981013,16206,null,null],[143,981027,16214,null,null],[145,977015,16214,null,null],[145,977014,16210,null,null],[149,984011,16214,null,null],[150,985001,16223,null,null],[150,985020,16210,null,null],[161,995001,16223,null,null],[162,995006,16223,null,null],[163,995011,16223,null,null],[164,995016,16223,null,null],[165,995021,16223,null,null],[166,995026,16223,null,null],[167,995031,16223,null,null],[168,995036,16223,null,null],[169,995041,16223,null,null],[170,995046,16223,null,null],[171,995051,16223,null,null],[173,995056,16223,null,null],[174,995061,16223,null,null],[175,995066,16223,null,null],[180,995071,16223,null,null],[182,997001,16223,null,null],[184,997006,16223,null,null],[185,997011,16223,null,null],[191,997015,16223,null,null]];
+ const rows=[[0,886004,16500,null,null],[2,8403,16515,"Chart mender","Mind the silver on that sighting mirror. Mage lent it to me."],[2,888240,16506,null,null],[2,888316,161,null,null],[2,891004,161,null,null],[2,9901530,255,null,null],[2,9901540,16210,null,null],[5,9901550,16512,null,null],[0,886005,16509,null,null],[6,896002,255,null,null],[9,893020,16500,null,null],[9,985106,16500,null,null],[10,890096,16223,null,null],[10,890092,16223,null,null],[22,901864,1160,null,null],[33,9901510,161,null,null],[38,897001,158,null,null],[43,896200,255,null,null],[44,896210,255,null,null],[45,898011,161,null,null],[45,969001,161,null,null],[45,970006,16223,null,null],[48,899011,16210,null,null],[48,899012,158,null,null],[137,977014,16210,null,null],[137,977015,16214,null,null],[137,977101,16214,null,null],[137,977120,161,null,null],[137,977121,161,null,null],[138,977014,16210,null,null],[138,977015,16214,null,null],[138,978002,16214,null,null],[138,978005,158,null,null],[138,978006,16214,null,null],[139,977014,16210,null,null],[139,977015,16214,null,null],[140,977015,16214,null,null],[140,979002,161,null,null],[140,979003,158,null,null],[140,977014,16210,null,null],[140,979025,16214,null,null],[141,977015,16214,null,null],[141,977014,16210,null,null],[142,977015,16214,null,null],[142,977014,16210,null,null],[142,979025,16214,null,null],[143,981013,255,null,null],[143,981027,16214,null,null],[145,977015,16214,null,null],[145,977014,16210,null,null],[149,984011,16214,null,null],[150,985001,16223,null,null],[150,985020,16210,null,null],[161,995001,16223,null,null],[162,995006,16223,null,null],[163,995011,16223,null,null],[164,995016,16223,null,null],[165,995021,16223,null,null],[166,995026,16223,null,null],[167,995031,16223,null,null],[168,995036,16223,null,null],[169,995041,16223,null,null],[170,995046,16223,null,null],[171,995051,16223,null,null],[173,995056,16223,null,null],[174,995061,16223,null,null],[175,995066,16223,null,null],[180,995071,16223,null,null],[182,997001,16223,null,null],[184,997006,16223,null,null],[185,997011,16223,null,null],[191,997015,16223,null,null]];
  const identities=new Map(rows.map(([map,id,...data])=>[map+'/'+id,data]));
  const retired=new Set([8402,8404]);
+ const menderPost={x:49.5,y:22.5,groundZ:0,alignment:'friendly',role:'dialogue',state:'stationary',isCinematic:true,companionEligible:false};
  function install(){
   MAP_DB[2].npcs=MAP_DB[2].npcs.filter(n=>!retired.has(n.index));
   for(const [map,id,sprite,name,text] of rows){
    const n=MAP_DB[map]?.npcs?.find(a=>a.index===id);if(!n)continue;
    n.sprite=sprite;n.fieldSprite156=sprite;if(n.type!==undefined)n.type=sprite;
    if(name)n.name=name;if(text)n.customDialogue=[text];
-   if(map===2&&id===8403)Object.assign(n,{x:48.5,y:24.5,spawnCondition:()=>true,dialogueFactory:null,options:null});
+   if(map===2&&id===8403)Object.assign(n,menderPost,{spawnCondition:()=>true,dialogueFactory:null,options:null});
   }
   const build=Explore.prototype.buildNPC;
   Explore.prototype.buildNPC=function(def,map,...rest){
    const n=build.call(this,def,map,...rest),identity=identities.get((map??this.mapID)+'/'+def.index);
    if(!identity||this.customMapInstance||!MAP_DB[map??this.mapID]?.npcs?.some(a=>a.index===def.index))return n;
    const [sprite,name,text]=identity;
-   n.type=sprite;if(name)n.name=name;if(text)n.customDialogue=[text];if((map??this.mapID)===2&&n.index===8403)Object.assign(n,{x:48.5,y:24.5,homeX:48.5,homeY:24.5,originx:48.5,originy:24.5,targetX:48.5,targetY:24.5});
-   if(sprite>=16100&&sprite<16300){BMFieldActors156.install(n,sprite);}
+   n.type=sprite;if(name)n.name=name;if(text)n.customDialogue=[text];if((map??this.mapID)===2&&n.index===8403)Object.assign(n,menderPost,{
+    _chartDesk:true,preState:'stationary',homeX:menderPost.x,originx:menderPost.x,targetX:menderPost.x,lastX:menderPost.x,
+    homeY:menderPost.y,originy:menderPost.y,targetY:menderPost.y,lastY:menderPost.y,
+    dirX:0,dirY:1,speed:0,isMoving:false,isSliding:false,isAggroDashing:false,nonBlocking:true,service:null,dialogueFactory:null,options:null
+   });
+   if(sprite===255||sprite===16515||sprite>=16100&&sprite<16300){BMFieldActors156.install(n,sprite);}
    else{delete n._classArt;delete n._sectScale;delete n._sectHover;n.cachedBillboard=null;n.needsBillboardUpdate=false;}
    return n;
   };
@@ -119901,14 +119974,26 @@ const BMCampaignCast164=(()=>{
  return {install};
 })();
 
+const retiredFigureKeys=['type','sprite','spriteId','fieldSprite156','_fieldArt156'];
+function retireApronFigure(actor, index=actor?.index){
+ if(!actor)return;
+ const legacy=retiredFigureKeys.some(key=>Number(actor[key])===16206)||Number(actor._classArt)===16206;
+ if(!legacy)return;
+ const art=Number(actor.index??index)===762109?16509:255;
+ for(const key of retiredFigureKeys)if(Number(actor[key])===16206)actor[key]=art;
+ if(Number(actor._classArt)===16206)delete actor._classArt;
+ delete actor._sectScale;delete actor._sectHover;delete actor.fixedWorldAngle;
+ delete actor.cachedBillboard;delete actor.needsBillboardUpdate;
+}
 const BMFieldActors156=(()=>{
  const roads=BMSouthernRoads;
  const authored=new Map();
  for(const r of REGIONAL_CAST){
-  const def=roads.actor(r.map,r.index,r.x,r.y,r.sprite,r.name,{role:'dialogue',interactionVerb:r.person?'Talk':'Inspect',customDialogue:[r.line],onSpawn(n){BMClassArt.resource(n,r.sprite);n._sectScale=r.person?1.35:r.sprite===16140?.82:.72;n._sectHover=0;}});
+  const def=roads.actor(r.map,r.index,r.x,r.y,r.sprite,r.name,{role:'dialogue',interactionVerb:r.person?'Talk':'Inspect',customDialogue:[r.line],onSpawn(n){if(r.sprite===16509){install(n,r.sprite);return;}BMClassArt.resource(n,r.sprite);n._sectScale=r.person?1.35:r.sprite===16140?.82:.72;n._sectHover=0;}});
   roads.bind(r.map,r.index,n=>BMClassicDialogue.show({speaker:n,text:r.line}));
  }
  function havenCrew(map,index){
+  if(map===2&&index===8403)return 16515;
   if(map===0&&index===886005)return 16509;
   if(map===5&&index===9901550)return 16512;
   if(map===2&&index===9901601)return 16503;
@@ -119922,7 +120007,7 @@ const BMFieldActors156=(()=>{
   const id=declared??fieldArt(current,n.index,n.name,n.role);
   if(id==null||n._fieldArt156===id)return n;
   n._fieldArt156=id;n.type=id;
-  if(id===16500||id===16503||id===16506||id===16509||id===16512){
+  if(id===255||id===16500||id===16503||id===16506||id===16509||id===16512||id===16515){
    delete n._classArt;delete n._sectScale;delete n._sectHover;delete n.fixedWorldAngle;
    n.cachedBillboard=null;n.needsBillboardUpdate=false;return n;
   }
@@ -119932,7 +120017,7 @@ const BMFieldActors156=(()=>{
   return n;
  }
  const build=Explore.prototype.buildNPC;
- Explore.prototype.buildNPC=function(...args){const n=build.apply(this,args);const map=Number(args[1]??this.mapID);if(map===999)return n;return install(n,havenCrew(map,n.index)??args[0]?.fieldSprite156??authored.get(map)?.get(n.index));};
+ Explore.prototype.buildNPC=function(...args){retireApronFigure(args[0]);const n=build.apply(this,args);retireApronFigure(n);const map=Number(args[1]??this.mapID);if(map===999)return n;return install(n,havenCrew(map,n.index)??args[0]?.fieldSprite156??authored.get(map)?.get(n.index));};
  // Saved spawns and procedural trials pass through buildNPC. Static definitions also
  // advertise the same artwork to inspectors, map views and recreated actors.
  for(const [map,m] of Object.entries(MAP_DB))for(const n of m?.npcs||[]){
@@ -119945,7 +120030,10 @@ const BMFieldActors156=(()=>{
  const load=Explore.prototype.loadMap;
  Explore.prototype.loadMap=function(...args){
   const result=load.apply(this,args);
-  if(Number(this.mapID)!==999)for(const n of this.npcs||[])install(n,havenCrew(Number(this.mapID),n.index));
+  for(const n of this.npcs||[]){
+   retireApronFigure(n);
+   if(Number(this.mapID)!==999)install(n,havenCrew(Number(this.mapID),n.index));
+  }
   return result;
  };
  let last=null;
@@ -120212,7 +120300,7 @@ const BMMapGuidance158=(()=>{
  }
  const rimCache=new WeakMap(),recentRims=[];
  function glowFrame(image,n,d){
-  if(!image||!n||d!==Dungeon||startGame!=='explore'||!visible(n))return image;
+  if(!image||!n||n.isBoss||d!==Dungeon||startGame!=='explore'||!visible(n))return image;
   const mark=byActor.get(n)||(n.role==="herb"&&byPlace.get(n.x+","+n.y));
   if(!mark||mark.route)return image;
   const dx=n.x-d.x,dy=n.y-d.y,range=Math.hypot(dx,dy);
