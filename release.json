@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 173,
-  "serverVersion": "1.10.105",
-  "date": "2026-11-21",
+  "version": 193,
+  "serverVersion": "1.10.125",
+  "date": "2026-11-26",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v172 / server 1.10.104",
+  "supersedes": "BattleMage Runestones v192",
   "deployed": false,
   "files": [
     "index.html",
@@ -27,8 +27,8 @@
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "585ffbd973d11f294c002a8c02410134a088ae662d7da0e1d07adee64698a478",
-  "serverSha256": "be7d5b04e04da46ec8e93b4ee738579838cd84e8cb87c270b2993b53b2d3ac7e",
+  "clientSha256": "d2c0f8517428645d993da2fbff382fa0b0546d64a62c74f1dfa6aff936cac924",
+  "serverSha256": "6c49828d39a357903df0aebff30a2339b215f05df88d243acf30f7c287d5982c",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -67,37 +67,227 @@
     }
   },
   "geography": {
-    "newMapIDs": [],
-    "modifiedExistingMapIDs": [
-      100,
-      102
+    "newMapIDs": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2032,
+      2033,
+      2034,
+      2035,
+      2036,
+      2037,
+      2038,
+      2039,
+      2040,
+      2041,
+      2042,
+      2064,
+      2065,
+      2066,
+      2067,
+      2068,
+      2069,
+      2070,
+      2071,
+      2072,
+      2073,
+      2074,
+      2096,
+      2097,
+      2098,
+      2099,
+      2100,
+      2101,
+      2102,
+      2103,
+      2104,
+      2105,
+      2106,
+      2128,
+      2129,
+      2130,
+      2131,
+      2132,
+      2133,
+      2134,
+      2135,
+      2136,
+      2137,
+      2138,
+      2160,
+      2161,
+      2162,
+      2163,
+      2164,
+      2165,
+      2166,
+      2167,
+      2168,
+      2169,
+      2170,
+      2171,
+      2172,
+      2173,
+      2174,
+      2175,
+      2176,
+      2177,
+      2178,
+      2192,
+      2193,
+      2194,
+      2195,
+      2196,
+      2197,
+      2198,
+      2199,
+      2200,
+      2201,
+      2202,
+      2203,
+      2204,
+      2205,
+      2206,
+      2207,
+      2208,
+      2209,
+      2210,
+      2224,
+      2225,
+      2226,
+      2227,
+      2228,
+      2229,
+      2230,
+      2231,
+      2232,
+      2233,
+      2234,
+      2235,
+      2236,
+      2237,
+      2238,
+      2239,
+      2240,
+      2241,
+      2242,
+      2256,
+      2257,
+      2258,
+      2259,
+      2260,
+      2261,
+      2262,
+      2263,
+      2264,
+      2265,
+      2266,
+      2267,
+      2268,
+      2269,
+      2270,
+      2271,
+      2272,
+      2273,
+      2274,
+      2288,
+      2289,
+      2290,
+      2291,
+      2292,
+      2293,
+      2294,
+      2295,
+      2296,
+      2297,
+      2298,
+      2299,
+      2300,
+      2301,
+      2302,
+      2303,
+      2304,
+      2305,
+      2306,
+      2307,
+      2308,
+      2309,
+      2310,
+      2311,
+      2312,
+      2313,
+      2314,
+      2315,
+      2320,
+      2321,
+      2322,
+      2323,
+      2324,
+      2325,
+      2326,
+      2327,
+      2328,
+      2329,
+      2330,
+      2331,
+      2332,
+      2333,
+      2334,
+      2335,
+      2336,
+      2337,
+      2338,
+      2339,
+      2340,
+      2341,
+      2342,
+      2343,
+      2344,
+      2345,
+      2346,
+      2347,
+      2352,
+      2353,
+      2354,
+      2355,
+      2356,
+      2357,
+      2358,
+      2359,
+      2360,
+      2361,
+      2362,
+      2363,
+      2364,
+      2365,
+      2366,
+      2367,
+      2368,
+      2369,
+      2370,
+      2371,
+      2372,
+      2373,
+      2374,
+      2375,
+      2376,
+      2377,
+      2378,
+      2379
     ],
-    "atlasDimensions": {
-      "columns": 17,
-      "rows": 10
-    },
-    "totalAtlasCharts": 170,
-    "sharedBordersChecked": 152,
-    "source": "Natural Earth public-domain 1:10m land, Ireland outline; compressed to the existing atlas. Tory is enlarged for playability.",
-    "projection": {
-      "scope": "Ireland only",
-      "chartedCells": [
-        [
-          0,
-          1
-        ],
-        [
-          0,
-          2
-        ]
-      ],
-      "sharedEdge": 99
-    },
-    "interpretation": "Add real Ireland terrain in two previously ocean-only charts, with an enlarged Tory island off the northwest coast. Existing British regions remain unchanged; Cairngorm is a broad eastern-Highlands game region, not a precisely bounded mountain-range map.",
-    "atlasAnchorUpdates": [
-      137,
-      145
-    ]
+    "totalAtlasCharts": 385,
+    "projection": "Equal Earth (spherical equal-area)",
+    "source": "Natural Earth 1:10m coastlines via the QGIS world map dataset",
+    "interpretation": "Stylized land cover, waterways and relief. Authored story maps retain their local geometry."
   },
   "naming": {
     "maps": {
@@ -324,7 +514,7 @@
     }
   },
   "devlog": {
-    "current": "v173",
+    "current": "v193",
     "history": "Minigame Manual"
   },
   "historicalLiveInspection": {
@@ -351,13 +541,15 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "The green-apron figure was removed from the regional sprite definitions. Older actor records use native models. Other regional townspeople no longer use the shared broad male face and body.",
-    "Adventure and standalone card battles draw at higher device resolution. Card titles have stronger lettering."
+    "Permanent apprenticeship fixtures and staged field tasks, including brewing and delivering medicine.",
+    "Haven cargo handoff, Fisher and shore priest staging, and lineage referrals.",
+    "Cherry, the Night Court, guild escorts, and Hallows field events now show more of their outcomes in play.",
+    "Kemet and Qedar patients display treatment state. Herd rescue tracks, ribbon handoff, and homecoming persist."
   ],
   "previousRelease": {
-    "version": 172,
-    "serverVersion": "1.10.104",
-    "summary": "Boss encounters"
+    "version": 192,
+    "serverVersion": "1.10.124",
+    "summary": "Atlas landmarks"
   },
   "validation": {
     "offlineFreshJournal": [
@@ -566,14 +758,40 @@
       "retiredSprite": "Checked all six authored users, restored and custom actors and server ledger migration. The old sprite recipe is absent. Compared the 48 surviving regional sprite renders. Verified the native Priest mesh.",
       "cardTable": "Rendered actual card faces with a native canvas. The 360 × 740 CSS viewport rendered at 1080 × 2220 for a 3× display and reverted to 360 × 740 for the mobile exploration profile. Tested both sides, numeric modes 4 to 8, Adventure battle, rotation, device pixel ratios and the 4-megapixel budget. Checked title and dice drawing.",
       "scope": "Renderer and save-data tests. Physical Android and live multiplayer not tested."
+    },
+    "v174": {
+      "galleryAndTarot": "Chromium at 360×640 and 640×300. Checked the reader fits the screen, pagination, filtered variant order, back to the original list position, rapid Previous/Next, all four positions in the four-card spread, the spread guide and offline interpretation.",
+      "menu": "Rendered all seven emblems in portrait and landscape. Tested pause, settings, resume, keep playing and confirmed exit in standalone CPU, local and Tactics matches.",
+      "cardBattles": "Checked all split/full and alternate deck combinations. Validated 78 unique tarot slots per constructed deck with 109 eligible alternates. Tested the Emperor tutorial and the Adventure NPC battle entry point, including Lycan Ace on the field, attack selection, Ice Dagger stat effects and saved card formats.",
+      "interactions": "Checked forward-facing line of sight for Talk and Break, valid target locks, nearby loot and forage, disappearing bodies blocking grounded players and enemies and jumping clear. Tested reported Tintagel guard and shore priest locations, wall repair after load, and Priest class recognition through the correct NPC.",
+      "worldArt": "Checked maximum-zoom player visibility in eight ISO rotations at each of two reported Tintagel positions, eight Knight boot anchors, the larger overhead bed image and migration of the old shield-bearing actor.",
+      "coast": "Mobile-sized Chromium checks for the Moors ship in water, walkable gangway and safe return, and a Haven dock encounter that turns Fisher, directs the camera toward the old shore priest, then restores player control. Checked server catalog and saved actor migration.",
+      "character": "Submitted a custom name, reopened the game in Chromium and resumed the named character. Checked displayed stat runes and one-time Battle-Mage acquisition while holding a Knight title.",
+      "server": "The paired Node server started in isolation, returned HTTP health and completed a Socket.IO handshake.",
+      "scope": "Browser tests used Chromium with emulated mobile viewports. Physical Android, a live Suncat interpretation and public multiplayer were not tested."
+    },
+    "v175": {
+      "menus": "Rendered five main emblems and both submenu sets in Chromium at 360×640 and 640×360. Checked Card Battles, Tactics, pause/leave, Settings and return routes. The Gallery emblem uses the Tarot shield mesh.",
+      "cards": "Checked exact restoration of list scroll on an unchanged card, anchoring after Next and Previous, retained filter/tab/focus for a Walking Elder variant and phone rotation.",
+      "stories": "Opened the existing Before the Oak, The Fool’s Journey and Guild history collections. Checked chapter picker, Next/Previous and last chapter bounds in all three, the optional guild spoiler guide, and the route back to Gallery.",
+      "soundtrack": "Checked Chromium Web Audio with Taliesin, Twilight of the Gods and Shuffle. The same active song player and clock persisted across Gallery pages, including an open chapter and card detail. Pause survived returning to Music. Leaving Gallery restored the main menu score and Tarot selected its own scene.",
+      "tarot": "All four backdrop canvases matched the original rune drawing at 360×640 and 640×300. Checked their proportions, card visibility, card taps, returning to the same deal, spread help and offline interpretation controls.",
+      "scope": "Chromium with mobile viewports; the release was not played on a physical Android device."
+    },
+    "atlas192": {
+      "client": "Offline mobile Chromium and isolated Node server. Physical devices and live multiplayer were not tested.",
+      "catalogIDs": 450,
+      "migrationAliases": 8,
+      "regionalNodes": 385,
+      "directedRegionalLinks": 1488,
+      "sitePortals": 18,
+      "sitesCheckedInThreeViews": 9,
+      "ordinaryPortalDecks": 61
     }
   },
   "limitations": [
     "Functional checks used simulated connected and offline clients and an isolated server without a live model or a physical device.",
     "Suncat harvests a plant with a herbalism check. Pocket digging is played by the human. Fishing, mining, smithing and the three tavern games provide instructions only for Suncat."
-  ],
-  "nextPass": [
-    "China cultivator arc: after joining the sect, the player can learn a homing sword that fights as a summoned ally. This is planned content."
   ],
   "questInventory": {
     "open": "Player → Items → Quest Items",
@@ -597,11 +815,11 @@
     "explicitCursedNightPreserved": true
   },
   "responsiveView": {
-    "baseline": "Square projection at min(viewport width, viewport height); centered horizon retained from v113.",
-    "world": "Full available browser canvas in 3D exploration and dialogue.",
+    "baseline": "The shorter canvas dimension sets the world scale.",
+    "world": "Full available canvas in first-person, top-down and isometric Adventure.",
     "hud": "Movement, Jump/Target and skill geometry retained from v117. Landscape chat uses a top-aligned text area with a small icon strip beside the map.",
     "upperHUD": "Transparent landscape messages and top-edge chat icons; map/settings right. Portrait shaded chat retained.",
-    "ordinary2D": "Square board retained.",
+    "ordinary2D": "Adventure expands terrain along the longer axis. Mapmaker keeps its square editing board.",
     "preferences": "Original left/right movement and control size settings preserved.",
     "maxDialogueWidthCSSPixels": 720,
     "landscape": "Top-flow message log, three compact top-edge icons, larger movement pad and raised actions retained, single centered hotbar unchanged.",
@@ -4536,5 +4754,1040 @@
       "habitat": "Moors",
       "feasibleSeeds": 15
     }
-  ]
+  ],
+  "world190": {
+    "source": "Natural Earth 1:10m coastlines via the QGIS world map dataset",
+    "addedRegions": 215,
+    "landAndCoast": 123,
+    "projection": "Equal Earth (spherical equal-area)",
+    "terrain": "Stylized land cover, waterways and relief. Authored story maps retain their local geometry."
+  },
+  "landmarks192": {
+    "note": "Local scenes are stylized interpretations. The atlas combines independently dated places in a legendary setting.",
+    "sites": [
+      {
+        "id": 3100,
+        "name": "Kemet · Nekhen",
+        "source": "https://www.hierakonpolis-online.org/index.php/explore-the-predynastic-settlement",
+        "lon": 32.7797,
+        "lat": 25.0977,
+        "periodNote": "Peak of predynastic settlement approximately 3700–3500 BCE."
+      },
+      {
+        "id": 3101,
+        "name": "Ta-Sety · Kerma",
+        "source": "https://whc.unesco.org/en/tentativelists/6594/",
+        "lon": 30.4097,
+        "lat": 19.6007,
+        "periodNote": "Early urban development around 2500 BCE. Ta-Sety is an Egyptian historical name for the region."
+      },
+      {
+        "id": 3102,
+        "name": "Eye of the Sahara",
+        "source": "https://science.nasa.gov/earth/earth-observatory/eyeing-the-richat-structure/",
+        "lon": -11.399,
+        "lat": 21.121,
+        "periodNote": "Geological landmark. The cleft is an original game design."
+      },
+      {
+        "id": 3103,
+        "name": "Teotihuacán · Temple of the Feathered Serpent",
+        "source": "https://lugares.inah.gob.mx/es/pagina-de-elemento/2736",
+        "lon": -98.8461,
+        "lat": 19.6818,
+        "periodNote": "Feathered Serpent Temple around 200 CE."
+      },
+      {
+        "id": 3104,
+        "name": "Caral · Supe Valley",
+        "source": "https://whc.unesco.org/en/list/1269/",
+        "lon": -77.5203,
+        "lat": -10.8917,
+        "periodNote": "Ancient city approximately 5000 years old."
+      },
+      {
+        "id": 3105,
+        "name": "Poverty Point · Lower Mississippi earthworks",
+        "source": "https://whc.unesco.org/en/list/1435/",
+        "lon": -91.4072,
+        "lat": 32.6367,
+        "periodNote": "Earthworks used approximately 3700–3100 years before present."
+      },
+      {
+        "id": 3106,
+        "name": "Budj Bim · Gunditjmara waterways",
+        "source": "https://whc.unesco.org/en/list/1577/",
+        "lon": 141.8853,
+        "lat": -38.0811,
+        "periodNote": "Gunditjmara managed waterways over at least 6600 years. Living cultural landscape."
+      },
+      {
+        "id": 3107,
+        "name": "Tainaron",
+        "source": "https://topostext.org/place/364225STai",
+        "lon": 22.4867,
+        "lat": 36.4018,
+        "periodNote": "Greek sacred cape. Map pin marks the physical approach."
+      },
+      {
+        "id": 3108,
+        "name": "Kunlun · Mountain approach",
+        "source": "https://biodiversity.unesco.org/profile/site/ASCN19/",
+        "lon": 94.026,
+        "lat": 35.882,
+        "periodNote": "A physical approach in the Kunlun region. Site placement does not locate the mythic residence."
+      }
+    ]
+  },
+  "quest-audit": {
+    "release": 193,
+    "scope": "Authored journal families, guild boards, scripted world encounters, and separately identified generated or reference entries.",
+    "mapContextsQueried": 450,
+    "journalEntryIds": 72,
+    "authoredFamilies": [
+      {
+        "family": "The Fool’s Journey",
+        "entries": [
+          {
+            "id": "fools:1",
+            "title": "- THE FOOL'S JOURNEY: Outer Dungeon -"
+          },
+          {
+            "id": "fools:2",
+            "title": "- THE FOOL'S JOURNEY: Tintagel -"
+          },
+          {
+            "id": "fools:5",
+            "title": "- THE FOOL'S JOURNEY: Savage Forest -"
+          },
+          {
+            "id": "fools:30",
+            "title": "- THE FOOL'S JOURNEY: Goblin Caverns -"
+          },
+          {
+            "id": "fools:4",
+            "title": "- THE FOOL'S JOURNEY: Ger -"
+          },
+          {
+            "id": "fools:6",
+            "title": "- THE FOOL'S JOURNEY: Cairngorm -"
+          },
+          {
+            "id": "fools:10",
+            "title": "- THE FOOL'S JOURNEY: Avalon -"
+          },
+          {
+            "id": "fools:14",
+            "title": "- THE FOOL'S JOURNEY: Armorica -"
+          },
+          {
+            "id": "fools:15",
+            "title": "- THE FOOL'S JOURNEY: The Dark Bridge -"
+          },
+          {
+            "id": "fools:16",
+            "title": "- THE FOOL'S JOURNEY: The Dark Tower 1F -"
+          },
+          {
+            "id": "fools:17",
+            "title": "- THE FOOL'S JOURNEY: The Dark Tower 2F (Djinn Room) -"
+          },
+          {
+            "id": "fools:18",
+            "title": "- THE FOOL'S JOURNEY: The Dark Tower 3F (Kraken Room) -"
+          },
+          {
+            "id": "fools:19",
+            "title": "- THE FOOL'S JOURNEY: The Dark Tower 4F (Dragon Room) -"
+          },
+          {
+            "id": "fools:20",
+            "title": "- THE FOOL'S JOURNEY: The Dark Tower 5F (Giant Room) -"
+          },
+          {
+            "id": "fools:21",
+            "title": "- THE FOOL'S JOURNEY: The Dark Tower 6F (Top of Tower) -"
+          }
+        ],
+        "inPlay": "Rescue and return through the Outer Dungeon, the court impostors, Hermit, Apprentice and Djinn, the Kraken and Dragon journeys, Armorica, six tower crossings and the summit confrontation.",
+        "evidence": "Journal enumeration plus map event inspection. Tower crossings tested through live map loads, including previously saved chapters."
+      },
+      {
+        "family": "Class rumors and favors",
+        "entries": [
+          {
+            "id": "class-rumor:warrior",
+            "title": "Favor · Provisions for the landing captain"
+          },
+          {
+            "id": "class-rumor:knight",
+            "title": "Favor · Soft-lined cheek strap"
+          },
+          {
+            "id": "class-rumor:mage",
+            "title": "Favor · Silver-backed sighting mirror"
+          },
+          {
+            "id": "class-rumor:priest",
+            "title": "Favor · Fisher’s torn net"
+          },
+          {
+            "id": "class-rumor:rogue",
+            "title": "Favor · Green-thread letter"
+          },
+          {
+            "id": "class-rumor:hunter",
+            "title": "Favor · Ash-smoked boar shoulder"
+          },
+          {
+            "id": "class-rumor:dancer",
+            "title": "Rumor · Cherry"
+          }
+        ],
+        "inPlay": "A person offers the favor, the object or witness is reached on the map, and the teacher receives the referral. Dancer has a family introduction.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Class apprenticeships",
+        "entries": [
+          {
+            "id": "class-path:warrior",
+            "title": "Warrior class quest"
+          },
+          {
+            "id": "class-path:rogue",
+            "title": "Rogue class quest"
+          },
+          {
+            "id": "class-path:hunter",
+            "title": "Hunter class quest"
+          },
+          {
+            "id": "class-path:dancer",
+            "title": "Dancer class quest"
+          },
+          {
+            "id": "class-path:knight",
+            "title": "Knight class quest"
+          },
+          {
+            "id": "class-path:mage",
+            "title": "Mage class quest"
+          },
+          {
+            "id": "class-path:priest",
+            "title": "Priest class quest"
+          }
+        ],
+        "inPlay": "Seven course records with visits, field trials and earned promotions. Priest and other lessons use placed fixtures.",
+        "evidence": "Journal registration and implementation review",
+        "systems": [
+          "BMClassPaths",
+          "BMApprenticeship101",
+          "BMClassLineages"
+        ]
+      },
+      {
+        "family": "Guild company and siege",
+        "entries": [
+          {
+            "id": "guild-veterans",
+            "title": "The guild’s S-rank company"
+          },
+          {
+            "id": "guild-stronghold",
+            "title": "FINALE I · Sect Stronghold"
+          },
+          {
+            "id": "guild-finale",
+            "title": "The oak and its branches"
+          }
+        ],
+        "inPlay": "Meet the S-rank veterans, enter the storehouse stronghold, fight its wardens, return for the guild siege and confront the Mastermind. The gathering chapter retains recruited survivors.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Regional guilds and branches",
+        "entries": [
+          {
+            "id": "rogue-refuge",
+            "title": "The collection list"
+          },
+          {
+            "id": "hunter-lodge",
+            "title": "Hunters’ Guild · Guest"
+          },
+          {
+            "id": "regional-rogue",
+            "title": "Rogue’s Guild · Guest"
+          },
+          {
+            "id": "regional-knight",
+            "title": "Knights of the Lake · Guest"
+          },
+          {
+            "id": "regional-mage",
+            "title": "Mages’ Guild · Guest"
+          },
+          {
+            "id": "regional-hunter",
+            "title": "Hunters’ Guild invitation"
+          }
+        ],
+        "inPlay": "The refuge’s ledger and collectors, the lodge trails and night watch, the border guard work and observatory place objectives in the world.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Regional supply contracts",
+        "entries": [
+          {
+            "id": "guild-job-rogue",
+            "title": "Rogue’s Guild · Thread for the refuge"
+          },
+          {
+            "id": "guild-job-knight",
+            "title": "Knights of the Lake · Iron for the gate"
+          },
+          {
+            "id": "guild-job-mage",
+            "title": "Mages’ Guild · Moonleaf ink"
+          },
+          {
+            "id": "guild-job-hunter",
+            "title": "Hunters’ Guild · Boar tusks"
+          },
+          {
+            "id": "guild-job-priest",
+            "title": "Priest’s Guild · Moonleaf for the healing house"
+          },
+          {
+            "id": "guild-job-warrior",
+            "title": "Warriors’ Guild · Furs for the watch"
+          }
+        ],
+        "inPlay": "Gather, trade for or process the specified goods, then turn them in at the local desk. Six journal slots cover eight contract variants.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Winter names and southern physicians",
+        "entries": [
+          {
+            "id": "frozen-chapel",
+            "title": "Priest · The winter names"
+          },
+          {
+            "id": "priest-southern-studies",
+            "title": "Priest · The southern physicians"
+          }
+        ],
+        "inPlay": "The chapel, healing house in Kemet, case records at the academy, and field patients form a route through placed people and objects.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Stolen herd and Najerilla ribbon",
+        "entries": [
+          {
+            "id": "warrior-cattle",
+            "title": "Warrior · The stolen herd"
+          },
+          {
+            "id": "najerilla-ribbon",
+            "title": "Nájera and Anguiano · Across the river"
+          }
+        ],
+        "inPlay": "Follow the herd tracks, bring cattle out of the den, and visit the family and bridge for the ribbon.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Continental road and estate chapters",
+        "entries": [
+          {
+            "id": "frontier-parcel",
+            "title": "The onward road · Caravan supplies"
+          },
+          {
+            "id": "aegean-route-book",
+            "title": "Across the Aegean · Route book"
+          },
+          {
+            "id": "levant-medicine",
+            "title": "The delayed caravan · Medicine shipment"
+          },
+          {
+            "id": "carpathian-invitation",
+            "title": "Dacia · Black wax"
+          },
+          {
+            "id": "silver-thorn-estate",
+            "title": "The Silver Thorn · The missing copyist"
+          },
+          {
+            "id": "athens-guild",
+            "title": "Athens · The northern expedition"
+          }
+        ],
+        "inPlay": "Travel to the caravan parcel and route book handoffs, deliver the medical shipment, present the Carpathian invitation, investigate the copyist and undertake the Athenian expedition.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Avalon",
+        "entries": [
+          {
+            "id": "avalon-crossing",
+            "title": "Avalon · The Chained Avatar"
+          }
+        ],
+        "inPlay": "Enter the Copper trial from the scout’s case, break the two keeper seals, defeat the Dragon and return to the springs. Alternate board rules depend on settlement progress.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Hallows tower, siege and voyage",
+        "entries": [
+          {
+            "id": "living-hallows-tower",
+            "title": "Conaing’s Tower · Guests at the Watchfire"
+          },
+          {
+            "id": "living-hallows-siege",
+            "title": "Conaing’s Tower · The Tower Holds"
+          },
+          {
+            "id": "living-hallows-voyage",
+            "title": "Athens · The Price of Passage"
+          }
+        ],
+        "inPlay": "Tower supplies, sailor rescue and names, siege combat and launch, then transport, workers and decisions on the Athenian quay.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Hallows resistance and escape",
+        "entries": [
+          {
+            "id": "living-hallows-thrace",
+            "title": "Thrace · Hands That Raise Stone"
+          },
+          {
+            "id": "living-hallows-escape",
+            "title": "Thrace · Hands Unbound"
+          }
+        ],
+        "inPlay": "Free the quarry crew, dry the lane, test the lantern, confront the watch with the crews, open the harbour and build the refuge.",
+        "evidence": "Browser assertions for the beam, crew, postern, drain, lantern, range gate, repeat use, re-entry and first estate combat."
+      },
+      {
+        "family": "Northern schools and reunion",
+        "entries": [
+          {
+            "id": "living-hallows-north",
+            "title": "The Northern Schools · The Common Hearth"
+          },
+          {
+            "id": "living-hallows-reunion",
+            "title": "Alba and Ériu · The Harbour Promise"
+          }
+        ],
+        "inPlay": "Restore the common hearth, prepare the school draught at its cauldron, assist the guests and follow the harbour pledge through Alba and Ériu.",
+        "evidence": "Browser assertions for the sluice, windbreak, boatman by the fire, chart requirement and beacon after re-entry."
+      },
+      {
+        "family": "Relic custody and council",
+        "entries": [
+          {
+            "id": "hallow-trial-stone",
+            "title": "The Weight of a Promise"
+          },
+          {
+            "id": "hallow-trial-spear",
+            "title": "The Banked Flame"
+          },
+          {
+            "id": "hallow-trial-sword",
+            "title": "The Unerring Edge"
+          },
+          {
+            "id": "hallow-council83",
+            "title": "Mag Tuired · The Contested Field"
+          }
+        ],
+        "inPlay": "Open the Stone crossing and guide its traveller, put down the cinders or ward sentinels, entrust or recover the relics. Hear the camps, shelter families and resolve the contested ford.",
+        "evidence": "All three preparation routes, three seals, six custody operations, joint council combat through all three waves, volunteer recovery, return and one-time accord payment."
+      },
+      {
+        "family": "Eastern trails and Dancer’s friendship",
+        "entries": [
+          {
+            "id": "eastern-waystones",
+            "title": "Beyond the Last Waystone"
+          },
+          {
+            "id": "dancer-between-journeys",
+            "title": "Dancer · Between journeys"
+          }
+        ],
+        "inPlay": "Cairn, wildlife, surveyor, repaired bridge, restored spring and grassland marker; share trail stories and watch Dancer rehearse.",
+        "evidence": "Browser assertions for the bridge, spring, rehearsal animation, completion and repeat guard."
+      },
+      {
+        "family": "Night Court and the missing performer",
+        "entries": [
+          {
+            "id": "night-court85",
+            "title": "The Night Court"
+          },
+          {
+            "id": "cherry-rescue87",
+            "title": "The missing performer"
+          }
+        ],
+        "inPlay": "Place notes record the court. Cherry’s separate arc follows her letter, family, stage, kidnapping, castle seals, boss fight and return.",
+        "evidence": "Journal registration and implementation review"
+      },
+      {
+        "family": "Guild boards and scenario orders",
+        "entries": [
+          {
+            "id": "guild-ledger",
+            "title": "Guild contract"
+          },
+          {
+            "id": "scenario-directive",
+            "title": "Scenario Directive"
+          }
+        ],
+        "inPlay": "The active board contract supplies field objectives and the live directive. Available entries depend on guild rank, branch and settlement state.",
+        "evidence": "Generated and inspected each board blueprint or information redirect."
+      }
+    ],
+    "classicMapEvidence": {
+      "1": {
+        "authoredActors": 16,
+        "dialogueOrEvents": 1,
+        "declaredActions": []
+      },
+      "2": {
+        "authoredActors": 177,
+        "dialogueOrEvents": 102,
+        "declaredActions": [
+          "add_stat",
+          "close_dialogue",
+          "disappear",
+          "give_card",
+          "open_shop",
+          "play_sfx",
+          "play_song",
+          "start_wave"
+        ]
+      },
+      "4": {
+        "authoredActors": 59,
+        "dialogueOrEvents": 28,
+        "declaredActions": [
+          "close_dialogue",
+          "disappear",
+          "give_card",
+          "open_shop",
+          "play_sfx",
+          "start_hunted"
+        ]
+      },
+      "5": {
+        "authoredActors": 34,
+        "dialogueOrEvents": 13,
+        "declaredActions": [
+          "close_dialogue",
+          "disappear",
+          "notify",
+          "play_sfx",
+          "rob_player",
+          "spectate",
+          "train",
+          "transform_npc"
+        ]
+      },
+      "6": {
+        "authoredActors": 32,
+        "dialogueOrEvents": 23,
+        "declaredActions": []
+      },
+      "7": {
+        "authoredActors": 10,
+        "dialogueOrEvents": 5,
+        "declaredActions": []
+      },
+      "8": {
+        "authoredActors": 4,
+        "dialogueOrEvents": 1,
+        "declaredActions": []
+      },
+      "9": {
+        "authoredActors": 40,
+        "dialogueOrEvents": 20,
+        "declaredActions": [
+          "disappear",
+          "set_memory",
+          "spectate"
+        ]
+      },
+      "10": {
+        "authoredActors": 26,
+        "dialogueOrEvents": 10,
+        "declaredActions": []
+      },
+      "11": {
+        "authoredActors": 4,
+        "dialogueOrEvents": 1,
+        "declaredActions": []
+      },
+      "12": {
+        "authoredActors": 13,
+        "dialogueOrEvents": 7,
+        "declaredActions": [
+          "set_memory"
+        ]
+      },
+      "13": {
+        "authoredActors": 3,
+        "dialogueOrEvents": 1,
+        "declaredActions": []
+      },
+      "14": {
+        "authoredActors": 12,
+        "dialogueOrEvents": 11,
+        "declaredActions": [
+          "open_shop",
+          "set_memory",
+          "spectate",
+          "transform_npc"
+        ]
+      },
+      "15": {
+        "authoredActors": 4,
+        "dialogueOrEvents": 1,
+        "declaredActions": [
+          "disappear",
+          "spawn_npc",
+          "spectate"
+        ]
+      },
+      "16": {
+        "authoredActors": 9,
+        "dialogueOrEvents": 0,
+        "declaredActions": []
+      },
+      "17": {
+        "authoredActors": 1,
+        "dialogueOrEvents": 1,
+        "declaredActions": []
+      },
+      "18": {
+        "authoredActors": 1,
+        "dialogueOrEvents": 0,
+        "declaredActions": []
+      },
+      "19": {
+        "authoredActors": 1,
+        "dialogueOrEvents": 1,
+        "declaredActions": []
+      },
+      "20": {
+        "authoredActors": 1,
+        "dialogueOrEvents": 1,
+        "declaredActions": []
+      },
+      "21": {
+        "authoredActors": 1,
+        "dialogueOrEvents": 1,
+        "declaredActions": []
+      },
+      "30": {
+        "authoredActors": 22,
+        "dialogueOrEvents": 13,
+        "declaredActions": []
+      },
+      "31": {
+        "authoredActors": 43,
+        "dialogueOrEvents": 8,
+        "declaredActions": []
+      }
+    },
+    "uniqueBoardIds": 36,
+    "guildBoard": [
+      {
+        "id": "f_exam",
+        "name": "PROMOTION EXAM: E-RANK",
+        "type": "exam",
+        "board": "F",
+        "initialActions": 2
+      },
+      {
+        "id": "f_bounty_1",
+        "name": "Local Extermination",
+        "type": "bounty",
+        "board": "F",
+        "initialActions": 1
+      },
+      {
+        "id": "f_fetch_1",
+        "name": "Lost Shipment",
+        "type": "fetch",
+        "board": "F",
+        "initialActions": 1
+      },
+      {
+        "id": "e_exam",
+        "name": "PROMOTION EXAM: D-RANK",
+        "type": "exam",
+        "board": "E",
+        "initialActions": 2
+      },
+      {
+        "id": "e_bounty_1",
+        "name": "Beast Extermination",
+        "type": "bounty",
+        "board": "E",
+        "initialActions": 1
+      },
+      {
+        "id": "e_escort_1",
+        "name": "VIP Escort",
+        "type": "escort",
+        "board": "E",
+        "initialActions": 3
+      },
+      {
+        "id": "e_squad_1",
+        "name": "Bandit Squad",
+        "type": "squad_bounty",
+        "board": "E",
+        "initialActions": 3
+      },
+      {
+        "id": "d_exam",
+        "name": "PROMOTION EXAM: C-RANK",
+        "type": "exam",
+        "board": "D",
+        "initialActions": 2
+      },
+      {
+        "id": "d_bounty_1",
+        "name": "Stone Extermination",
+        "type": "bounty",
+        "board": "D",
+        "initialActions": 1
+      },
+      {
+        "id": "d_infestation_1",
+        "name": "Monster Infestation",
+        "type": "infestation",
+        "board": "D",
+        "initialActions": 1
+      },
+      {
+        "id": "d_reinforce_1",
+        "name": "C-Rank Rescue",
+        "type": "reinforcement",
+        "board": "D",
+        "initialActions": 1
+      },
+      {
+        "id": "d_mystery_1",
+        "name": "Suspicious Client",
+        "type": "mysterious_client",
+        "board": "D",
+        "initialActions": 1
+      },
+      {
+        "id": "c_story_1",
+        "name": "CAMPAIGN: Sect Meeting",
+        "type": "infiltration",
+        "board": "C",
+        "initialActions": 1
+      },
+      {
+        "id": "c_bounty_1",
+        "name": "Undead Extermination",
+        "type": "bounty",
+        "board": "C",
+        "initialActions": 1
+      },
+      {
+        "id": "c_story_2",
+        "name": "CAMPAIGN: Beast Dilemma",
+        "type": "dilemma",
+        "board": "C",
+        "initialActions": 2
+      },
+      {
+        "id": "c_story_3",
+        "name": "CAMPAIGN: Shipment Intercept",
+        "type": "idol",
+        "board": "C",
+        "initialActions": 1
+      },
+      {
+        "id": "c_story_4",
+        "name": "CAMPAIGN: Town Assault",
+        "type": "invasion",
+        "board": "C",
+        "initialActions": 16
+      },
+      {
+        "id": "c_exam",
+        "name": "PROMOTION EXAM: B-RANK",
+        "type": "exam",
+        "board": "C",
+        "initialActions": 2
+      },
+      {
+        "id": "b_bounty_1",
+        "name": "Deep Extermination",
+        "type": "bounty",
+        "board": "B",
+        "initialActions": 1
+      },
+      {
+        "id": "b_ritual_1",
+        "name": "Apocalyptic Ritual",
+        "type": "ritual",
+        "board": "B",
+        "initialActions": 3
+      },
+      {
+        "id": "b_extract_1",
+        "name": "Black-Site Rescue",
+        "type": "extraction",
+        "board": "B",
+        "initialActions": 1
+      },
+      {
+        "id": "b_apex_1",
+        "name": "Bioweapon Raid",
+        "type": "apex",
+        "board": "B",
+        "initialActions": 1
+      },
+      {
+        "id": "b_exam",
+        "name": "PROMOTION EXAM: A-RANK",
+        "type": "info",
+        "board": "B",
+        "initialActions": null
+      },
+      {
+        "id": "a_bounty_1",
+        "name": "Mythic Extermination",
+        "type": "bounty",
+        "board": "A",
+        "initialActions": 1
+      },
+      {
+        "id": "a_story_1",
+        "name": "CAMPAIGN: Abyssal Hunt",
+        "type": "inquisitor",
+        "board": "A",
+        "initialActions": 1
+      },
+      {
+        "id": "a_story_2",
+        "name": "CAMPAIGN: Training Expedition",
+        "type": "expedition",
+        "board": "A",
+        "initialActions": 7
+      },
+      {
+        "id": "a_stronghold_1",
+        "name": "FINALE I · Sect Stronghold",
+        "type": "stronghold",
+        "board": "A",
+        "initialActions": 0
+      },
+      {
+        "id": "a_finale",
+        "name": "PROMOTION EXAM: THE MASTERMIND",
+        "type": "info",
+        "board": "A",
+        "initialActions": null
+      },
+      {
+        "id": "s_general_1",
+        "name": "Continental Threat",
+        "type": "bounty",
+        "board": "S",
+        "initialActions": 1
+      },
+      {
+        "id": "s_moors_1",
+        "name": "Defend The Moors",
+        "type": "bounty",
+        "board": "S",
+        "initialActions": 1
+      },
+      {
+        "id": "s_avalon_copper",
+        "name": "COPPER-TIER GAUNTLET",
+        "type": "apex_hunt",
+        "board": "COPPER",
+        "initialActions": 2
+      },
+      {
+        "id": "s_avalon_silver",
+        "name": "SILVER-TIER GAUNTLET",
+        "type": "apex_hunt",
+        "board": "SILVER",
+        "initialActions": 1
+      },
+      {
+        "id": "s_avalon_gold",
+        "name": "GOLD-TIER GAUNTLET",
+        "type": "apex_hunt",
+        "board": "GOLD",
+        "initialActions": 5
+      },
+      {
+        "id": "s_avalon_mithril",
+        "name": "MITHRIL-TIER GAUNTLET",
+        "type": "apex_hunt",
+        "board": "MITHRIL",
+        "initialActions": 1
+      },
+      {
+        "id": "gerWell",
+        "name": "The Witch Queen’s request",
+        "type": "bounty",
+        "board": "Settled ger",
+        "initialActions": null
+      },
+      {
+        "id": "s_avalon_copper",
+        "name": "The Chained Avatar",
+        "type": "chained_avatar",
+        "board": "Settled avalon",
+        "initialActions": null
+      },
+      {
+        "id": "avalonHart",
+        "name": "The hollow hart",
+        "type": "bounty",
+        "board": "Settled avalon",
+        "initialActions": null
+      }
+    ],
+    "regionalSupplies": {
+      "priest": [
+        "moonleaf",
+        "sunsage"
+      ],
+      "warrior": [
+        "winter_furs"
+      ],
+      "hunter": [
+        "tusks",
+        "mushrooms"
+      ],
+      "rogue": [
+        "thread"
+      ],
+      "knight": [
+        "hinges"
+      ],
+      "mage": [
+        "powder"
+      ]
+    },
+    "nonJournalAndConditional": [
+      {
+        "name": "Haven reading, Fisher and old shore priest",
+        "kind": "authored initiation",
+        "evidence": "Physical waterfront, reading, old shore priest and handoff. Battle-Mage initiation uses its own class flag."
+      },
+      {
+        "name": "Moors Port cursed ring",
+        "kind": "optional field encounter",
+        "evidence": "Pickup consent, curse vignette, finite wisp waves and a persistent curse encounter record."
+      },
+      {
+        "name": "Ger well and Avalon hollow hart",
+        "kind": "settled-guild commissions",
+        "evidence": "The envoy or scout reveals a field enemy. The keeper returns after the Well Shade is defeated. Avalon’s second Copper offer leads to the hollow hart."
+      },
+      {
+        "name": "Wilderness visit, contracts and accomplishments",
+        "kind": "generated realm",
+        "evidence": "Per-instance targets and progress, including rescues, enemies, artifacts and commander. Runtime entries depend on generated realm data."
+      },
+      {
+        "name": "Custom scenario directive and memory:q_*",
+        "kind": "generated or scripted instance",
+        "evidence": "Scenario title and authored or seeded quest state supply this open-ended log. A seeded ready-to-return entry was exercised."
+      },
+      {
+        "name": "Creator-pack talk and defeat quests",
+        "kind": "optional imported content",
+        "evidence": "Compiler requires a distinct placed quest giver and appropriately typed target and awards the configured potion reward. External packs supply their own dialogue."
+      },
+      {
+        "name": "Moonlit Meadow cottage and cave",
+        "kind": "test realm",
+        "evidence": "Readable note, herbs, containers, cave entrance and persistent loot; separate from authored journal campaign."
+      },
+      {
+        "name": "Night Court academy and later Vampire progression",
+        "kind": "reference or deferred",
+        "evidence": "Current court and Cherry content are included above. Future Vampire advancement is outside this release."
+      }
+    ],
+    "checksRun": [
+      "tower journal records a crossing and retains completion on return",
+      "tower journal leaves untraversed floors active",
+      "old completed Fool save resolves an older unflagged chapter",
+      "quarry beam rescue relocates crew, opens postern and persists",
+      "estate drainage dries lane on map and journal",
+      "hill lantern enforces range, single use and persisted state",
+      "escape rise adds actual defenders and foes",
+      "hearth spring fills channel and restored boards survive re-entry",
+      "hearth boatman reaches the fire after receiving warmth",
+      "Alba requires chart before beacon and persists eastern beacon",
+      "Hallow stone trial gates preparation and crosses the seal",
+      "Hallow spear trial gates preparation and crosses the seal",
+      "Hallow sword trial gates preparation and crosses the seal",
+      "council repair, family relocation and first combat wave",
+      "wilderness bridge and spring persist across map loads",
+      "council field preserves healthy allies while recalling only the wounded",
+      "council finish pays once, records route, and survives return",
+      "each relic can be entrusted and recovered without duplication",
+      "school ritual and training sites are individually registered",
+      "Dancer rehearsal animates, completes and leaves one friendship record",
+      "settled ger contract reveals a real foe after briefing",
+      "settled avalon contract reveals a real foe after briefing"
+    ],
+    "limits": [
+      "Seeded saves and map loads exercised selected milestones. The full campaign was not walked from a new character.",
+      "Generated worlds, arbitrary creator packs, every free-form line and every multiplayer outcome are open-ended.",
+      "Manual device accessibility, real-time online parties and all dialogue voice combinations were not exercised in this audit."
+    ]
+  },
+  "quest-validation": {
+    "environment": "Offline mobile Chromium and an isolated Node server",
+    "atlas": {
+      "catalogEntriesLoaded": 450,
+      "regionalEdgeCasesComparedWithV192": 1488,
+      "legacyMapAliases": 8
+    },
+    "interactionChecks": [
+      "A v192 character resumed in Haven. On-screen controls picked up and set down the cargo, collected the mirror and returned the Fisher scene to its original view in top-down, isometric and first-person modes.",
+      "The permanent medicine table could be approached inside the cottage in all three views before accepting the errand. The player brewed a draught, reloaded the saved game, administered it and revisited the recovering patient.",
+      "Cattle tracks advanced through the normal interaction button. Four cattle followed real paths out of the den and appeared at home before the axe reward. Both partners spoke their vows.",
+      "The clinical cases in Kemet and Qedar accepted the indicated treatment and refused the wrong one. A save taken after cleansing the guard restored his outstanding ward treatment, and the guild reward was claimed.",
+      "Night Court playthrough covered the stage encounter, rescue, return to the family and lasting Dancer reward. The combat check triggered defeat at depleted wards.",
+      "31 regional checks exercised guarded pickups, record and cargo deliveries, persistent origins and destinations, and repeat reward attempts.",
+      "All seven apprenticeship field paths were exercised, with walkable routes for both tested escort paths.",
+      "Court, guild and stronghold checks exercised escort distance, extraction from fresh and older saves, two seals, the boss and the return passage."
+    ],
+    "limits": "Checkpoints and direct travel shortened long journeys. These checks do not cover every play order, physical phone, generated mission or live multiplayer campaign.",
+    "publicServer": {
+      "fixturesCompared": 17,
+      "personalPropsExcluded": 6,
+      "conditionalSpeakerChecks": 6
+    }
+  }
 }
