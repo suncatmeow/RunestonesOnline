@@ -1,12 +1,12 @@
 {
   "application": "BattleMage Runestones",
-  "version": 193,
-  "serverVersion": "1.10.125",
+  "version": 202,
+  "serverVersion": "1.10.134",
   "date": "2026-11-26",
   "entryPoint": "index.html",
   "serverEntryPoint": "server.js",
   "distribution": "five-file-zip",
-  "supersedes": "BattleMage Runestones v192",
+  "supersedes": "BattleMage Runestones v201",
   "deployed": false,
   "files": [
     "index.html",
@@ -27,8 +27,8 @@
     "relicCustody": "One of each Hallow per saved personal story world, with a browser custody anchor and a copy inside the character save. Different offline worlds are independent; this is not global multiplayer trade authority.",
     "retiredRealm613": "The old server .realm613.json and browser battlemage.realm613.v1 ledgers remain untouched. v132 does not read, run or overwrite them. v109 remains an archived package if the experiment is revisited."
   },
-  "clientSha256": "d2c0f8517428645d993da2fbff382fa0b0546d64a62c74f1dfa6aff936cac924",
-  "serverSha256": "6c49828d39a357903df0aebff30a2339b215f05df88d243acf30f7c287d5982c",
+  "clientSha256": "a8f97113da35980326837dcae92db7c5db1229c1d15dff87acbec8cffbae7cfd",
+  "serverSha256": "071b37367f93e1057b86f9c4c21cd48032dcdaaed713a41d1d6d35daa17088fe",
   "preservedDragonflightSectionSha256": "405d5996daa627c68b1f9a28b88ca59243682311928faa0d9773e43b5a91d112",
   "campaign": {
     "implemented": "Living Hallows passes 1–8, Eastern Wilderness, Dancer friendship, Night Court and complete Cherry rescue (Pass 2).",
@@ -68,226 +68,74 @@
   },
   "geography": {
     "newMapIDs": [
-      2000,
-      2001,
-      2002,
-      2003,
-      2004,
-      2005,
-      2006,
-      2007,
-      2008,
-      2009,
-      2010,
-      2032,
-      2033,
-      2034,
-      2035,
-      2036,
-      2037,
-      2038,
-      2039,
-      2040,
-      2041,
-      2042,
-      2064,
-      2065,
-      2066,
-      2067,
-      2068,
-      2069,
-      2070,
-      2071,
-      2072,
-      2073,
-      2074,
-      2096,
-      2097,
-      2098,
-      2099,
-      2100,
-      2101,
-      2102,
-      2103,
-      2104,
-      2105,
-      2106,
-      2128,
-      2129,
-      2130,
-      2131,
-      2132,
-      2133,
-      2134,
-      2135,
-      2136,
-      2137,
-      2138,
-      2160,
-      2161,
-      2162,
-      2163,
-      2164,
-      2165,
-      2166,
-      2167,
-      2168,
-      2169,
-      2170,
-      2171,
-      2172,
-      2173,
-      2174,
-      2175,
-      2176,
-      2177,
-      2178,
-      2192,
-      2193,
-      2194,
-      2195,
-      2196,
-      2197,
-      2198,
-      2199,
-      2200,
-      2201,
-      2202,
-      2203,
-      2204,
-      2205,
-      2206,
-      2207,
-      2208,
-      2209,
-      2210,
-      2224,
-      2225,
-      2226,
-      2227,
-      2228,
-      2229,
-      2230,
-      2231,
-      2232,
-      2233,
-      2234,
-      2235,
-      2236,
-      2237,
-      2238,
-      2239,
-      2240,
-      2241,
-      2242,
-      2256,
-      2257,
-      2258,
-      2259,
-      2260,
-      2261,
-      2262,
-      2263,
-      2264,
-      2265,
-      2266,
-      2267,
-      2268,
-      2269,
-      2270,
-      2271,
-      2272,
-      2273,
-      2274,
-      2288,
-      2289,
-      2290,
-      2291,
-      2292,
-      2293,
-      2294,
-      2295,
-      2296,
-      2297,
-      2298,
-      2299,
-      2300,
-      2301,
-      2302,
-      2303,
-      2304,
-      2305,
-      2306,
-      2307,
-      2308,
-      2309,
-      2310,
-      2311,
-      2312,
-      2313,
-      2314,
-      2315,
-      2320,
-      2321,
-      2322,
-      2323,
-      2324,
-      2325,
-      2326,
-      2327,
-      2328,
-      2329,
-      2330,
-      2331,
-      2332,
-      2333,
-      2334,
-      2335,
-      2336,
-      2337,
-      2338,
-      2339,
-      2340,
-      2341,
-      2342,
-      2343,
-      2344,
-      2345,
-      2346,
-      2347,
-      2352,
-      2353,
-      2354,
-      2355,
-      2356,
-      2357,
-      2358,
-      2359,
-      2360,
-      2361,
-      2362,
-      2363,
-      2364,
-      2365,
-      2366,
-      2367,
-      2368,
-      2369,
-      2370,
-      2371,
-      2372,
-      2373,
-      2374,
-      2375,
-      2376,
-      2377,
-      2378,
-      2379
+      2400,
+      2401,
+      2402,
+      2403,
+      2404,
+      2405,
+      2406,
+      2407,
+      2408,
+      2409,
+      2410,
+      2411,
+      2412,
+      2413,
+      2414,
+      2415,
+      2416,
+      2417,
+      2418,
+      2419,
+      2420,
+      2421,
+      2422,
+      2423,
+      2424,
+      2425,
+      2426,
+      2427,
+      2428,
+      2429,
+      2430,
+      2431,
+      2432,
+      2433,
+      2434,
+      2435,
+      2436,
+      2437,
+      2438,
+      2439,
+      2440,
+      2441,
+      2442,
+      2443,
+      2444,
+      2445,
+      2446,
+      2447,
+      2448,
+      2449,
+      2450,
+      2451,
+      2452,
+      2453,
+      2454,
+      2455,
+      2456,
+      2457,
+      2458,
+      2459,
+      2460,
+      2461,
+      2462
     ],
-    "totalAtlasCharts": 385,
+    "totalAtlasCharts": 448,
     "projection": "Equal Earth (spherical equal-area)",
     "source": "Natural Earth 1:10m coastlines via the QGIS world map dataset",
-    "interpretation": "Stylized land cover, waterways and relief. Authored story maps retain their local geometry."
+    "interpretation": "A continuous geographic atlas from 90° north to 90° south, represented by separately traversable regions. Local distances and relief are compressed for play."
   },
   "naming": {
     "maps": {
@@ -514,7 +362,7 @@
     }
   },
   "devlog": {
-    "current": "v193",
+    "current": "v202",
     "history": "Minigame Manual"
   },
   "historicalLiveInspection": {
@@ -541,15 +389,13 @@
     "currentStatus": "Historical snapshot before the user reported committing changes; not evidence of the currently deployed version."
   },
   "changes": [
-    "Permanent apprenticeship fixtures and staged field tasks, including brewing and delivering medicine.",
-    "Haven cargo handoff, Fisher and shore priest staging, and lineage referrals.",
-    "Cherry, the Night Court, guild escorts, and Hallows field events now show more of their outcomes in play.",
-    "Kemet and Qedar patients display treatment state. Herd rescue tracks, ribbon handoff, and homecoming persist."
+    "Target passive battle wildlife without changing its allegiance.",
+    "Return to the goblin camp and cavern hunting grounds from Tintagel."
   ],
   "previousRelease": {
-    "version": 192,
-    "serverVersion": "1.10.124",
-    "summary": "Atlas landmarks"
+    "version": 201,
+    "serverVersion": "1.10.133",
+    "summary": "Working on the Nile"
   },
   "validation": {
     "offlineFreshJournal": [
@@ -787,6 +633,19 @@
       "sitePortals": 18,
       "sitesCheckedInThreeViews": 9,
       "ordinaryPortalDecks": 61
+    },
+    "atlas194": {
+      "worldIDs": 504,
+      "directionalRoutes": 1884,
+      "expectedHarborDiversions": 2,
+      "unsafeRoutes": [],
+      "passableEdgeCells": 162548,
+      "failedPassableEdgeCells": 0,
+      "questChecksPassed": 22,
+      "walkingReachabilityMapsScanned": 296,
+      "previousWalkingReachabilityRegressions": [],
+      "physicalDistrictCrossings": 20,
+      "indoorPassageGeometry": 14
     }
   },
   "limitations": [
@@ -5789,5 +5648,713 @@
       "personalPropsExcluded": 6,
       "conditionalSpeakerChecks": 6
     }
+  },
+  "livingAtlas194": {
+    "newRegions": [
+      2400,
+      2401,
+      2402,
+      2403,
+      2404,
+      2405,
+      2406,
+      2407,
+      2408,
+      2409,
+      2410,
+      2411,
+      2412,
+      2413,
+      2414,
+      2415,
+      2416,
+      2417,
+      2418,
+      2419,
+      2420,
+      2421,
+      2422,
+      2423,
+      2424,
+      2425,
+      2426,
+      2427,
+      2428,
+      2429,
+      2430,
+      2431,
+      2432,
+      2433,
+      2434,
+      2435,
+      2436,
+      2437,
+      2438,
+      2439,
+      2440,
+      2441,
+      2442,
+      2443,
+      2444,
+      2445,
+      2446,
+      2447,
+      2448,
+      2449,
+      2450,
+      2451,
+      2452,
+      2453,
+      2454,
+      2455,
+      2456,
+      2457,
+      2458,
+      2459,
+      2460,
+      2461,
+      2462
+    ],
+    "updatedIceMaps": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010
+    ],
+    "relief": {
+      "source": "NOAA global topography sampled at half-degree intervals, as distributed in the oce package's topoWorld dataset (2019).",
+      "documentation": "https://search.r-project.org/CRAN/refmans/oce/html/topoWorld.html",
+      "data": "https://github.com/dankelley/oce/blob/develop/data/topoWorld.rda",
+      "gitBlob": "627ba68e457e293e336473b6e87259951b9ac392",
+      "coverage": "720 longitude samples by 360 latitude samples, centered at 0.25-degree offsets. Ocean depths retain their game-specific model.",
+      "gameScale": "Above-water measurements quantized to 32 metres, bilinearly sampled, then terraced to quarter-tile height bands. Regional boundaries, shorelines, trees, spawns and previously built sites keep graded approaches. Scripted relief in older maps is retained."
+    },
+    "sites": {
+      "method": "Each outdoor scene condenses selected documented features into a few game tiles. Exact plans, inhabitants and visit sequences are original game design. The atlas combines places from different periods.",
+      "places": [
+        {
+          "id": 3100,
+          "name": "Kemet · Nekhen",
+          "landscapeAndMaterial": "Excavated wadi brewery and pottery yard",
+          "references": [
+            "https://www.hierakonpolis-online.org/index.php/explore-the-predynastic-settlement",
+            "https://www.hierakonpolis-online.org/index.php/explore-the-predynastic-settlement/breweries/hk11-wadi-breweries",
+            "https://hierakonpolis-online.org/index.php/explore-the-predynastic-settlement/pottery-production"
+          ]
+        },
+        {
+          "id": 3101,
+          "name": "Ta-Sety · Kerma",
+          "landscapeAndMaterial": "Mud-brick Western Deffufa, Nile landing and potters’ work area",
+          "references": [
+            "https://whc.unesco.org/en/tentativelists/6594/",
+            "https://whc.unesco.org/en/tentativelists/651"
+          ]
+        },
+        {
+          "id": 3102,
+          "name": "Eye of the Sahara",
+          "landscapeAndMaterial": "Eroded concentric bands and a dry crossing. The shaded cleft is original fantasy scenery.",
+          "references": [
+            "https://science.nasa.gov/earth/earth-observatory/eyeing-the-richat-structure/"
+          ]
+        },
+        {
+          "id": 3103,
+          "name": "Teotihuacán · Temple of the Feathered Serpent",
+          "landscapeAndMaterial": "Ciudadela court, stair and feathered serpent reliefs",
+          "references": [
+            "https://lugares.inah.gob.mx/es/pagina-de-elemento/2736",
+            "https://visitateotihuacan.inah.gob.mx/explora/plataforma-adosada/"
+          ]
+        },
+        {
+          "id": 3104,
+          "name": "Caral · Supe Valley",
+          "landscapeAndMaterial": "Dry terrace, circular court, platforms and a fibre-wrapped stone load",
+          "references": [
+            "https://whc.unesco.org/en/list/1269/",
+            "https://zonacaral.gob.pe/es/noticias/a-tejer-shicras-un-taller-que-educa-y-divierte-a-ninos-jovenes-y-adultos/"
+          ]
+        },
+        {
+          "id": 3105,
+          "name": "Poverty Point · Lower Mississippi earthworks",
+          "landscapeAndMaterial": "Six curving earthen ridges, central plaza, elevated mound and bayou",
+          "references": [
+            "https://whc.unesco.org/en/list/1435/"
+          ]
+        },
+        {
+          "id": 3106,
+          "name": "Budj Bim · Gunditjmara waterways",
+          "landscapeAndMaterial": "Managed channels, pooled water, basalt banks and a woven eel basket",
+          "references": [
+            "https://whc.unesco.org/en/list/1577/",
+            "https://www.gunditjmirring.com/_files/ugd/b5965f_8e5840ee44e64502b2e8726cf03a2260.pdf"
+          ]
+        },
+        {
+          "id": 3107,
+          "name": "Tainaron",
+          "landscapeAndMaterial": "Laconian headland, Poseidon shrine and cave. The structure and routes are interpretive.",
+          "references": [
+            "https://topostext.org/place/364225STai"
+          ]
+        },
+        {
+          "id": 3108,
+          "name": "Kunlun · Mountain approach",
+          "landscapeAndMaterial": "Plateau mountain pass, paired ridgelines, scree and meltwater fan. The path is an original condensed scene.",
+          "references": [
+            "https://biodiversity.unesco.org/profile/site/ASCN19/"
+          ]
+        }
+      ]
+    },
+    "polarGeography": "Existing Natural Earth land mask and generalized coastline. Stable representative sea-ice patterns and open leads, designed for gameplay. Ice extent is not a live forecast.",
+    "seaIceReference": "https://nsidc.org/learn/parts-cryosphere/sea-ice/quick-facts-about-sea-ice"
+  },
+  "ecology195": {
+    "speciesNotes": "https://www.allaboutbirds.org/guide/Great_Egret/lifehistory/",
+    "runs": [
+      {
+        "map": 2,
+        "key": "meadow2",
+        "kind": "meadow",
+        "count": 2,
+        "sprite": 225,
+        "name": "Rabbit",
+        "route": [
+          [
+            87,
+            47
+          ],
+          [
+            87,
+            48
+          ],
+          [
+            87,
+            49
+          ],
+          [
+            88,
+            49
+          ],
+          [
+            89,
+            49
+          ],
+          [
+            89,
+            50
+          ],
+          [
+            90,
+            50
+          ],
+          [
+            91,
+            50
+          ],
+          [
+            92,
+            50
+          ],
+          [
+            93,
+            50
+          ],
+          [
+            94,
+            50
+          ],
+          [
+            95,
+            50
+          ],
+          [
+            95,
+            51
+          ]
+        ],
+        "secondRun": [
+          [
+            92,
+            52
+          ],
+          [
+            93,
+            52
+          ],
+          [
+            93,
+            53
+          ],
+          [
+            94,
+            53
+          ],
+          [
+            95,
+            53
+          ],
+          [
+            95,
+            54
+          ],
+          [
+            95,
+            55
+          ],
+          [
+            95,
+            56
+          ],
+          [
+            95,
+            57
+          ],
+          [
+            95,
+            58
+          ],
+          [
+            95,
+            59
+          ],
+          [
+            95,
+            60
+          ],
+          [
+            95,
+            61
+          ]
+        ]
+      },
+      {
+        "map": 0,
+        "key": "meadow0",
+        "kind": "meadow",
+        "count": 2,
+        "sprite": 225,
+        "name": "Rabbit",
+        "route": [
+          [
+            95,
+            51
+          ],
+          [
+            96,
+            51
+          ],
+          [
+            97,
+            51
+          ],
+          [
+            97,
+            52
+          ],
+          [
+            97,
+            53
+          ],
+          [
+            97,
+            54
+          ],
+          [
+            97,
+            55
+          ],
+          [
+            97,
+            56
+          ],
+          [
+            97,
+            57
+          ],
+          [
+            97,
+            58
+          ],
+          [
+            97,
+            59
+          ],
+          [
+            97,
+            60
+          ],
+          [
+            97,
+            61
+          ],
+          [
+            97,
+            62
+          ]
+        ],
+        "secondRun": [
+          [
+            94,
+            53
+          ],
+          [
+            93,
+            53
+          ],
+          [
+            93,
+            52
+          ],
+          [
+            93,
+            51
+          ],
+          [
+            93,
+            50
+          ],
+          [
+            93,
+            49
+          ],
+          [
+            94,
+            49
+          ],
+          [
+            95,
+            49
+          ],
+          [
+            96,
+            49
+          ],
+          [
+            97,
+            49
+          ],
+          [
+            97,
+            48
+          ],
+          [
+            97,
+            47
+          ],
+          [
+            97,
+            46
+          ]
+        ]
+      },
+      {
+        "map": 0,
+        "key": "trail0",
+        "kind": "trail",
+        "count": 3,
+        "sprite": 191,
+        "name": "Wolf",
+        "route": [
+          [
+            72,
+            22
+          ],
+          [
+            73,
+            22
+          ],
+          [
+            74,
+            22
+          ],
+          [
+            75,
+            22
+          ],
+          [
+            76,
+            22
+          ],
+          [
+            77,
+            22
+          ],
+          [
+            78,
+            22
+          ],
+          [
+            79,
+            22
+          ],
+          [
+            80,
+            22
+          ],
+          [
+            81,
+            22
+          ],
+          [
+            82,
+            22
+          ],
+          [
+            83,
+            22
+          ],
+          [
+            84,
+            22
+          ],
+          [
+            85,
+            22
+          ],
+          [
+            86,
+            22
+          ],
+          [
+            87,
+            22
+          ],
+          [
+            88,
+            22
+          ],
+          [
+            89,
+            22
+          ],
+          [
+            90,
+            22
+          ],
+          [
+            91,
+            22
+          ],
+          [
+            92,
+            22
+          ],
+          [
+            93,
+            22
+          ],
+          [
+            94,
+            22
+          ]
+        ]
+      },
+      {
+        "map": 43,
+        "key": "bank43",
+        "kind": "bank",
+        "count": 1,
+        "sprite": 4733,
+        "name": "Great Egret",
+        "route": [
+          [
+            42,
+            66
+          ],
+          [
+            43,
+            66
+          ],
+          [
+            44,
+            66
+          ],
+          [
+            45,
+            66
+          ],
+          [
+            45,
+            65
+          ],
+          [
+            45,
+            64
+          ],
+          [
+            45,
+            63
+          ],
+          [
+            45,
+            62
+          ],
+          [
+            45,
+            61
+          ],
+          [
+            45,
+            60
+          ],
+          [
+            45,
+            59
+          ],
+          [
+            45,
+            58
+          ]
+        ]
+      },
+      {
+        "map": 2345,
+        "key": "bank2345",
+        "kind": "bank",
+        "count": 1,
+        "sprite": 4733,
+        "name": "Great Egret",
+        "route": [
+          [
+            29,
+            14
+          ],
+          [
+            29,
+            15
+          ],
+          [
+            29,
+            16
+          ],
+          [
+            28,
+            16
+          ],
+          [
+            27,
+            16
+          ],
+          [
+            26,
+            16
+          ],
+          [
+            25,
+            16
+          ],
+          [
+            24,
+            16
+          ],
+          [
+            23,
+            16
+          ],
+          [
+            22,
+            16
+          ],
+          [
+            22,
+            15
+          ]
+        ]
+      },
+      {
+        "map": 2230,
+        "key": "highland2230",
+        "kind": "highland",
+        "count": 1,
+        "sprite": 240,
+        "name": "Andean fox",
+        "route": [
+          [
+            77,
+            33
+          ],
+          [
+            77,
+            32
+          ],
+          [
+            77,
+            31
+          ],
+          [
+            77,
+            30
+          ],
+          [
+            77,
+            29
+          ],
+          [
+            77,
+            28
+          ],
+          [
+            77,
+            27
+          ],
+          [
+            77,
+            26
+          ],
+          [
+            77,
+            25
+          ],
+          [
+            77,
+            24
+          ],
+          [
+            77,
+            23
+          ],
+          [
+            77,
+            22
+          ],
+          [
+            77,
+            21
+          ],
+          [
+            77,
+            20
+          ],
+          [
+            77,
+            19
+          ],
+          [
+            77,
+            18
+          ],
+          [
+            77,
+            17
+          ]
+        ]
+      }
+    ],
+    "disturbanceMinutes": 3,
+    "huntingMinutes": 18
   }
 }
